@@ -90,16 +90,17 @@ export function parseFight(body, { hunt = 8, dungeon = 5 } = {}) {
   return out;
 }
 
-/** The v2 role and the base blocks of a card: subjects.ability_v2 when it has one, else the simulator placeholder (config.json). */
+/** The v2 role and the base blocks of a card: subjects.ability_v2 when it has one, else the simulator placeholder (config.json). pick_factor = the measured
+ * active factor of the Hunt auto-pick (plan 20.10, subjects.ability_v2.pick_factor; a placeholder has none: the pick uses 1). */
 export function activeOf(cfg, card) {
   const a2 = card.ability_v2;
   if (a2 && typeof a2 === 'object' && ROLES.includes(a2.role) && Array.isArray(a2.blocks)) {
-    return { role: a2.role, name: a2.name || 'Active', blocks: a2.blocks, source: 'ability_v2' };
+    return { role: a2.role, name: a2.name || 'Active', blocks: a2.blocks, source: 'ability_v2', pick_factor: typeof a2.pick_factor === 'number' ? a2.pick_factor : null };
   }
   const role = roleOf(cfg, { key: card.subject_key, type: card.type, ability: card.ability || null });
   const tid = templateFor(cfg, card.subject_key || role, role);
   const t = cfg.v2_templates[tid];
-  return { role, name: t.name, blocks: t.blocks, source: 'placeholder', template: tid };
+  return { role, name: t.name, blocks: t.blocks, source: 'placeholder', template: tid, pick_factor: null };
 }
 
 /** The stat points of a level: the simulator build of the role (config.json v2_builds) with the numbers of balance v2_level and v2_stats. */
@@ -202,7 +203,7 @@ end $t$;`;
 }
 
 /** The Hunt auto-pick (combat_v2_autopick) of a member's cards against the boss of the fight: a DO block that always raises (RES {ids, rows, passes}).
- * all = [{card_id, rarity, stars, cp_mod, level, points, role, blocks}]. A named boss gives its mechanics and its Weak to role (combat_v2_hunt_boss); the
+ * all = [{card_id, rarity, stars, cp_mod, level, points, role, blocks, pick_factor}] (pick_factor null = none: the pick uses 1). A named boss gives its mechanics and its Weak to role (combat_v2_hunt_boss); the
  * tier boss draws its signatures in the fight, so its pick has no mechanics and no Weak to role. A card that card_combat_v2 refuses is left out. */
 export function pickSql(f, all) {
   return `set statement_timeout = 120000;
@@ -215,7 +216,7 @@ begin
     begin
       cc := card_combat_v2(x->>'rarity', (x->>'stars')::int, (x->>'cp_mod')::numeric, (x->>'level')::int, x->'points', x->>'role');
       pool := pool || jsonb_build_array(jsonb_build_object('id', x->'card_id', 'role', cc->>'role', 'class', cc->>'class', 'atk', cc->'stats'->'atk',
-        'crt', cc->'stats'->'crt', 'crd', cc->'stats'->'crd', 'spd', cc->'stats'->'spd', 'blocks', x->'blocks'));
+        'crt', cc->'stats'->'crt', 'crd', cc->'stats'->'crd', 'spd', cc->'stats'->'spd', 'blocks', x->'blocks', 'pick_factor', x->'pick_factor'));
     exception when others then null;
     end;
   end loop;
@@ -453,7 +454,7 @@ begin
 end $t$;`)).r || [];
     return specs.map((s, i) => ({ card_id: Number(s.card.card_id), name: s.card.name, rarity: s.card.rarity, stars: s.card.stars, cp_mod: Number(s.card.cp_mod), role: s.a.role, class: s.cls,
       active: { name: s.a.name, source: s.a.source, template: s.a.template || null, text: lines[i]?.text || null },
-      blocks: s.a.blocks, points: s.points, cp: lines[i]?.cp ?? null, power: lines[i]?.power ?? null }));
+      blocks: s.a.blocks, pick_factor: s.a.pick_factor, points: s.points, cp: lines[i]?.cp ?? null, power: lines[i]?.power ?? null }));
   };
   r.get('/player/:id/cards', wrap(async (req, res) => {
     if (!ID.test(req.params.id)) throw new BadRequest('id must be a member id');
@@ -468,7 +469,7 @@ end $t$;`)).r || [];
     let pick;
     if (f.cards === 'auto' && f.mode === 'hunt') {
       // the Hunt auto-pick (Auto v2, PR E8)
-      const r = await block(pickSql(f, all.map((c) => ({ card_id: c.card_id, rarity: c.rarity, stars: c.stars, cp_mod: c.cp_mod, level: f.level, points: c.points, role: c.role, blocks: c.blocks }))));
+      const r = await block(pickSql(f, all.map((c) => ({ card_id: c.card_id, rarity: c.rarity, stars: c.stars, cp_mod: c.cp_mod, level: f.level, points: c.points, role: c.role, blocks: c.blocks, pick_factor: c.pick_factor }))));
       pick = (r.ids || []).map((id) => all.find((c) => c.card_id === Number(id))).filter(Boolean);
       if (!pick.length) throw new BadRequest('the auto-pick found no card that card_combat_v2 accepts');
       const why = new Map((r.rows || []).map((x) => [Number(x.id), x]));

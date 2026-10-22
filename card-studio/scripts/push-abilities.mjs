@@ -12,11 +12,16 @@
  * <repo parent>/discord-card-ideas/batches, or ABILITY_V2_BATCH_DIR: a batch holds unreleased card designs, never this repo). Every row is
  * checked with ability_v2_check on the TARGET database first: one refused row = nothing is written. Then each subject whose ability_v2 differs
  * is written ({role, name, blocks, silver}); the trigger subjects_ability_v2_check checks it again. After a push, --dry shows 0 changes.
+ * The measured active factor of the Hunt auto-pick (plan 20.10): --factors <file> (the PRIVATE file of node card-studio/v2sim/run.mjs factors --set1,
+ * <batch>.factors.json beside the batch) adds pick_factor to each support row that has one ({role, name, blocks, silver, pick_factor}). The file is
+ * checked against the batch first (v2sim/factors.mjs: a changed active, an attacker row, a key not in the batch or a factor outside 0.5 to 2 = nothing
+ * is written). The factor belongs to the active: a push without --factors writes no pick_factor (the pick uses 1).
  * Without LOCALDB=1 (and the preload) the target is LIVE.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { supabase } from '../src/supabase.js';
+import { readFactors } from '../v2sim/factors.mjs';
 
 const DRY = process.argv.includes('--dry');
 const canon = (v) => JSON.stringify(v ?? null, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => (a < b ? -1 : 1))) : x));
@@ -70,7 +75,9 @@ async function pushV1() {
 
 // ---- combat v2: a batch file of the ability builder -> subjects.ability_v2 (PR T1)
 async function pushV2(file) {
-  if (!file || file.startsWith('--')) { console.error('usage: node scripts/push-abilities.mjs --v2 <batch.json> [--dry]'); return 1; }
+  if (!file || file.startsWith('--')) { console.error('usage: node scripts/push-abilities.mjs --v2 <batch.json> [--factors <file>] [--dry]'); return 1; }
+  const fi = process.argv.indexOf('--factors'); const ffile = fi >= 0 ? process.argv[fi + 1] : null;
+  if (fi >= 0 && (!ffile || ffile.startsWith('--'))) { console.error('usage: --factors <file> (the factors file of run.mjs factors --set1)'); return 1; }
   let batch;
   try { batch = JSON.parse(readFileSync(file, 'utf8')); } catch (e) { console.error(`the batch file does not read: ${e.message}`); return 1; }
   const rows = Array.isArray(batch?.rows) ? batch.rows : null;
@@ -87,6 +94,14 @@ async function pushV2(file) {
     if (!data.ok) bad.push(`row ${i + 1} (${r.key}): ${data.errors.join('; ')}`);
   }
   if (bad.length) { console.error(`Refused (nothing written):\n  ${bad.join('\n  ')}`); return 1; }
+  // the measured active factors (plan 20.10): checked against the batch before any write
+  let factors = {};
+  if (ffile) {
+    const fr = readFactors(ffile, rows);
+    if (fr.errors.length) { console.error(`Refused (nothing written): the factors file does not match the batch\n  ${fr.errors.join('\n  ')}`); return 1; }
+    factors = fr.factors;
+    console.log(`factors: ${Object.keys(factors).length} of ${fr.supports} support row(s) have a pick_factor; ${fr.missing} have none (the pick uses 1).`);
+  } else console.log('factors: none (no --factors): no pick_factor is written (the pick uses 1).');
   const { data: subs, error } = await supabase.from('subjects').select('id, key, ability_v2');
   if (error) { console.error(error.message); return 1; }
   const byKey = new Map(subs.map((s) => [s.key, s]));
@@ -94,7 +109,8 @@ async function pushV2(file) {
   for (const r of rows) {
     const s = byKey.get(r.key);
     if (!s) { missing += 1; continue; }
-    const want = { role: r.role, name: r.ability.name, blocks: r.ability.blocks, ...(r.ability.silver ? { silver: r.ability.silver } : {}) };
+    const want = { role: r.role, name: r.ability.name, blocks: r.ability.blocks, ...(r.ability.silver ? { silver: r.ability.silver } : {}),
+      ...(factors[r.key] !== undefined ? { pick_factor: factors[r.key] } : {}) };
     if (canon(s.ability_v2) === canon(want)) continue;
     changed += 1;
     console.log(`${DRY ? 'would update' : 'update'} ${r.key}: ability_v2 (${s.ability_v2?.name || '-'} -> ${want.name})`);

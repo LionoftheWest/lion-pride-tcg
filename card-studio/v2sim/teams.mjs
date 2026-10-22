@@ -61,7 +61,8 @@ export function withSet1(cfg, set1 = loadSet1()) {
   const out = { ...cfg, v2_templates: { ...cfg.v2_templates } };
   out.v2_s1_subjects = {};
   for (const [k, a] of Object.entries(set1)) {
-    if (!out.v2_templates[`s1.${k}`]) out.v2_templates[`s1.${k}`] = { role: a.role, name: a.active, blocks: a.blocks };
+    // + pick_factor: the measured active factor of the Hunt auto-pick (plan 20.10), when the Lab loaded the private factors file (active.mjs)
+    if (!out.v2_templates[`s1.${k}`]) out.v2_templates[`s1.${k}`] = { role: a.role, name: a.active, blocks: a.blocks, ...(typeof a.pick_factor === 'number' ? { pick_factor: a.pick_factor } : {}) };
     if (a.subject) out.v2_s1_subjects[k] = { key: k, ...a.subject }; // a synthetic card (the test fixture): its own name, cp_mod and finishes
   }
   return out;

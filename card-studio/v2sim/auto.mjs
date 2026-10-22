@@ -7,6 +7,7 @@
 //   its offense value (plan 2.5 Offense without the hit chance: attack (CP with the ATK points) x (1 + crit chance x (crit damage - 1)) x speed)
 //   [a Lab option of PR E9 (run.mjs powerpick): a pool card with a number `power` scores by it in place of the offense. The SQL combat_v2_autopick has
 //   no such option: the Lab measured the Power score lower than the offense score (plan 20.6)]
+//   x (a support with a measured active factor, plan 20.10) pick_factor ^ active_x (a card fact of its active; no factor, an attacker: 1)
 //   x answers[m][role] for each boss mechanic m (the measured role value against m; 1 when absent)
 //   x (1 + the Weak to bonus of the boss for its role: v2_enemy.weak_role_rules[role].damage_x, else weak_role_x)
 //   x the pair score: pair_floor for a payoff card with no maker of its status among the other picked cards (plan 5.2 floor rule, the effect library
@@ -24,8 +25,10 @@ import { mkRng, hash, mean, median, table, ratio, fmt } from './util.mjs';
 import { hasSet1, withSet1, loadTeams, teamSpecs } from './teams.mjs';
 import { buildSquad } from './modes.mjs';
 
-/** The score parts of one pool card. c = {id, role, class, atk, crt, crd, spd, blocks, power?}; boss = {mechanics, weak_role}. val = the offense (E8), or
- * c.power when it is a number (the PR E9 Lab option, not in SQL). */
+/** The score parts of one pool card. c = {id, role, class, atk, crt, crd, spd, blocks, power?, pick_factor?}; boss = {mechanics, weak_role}. val = the
+ * offense (E8), or c.power when it is a number (the PR E9 Lab option, not in SQL). act = the active term (plan 20.10): a support with a measured active
+ * factor (pick_factor, a card fact of its active) scores x pick_factor ^ auto_v2.pick.active_x; an attacker, a card with no factor and an auto with no
+ * active_x (the shape PR row) get 1. */
 export function pickBase(cfg, c, boss) {
   const P = cfg.auto_v2.pick; const E = cfg.v2_enemy;
   const off = c.atk * (1 + c.crt * (c.crd - 1)) * c.spd;
@@ -33,7 +36,8 @@ export function pickBase(cfg, c, boss) {
   for (const m of boss.mechanics || []) { const x = P.answers[m]?.[c.role]; if (x !== undefined) ans *= x; }
   const weak = c.role === boss.weak_role ? 1 + (E.weak_role_rules?.[c.role]?.damage_x ?? E.weak_role_x) : 1;
   const val = typeof c.power === 'number' ? c.power : off;
-  return { off, power: typeof c.power === 'number' ? c.power : null, val, ans, weak, base: val * ans * weak };
+  const act = c.class === 'support' && c.pick_factor != null ? c.pick_factor ** (P.active_x ?? 0) : 1;
+  return { off, power: typeof c.power === 'number' ? c.power : null, val, act, ans, weak, base: val * act * ans * weak };
 }
 /** The pair score of a card in a squad S (the other picked cards make one of the statuses that it pays off, else pair_floor). */
 export function pairOf(cfg, c, S) {
@@ -75,7 +79,8 @@ export function autoPick(cfg, pool, boss, cap) {
   return { ids: S.map((c) => c.id), rows, passes };
 }
 /** A simulator card as a pool entry of the pick. */
-export const poolEntry = (c, id) => ({ id, role: c.role, class: c.cls, atk: c.cp, crt: c.crit, crd: c.critx, spd: c.speedBase * c.spdMult, blocks: c.active.blocks, card: c });
+export const poolEntry = (c, id) => ({ id, role: c.role, class: c.cls, atk: c.cp, crt: c.crit, crd: c.critx, spd: c.speedBase * c.spdMult, blocks: c.active.blocks,
+  ...(typeof c.active.pick_factor === 'number' ? { pick_factor: c.active.pick_factor } : {}), card: c });
 /** The boss of a pick (a named Hunt boss at a tier). */
 export function pickBoss(cfg, key, tier) { const N = bossMechs(cfg, key, tier); return { mechanics: N.mech, weak_role: weakRoleOf(N.B) }; }
 

@@ -10,6 +10,11 @@ import './localdb-guard.mjs';
  *   P3 a batch with ONE row that ability_v2_check refuses writes nothing (exit 1, "Refused (nothing written)")
  *   P4 the trigger subjects_ability_v2_check refuses a bad ability written directly
  *   P5 a batch with a key twice or a row with no role is refused before any write
+ *   P6 --factors <file> writes pick_factor with the active of a support row (plan 20.10); --dry with the file shows 0 changes
+ *   P7 a factors file of a changed active or with an attacker row is refused before any write
+ *   P8 the trigger refuses a pick_factor outside 0.5 to 2 written directly
+ *   P9 a push without --factors removes the factor (it belongs to the active)
+ *   (P6 to P9 SKIP while combat_v2_autopick_active.sql is not on the copy)
  * Safety: the test refuses to start while a subject holds a "Tst ..." ability (left from an earlier run). The restore at the end checks each
  * write, tries again with a short wait, and prints FAIL with the error and the SQL that puts the old value back.
  */
@@ -20,6 +25,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertLocal } from './lab-lib.mjs';
 import { supabase } from '../src/supabase.js';
+import { activeHash } from '../v2sim/factors.mjs';
 assertLocal('test-push-abilities-v2.mjs');
 
 let fails = 0, n = 0;
@@ -42,6 +48,7 @@ const [s1, s2] = probe.data;
 const dir = mkdtempSync(join(tmpdir(), 'push-v2-'));
 const script = fileURLToPath(new URL('./push-abilities.mjs', import.meta.url));
 const push = (file, dry) => spawnSync(process.execPath, [...process.execArgv, script, '--v2', file, ...(dry ? ['--dry'] : [])], { env: { ...process.env, LOCALDB: '1', LOCALDB_QUIET: '1' }, encoding: 'utf8' });
+const pushF = (file, factors, dry) => spawnSync(process.execPath, [...process.execArgv, script, '--v2', file, '--factors', factors, ...(dry ? ['--dry'] : [])], { env: { ...process.env, LOCALDB: '1', LOCALDB_QUIET: '1' }, encoding: 'utf8' });
 const read = async () => { const { data } = await supabase.from('subjects').select('key, ability_v2').in('id', [s1.id, s2.id]); return Object.fromEntries(data.map((x) => [x.key, x.ability_v2])); };
 const A1 = { name: 'Tst Guard', blocks: [{ k: 'shield', v: 0.3, to: 'most_hurt' }, { k: 'ally_below', line: 0.3, x: 2 }], silver: { block: 1, field: 'v', value: 0.4 } };
 const A2 = { name: 'Tst Hit', blocks: [{ k: 'hit', x: 1.75 }, { k: 'on_kill', status: 'slowed', chance: 1 }] };
@@ -91,6 +98,32 @@ try {
   const norole = batch([{ key: s1.key, ability: A1 }], 'norole');
   const a = push(twice, false), b = push(norole, false);
   check('P5 a key twice and a row with no role are refused before any write', a.status === 1 && /twice/.test(a.stderr) && b.status === 1 && /needs key, role and ability/.test(b.stderr), [a.stderr, b.stderr]);
+  // P6 to P9 (plan 20.10): the measured active factor of the Hunt auto-pick, when combat_v2_autopick_active.sql is on the copy (else SKIP)
+  const probe2 = await supabase.from('subjects').update({ ability_v2: { role: 'warden', ...A1, pick_factor: 1.05 } }).eq('id', s1.id);
+  if (probe2.error && /unknown key pick_factor/.test(probe2.error.message)) console.log('SKIP P6 to P9: the trigger does not take pick_factor yet (apply combat_v2_autopick_active.sql)');
+  else {
+    if (probe2.error) check('P6 a valid active with pick_factor 1.05 is accepted by the trigger', false, probe2.error.message);
+    const ffile = (rows, name) => { const f = join(dir, `${name}.factors.json`); writeFileSync(f, JSON.stringify({ rows })); return f; };
+    const fgood = ffile([{ key: s1.key, role: 'warden', active: activeHash('warden', A1.blocks), pick_factor: 1.08 }], 'good');
+    r = pushF(good, fgood, false);
+    const after6 = await read();
+    const d6 = pushF(good, fgood, true), d6n = push(good, true);
+    check('P6 --factors writes pick_factor with the active of the support row only; --dry with the file shows 0 changes, without it 1 (the factor would go)',
+      r.status === 0 && after6[s1.key]?.pick_factor === 1.08 && after6[s1.key]?.name === 'Tst Guard' && !('pick_factor' in (after6[s2.key] || {}))
+      && /1 of 1 support row\(s\) have a pick_factor/.test(r.stdout) && /0 subject\(s\) would change/.test(d6.stdout) && /1 subject\(s\) would change/.test(d6n.stdout), [r.status, r.stdout, r.stderr, d6.stdout, d6n.stdout, after6]);
+    const fstale = ffile([{ key: s1.key, role: 'warden', active: activeHash('warden', [{ k: 'shield', v: 0.25, to: 'most_hurt' }]), pick_factor: 1.2 }], 'stale');
+    const fatt = ffile([{ key: s2.key, role: 'striker', active: activeHash('striker', A2.blocks), pick_factor: 1.2 }], 'att');
+    const r7 = pushF(good, fstale, false), r7b = pushF(good, fatt, false);
+    const after7 = await read();
+    check('P7 a factors file of a changed active or with an attacker row is refused: exit 1, nothing written',
+      r7.status === 1 && /the factors file does not match the batch/.test(r7.stderr) && /the active changed/.test(r7.stderr) && r7b.status === 1 && /attacker/.test(r7b.stderr)
+      && after7[s1.key]?.pick_factor === 1.08, [r7.stderr, r7b.stderr, after7[s1.key]]);
+    const { error: e8 } = await supabase.from('subjects').update({ ability_v2: { ...after7[s1.key], pick_factor: 3 } }).eq('id', s1.id);
+    check('P8 the trigger refuses pick_factor 3 written directly', !!e8 && /pick_factor must be a number from 0.5 to 2/.test(e8.message), e8?.message);
+    r = push(good, false);
+    const after9 = await read();
+    check('P9 the factor belongs to the active: a push without --factors removes it', r.status === 0 && after9[s1.key]?.name === 'Tst Guard' && !('pick_factor' in after9[s1.key]), [r.stdout, after9[s1.key]]);
+  }
 } finally {
   // Put back the old ability_v2 and CHECK each write: under load an update can fail, and an ignored error left a test ability on the copy.
   for (const s of [s1, s2]) {

@@ -200,7 +200,9 @@ end $t$;`;
 
 function checkData(D) {
   const out = [];
-  const want = { fight: CONFIG.auto_v2.fight, pick: CONFIG.auto_v2.pick };
+  // the row of this file has no active_x: combat_v2_autopick_active.sql adds it, and test-combat-v2-autopick-active.mjs compares the full value
+  const { active_x: _ax, ...pick } = CONFIG.auto_v2.pick;
+  const want = { fight: CONFIG.auto_v2.fight, pick };
   out.push([JSON.stringify(canon(D.auto_v2)) === JSON.stringify(canon(want)), 'ONE NUMBER, ONE HOME: balance auto_v2 = config.json auto_v2 (the simulator reads config.json)', JSON.stringify(D.auto_v2).slice(0, 300)]);
   out.push([D.auto_v2.pick.supports === 3 && D.auto_v2.pick.supports_max === 5, 'the shape: supports 3, supports_max 5', JSON.stringify({ ...D.auto_v2.pick, answers: undefined })]);
   out.push([/combat_v2_autopick_shape\.sql/.test(D.note || '') && (D.note.match(/combat_v2_autopick_shape\.sql/g) || []).length === 1 && /supports_max/.test(D.note), 'the note of auto_v2 names the file once and explains supports_max']);

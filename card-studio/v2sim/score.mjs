@@ -223,7 +223,7 @@ export function scoreSum(cfg, { mode = 'set1', seeds = [101, 1, 202, 303, 404], 
   const lowAny = [...new Set(S.flatMap((s) => s[LIVE].lowKeys))].filter((k) => !named.includes(k));
   const show = [...named, ...lowAny];
   md += `\n### The named bosses and every boss below x0.85 with the live score (per seed: ${seeds.join(' / ')})\n\n`;
-  md += table(['candidate', ...show], names.map((n) => [n, ...show.map((k) => S.map((s) => (s[n].per[k] === undefined ? '-' : s[n].per[k].toFixed(3).slice(1))).join('/'))]));
+  md += table(['candidate', ...show], names.map((n) => [n, ...show.map((k) => S.map((s) => (s[n].per[k] === undefined ? '-' : s[n].per[k] >= 1 ? s[n].per[k].toFixed(3) : s[n].per[k].toFixed(3).slice(1))).join('/'))]));
   if (mode === 'set1') { const flagged = D.flatMap((d, i) => d.rows.map((r) => ({ ...r, low: S[i][LIVE].lowKeys.includes(r.key) })));
     md += '\n' + whyReport(flagged, { lowKeys: [] }).md.replace('### ', '### (all seeds) '); }
   const head = [`${mode}: ${names.map((n) => `${n} ${tot[n].m >= 0 ? '+' : ''}${tot[n].m.toFixed(4)} (${tot[n].se.toFixed(4)})${n !== LIVE && better(n) ? ' BETTER' : ''}`).join('; ')}`];

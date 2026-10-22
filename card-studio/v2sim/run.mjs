@@ -3,7 +3,8 @@
 // Experiments: fairness, shapes, survival, stat-weights, speed, statuses, archetypes, pp, targets, teams, monsters (--tier Mythic), shares, auto and answers (PR E8,
 // auto.mjs), power and powerpick (PR E9, power.mjs), lab12 (the Combat Lab L1 and L2, lab12.mjs; --seeds K),
 // lab12prices (the price effect of the L1/L2 variants; after lab12) and shapepick (the pick shape rule, shape.mjs; --pools N; --set1 = the pools from the
-// PRIVATE Set 1 batch, --ref best|max = the reference play, plan 20.8); all = every
+// PRIVATE Set 1 batch, --ref best|max = the reference play, plan 20.8), factors, activepick and activesum (the built active factor of the pick, active.mjs,
+// plan 20.10; --set1, --seedlist 101,1,...); all = every
 // experiment except targets, teams, monsters, shares, auto, answers, power, powerpick, lab12, lab12prices and shapepick.
 // Reports go to card-studio/out/v2sim/<experiment>[-tag].md (out/ is not committed). targets also writes <...>.json.
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -18,10 +19,12 @@ import { scorePickLab, scoreSum, answersSet1Experiment } from './score.mjs';
 import { powerLab, powerPickLab } from './power.mjs';
 import { lab12, lab12prices } from './lab12.mjs';
 import { shapePickLab } from './shape.mjs';
+import { factorsExperiment, activePickLab, activeSum } from './active.mjs';
 import { HERE, loadConfig, patch } from './util.mjs';
 
 const ALL = { ...EXPERIMENTS, targets, teams, monsters, shares, auto: autoLab, answers: answersExperiment, power: (c, o) => powerLab(c, { ...o, pairOf }), powerpick: powerPickLab, lab12, lab12prices, shapepick: shapePickLab,
-  scorepick: (c, o) => scorePickLab(c, { ...o, save: true }), scoresum: (c, o) => scoreSum(c, { mode: o.set1 ? 'set1' : 'template', ...(o.ref ? { ref: o.ref } : {}), ...(o.seedlist ? { seeds: o.seedlist } : {}) }), answers1: answersSet1Experiment };
+  scorepick: (c, o) => scorePickLab(c, { ...o, save: true }), scoresum: (c, o) => scoreSum(c, { mode: o.set1 ? 'set1' : 'template', ...(o.ref ? { ref: o.ref } : {}), ...(o.seedlist ? { seeds: o.seedlist } : {}) }), answers1: answersSet1Experiment,
+  factors: factorsExperiment, activepick: activePickLab, activesum: (c, o) => activeSum(c, { set1: o.set1, ...(o.seedlist ? { seeds: o.seedlist } : {}) }) };
 const args = process.argv.slice(2);
 const opt = k => { const i = args.indexOf(`--${k}`); return i >= 0 ? args[i + 1] : undefined; };
 const flag = k => args.includes(`--${k}`);

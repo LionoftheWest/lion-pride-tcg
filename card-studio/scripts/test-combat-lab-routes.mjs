@@ -102,7 +102,7 @@ const ps = pickSql({ ...f, size: 8 }, [{ card_id: 7, rarity: 'normal', stars: 1,
 const pt = pickSql({ ...f, boss: null, size: 8 }, [{ card_id: 7, rarity: 'normal', stars: 1, cp_mod: 1, level: 0, points: {}, role: 'striker', blocks: [] }]);
 check('L10 pickSql: the named boss gives its mechanics and Weak to role (combat_v2_hunt_boss), the tier boss none; the cap is the squad size; rolled back',
   ps.includes("combat_v2_hunt_boss('Heroic', 'warlord'") && !pt.includes('combat_v2_hunt_boss(') && /combat_v2_autopick\(pool, [^\n]*, 8, b, null\);/.test(ps)
-  && ps.includes("'crt', cc->'stats'->'crt'") && ps.includes("'spd', cc->'stats'->'spd'"), ps.slice(0, 200));
+  && ps.includes("'crt', cc->'stats'->'crt'") && ps.includes("'spd', cc->'stats'->'spd'") && ps.includes("'pick_factor', x->'pick_factor'"), ps.slice(0, 200));
 const v1 = v1Sql({ ...f, player: "tst_o'brien" }, [7, 8]);
 check('L5 the v1 side: a test member, a private test boss row, the member id quoted, rolled back', v1.includes("'tst_v2lab_cmp'") && v1.includes("'tst_o''brien'")
   && v1.includes("insert into hunts (name, tier") && /raise exception 'RES %'/.test(v1) && !/from hunts where/.test(v1), v1.slice(0, 200));
@@ -113,11 +113,11 @@ check('L5 compare is for the Hunt only (400 for the Dungeon)', r.status === 400,
 
 // L6
 const cfg = loadConfig();
-const own = activeOf(cfg, { subject_key: 'tst-a', type: 'Character', ability_v2: { role: 'medic', name: 'Tst Mend', blocks: [{ k: 'heal', v: 0.2 }] } });
+const own = activeOf(cfg, { subject_key: 'tst-a', type: 'Character', ability_v2: { role: 'medic', name: 'Tst Mend', blocks: [{ k: 'heal', v: 0.2 }], pick_factor: 1.07 } });
 const ph1 = activeOf(cfg, { subject_key: 'tst-b', type: 'Character', ability: { effect: 'shield' }, ability_v2: null });
 const ph2 = activeOf(cfg, { subject_key: 'tst-b', type: 'Character', ability: { effect: 'shield' }, ability_v2: null });
-check('L6 ability_v2 first; else the placeholder of the role (warden for shield), the same template for the same subject',
-  own.source === 'ability_v2' && own.role === 'medic' && own.name === 'Tst Mend' && ph1.source === 'placeholder' && ph1.role === 'warden' && ph1.template === ph2.template && cfg.v2_templates[ph1.template].role === 'warden', { own, ph1 });
+check('L6 ability_v2 first (with its pick_factor, plan 20.10); else the placeholder of the role (warden for shield, no pick_factor), the same template for the same subject',
+  own.source === 'ability_v2' && own.role === 'medic' && own.name === 'Tst Mend' && own.pick_factor === 1.07 && ph1.pick_factor === null && ph1.source === 'placeholder' && ph1.role === 'warden' && ph1.template === ph2.template && cfg.v2_templates[ph1.template].role === 'warden', { own, ph1 });
 
 // L7
 const snap = (hp, max, down = false, st = {}) => [hp, max, down, st, 0, false];
