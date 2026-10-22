@@ -120,7 +120,10 @@ begin
       -- Auto v2 (PR E8): the active or the basic attack, the target and the ally
       dec := combat_v2_auto(s, r->'actor', p_b, null);
       a := combat_v2_card_act(s, r->'actor', jsonb_build_object('use', dec->'use', 'target', dec->'target', 'ally', dec->'ally'), p_b);
-      ent := ent || jsonb_build_object('action', a->'action', 'target', dec->'target', 'ally', dec->'ally', 'auto', jsonb_build_object('use', dec->'use', 'why', dec->'why'),
+      -- the ally shows only for an active with a single-ally block (every other action gets the most hurt ally, which it does not use)
+      ent := ent || jsonb_build_object('action', a->'action', 'target', dec->'target', 'auto', jsonb_build_object('use', dec->'use', 'why', dec->'why'),
+        'ally', case when (dec->>'use')::boolean and exists (select 1 from jsonb_array_elements(coalesce(s #> (combat_v2_unit_path(s, r->'actor') || '{active,blocks}'::text[]), '[]'::jsonb)) x
+                            where x->>'k' in ('cure', 'shield', 'heal', 'empower', 'focus') or (x->>'k' = 'quicken' and not coalesce((x->>'all')::boolean, false))) then dec->'ally' end,
         'hits', coalesce(a->'hits', '[]'::jsonb));
     else
       a := combat_v2_enemy_act(s, r->'actor', '{}'::jsonb, p_b);
