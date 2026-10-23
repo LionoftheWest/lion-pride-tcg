@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadConfig } from './util.mjs';
 import { formulaChecks } from './checks.mjs';
+import { F } from './formulas.mjs';
 import { allocate, makeCard, cardPool, templateFor, ROLES } from './cards.mjs';
 
 const cfg = loadConfig();
@@ -16,6 +17,15 @@ test('allocate keeps the total and the 10-point cap', () => {
 });
 test('makeCard refuses more points than the level gives', () => {
   assert.throws(() => makeCard(cfg, { role: 'striker', rarity: 'normal', level: 2, points: { atk: 3 } }));
+});
+test('makeCard: the bonus points are in the budget (level 3 + bonus 2: 5 points yes, 6 no)', () => {
+  assert.doesNotThrow(() => makeCard(cfg, { role: 'striker', rarity: 'normal', level: 3, bonus: 2, points: { atk: 5 } }));
+  assert.throws(() => makeCard(cfg, { role: 'striker', rarity: 'normal', level: 3, bonus: 2, points: { atk: 6 } }));
+});
+test('the XP functions refuse a bad level, XP or source', () => {
+  for (const l of [-1, 31, 1.5]) assert.throws(() => F.xpAt(cfg, l), String(l));
+  assert.throws(() => F.levelOfXp(cfg, -1));
+  assert.throws(() => F.xpAward(cfg, 'gauntlet', 0, []));
 });
 test('every live subject has a role and a deterministic placeholder active', () => {
   const pool = cardPool(cfg);

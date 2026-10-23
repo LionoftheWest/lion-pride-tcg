@@ -31,6 +31,15 @@ export function formulaChecks(cfg) {
   out.push(C('converge.off', 'D = 0 keeps CP', 25, c0, near(c0, 25, 1e-9)));
   out.push(C('converge.full', 'D = 1 at max level reaches the target', cfg.v2_level.target_cp, c1, near(c1, cfg.v2_level.target_cp, 1e-9)));
   out.push(C('level.points', 'level 30 = 30 points', 30, F.levelPoints(cfg, 30), F.levelPoints(cfg, 30) === 30));
+  out.push(C('level.budget', 'level 3 + bonus 2 = a budget of 5 points', 5, F.pointBudget(cfg, 3, 2), F.pointBudget(cfg, 3, 2) === 5));
+  // card levels (plan 2.4, M1b): level L to L + 1 costs 5 + L
+  const xa = [[0, 0], [1, 5], [3, 18], [10, 95], [29, 551], [30, 585]].map(([l, x]) => [l, x, F.xpAt(cfg, l)]);
+  out.push(C('xp.at', 'XP of levels 0, 1, 3, 10, 29, 30 = 0, 5, 18, 95, 551, 585', '0,5,18,95,551,585', xa.map((r) => r[2]).join(), xa.every(([, x, g]) => x === g)));
+  const lo = [[0, 0], [4, 0], [5, 1], [17, 2], [18, 3], [584, 29], [585, 30], [99999, 30]].map(([x, l]) => [x, l, F.levelOfXp(cfg, x)]);
+  out.push(C('xp.level', 'level of XP 0, 4, 5, 17, 18, 584, 585, 99999 = 0, 0, 1, 2, 3, 29, 30, 30', '0,0,1,2,3,29,30,30', lo.map((r) => r[2]).join(), lo.every(([, l, g]) => l === g)));
+  const aw = [F.xpAward(cfg, 'hunt', 5, [5, 5, 5]), F.xpAward(cfg, 'hunt', 4, [5, 5, 5, 4]), F.xpAward(cfg, 'dungeon', 0, []),
+    F.xpAward(cfg, 'hunt', 19, [...Array(8).fill(20), ...Array(20).fill(0)])];
+  out.push(C('xp.catchup', 'XP: at the top-8 mean 10, below it 20, no cards 10, below the mean of the top 8 only (not of all) 20', '10,20,10,20', aw.join(), aw.join() === '10,20,10,20'));
   const P = F.poisonTick(cfg, 2, 1000); out.push(C('poison.tick', 'Poison tick = stacks x 2% x ref HP', 40, P, near(P, 40, 1e-9)));
   const Bt = F.burnTick(cfg, 3, 1000); out.push(C('burn.tick', 'Burn tick = stacks x 1.5 x Poison tick', 90, Bt, near(Bt, 90, 1e-9)));
   for (const role of ROLES) for (const t of templatesOf(cfg, role)) { const pp = templatePP(cfg, t); const low = minShareErrors(cfg, cfg.v2_templates[t].blocks).length;

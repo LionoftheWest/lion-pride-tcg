@@ -26,6 +26,10 @@ const FAULTS = {
   'Toxic burst never happens': swap(F, 'toxicBurst', () => () => 0),
   'Burn does not halve heals': swap(F, 'healAmount', () => (c, a) => a),
   'no control immunity': swap(Battle.prototype, 'remove', () => function (u, n) { delete u.st[n]; }),
+  'level L to L + 1 costs 5 + L + 1': swap(F, 'xpAt', old => (c, l) => old(c, l) + l),
+  'level of XP one too low at a boundary': swap(F, 'levelOfXp', old => (c, x) => (x > 0 ? old(c, x - 1) : 0)),
+  'catch-up against the mean of all levels': swap(F, 'xpAward', () => (c, s, l, ls) => { const b = c.card_level.xp_hunt_day; return ls.length && l * ls.length < ls.reduce((a, x) => a + x, 0) ? b * c.card_level.catchup_x : b; }),
+  'the bonus is not in the budget': swap(F, 'pointBudget', () => (c, l) => F.levelPoints(c, l)),
 };
 for (const [name, [apply, undo]] of Object.entries(FAULTS)) {
   test(`planted fault is caught: ${name}`, () => {
