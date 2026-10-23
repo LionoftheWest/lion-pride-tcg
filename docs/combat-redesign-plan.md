@@ -2114,7 +2114,9 @@ stays false, and both progress tables stay empty.
   - The goldens with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference.
   - Then the file applied (`rehearse-sql.mjs`): grants OK. `db/schema/`, `docs/data/` (the tester id of the local copy masked in memory, as in
     20.10 and 20.11) and `SUPERSEDED.md` regenerated. `test-combat-v2-balance.mjs` lists the 3 new function names as readers of `card_level`.
-    FINAL_SUITE
+    The final `test-all-local.mjs`: 166 of 167 PASS (2 one-time skipped); the 1 failure is the baseline failure of `test-dungeon-finish-room.mjs`
+    (E1, 20.11 Open item 5). Before the apply (main + M1a on the same copy): 164 of 166, the same failure and `test-superseded-list.mjs` (this new
+    file was not yet in `SUPERSEDED.md`). The combat checks C1, C2, C3 and `combat-checks.test.mjs` (16) PASS.
 - **Go-live order**: M1a (`combat_v2_progress_tables.sql`) must be live first: this file replaces its trigger, and `SUPERSEDED.md` now lists
   M1a (its trigger) and `combat_v2_stats.sql` (its 7-argument `card_combat_v2`), so `apply-sql.mjs` refuses M1a after this file is live.
   Then this file: `apply-sql.mjs --live`, then `check-schema-drift.mjs --live` = 0 differences.
