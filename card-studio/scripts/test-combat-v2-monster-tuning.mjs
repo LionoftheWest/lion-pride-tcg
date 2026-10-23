@@ -559,7 +559,8 @@ begin
   res := res || jsonb_build_object('case', 'every replaced function has a comment that names this file', 'ok', o = '[]'::jsonb, 'got', o);
   res := res || jsonb_build_object('case', 'the column comment of hunt_bosses_v2.weak_to names this file', 'ok',
     coalesce(col_description('public.hunt_bosses_v2'::regclass, (select attnum from pg_attribute where attrelid = 'public.hunt_bosses_v2'::regclass and attname = 'weak_to')), '') like '%combat_v2_monster_tuning.sql%');
-  select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\(' and p.proname <> 'combat_v2_on';
+  select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\(' and p.proname <> 'combat_v2_on'
+    and p.proname <> all (array['spend_card_points_v2', 'reset_card_points_v2']);   -- M1c combat_v2_progress_spend.sql: the v2 spend and reset are gated by the flag (progress)
   res := res || jsonb_build_object('case', 'the flag combat_v2 has no reader but combat_v2_on (flag OFF changes nothing)', 'ok', o = '[]'::jsonb, 'got', o);
   select value into o from balance where key = 'combat_v2';
   res := res || jsonb_build_object('case', 'the flag combat_v2 is OFF for every capability', 'ok', (o - 'testers') = '{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}'::jsonb, 'got', o);   -- the tester list (combat_v2_testers.sql) is not a mode

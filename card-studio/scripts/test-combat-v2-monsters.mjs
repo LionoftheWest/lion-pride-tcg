@@ -646,7 +646,8 @@ begin
    where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}, ${q(E8_AUTO)}]) and replace(p.oid::regprocedure::text, ' ', '') <> all (array[${q([...REPLACED, ...NEW_SIGS])}])
      and p.prosrc ~ '${NEW_RE}';
   res := res || jsonb_build_object('case', 'no other function calls the new functions or reads the new tables or enemy_v2 (no v1 caller)', 'ok', o = '[]'::jsonb, 'got', o);
-  select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\(' and p.proname <> 'combat_v2_on';
+  select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\(' and p.proname <> 'combat_v2_on'
+    and p.proname <> all (array['spend_card_points_v2', 'reset_card_points_v2']);   -- M1c combat_v2_progress_spend.sql: the v2 spend and reset are gated by the flag (progress)
   res := res || jsonb_build_object('case', 'the flag combat_v2 has no reader but combat_v2_on (flag OFF changes nothing)', 'ok', o = '[]'::jsonb, 'got', o);
   select value into o from balance where key = 'combat_v2';
   res := res || jsonb_build_object('case', 'the flag combat_v2 is OFF for every capability', 'ok', (o - 'testers') = '{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}'::jsonb, 'got', o);   -- the tester list (combat_v2_testers.sql) is not a mode

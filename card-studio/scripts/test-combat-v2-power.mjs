@@ -190,7 +190,7 @@ begin
   res := res || jsonb_build_object('case', 'balance_v2_spec: the spec of every other v2 key (${SPEC_KEYS.length}) is the same; only v2_power gets the leaves value and scale', 'ok',
     sb = sa and balance_v2_spec('v2_power') ? 'value' and balance_v2_spec('v2_power') ? 'scale', 'got', (select jsonb_agg(k2) from jsonb_object_keys(sa) k2 where sb->k2 is distinct from sa->k2));
   select coalesce(jsonb_agg(p.proname order by p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace
-    and p.prosrc ~ '\m(${NEWNAMES.join('|')})\M' and replace(p.oid::regprocedure::text, ' ', '') <> all (array[${q([...NEWSIG, ...REPSIG])}]);
+    and p.prosrc ~ '\m(${NEWNAMES.join('|')})\M' and p.proname <> all (array['card_progress_v2_view', 'spend_card_points_v2', 'reset_card_points_v2']) and replace(p.oid::regprocedure::text, ' ', '') <> all (array[${q([...NEWSIG, ...REPSIG])}]);
   res := res || jsonb_build_object('case', 'no other function calls a new function (nothing in play)', 'ok', o = '[]'::jsonb, 'got', o);
   select coalesce(jsonb_agg(p.proname order by p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace
     and p.prosrc ~ '\mbalance_v2_spec\M' and replace(p.oid::regprocedure::text, ' ', '') <> all (array[${q([...NEWSIG, ...REPSIG])}]);

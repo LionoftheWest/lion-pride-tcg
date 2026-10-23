@@ -188,8 +188,10 @@ begin
   select coalesce(array_agg(tgname::text order by 1), '{}') into trg_b from pg_trigger where tgrelid = 'public.player_cards'::regclass and not tgisinternal;
   res := res || jsonb_build_object('case', 'T1 the triggers of player_cards do not change', 'ok', trg_a = trg_b, 'now', trg_b);
   select coalesce(array_agg(p.oid::regprocedure::text order by 1), '{}') into bad from pg_proc p
-   where p.pronamespace = 'public'::regnamespace and p.oid::regprocedure::text <> all (mine) and p.prosrc ~ 'card_progress_v2';
-  res := res || jsonb_build_object('case', 'T2 no function except the two new triggers names card_progress_v2 (no reader, no caller)', 'ok', cardinality(bad) = 0, 'names', bad);
+   where p.pronamespace = 'public'::regnamespace and p.oid::regprocedure::text <> all (mine) and p.prosrc ~ 'card_progress_v2'
+     -- the named writers of the later M1 steps (each has its own test): M1c combat_v2_progress_spend.sql
+     and p.proname <> all (array['card_progress_v2_view', 'spend_card_points_v2', 'reset_card_points_v2']);
+  res := res || jsonb_build_object('case', 'T2 no function except the two new triggers and the named M1 writers names card_progress_v2 (no other reader or caller)', 'ok', cardinality(bad) = 0, 'names', bad);
   select coalesce(array_agg(p.oid::regprocedure::text order by 1), '{}') into callers_b from pg_proc p
    where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\s*\(';
   res := res || jsonb_build_object('case', 'T2 the readers of combat_v2_on do not change', 'ok', callers_a = callers_b, 'now', callers_b);
