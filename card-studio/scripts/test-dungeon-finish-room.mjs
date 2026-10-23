@@ -6,6 +6,9 @@
  *      dungeon_log and combat_actions, the same Shards in the ledger. For a won room (a horde: kills inside the loop, more than one call
  *      of 10 rounds), a lost room (the squad falls: the run ends as today), a room with a no-action pass (every attacker stunned), the Gauntlet,
  *      and a room that hits the round limit.
+ *   P  played counts the rounds that advance the round (an attack or a pass). A support that ends the fight (a smite on the last monster) is an entry
+ *      of rounds with no attack: it is in rounds, not in played (the fight round does not advance). Which monster dies to a smite depends on the day
+ *      (dungeon_generate gives the foe of the fixture: tags, weak, resist), so E1 holds both ways and E6 makes that end on purpose.
  *   L  the limit: the EXISTING balance dungeon.round_cap (40) ends a room: outcome limit, the run is over (fell), played = the cap, never a loop
  *      (a few calls only). A smaller cap (3) ends it the same way.
  *   R  the refusals: not in a fight, no run (another player has the run: it is not touched), the wrong mode, the Dungeon closed.
@@ -109,7 +112,9 @@ begin
     d1 := pg_temp.dfr_dig(p_ref, p_mode); d2 := pg_temp.dfr_dig(p_got, p_mode);
     return jsonb_build_object('rounds_equal', rr = g->'rounds', 'n_rounds', jsonb_array_length(rr), 'run_equal', d1 = d2, 'a', d1 - 'state', 'b', d2 - 'state',
       'answer', g - 'rounds' - 'state', 'phase', g->'state'->>'phase', 'passes', (select count(*) from jsonb_array_elements(g->'rounds') e where e->'pass' is not null),
-      'kills', (select count(*) from jsonb_array_elements(g->'rounds') e where (e->'atk'->>'kill')::boolean));
+      'kills', (select count(*) from jsonb_array_elements(g->'rounds') e where coalesce((e->'atk'->>'kill')::boolean, false) or coalesce((e->'sup'->>'kill')::boolean, false)),
+      'turns', (select count(*) from jsonb_array_elements(g->'rounds') e where e->'atk' is not null or e->'pass' is not null),
+      'sup_only', (select count(*) from jsonb_array_elements(g->'rounds') e where e->'atk' is null and e->'pass' is null));
   end $f$;
 
   -- ===== E1 a won room: a horde of 4 monsters, more than 10 rounds (kills inside the loop, more than one call) =====
@@ -122,7 +127,8 @@ begin
   res := res || jsonb_build_object('case', 'E1 a won room (4 monsters, kills inside the loop): rounds, final state, run row, log rows, combat_actions and Shards equal the rounds played one by one',
     'ok', (rb->>'rounds_equal')::boolean and (rb->>'run_equal')::boolean and (rb->'answer'->>'ok')::boolean and rb->'answer'->>'outcome' = 'won' and rb->'answer'->>'stopped' = 'phase'
       and not (rb->'answer'->>'ended')::boolean and rb->>'phase' <> 'fight' and (rb->'answer'->>'calls')::int >= 2 and (rb->>'n_rounds')::int > 10 and (rb->>'kills')::int >= 3
-      and (rb->'a'->>'actions_n')::int >= 11 and (rb->'a'->>'log_n')::int >= 11 and (rb->'answer'->>'played')::int = (rb->>'n_rounds')::int, 'cmp', rb);
+      and (rb->'a'->>'actions_n')::int >= 11 and (rb->'a'->>'log_n')::int >= 11 and (rb->'answer'->>'played')::int = (rb->>'turns')::int
+      and (rb->>'sup_only')::int <= 1, 'cmp', rb);
   -- the room is done: the step is not a fight any more, a second call is refused
   rb := dungeon_finish_room('${P}w2', 'daily');
   res := res || jsonb_build_object('case', 'R1 not in a fight (the room is won, the step is a choice): refused not_fighting, nothing played', 'ok', not (rb->>'ok')::boolean and rb->>'error' = 'not_fighting', 'answer', rb);
@@ -196,6 +202,16 @@ begin
   rb := pg_temp.dfr_cmp('${P}k1', '${P}k2', 'daily', 0.91);
   res := res || jsonb_build_object('case', 'E5 the guardian of the last floor falls: the run is cleared (ended, outcome won, status over), the same as one by one', 'ok',
     (rb->>'rounds_equal')::boolean and (rb->>'run_equal')::boolean and rb->'answer'->>'outcome' = 'won' and (rb->'answer'->>'ended')::boolean and rb->'a'->>'ended_by' = 'cleared' and rb->'answer'->>'stopped' = 'over', 'cmp', rb);
+
+  -- ===== E6 a support ends the room: the smite kills the only monster before any attack: an entry with sup only, played 0 =====
+  perform pg_temp.dfr_member('${P}s1'); perform pg_temp.dfr_member('${P}s2');
+  ra := dungeon_start('${P}s1', array[atk[1], atk[2], ls, (sups->>'heal')::bigint, (sups->>'smite')::bigint]);
+  rb := dungeon_start('${P}s2', array[atk[1], atk[2], ls, (sups->>'heal')::bigint, (sups->>'smite')::bigint]);
+  perform pg_temp.dfr_fix('${P}s1', 'daily', 1, 20, 10000000); perform pg_temp.dfr_fix('${P}s2', 'daily', 1, 20, 10000000);
+  rb := pg_temp.dfr_cmp('${P}s1', '${P}s2', 'daily', 0.21);
+  res := res || jsonb_build_object('case', 'E6 a smite kills the only monster before any attack: one entry with sup only, played 0 (the round does not advance), outcome won; the same as one by one',
+    'ok', (rb->>'rounds_equal')::boolean and (rb->>'run_equal')::boolean and rb->'answer'->>'outcome' = 'won' and rb->'answer'->>'stopped' = 'phase'
+      and (rb->>'n_rounds')::int = 1 and (rb->>'sup_only')::int = 1 and (rb->'answer'->>'played')::int = 0 and (rb->>'kills')::int = 1, 'cmp', rb);
 
   -- ===== R the refusals =====
   -- R2 another player (or nobody) is asked: no_run, and the run of the member is NOT touched
