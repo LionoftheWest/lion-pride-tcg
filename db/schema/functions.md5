@@ -153,6 +153,8 @@ a2172df1c0b83af8a4502bbbc1c0026c  public.card_power_v2(text, integer, numeric, i
 9309c027a9c580199451c6a1e91817c3  public.card_power_v2_families(text, jsonb, jsonb)
 400cd312282bcef997025fe43795621c  public.card_power_v2_numbers()
 3beac0125a58f95a5f6ee562ccf64a37  public.card_powers(text)
+cd71df2603e54c449ce2d7bb99061f71  public.card_progress_v2_check()
+9ef3ebb4e2b3e7cd60f32f0036017885  public.card_progress_v2_log_check()
 00caf8bea00b2a7754b3c3470c3d7fd4  public.card_stats_for(text)
 aecbb9c0c85f6f75b3bb4fa3d605a978  public.card_trades_from_auction()
 0a3fca1e6986d3d3f49ff7f1fbf25c10  public.card_trades_from_offer()

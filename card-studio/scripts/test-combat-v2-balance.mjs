@@ -138,6 +138,7 @@ const NEW_FNS = ['balance_shape_errors', 'balance_v2_spec', 'balance_check_comba
   'combat_v2_dungeon_foe', 'hunt_boss_v2_card',   // E7 combat_v2_monsters.sql
   'combat_v2_auto', 'combat_v2_auto_target', 'combat_v2_auto_charging', 'combat_v2_auto_pays', 'combat_v2_auto_makes', 'combat_v2_autopick', 'combat_v2_autopick_choose', 'combat_v2_autopick_pair', 'auto_v2_spec', 'balance_check_auto_v2',   // E8 combat_v2_auto.sql
   'card_power_v2_numbers', 'card_power_v2_families', 'card_power_v2', 'combat_v2_squad_value',   // E9 combat_v2_power.sql (the Power number reads v2_power, v2_hit, v2_enemy and v2_support by design; no fight reads it)
+  'card_progress_v2_check',   // M1a combat_v2_progress_tables.sql: the limits of a stored v2 progress row (v2_level, v2_stats, card_level); no fight reads it
   'balance_check'];   // combat_v2_testers.sql: the generic balance trigger names combat_v2 only to let a tester id go (it reads no mode)
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 

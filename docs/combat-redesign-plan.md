@@ -571,22 +571,25 @@ Each balance proposal in this plan runs `targets` first. A change that turns a P
 
 ## 11. Migration of live progress [D principles, L counts, P method]
 
-Live (aggregates, 2026-10-18): 1,443 ascended card rows (0 of them Full Art or Gold), 952 stat point rows with 2,486 points,
-held by 13 players, and 215 open reset gifts that expire 2026-10-29 [L].
+Live (aggregates, 2026-10-23, the M1 deep dive; replaces the counts of 2026-10-18) [L]: 5,285 `player_cards` rows. 1,484 ascended card rows
+(0 of them Full Art, Event or Gold; at most 4 stars). 627 card rows with v1 points: 1,006 stat entries (a stat with its count) and 2,726 points,
+held by 13 players. 215 open reset gifts (gift `r_s1_2026_10`, 0 used) expire 2026-10-29. The "952 rows" of 2026-10-18 was the count of stat entries.
+Players still spend v1 points every day (107 `stat_point_log` rows after 2026-10-18), so the dry run runs again on the day of R2 (20.11).
 
-| Step | Rule | Result |
+| Step | Rule | Result (2026-10-23) |
 |---|---|---|
-| 1. Stars | Keep every star. ASC-3 gives every rarity x star the same or more CP and HP | 0 rows lose CP [I] |
-| 2. Level grant | Each card's level at go-live = max(3 x stars, the converted points below) | nobody loses a point |
-| 3. Point conversion | Attack -> ATK x1, Vitality -> HP x1, Precision -> CRT x1.25, Potency -> ABL x1.5, Haste -> SPD x3.33, capped at 10 | 834 of 952 rows keep or gain value [I] |
-| 4. Top-up | "New points = the smallest count that reaches the old value" | fixes the 2 attacker rows that lose value |
-| 5. Refunds | Points above a cap of 10 become free points (21 rows). The 116 support Haste rows that lose play rate get their points back as free points | no fair ratio exists for a x2 cooldown step inside the Speed cap |
-| 6. Old dead points | 40 points on attacker Support and Recharge become ABL and SPD, which work for attackers in v2 | a gain |
-| 7. Free reset | One new `stat_reset_gifts` row per player at go-live, valid 30 days | every player can choose again |
+| 1. Stars | Keep every star. ASC-3 gives every rarity x star the same or more CP and HP | 0 of 1,484 rows lose CP or HP at level 0 [L]. Only because no Full Art, Event or Gold card has a star: the dry run checks it again (20.11) |
+| 2. Level grant | Each card's level at go-live = max(3 x stars, the converted points below). The card starts at the exact XP of that level (20.11 decision 5) | nobody loses a point. Levels 3 to 19 (441 rows get the level from the points; counted with the OLD ratio x1.5 for Potency: the M1e dry run replaces this count) |
+| 3. Point conversion | Attack -> ATK x1, Vitality -> HP x1, Precision -> CRT x1.25, Potency -> ABL x2.4, Haste -> SPD x3.33, each capped at 10. The part above the cap becomes bonus points (step 5) | x2.4 = 0.12 / 0.05: the live v1 Potency is 12% a point and ABL is 5% (the earlier x1.5 was for ABL 8%: with it the 298 support Potency entries lose 37.5%). With x2.4 and x3.33 (linear value), an entry loses value only above the cap, and step 5 refunds that part [I, deep dive Q5 and Q6] |
+| 4. Top-up | "New points = the smallest count that reaches the old value" | 0 attacker rows lose CP from Attack or HP from Health (2 on 2026-10-18). The dry run checks it again |
+| 5. Refunds | The part of a converted stat above the cap of 10 becomes bonus points: a separate `bonus_points` count in v2 points, not extra levels (20.11 decision 3) | 110 entries above the cap: 95 Potency (523 v2 points), 14 Haste (167 v2 points), 1 Vitality (2 points). Haste is converted on its linear value (decision 2), so the play-rate refund of 2026-10-18 is not used |
+| 6. Old dead points | 40 points on attacker Support and Recharge (26 rows) become ABL and SPD, which work for attackers in v2 | a gain |
+| 7. Free reset | One new `stat_reset_gifts` row per player at go-live, valid 30 days (a new `gift` key) | every player can choose again |
 
 **Timing** [P]: the progress switch (ASC-3, levels, 9 stats) goes live with the Dungeon v2 switch. Until the Hunt switches, the v1 Hunt
-keeps reading the old point columns (frozen, no new spending). The refunds and the reset gifts run at the Hunt switch (decision 5, section 15).
-A dry run on the local copy prints the before / after table of the 952 rows (aggregates only) before the live run.
+keeps reading the old point columns (frozen, no new spending: a refusal in the v1 spend and reset paths, never `stat_points.enabled = false`, 20.11).
+The refunds and the reset gifts run at the Hunt switch (decision 5, section 15). A dry run on a fresh local copy of live prints the before / after table
+of every card row with v1 points (aggregates only) before the live run, on the day of R2.
 
 ---
 
@@ -1963,3 +1966,97 @@ does not change. The Set 1 actives and their factors are PRIVATE: this section g
   2. The factor is relative to the other actives of its role: a change of one Set 1 active needs `run.mjs factors --set1` and a push of all the factors.
   3. The Lab memo (above): a squad keeps the value of its first evaluated slot order. A fix is a Lab change (the memo key with the order); it does not
      change the pick.
+
+### 20.11 M1: decisions and M1a (`tcg-bot/supabase/combat_v2_progress_tables.sql`)
+
+M1 moves the live progress (stars, v1 points) to v2 (levels, XP, the 9 stats). A read-only deep dive (2026-10-23, live aggregates
+only, kept outside this public repo) checked section 11 against live and listed 18 gaps. Section 11 now has the counts of 2026-10-23.
+
+**Nathan's decisions (2026-10-23, "use your recommendations")**:
+
+1. **Potency -> ABL x2.4**, cap 10. The part above the cap becomes free (bonus) points. The reason: the live v1 Potency is 0.12 a point and
+   the v2 ABL is 0.05 a point (`v2_stats.abl.pct`). The earlier x1.5 was for the old ABL of 8%. With x1.5 the 298 support Potency entries
+   lose 37.5% of their support value. With x2.4, 95 entries go above the cap (523 v2 points become bonus points).
+2. **Haste -> SPD x3.33** (the linear value), cap 10. The part above the cap becomes bonus points (14 entries, 167 v2 points).
+3. **Refunds are a separate `bonus_points` count** (in v2 points), not extra levels. Extra levels also raise CP through the catch-up dial D,
+   so they give more than the refund. `card_combat_v2` adds `bonus_points` to the budget of the level (M1b).
+4. **The v2 progress goes with the last copy**, the same as v1 (`card_move` deletes the `player_cards` row; the progress row has a foreign
+   key with ON DELETE CASCADE).
+5. **XP start**: each card starts at the exact XP of its granted level. No backfill of old fight-days (the median is 1 fight-day a card
+   since 2026-10-01).
+6. **XP award**: a daily job reads `hunt_hits` and `dungeon_runs` (gated by `combat_v2_on('progress')`). No v1 function changes.
+7. **The trainer achievement** (`ach_track_values`, track `trainer`) uses the larger of the frozen v1 sum and the v2 points spent. No tier goes down.
+8. **Timing**: decision 5 of section 15 stays (convert at R2, refunds and the new reset gift at R3). The 215 open reset gifts expire on
+   2026-10-29. The dry run runs again on the day of R2 (players still spend v1 points every day).
+
+**Two traps** (each must stay true in M1b to M1h):
+
+- (a) **The freeze is a refusal** in the v1 spend, reset and Shop reset paths (`spend_stat_points`, `reset_stat_points`,
+  `buy_shop_item('stat_reset')`) when `combat_v2_on('progress')` is true. Never `stat_points.enabled = false`: with it, `card_combat`
+  returns the base CP with NO points, so the v1 Hunt and the v1 Dungeon would lose every v1 point bonus.
+- (b) **Refund points are not levels** (decision 3).
+
+**The HP note**: today 0 rows lose CP or HP at level 0 only because no Full Art, Event or Gold card has a star. v1 HP = max(60, 1.8 x CP),
+v2 HP = 50 + 1.5 x CP'. They are equal at CP 167, so a Gold 4* or 5* or a Full Art 5* would lose HP [I]. The dry run (M1e) must check it again.
+
+**M1a as built** (the tables only; nothing reads them yet; the flag `combat_v2.progress` stays false):
+
+- `card_progress_v2`: one row for each `player_cards` row with v2 progress. Primary key (`player_id`, `card_id`), foreign key to
+  `player_cards` ON DELETE CASCADE (decision 4), and an `id` that is never reused (the ledger names it, so a copy that leaves and comes back
+  starts a new history).
+  - `level`, `xp`: the level is a stored copy of the level of the XP. The trigger refuses a pair that does not match
+    (`xp_at(L) = L x cost_base + cost_per_level x L x (L - 1) / 2` from balance `card_level`; level L to L + 1 costs 5 + L today).
+    A stored level lets every reader use it with no cost function. The check keeps it equal to the XP.
+  - `atk_pts`, `def_pts`, `hp_pts`, `crd_pts`, `crt_pts`, `abl_pts`, `ddg_pts`, `acc_pts`, `spd_pts`: the points spent in each of the 9
+    stats (the point keys of `card_combat_v2`). One column each, not a jsonb: each count has a declared type and check, and a ledger row names one
+    column. Each is 0 to `v2_stats.max_per_stat`.
+  - `bonus_points` (decision 3). The trigger refuses more points spent than `level x v2_level.points_per_level + bonus_points`, and a level
+    above `v2_level.max_level`. So every stored row is a row that `card_combat_v2` with the bonus of M1b accepts.
+  - Every limit is read from `balance` at each write (`v2_level`, `v2_stats`, `card_level`). No new balance key and no number in the file.
+- `card_progress_v2_log`: the M1 ledger. One row for each change, with `reason` (`grant_level`, `convert`, `topup`, `refund`,
+  `dead_points`, `xp`, `spend`, `reset`), `stat` (one of the 9, or empty), `ref` (the idempotency key: `m1` for the conversion run, or
+  `hunt:YYYY-MM-DD` / `dungeon:YYYY-MM-DD` for XP: one award for each card, day and source, decision 6) and the deltas `d_level`, `d_xp`,
+  `d_points`, `d_bonus`. The deltas of one `progress_id` sum to the stored row (test T6 of M1e).
+  - The unique key (`progress_id`, `reason`, `stat`, `ref`) refuses a second grant of the same step, so a second run adds no row.
+  - A check gives the deltas that each reason may carry (a grant is never negative; only a reset takes points back; XP only with a day ref).
+  - No foreign key: the ledger keeps the history after the last copy leaves. The trigger refuses an update (a row never changes) and a row
+    with no progress row of the same id, player and card. It sets `created_by` = `balance_who()`.
+- Both tables: RLS on with no policy, no privilege for `anon` and `authenticated` (service role only), a comment on each table and column.
+  The two trigger functions are server only. No other function changes and no function except the two triggers names the tables.
+- **Proof** (copy 2, refreshed from live on 2026-10-23; every merged file applied):
+  - `test-combat-v2-progress-tables.mjs` PASS all 19, before and after the apply. The block puts back the state before the file, so the
+    file runs inside the block, and then runs a second time. T1: the md5 of the 533 other public functions is the same, the flag `combat_v2`
+    is the same (`progress` false), the triggers of `player_cards` are the same. T2: the columns, keys, triggers, comments, RLS and grants.
+    No other function names the tables, and the readers of `combat_v2_on` are the same. Both tables are empty.
+    The checks: 9 valid states accepted; 19 bad progress rows refused; each limit moves when its balance number changes; one valid ledger
+    row of each of the 8 reasons accepted; 27 bad ledger rows refused (a duplicate key, the deltas of each reason, an update and others).
+    The cascade: the progress row goes with the `player_cards` row and the 10 ledger rows stay. A new copy gets a new id.
+  - MUTATE=all, after the apply: baseline PASS all 19 in the same run, 35 of 35 planted faults caught (the foreign key without cascade,
+    RLS off, a grant to anon, each limit fixed in the code or off, the budget without the bonus, the XP checks, each ledger rule, a missing
+    comment, the flag ON, a new trigger on `player_cards`, a new reader function, a changed other function).
+  - The goldens with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference.
+  - Then the file applied (`rehearse-sql.mjs`): grants OK. `test-combat-v2-balance.mjs` named the new trigger as a reader of the v2 keys.
+    The trigger reads `v2_level`, `v2_stats` and `card_level` on purpose, so it is added to the list of v2 readers in that test (as each
+    earlier v2 PR did). `test-dungeon-finish-room.mjs` fails one case (E1, a won room) on this copy also BEFORE the apply (3 of 3 runs
+    alone): both sides of its compare are equal, and no function changed (md5). It is a baseline failure, not M1a.
+    `db/schema/`, `docs/data/` (the tester id of the local copy masked in memory, as in 20.10) and `SUPERSEDED.md` regenerated.
+    The final `test-all-local.mjs`: 165 of 166 PASS (2 one-time skipped); the 1 failure is that baseline failure. Before the apply: 164 of 166
+    (the same failure, and `test-superseded-list.mjs` before the regeneration). The combat checks C1, C2, C3 and `combat-checks.test.mjs` (16) PASS.
+- **Go-live order**: this file can go live at any time before M1b (no reader; the flag stays OFF). `apply-sql.mjs --live`, then
+  `check-schema-drift.mjs --live` = 0 differences.
+- **Open for M1b and later**:
+  1. M1b: `card_combat_v2` adds `bonus_points` to the budget of the level, and the pure functions XP -> level and the cost 5 + L. The trigger
+     of this file has the same XP formula: M1b can make the trigger call the new function (one formula).
+  2. Rounding of the converted points (x1.25, x2.4, x3.33): the deep dive counts use "round up". Not decided yet (M1e).
+  3. The reset gift of R3 is one row for each player (`stat_reset_gifts`), not for each card: the ledger of this file does not hold it. M1h
+     records it in `stat_reset_gifts` with a new `gift` key.
+  4. The shown Power between R2 and R3 (`card_powers`, `owned_card_power` read v1 `card_combat`): a decision for U0.
+  5. The baseline failure of `test-dungeon-finish-room.mjs` (above) needs its own check, outside M1.
+  6. A balance tune breaks existing rows (review of M1a, observed on copy 2): the trigger checks every UPDATE against the balance numbers of now.
+     A change of `card_level.cost_base`, `v2_level.max_level`, `v2_stats.max_per_stat` or `points_per_level` is accepted by `balance_check`, but
+     then every XP award and v2 spend on an older row is refused (fails closed, no bad data). Before R2: a tune of these keys needs a re-level step
+     in the same transaction, or a balance guard that refuses it while rows exist.
+  7. The writer rule for the ledger (review of M1a): service role can change `card_progress_v2` with no ledger row. Each writer (M1e, M1f, M1h)
+     must insert the ledger row FIRST and change the progress row only when that insert adds a row. An update first and then an insert with
+     `on conflict do nothing` gives double XP on a retry. The M1e and M1f tests must plant this fault.
+  8. M1e: the granted level must also cover the converted dead points, or the budget check refuses the row.

@@ -34,6 +34,14 @@ create sequence public.card_plays_id_seq as bigint start 1 increment 1 minvalue 
 grant select on sequence public.card_plays_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.card_plays_id_seq to postgres;
 grant select, update, usage on sequence public.card_plays_id_seq to service_role;
+create sequence public.card_progress_v2_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.card_progress_v2.id;
+grant select on sequence public.card_progress_v2_id_seq to lptcg_backup;
+grant select, update, usage on sequence public.card_progress_v2_id_seq to postgres;
+grant select, update, usage on sequence public.card_progress_v2_id_seq to service_role;
+create sequence public.card_progress_v2_log_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.card_progress_v2_log.id;
+grant select on sequence public.card_progress_v2_log_id_seq to lptcg_backup;
+grant select, update, usage on sequence public.card_progress_v2_log_id_seq to postgres;
+grant select, update, usage on sequence public.card_progress_v2_log_id_seq to service_role;
 create sequence public.card_trades_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.card_trades.id;
 grant select on sequence public.card_trades_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.card_trades_id_seq to postgres;
