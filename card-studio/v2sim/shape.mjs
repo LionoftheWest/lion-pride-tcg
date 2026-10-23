@@ -35,7 +35,7 @@ export function poolSource(cfg, { set1 } = {}) {
 /** One pool set: for each boss and pool the pool, the E8 pick, the searched best squad and its value (the E8 protocol). */
 // ref: the reference play of a squad: 'best' (the E8 protocol) or 'max' (the better of best and autov2 on the same days, in the search and the evaluation).
 // src: poolSource (default: the template pools). shapeSearch: also search the best squad that keeps the live shape rule (lo..hi supports, at most
-// maxSame of one support role), from the live pick (the ceiling of any per-card score under that shape). cache (score.mjs, plan 20.9): {get(key, pi),
+// maxSame of one support role), from the live pick with no active factor (active_x 0, plan 20.10) (the ceiling of any per-card score under that shape). cache (score.mjs, plan 20.9): {get(key, pi),
 // set(key, pi, v)} keeps the searched squads and their values (ids and numbers only), so that a second run skips the search; the pools are drawn again.
 export function referencePools(cfg0, { seed = 1, pools = 2, poolSize = 20, searchDays = 24, evalDays = 150, bosses, src, ref = 'best', shapeSearch = false, cache } = {}) {
   const P = src || poolSource(cfg0); const cfg = P.cfg; const pool0 = P.pool0;
@@ -78,7 +78,7 @@ export function referencePools(cfg0, { seed = 1, pools = 2, poolSize = 20, searc
       const r = { key, pi, boss, pool, best, vB, eval: ev };
       if (shapeSearch) {   // the best squad inside the live shape rule (from the live pick), played by autov2 as the candidates are
         const keeps = (ids) => { const x = shapeOf(pool, ids); return x.supports >= lo && x.supports <= hi && x.maxSame <= maxSame; };
-        if (hit?.inShape) { r.inShape = hit.inShape; r.vShape = hit.vShape; } else { r.inShape = search([autoPick(cfg, pool, boss, 8).ids], keeps); r.vShape = ev(r.inShape); }
+        if (hit?.inShape) { r.inShape = hit.inShape; r.vShape = hit.vShape; } else { r.inShape = search([autoPick(patch(cfg, { auto_v2: { pick: { active_x: 0 } } }), pool, boss, 8).ids], keeps); r.vShape = ev(r.inShape); }
       }
       if (cache && (!hit || (shapeSearch && !hit.inShape))) cache.set(key, pi, { best, vB, ...(shapeSearch ? { inShape: r.inShape, vShape: r.vShape } : {}) });
       out.push(r);
@@ -95,7 +95,8 @@ export function shapeOf(pool, ids) {
 }
 
 // The candidates (patches of auto_v2.pick; lab = Lab-only options of auto.mjs choose, not in balance and not in SQL). E8 = 4 supports, 1 of a role.
-const E8 = { supports: 4, supports_max: 4, max_same_support: 1 };
+// active_x 0: the E8 score has no active factor (plan 20.10), so the searched reference does not depend on the factors of a run
+const E8 = { supports: 4, supports_max: 4, max_same_support: 1, active_x: 0 };
 export const SHAPE_CANDIDATES = {
   'E8: 4 supports, 1 a role': E8,
   'Weak to role twice': { ...E8, lab: { weak_same: 2 } },

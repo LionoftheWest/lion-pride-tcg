@@ -1843,6 +1843,8 @@ this section gives roles, terms, counts and ratios only.
   3. `combat_v2_autopick` reads the factor (missing = 1) and multiplies the offense of a support by factor ^ `active_x`. The shape rule, the role answers,
      the Weak to bonus and the pair score do not change. The attackers keep the offense (their factors are 0.98 to 1.05).
 
+  **Built 2026-10-22 (20.10): `combat_v2_autopick_active.sql`; the factor is the card fact `subjects.ability_v2.pick_factor`, balance `auto_v2.pick.active_x` 1.**
+
   Do not use the E9 Power or the E9 active term as the pick score. Do not change the Weak to bonus or the role answers (no candidate is better).
 - **Proof**: `score.test.mjs` (in `node --test card-studio/v2sim/*.test.mjs`): the baseline (6 checks: the active share = the E9 term of power.mjs, the
   measured factor has the role mean 1 and orders two hand-made heals, a value candidate and a Weak to patch reach the pick only, the diagnosis finds a tie
@@ -1854,3 +1856,110 @@ this section gives roles, terms, counts and ratios only.
   1. Camper Colossus and Rage-Quit Warlord do not rise with any general score candidate (above). Hydra rises but stays below x0.85 on 3 of 5 seeds.
   2. A block formula that predicts the measured factor (no measured number for each active) is not measured.
   3. Template seed 1: one more boss below x0.85 with the chosen form. Measure it again with the build PR (SQL = the simulator on the Lab pools).
+     **Measured again with the built code 2026-10-22 (20.10): the same result (Hydra .906 -> .836).**
+
+### 20.10 The measured active factor in the Hunt auto-pick (`tcg-bot/supabase/combat_v2_autopick_active.sql`)
+
+The build of the 20.9 recommendation (approved by Nathan 2026-10-22): the pick score of a support = its offense x its measured active factor ^ `active_x`.
+The flag `combat_v2` stays OFF; nothing in play calls the changed function. No Set 1 active is live, so no live card has a factor and the live pick
+does not change. The Set 1 actives and their factors are PRIVATE: this section gives roles, counts, ranges and ratios only.
+
+- **Where the factor is stored**: a card fact of the active, the key `pick_factor` in `subjects.ability_v2` ({role, name, blocks, silver, pick_factor}).
+  - The reason for this place (not a new `subjects` column): the factor measures ONE active. A write of a new active without a factor removes the old factor, so a
+    stale factor cannot stay on a changed active. A column would keep the old number when the active changes.
+  - The trigger `subjects_ability_v2_check` (replaced) checks the active as before (`ability_v2_check` of the active without `role` and `pick_factor`)
+    and refuses a `pick_factor` that is not a number from 0.5 to 2 (Set 1: 0.891 to 1.184). Absent = none.
+  - It is a card fact (as `cp_mod`), not a balance number: one number for each active, measured by the simulator (decision of 2026-10-03: the card facts
+    stay with the card, the rules that use them are in balance).
+- **How the factor gets there**:
+  1. `node card-studio/v2sim/run.mjs factors --set1` (v2sim `active.mjs`): the 20.9 method (score.mjs `SC.activeFactor`: a Normal casual card of the
+     role with the active + the 4 reference cards, Hunt Heroic, no mechanic, policy `autov2`, 400 days, / the mean of the Set 1 actives of the role),
+     rounded to 3 decimals, supports only. It writes the PRIVATE file `<batch>.factors.json` beside the batch (not in this repo): each row has the key,
+     the role, a hash of the role and blocks, and the factor. The report holds roles and ranges only. 70 support factors, 0.891 to 1.184.
+  2. `node scripts/push-abilities.mjs --v2 <batch> --factors <file> [--dry]`: the file is checked against the batch before any write (v2sim
+     `factors.mjs`: a changed active (the hash), an attacker row, a key not in the batch, a factor outside 0.5 to 2 = nothing is written). A support row
+     with a factor gets `pick_factor` with its active. A push without `--factors` writes no factor (the pick uses 1). The factor is relative to the other
+     actives of its role: measure again when an active of the role changes.
+- **The score** (`combat_v2_autopick`, replaced; simulator `auto.mjs` pickBase): a pool card may give `pick_factor` (a number above 0; absent or JSON
+  null = none). A support with a factor scores x `pick_factor` ^ `auto_v2.pick.active_x`; an attacker and a card with no factor x1. The rows of the result
+  get the term `act`. The shape rule, the role answers, the Weak to bonus and the pair score do not change. An auto argument with no `active_x` (the rows
+  of E8 and of the shape PR) scores with `active_x` 0. The Admin Lab passes the factor of `subjects.ability_v2` into the pick (`combat-lab-routes.js`).
+- **Balance** `auto_v2.pick.active_x` = 1 ("num 0 2"; 0 = the score before 20.10). The file updates the row ONCE (a row that has `active_x` keeps its
+  value). `auto_v2_spec` (replaced) has the leaf; `balance_check_auto_v2` does not change (it reads `auto_v2_spec`). The note explains the term and names
+  the file. config.json `auto_v2` has the same value.
+- **Replaced**: `auto_v2_spec`, `combat_v2_autopick`, `subjects_ability_v2_check`, and the comment of the column `subjects.ability_v2`. Every other
+  function does not change.
+- **The re-measure with the built code path** (`node card-studio/v2sim/run.mjs activepick [--set1] --seed S`, `activesum`): the 20.9 pools and searched
+  references (`shape.mjs`: the reference search starts from the pick with `active_x` 0, so it does not depend on the factors). The pool cards carry the
+  STORED factors (rounded), the config has `active_x` 1. "x0.905 (1)" = the mean ratio to the searched best and the bosses below x0.85:
+
+  | Pools | Seed | Live (`active_x` 0) | Built (`active_x` 1, stored factors) | 20.9 form in the same run (unrounded factor) |
+  |---|---|---|---|---|
+  | Set 1 | 101 (tuning) | x0.881 (3) | x0.905 (1) | x0.905 (1) |
+  | Set 1 | 1 | x0.855 (7) | x0.888 (5) | x0.884 (5) |
+  | Set 1 | 202 | x0.877 (4) | x0.882 (3) | x0.882 (3) |
+  | Set 1 | 303 | x0.854 (6) | x0.876 (4) | x0.876 (4) |
+  | Set 1 | 404 | x0.883 (6) | x0.893 (3) | x0.893 (3) |
+  | Set 1 | 505 | x0.880 (5) | x0.908 (3) | x0.908 (3) |
+  | Set 1 | 606 | x0.847 (9) | x0.867 (7) | x0.867 (7) |
+  | Template | 101 | x0.900 (5) | x0.922 (3) | x0.922 (3) |
+  | Template | 1 | x0.897 (3) | x0.902 (4) | x0.902 (4) |
+  | Template | 202 | x0.902 (4) | x0.909 (3) | x0.909 (3) |
+  | Template | 505 | x0.867 (6) | x0.899 (4) | x0.899 (4) |
+  | Template | 606 | x0.900 (2) | x0.928 (2) | x0.928 (2) |
+
+  - Set 1, seeds 101, 1, 202, 303 and 404 (160 pools): +0.0188 (standard error 0.0054), 60 pools better, 29 worse; the bosses below x0.85 26 -> 16. The
+    mean is up and the count is not higher on every seed. All 7 seeds (224 pools): +0.0203 (0.0049), 80 better, 40 worse. Template 101, 1, 202: +0.0113
+    (0.0060); all 5 template seeds: +0.0187 (0.0053).
+  - The built path gives the 20.9 numbers. The stored factor (3 decimals) changes 1 pool of 224 (Set 1 seed 1, AFK Warzombie: .768 -> .827).
+  - The 20.9 form in this run differs from the published 20.9 numbers by 0.001 or less in a mean (Set 1 seed 101 x0.904 -> x0.905, seed 202 Camper
+    Colossus .866 -> .854). Found, not fixed (the Lab, not this file): `scorePickLab` keeps the value of the first evaluated order of a squad (the memo
+    key is the sorted ids), and the slot order changes the fight a little. So a candidate list with other candidates can give a squad another value.
+  - The other exponents (Lab only): `active_x` 0.5 and 2 are also better than the live score on every Set 1 seed, but not better than 1 on the tuning
+    seed (x0.899 (2) and x0.897 (1) against x0.905 (1)). The value stays 1.
+- **The named bosses** (the mean of the 2 pools; Set 1 seeds 101 / 1 / 202 / 303 / 404; live -> built):
+
+  | Boss | Weak to | Live | Built | Seeds below x0.85 |
+  |---|---|---|---|---|
+  | Hydra | artillery | .834/.737/.840/.826/.848 | .863/.831/.827/.818/.852 | 5 -> 3 |
+  | Camper Colossus | controller | .900/.741/.877/.743/.843 | .902/.741/.854/.740/.843 | 3 -> 3 |
+  | Rage-Quit Warlord | controller | .884/.878/.748/.705/.817 | .884/.845/.774/.686/.826 | 3 -> 4 |
+
+  Template seeds 101 / 1 / 202: Hydra .919/.906/.803 -> 1.000/.836/.902, Camper Colossus .835/.762/.986 -> .846/.846/.970, Rage-Quit Warlord
+  .871/.867/.823 -> .847/.878/.838.
+- **Template seed 1 (20.9 Open item 3), checked again**: the result of 20.9 holds. The mean rises (x0.897 -> x0.902), but the bosses below x0.85 are 4,
+  not 3: the 3 bosses below with the live score stay below (Camper Colossus .762 -> .846, Maw .812 -> .812, AFK Warzombie .775 -> .847), and Hydra
+  .906 -> .836 falls below. The cause is ONE
+  Hydra pool (.935 -> .778; the other pool .877 -> .894): the third support changes from a Controller (factor 0.98) to the Artillery (factor 1.08). The
+  Artillery is the Weak to role of Hydra (x1.5 in the pick) and has the Regrowth answer, so the factor lifts its low offense above the Controller; the
+  squad with the Artillery is weaker in the fight. This is the 20.9 Hydra pattern (the Weak to bonus and the answers favor the Artillery). With
+  `active_x` 0.5 this pool keeps the Controller, but 0.5 is not better on the tuning seed. No per-boss rule.
+- **Proof** (copy 2, V1 to the shape file applied): `test-combat-v2-autopick-active.mjs` PASS all 38 before the apply: the md5 of the 530 other public
+  functions is the same (`combat_v2_autopick_choose`, `combat_v2_autopick_pair` and `balance_check_auto_v2` included); exactly the 3 functions are replaced
+  and none is added; their callers are the same; the trigger stays on `subjects`; the flag OFF; volatility, server only, comments (and the column
+  comment); balance = config.json (`active_x` 1); 5 planted values refused and the limits 0 and 2 accepted; the file runs twice; the trigger accepts a
+  factor 0.5 to 2 or none and refuses 5 bad values; 16 fixed picks (hand-computed with exact binary numbers: factor 1, a high factor swaps a support in, a
+  low factor keeps one out and reorders the supports, `active_x` 0, an auto with no `active_x`, `active_x` 2, an attacker's factor ignored, a JSON null
+  factor, a tie keeps the attacker, the Weak to bonus with a factor, passes 0) and 4 refusals; `active_x` 0 = the live pick exactly (the same ids and
+  scores as a pool with no factor, and as the live function on 400 random pools with factors); SQL = the simulator on 400 random pools (98 picks move, 99
+  with a non-whole `active_x`, 0 near-ties), on the 64 Lab pools of template cards with the template factors (46 picks move) and on the 64 Lab pools of the
+  real Set 1 actives with their factors written into `subjects.ability_v2` through the trigger and read back by the pick (130 actives, 70 factors; 47
+  picks move). MUTATE=all (before the apply): baseline PASS all 38 in the same run, 23 of 23 planted faults caught (21 SQL, 2 simulator).
+  Goldens with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference (before the error-text change below, which is
+  only an error text and a comment of `combat_v2_autopick`; no golden fight calls it). Combat checks C1, C2, C3 PASS.
+  Then the file applied (`rehearse-sql.mjs`): grants OK; the generated files regenerated (`docs/data` with the tester id of the local copy masked
+  in memory: the generator refuses a Discord id, and main has none). The first full run found 2 failures besides the generated files:
+  `test-combat-v2-t1b.mjs` listed `combat_v2_autopick` as a reader of `subjects.ability_v2` (only an error text named it; the text changed, the test
+  did not), and one case of `test-damage-log.mjs` (attacks only: 0 hits) that passed when it ran again alone (not a v2 function; the md5 test shows
+  that no v1 function changed). The final file applied again: `test-all-local.mjs` 165 of 165 PASS (2 one-time skipped), this test, the push test
+  (P6 to P9) and the E8, E9 and shape tests included (the E8 and shape tests compare their own row: no `active_x`). MUTATE=all after the apply: baseline PASS all 38 in the same run, 23 of 23 caught.
+  `node --test card-studio/v2sim/*.test.mjs` PASS 228 (`active.test.mjs` 6 new).
+- **Go-live order**: V1 to the shape file are live first (`combat_v2_autopick_shape.sql` must be live: this file replaces its `auto_v2_spec`, and the
+  test chain runs it). Then this file, then the code (the Lab route reads `pick_factor`). SUPERSEDED.md now lists `combat_v2_autopick_shape.sql` (its `auto_v2_spec`), and `combat_v2_auto.sql` and
+  `combat_v2_ability_builder.sql` also for `combat_v2_autopick` and `subjects_ability_v2_check`. No factor goes live until
+  Nathan approves a push of the Set 1 actives (`push-abilities.mjs --v2 <batch> --factors <file>`, then `--dry` shows 0 changes).
+- **Open**:
+  1. Camper Colossus and Rage-Quit Warlord do not rise (as 20.9). Hydra stays below x0.85 on 3 of 5 Set 1 seeds.
+  2. The factor is relative to the other actives of its role: a change of one Set 1 active needs `run.mjs factors --set1` and a push of all the factors.
+  3. The Lab memo (above): a squad keeps the value of its first evaluated slot order. A fix is a Lab change (the memo key with the order); it does not
+     change the pick.

@@ -167,7 +167,8 @@ export function makeCard(cfg, spec) {
     key: spec.key || `${role}-${spec.rarity}`, name: spec.name || spec.key || role, role, cls, rarity: spec.rarity, stars: spec.stars || 0, level: spec.level || 0,
     points, cpBase, ...st, power: pw,
     speedBase: cfg.v2_speed.role_base[role],
-    active: { id: tid, name: t.name, charge: chargeOf(cfg, tid), blocks },
+    // + the measured active factor of the Hunt auto-pick (plan 20.10; subjects.ability_v2.pick_factor), only when the active has one
+    active: { id: tid, name: t.name, charge: chargeOf(cfg, tid), blocks, ...(typeof t.pick_factor === 'number' ? { pick_factor: t.pick_factor } : {}) },
   };
 }
 
