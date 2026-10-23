@@ -7,9 +7,9 @@ The card catalog, the copies that members hold, packs, the ledgers, trades, the 
 
 ## Contents
 
-Tables (20): [artist_submissions](#table-artist-submissions), [auction_bids](#table-auction-bids), [auctions](#table-auctions), [card_ledger](#table-card-ledger), [card_sets](#table-card-sets), [card_trades](#table-card-trades), [cards](#table-cards), [draw_pool](#table-draw-pool), [gift_claims](#table-gift-claims), [pack_ledger](#table-pack-ledger), [player_cards](#table-player-cards), [roster_power_history](#table-roster-power-history), [stat_point_log](#table-stat-point-log), [stat_reset_gifts](#table-stat-reset-gifts), [subjects](#table-subjects), [trade_listings](#table-trade-listings), [trade_offers](#table-trade-offers), [wish_grants](#table-wish-grants), [wishlist_log](#table-wishlist-log), [wishlists](#table-wishlists)
+Tables (22): [artist_submissions](#table-artist-submissions), [auction_bids](#table-auction-bids), [auctions](#table-auctions), [card_ledger](#table-card-ledger), [card_progress_v2](#table-card-progress-v2), [card_progress_v2_log](#table-card-progress-v2-log), [card_sets](#table-card-sets), [card_trades](#table-card-trades), [cards](#table-cards), [draw_pool](#table-draw-pool), [gift_claims](#table-gift-claims), [pack_ledger](#table-pack-ledger), [player_cards](#table-player-cards), [roster_power_history](#table-roster-power-history), [stat_point_log](#table-stat-point-log), [stat_reset_gifts](#table-stat-reset-gifts), [subjects](#table-subjects), [trade_listings](#table-trade-listings), [trade_offers](#table-trade-offers), [wish_grants](#table-wish-grants), [wishlist_log](#table-wishlist-log), [wishlists](#table-wishlists)
 
-Functions (84): [accept_bid(text,bigint)](#fn-accept-bid-text-bigint), [accept_trade(bigint,text)](#fn-accept-trade-bigint-text), [add_card_to_player(text,bigint,text)](#fn-add-card-to-player-text-bigint-text), [add_cards_to_player(text,bigint[])](#fn-add-cards-to-player-text-bigint), [ascend_card(text,bigint)](#fn-ascend-card-text-bigint), [ascend_cost(text,integer)](#fn-ascend-cost-text-integer), [auction_meets(bigint,bigint[])](#fn-auction-meets-bigint-bigint), [card_balance()](#fn-card-balance), [card_combat_v2(text,integer,numeric,integer,jsonb,text,jsonb)](#fn-card-combat-v2-text-integer-numeric-integer-jsonb-text-jsonb), [card_combat_v2(text,integer,numeric,integer,jsonb,text)](#fn-card-combat-v2-text-integer-numeric-integer-jsonb-text), [card_cp_exact(text,integer,numeric,jsonb,jsonb)](#fn-card-cp-exact-text-integer-numeric-jsonb-jsonb), [card_cp_exact(text,integer,numeric)](#fn-card-cp-exact-text-integer-numeric), [card_ledger_reconcile()](#fn-card-ledger-reconcile), [card_move(text,bigint,integer,text,text,text,text)](#fn-card-move-text-bigint-integer-text-text-text-text), [card_power(text,integer,numeric)](#fn-card-power-text-integer-numeric), [card_power_pts(text,integer,numeric,jsonb,jsonb)](#fn-card-power-pts-text-integer-numeric-jsonb-jsonb), [card_power_pts(text,integer,numeric,jsonb)](#fn-card-power-pts-text-integer-numeric-jsonb), [card_power_v2(jsonb,jsonb,jsonb)](#fn-card-power-v2-jsonb-jsonb-jsonb), [card_power_v2(text,integer,numeric,integer,jsonb,text,jsonb)](#fn-card-power-v2-text-integer-numeric-integer-jsonb-text-jsonb), [card_power_v2_families(text,jsonb,jsonb)](#fn-card-power-v2-families-text-jsonb-jsonb), [card_power_v2_numbers()](#fn-card-power-v2-numbers), [card_powers(text)](#fn-card-powers-text), [card_stats_for(text)](#fn-card-stats-for-text), [card_trades_from_auction()](#fn-card-trades-from-auction), [card_trades_from_offer()](#fn-card-trades-from-offer), [cards_event_rules()](#fn-cards-event-rules), [cards_set_rules()](#fn-cards-set-rules), [claim_gift(text,bigint)](#fn-claim-gift-text-bigint), [close_auction(text,bigint)](#fn-close-auction-text-bigint), [collection_power_all()](#fn-collection-power-all), [confirm_bid(text,bigint)](#fn-confirm-bid-text-bigint), [convert_dupes(text,bigint,integer)](#fn-convert-dupes-text-bigint-integer), [convertible_copies(text,bigint)](#fn-convertible-copies-text-bigint), [counter_trade(bigint,text,bigint)](#fn-counter-trade-bigint-text-bigint), [counter_trade_request(bigint,text,bigint)](#fn-counter-trade-request-bigint-text-bigint), [create_trade(text,text,bigint,bigint)](#fn-create-trade-text-text-bigint-bigint), [create_trade_open(text,text,bigint)](#fn-create-trade-open-text-text-bigint), [create_trade_request(text,text,bigint)](#fn-create-trade-request-text-text-bigint), [decline_accepted_bid(text,bigint)](#fn-decline-accepted-bid-text-bigint), [expire_auctions()](#fn-expire-auctions), [free_copies(text,bigint)](#fn-free-copies-text-bigint), [gift_card(text,text,bigint)](#fn-gift-card-text-text-bigint), [gift_packs(text,text,integer)](#fn-gift-packs-text-text-integer), [give_card_gift(text,bigint,text,text)](#fn-give-card-gift-text-bigint-text-text), [grant_packs(text,integer,text,text,text,text)](#fn-grant-packs-text-integer-text-text-text-text), [launch_player_gift(text)](#fn-launch-player-gift-text), [launch_raider_gift()](#fn-launch-raider-gift), [list_for_trade(text,bigint)](#fn-list-for-trade-text-bigint), [my_collection_power(text)](#fn-my-collection-power-text), [offer_on_listing(text,bigint,bigint)](#fn-offer-on-listing-text-bigint-bigint), [open_packs(text,bigint[],integer,text)](#fn-open-packs-text-bigint-integer-text), [open_packs(text,bigint[],integer)](#fn-open-packs-text-bigint-integer), [pack_ledger_reconcile()](#fn-pack-ledger-reconcile), [place_bid(text,bigint,bigint[])](#fn-place-bid-text-bigint-bigint), [pullable_sets(text)](#fn-pullable-sets-text), [rarity_rank(text)](#fn-rarity-rank-text), [remove_card_from_player(text,bigint)](#fn-remove-card-from-player-text-bigint), [reset_stat_points(text,bigint)](#fn-reset-stat-points-text-bigint), [return_bids(bigint,bigint)](#fn-return-bids-bigint-bigint), [roster_boss_hp(bigint)](#fn-roster-boss-hp-bigint), [roster_snapshot()](#fn-roster-snapshot), [roster_stats()](#fn-roster-stats), [roster_top_players(integer)](#fn-roster-top-players-integer), [season_number(text)](#fn-season-number-text), [set_launch_player_card(bigint)](#fn-set-launch-player-card-bigint), [set_trade_status(bigint,text,text)](#fn-set-trade-status-bigint-text-text), [set_wish_top(text,integer)](#fn-set-wish-top-text-integer), [set_wishlist(text,integer,bigint)](#fn-set-wishlist-text-integer-bigint), [spend_pack(text)](#fn-spend-pack-text), [spend_stat_points(text,bigint,jsonb)](#fn-spend-stat-points-text-bigint-jsonb), [start_auction(text,bigint,text,integer,bigint[],text,integer)](#fn-start-auction-text-bigint-text-integer-bigint-text-integer), [stat_cfg()](#fn-stat-cfg), [stat_labels()](#fn-stat-labels), [stat_point_log_write()](#fn-stat-point-log-write), [stat_pt(jsonb,text,integer)](#fn-stat-pt-jsonb-text-integer), [stat_pt(jsonb,text)](#fn-stat-pt-jsonb-text), [stat_reset_gift_use(text,bigint)](#fn-stat-reset-gift-use-text-bigint), [subjects_flatten_tags()](#fn-subjects-flatten-tags), [top_collection_power(integer)](#fn-top-collection-power-integer), [trade_listing_close()](#fn-trade-listing-close), [unlist_for_trade(text,bigint)](#fn-unlist-for-trade-text-bigint), [welcome_packs()](#fn-welcome-packs), [wishlist_log_write()](#fn-wishlist-log-write), [withdraw_bid(text,bigint)](#fn-withdraw-bid-text-bigint)
+Functions (86): [accept_bid(text,bigint)](#fn-accept-bid-text-bigint), [accept_trade(bigint,text)](#fn-accept-trade-bigint-text), [add_card_to_player(text,bigint,text)](#fn-add-card-to-player-text-bigint-text), [add_cards_to_player(text,bigint[])](#fn-add-cards-to-player-text-bigint), [ascend_card(text,bigint)](#fn-ascend-card-text-bigint), [ascend_cost(text,integer)](#fn-ascend-cost-text-integer), [auction_meets(bigint,bigint[])](#fn-auction-meets-bigint-bigint), [card_balance()](#fn-card-balance), [card_combat_v2(text,integer,numeric,integer,jsonb,text,jsonb)](#fn-card-combat-v2-text-integer-numeric-integer-jsonb-text-jsonb), [card_combat_v2(text,integer,numeric,integer,jsonb,text)](#fn-card-combat-v2-text-integer-numeric-integer-jsonb-text), [card_cp_exact(text,integer,numeric,jsonb,jsonb)](#fn-card-cp-exact-text-integer-numeric-jsonb-jsonb), [card_cp_exact(text,integer,numeric)](#fn-card-cp-exact-text-integer-numeric), [card_ledger_reconcile()](#fn-card-ledger-reconcile), [card_move(text,bigint,integer,text,text,text,text)](#fn-card-move-text-bigint-integer-text-text-text-text), [card_power(text,integer,numeric)](#fn-card-power-text-integer-numeric), [card_power_pts(text,integer,numeric,jsonb,jsonb)](#fn-card-power-pts-text-integer-numeric-jsonb-jsonb), [card_power_pts(text,integer,numeric,jsonb)](#fn-card-power-pts-text-integer-numeric-jsonb), [card_power_v2(jsonb,jsonb,jsonb)](#fn-card-power-v2-jsonb-jsonb-jsonb), [card_power_v2(text,integer,numeric,integer,jsonb,text,jsonb)](#fn-card-power-v2-text-integer-numeric-integer-jsonb-text-jsonb), [card_power_v2_families(text,jsonb,jsonb)](#fn-card-power-v2-families-text-jsonb-jsonb), [card_power_v2_numbers()](#fn-card-power-v2-numbers), [card_powers(text)](#fn-card-powers-text), [card_progress_v2_check()](#fn-card-progress-v2-check), [card_progress_v2_log_check()](#fn-card-progress-v2-log-check), [card_stats_for(text)](#fn-card-stats-for-text), [card_trades_from_auction()](#fn-card-trades-from-auction), [card_trades_from_offer()](#fn-card-trades-from-offer), [cards_event_rules()](#fn-cards-event-rules), [cards_set_rules()](#fn-cards-set-rules), [claim_gift(text,bigint)](#fn-claim-gift-text-bigint), [close_auction(text,bigint)](#fn-close-auction-text-bigint), [collection_power_all()](#fn-collection-power-all), [confirm_bid(text,bigint)](#fn-confirm-bid-text-bigint), [convert_dupes(text,bigint,integer)](#fn-convert-dupes-text-bigint-integer), [convertible_copies(text,bigint)](#fn-convertible-copies-text-bigint), [counter_trade(bigint,text,bigint)](#fn-counter-trade-bigint-text-bigint), [counter_trade_request(bigint,text,bigint)](#fn-counter-trade-request-bigint-text-bigint), [create_trade(text,text,bigint,bigint)](#fn-create-trade-text-text-bigint-bigint), [create_trade_open(text,text,bigint)](#fn-create-trade-open-text-text-bigint), [create_trade_request(text,text,bigint)](#fn-create-trade-request-text-text-bigint), [decline_accepted_bid(text,bigint)](#fn-decline-accepted-bid-text-bigint), [expire_auctions()](#fn-expire-auctions), [free_copies(text,bigint)](#fn-free-copies-text-bigint), [gift_card(text,text,bigint)](#fn-gift-card-text-text-bigint), [gift_packs(text,text,integer)](#fn-gift-packs-text-text-integer), [give_card_gift(text,bigint,text,text)](#fn-give-card-gift-text-bigint-text-text), [grant_packs(text,integer,text,text,text,text)](#fn-grant-packs-text-integer-text-text-text-text), [launch_player_gift(text)](#fn-launch-player-gift-text), [launch_raider_gift()](#fn-launch-raider-gift), [list_for_trade(text,bigint)](#fn-list-for-trade-text-bigint), [my_collection_power(text)](#fn-my-collection-power-text), [offer_on_listing(text,bigint,bigint)](#fn-offer-on-listing-text-bigint-bigint), [open_packs(text,bigint[],integer,text)](#fn-open-packs-text-bigint-integer-text), [open_packs(text,bigint[],integer)](#fn-open-packs-text-bigint-integer), [pack_ledger_reconcile()](#fn-pack-ledger-reconcile), [place_bid(text,bigint,bigint[])](#fn-place-bid-text-bigint-bigint), [pullable_sets(text)](#fn-pullable-sets-text), [rarity_rank(text)](#fn-rarity-rank-text), [remove_card_from_player(text,bigint)](#fn-remove-card-from-player-text-bigint), [reset_stat_points(text,bigint)](#fn-reset-stat-points-text-bigint), [return_bids(bigint,bigint)](#fn-return-bids-bigint-bigint), [roster_boss_hp(bigint)](#fn-roster-boss-hp-bigint), [roster_snapshot()](#fn-roster-snapshot), [roster_stats()](#fn-roster-stats), [roster_top_players(integer)](#fn-roster-top-players-integer), [season_number(text)](#fn-season-number-text), [set_launch_player_card(bigint)](#fn-set-launch-player-card-bigint), [set_trade_status(bigint,text,text)](#fn-set-trade-status-bigint-text-text), [set_wish_top(text,integer)](#fn-set-wish-top-text-integer), [set_wishlist(text,integer,bigint)](#fn-set-wishlist-text-integer-bigint), [spend_pack(text)](#fn-spend-pack-text), [spend_stat_points(text,bigint,jsonb)](#fn-spend-stat-points-text-bigint-jsonb), [start_auction(text,bigint,text,integer,bigint[],text,integer)](#fn-start-auction-text-bigint-text-integer-bigint-text-integer), [stat_cfg()](#fn-stat-cfg), [stat_labels()](#fn-stat-labels), [stat_point_log_write()](#fn-stat-point-log-write), [stat_pt(jsonb,text,integer)](#fn-stat-pt-jsonb-text-integer), [stat_pt(jsonb,text)](#fn-stat-pt-jsonb-text), [stat_reset_gift_use(text,bigint)](#fn-stat-reset-gift-use-text-bigint), [subjects_flatten_tags()](#fn-subjects-flatten-tags), [top_collection_power(integer)](#fn-top-collection-power-integer), [trade_listing_close()](#fn-trade-listing-close), [unlist_for_trade(text,bigint)](#fn-unlist-for-trade-text-bigint), [welcome_packs()](#fn-welcome-packs), [wishlist_log_write()](#fn-wishlist-log-write), [withdraw_bid(text,bigint)](#fn-withdraw-bid-text-bigint)
 
 ## Tables
 
@@ -124,6 +124,91 @@ Table. [players-economy] One row per change of a member's copies of a card (play
   - `card_ledger_reason_check` to [ledger_reasons](members-and-platform.md#table-ledger-reasons): `FOREIGN KEY (ledger, reason) REFERENCES ledger_reasons(ledger, reason)`
 - Check constraints: 
   - `card_ledger_amount_check`: `CHECK ((amount <> 0))`
+- Row level security: on. Policies: none
+
+<a id="table-card-progress-v2"></a>
+
+### card_progress_v2
+
+Table. Combat v2 card progress (plan 2.2 to 2.4, 11, 20.11; combat_v2_progress_tables.sql, step M1a): one row for each player_cards row with v2 progress: the level, the XP, the points spent in each of the 9 v2 stats and the free bonus points of a refund. Deleted with the last copy (foreign key to player_cards, on delete cascade). The trigger card_progress_v2_check reads the limits from balance (v2_level, v2_stats, card_level). Every change has a row in card_progress_v2_log. Nothing reads it until combat_v2.progress is on (the functions come with M1b to M1h). Service role only.
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `id` | bigint | not null |  | The progress id (never reused, never changes). The ledger card_progress_v2_log names it, so a copy that leaves and comes back starts a new history. |
+| `player_id` | text | not null |  | The owner (players.id). With card_id: the player_cards row (foreign key, on delete cascade). |
+| `card_id` | bigint | not null |  | The card (cards.id). With player_id: the player_cards row (foreign key, on delete cascade). |
+| `level` | integer | not null | `0` | The card level, 0 to balance v2_level.max_level. Always the level of the XP (card_level costs, the trigger checks it). Each level gives v2_level.points_per_level points. |
+| `xp` | integer | not null | `0` | The total XP of the card. Level L needs L x card_level.cost_base + card_level.cost_per_level x L x (L - 1) / 2 XP. At go-live a card starts at the exact XP of its granted level (decision 5 of plan 20.11). |
+| `atk_pts` | smallint | not null | `0` | Points spent in Attack (ATK), 0 to v2_stats.max_per_stat. The points key atk of card_combat_v2. |
+| `def_pts` | smallint | not null | `0` | Points spent in Defense (DEF), 0 to v2_stats.max_per_stat. The points key def of card_combat_v2. |
+| `hp_pts` | smallint | not null | `0` | Points spent in HP, 0 to v2_stats.max_per_stat. The points key hp of card_combat_v2. |
+| `crd_pts` | smallint | not null | `0` | Points spent in Crit Damage (CRD), 0 to v2_stats.max_per_stat. The points key crd of card_combat_v2. |
+| `crt_pts` | smallint | not null | `0` | Points spent in Crit % (CRT), 0 to v2_stats.max_per_stat. The points key crt of card_combat_v2. |
+| `abl_pts` | smallint | not null | `0` | Points spent in Ability (ABL), 0 to v2_stats.max_per_stat. The points key abl of card_combat_v2. |
+| `ddg_pts` | smallint | not null | `0` | Points spent in Dodge (DDG), 0 to v2_stats.max_per_stat. The points key ddg of card_combat_v2. |
+| `acc_pts` | smallint | not null | `0` | Points spent in Accuracy (ACC), 0 to v2_stats.max_per_stat. The points key acc of card_combat_v2. |
+| `spd_pts` | smallint | not null | `0` | Points spent in Speed (SPD), 0 to v2_stats.max_per_stat. The points key spd of card_combat_v2. |
+| `bonus_points` | integer | not null | `0` | Free points from a refund (the part of a converted v1 stat above the cap, plan 11 and 20.11), a separate count and not levels: the points spent may be up to level x v2_level.points_per_level + bonus_points. |
+| `created_at` | timestamp with time zone | not null | `now()` | When the row was made. |
+| `updated_at` | timestamp with time zone | not null | `now()` | The last change (set by the trigger). |
+
+- Primary key: `PRIMARY KEY (player_id, card_id)`
+- Unique: `card_progress_v2_id_key` `UNIQUE (id)`
+- Foreign keys: 
+  - `card_progress_v2_player_id_card_id_fkey` to [player_cards](cards-and-trading.md#table-player-cards): `FOREIGN KEY (player_id, card_id) REFERENCES player_cards(player_id, card_id) ON DELETE CASCADE`
+- Check constraints: 
+  - `card_progress_v2_abl_pts_check`: `CHECK ((abl_pts >= 0))`
+  - `card_progress_v2_acc_pts_check`: `CHECK ((acc_pts >= 0))`
+  - `card_progress_v2_atk_pts_check`: `CHECK ((atk_pts >= 0))`
+  - `card_progress_v2_bonus_points_check`: `CHECK ((bonus_points >= 0))`
+  - `card_progress_v2_crd_pts_check`: `CHECK ((crd_pts >= 0))`
+  - `card_progress_v2_crt_pts_check`: `CHECK ((crt_pts >= 0))`
+  - `card_progress_v2_ddg_pts_check`: `CHECK ((ddg_pts >= 0))`
+  - `card_progress_v2_def_pts_check`: `CHECK ((def_pts >= 0))`
+  - `card_progress_v2_hp_pts_check`: `CHECK ((hp_pts >= 0))`
+  - `card_progress_v2_level_check`: `CHECK ((level >= 0))`
+  - `card_progress_v2_spd_pts_check`: `CHECK ((spd_pts >= 0))`
+  - `card_progress_v2_xp_check`: `CHECK ((xp >= 0))`
+- Row level security: on. Policies: none
+
+<a id="table-card-progress-v2-log"></a>
+
+### card_progress_v2_log
+
+Table. The M1 ledger of the combat v2 card progress (plan 20.11; combat_v2_progress_tables.sql, step M1a): one row for each change of a card_progress_v2 row, with its reason. The unique key (progress_id, reason, stat, ref) makes each step idempotent. The deltas of the rows of one progress_id sum to the stored row. No foreign key: the history stays after the last copy leaves. A row never changes (trigger card_progress_v2_log_check). Service role only.
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `id` | bigint | not null |  | The row id. |
+| `progress_id` | bigint | not null |  | The card_progress_v2.id that the row changed (it must exist at insert, with the same player and card). |
+| `player_id` | text | not null |  | The owner at the time of the change (a copy of card_progress_v2.player_id, kept after the row goes). |
+| `card_id` | bigint | not null |  | The card (a copy of card_progress_v2.card_id, kept after the row goes). |
+| `reason` | text | not null |  | Why: grant_level (the go-live level and its XP), convert (a v1 point converted), topup (the smallest count that reaches the old value), refund (bonus points), dead_points (old v1 Support and Recharge points of an attacker), xp (a fight-day), spend (a v2 point spent), reset (v2 points taken back). |
+| `stat` | text | not null | `''::text` | The v2 stat of a points row (atk, def, hp, crd, crt, abl, ddg, acc, spd); empty for a level or XP row; may name the source stat of a refund. |
+| `ref` | text | not null |  | The idempotency key of the step: the run of a conversion (for example m1) or, for xp, the source and the Mountain day (hunt:YYYY-MM-DD or dungeon:YYYY-MM-DD: one award for each card, day and source). |
+| `d_level` | integer | not null | `0` | The change of card_progress_v2.level (grant_level, or xp when the XP gives a level). |
+| `d_xp` | integer | not null | `0` | The change of card_progress_v2.xp (grant_level: the exact XP of the level; xp: the award). |
+| `d_points` | integer | not null | `0` | The change of the points in the stat: above 0 for convert, topup, dead_points and spend; below 0 for reset. |
+| `d_bonus` | integer | not null | `0` | The change of card_progress_v2.bonus_points (refund). |
+| `note` | text | null |  | An optional text (for example the v1 stat and its points of a conversion). Aggregates only in reports. |
+| `created_at` | timestamp with time zone | not null | `now()` | When the row was added (set by the trigger). |
+| `created_by` | text | not null | `'unknown'::text` | Who added it: balance_who() (the setting balance.by, else the session user; set by the trigger). |
+
+- Primary key: `PRIMARY KEY (id)`
+- Unique: `card_progress_v2_log_progress_id_reason_stat_ref_key` `UNIQUE (progress_id, reason, stat, ref)`
+- Foreign keys: none
+- Check constraints: 
+  - `card_progress_v2_log_deltas`: `CHECK (
+CASE reason
+    WHEN 'grant_level'::text THEN ((d_level > 0) AND (d_xp >= 0) AND (d_points = 0) AND (d_bonus = 0) AND (stat = ''::text))
+    WHEN 'xp'::text THEN ((d_xp > 0) AND (d_level >= 0) AND (d_points = 0) AND (d_bonus = 0) AND (stat = ''::text) AND (ref ~ '^(hunt|dungeon):[0-9]{4}-[0-9]{2}-[0-9]{2}$'::text))
+    WHEN 'refund'::text THEN ((d_bonus > 0) AND (d_level = 0) AND (d_xp = 0) AND (d_points = 0))
+    WHEN 'reset'::text THEN ((d_points < 0) AND (d_level = 0) AND (d_xp = 0) AND (d_bonus = 0) AND (stat <> ''::text))
+    ELSE ((d_points > 0) AND (d_level = 0) AND (d_xp = 0) AND (d_bonus = 0) AND (stat <> ''::text))
+END)`
+  - `card_progress_v2_log_reason_check`: `CHECK ((reason = ANY (ARRAY['grant_level'::text, 'convert'::text, 'topup'::text, 'refund'::text, 'dead_points'::text, 'xp'::text, 'spend'::text, 'reset'::text])))`
+  - `card_progress_v2_log_ref_check`: `CHECK ((ref ~ '^[a-z0-9_]+(:[a-z0-9_.-]+)*$'::text))`
+  - `card_progress_v2_log_stat_check`: `CHECK ((stat = ANY (ARRAY[''::text, 'atk'::text, 'def'::text, 'hp'::text, 'crd'::text, 'crt'::text, 'abl'::text, 'ddg'::text, 'acc'::text, 'spd'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-card-sets"></a>
@@ -777,6 +862,26 @@ The card power (CP) as an integer: card_cp_exact rounded. The one CP calculation
 - Security definer: no
 
 A JSON map card id to power and HP. With no member: every card at 0 stars. With a member: that member's cards with stars and stat points (card_combat). Activity /api/collection, /api/hunt, /api/hunt/autopick, /api/spotlight.
+
+<a id="fn-card-progress-v2-check"></a>
+
+### card_progress_v2_check()
+
+- Function: `card_progress_v2_check()`
+- Returns: `trigger`
+- Security definer: no
+
+[combat] Trigger (before insert, update on card_progress_v2): refuses a level above v2_level.max_level, a stat above v2_stats.max_per_stat, more points spent than level x v2_level.points_per_level + bonus_points, an XP that is not the XP of the level (card_level.cost_base, cost_per_level), and a change of the id, player or card. Sets updated_at. combat_v2_progress_tables.sql.
+
+<a id="fn-card-progress-v2-log-check"></a>
+
+### card_progress_v2_log_check()
+
+- Function: `card_progress_v2_log_check()`
+- Returns: `trigger`
+- Security definer: no
+
+[combat] Trigger (before insert, update on card_progress_v2_log): refuses an update (a ledger row never changes) and a row with no card_progress_v2 row of the same id, player and card. Sets created_at and created_by (balance_who). combat_v2_progress_tables.sql.
 
 <a id="fn-card-stats-for-text"></a>
 
