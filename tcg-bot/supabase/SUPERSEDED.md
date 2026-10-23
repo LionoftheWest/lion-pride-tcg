@@ -13,7 +13,7 @@ and `lockdown_grants.sql`, as `apply-sql.mjs` does). Data statements (insert, up
 a DO block that writes rows) do NOT run. Then the function md5s, the tables, the enums and the cron calls are
 compared with live. "live = `x.sql`" names the newest file that gives the live version.
 
-## Superseded files (141)
+## Superseded files (143)
 
 | File | Reasons | Notes |
 |---|---|---|
@@ -47,6 +47,8 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `combat_v2_hit.sql` | SUPERSEDED: reverts `public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monster_tuning.sql`) |  |
 | `combat_v2_monster_tuning.sql` | SUPERSEDED: reverts `public.balance_v2_spec(text)` (live = `combat_v2_power.sql`) |  |
 | `combat_v2_monsters.sql` | SUPERSEDED: reverts `public.combat_v2_dungeon_foe(text, integer, integer, text, jsonb, jsonb)` (live = `combat_v2_monster_tuning.sql`); reverts `public.combat_v2_enemy_hit(jsonb, jsonb, jsonb, numeric, boolean, jsonb, jsonb, jsonb)` (live = `combat_v2_monster_tuning.sql`); reverts `public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monster_tuning.sql`); reverts `public.combat_v2_hunt_boss(text, text, jsonb, jsonb)` (live = `combat_v2_monster_tuning.sql`); reverts `public.enemy_v2_spec()` (live = `combat_v2_e7_followup.sql`); reverts `public.hunt_bosses_v2_check()` (live = `combat_v2_monster_tuning.sql`) |  |
+| `combat_v2_progress_tables.sql` | SUPERSEDED: reverts `public.card_progress_v2_check()` (live = `combat_v2_progress_math.sql`) |  |
+| `combat_v2_stats.sql` | SUPERSEDED: reverts `public.card_combat_v2(text, integer, numeric, integer, jsonb, text, jsonb)` (live = `combat_v2_progress_math.sql`) |  |
 | `combat_v2_status_rules.sql` | SUPERSEDED: reverts `public.combat_v2_damage(jsonb, jsonb, numeric, jsonb, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_v2_heal(jsonb, jsonb, numeric, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_v2_hit_apply(jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_v2_next(jsonb, jsonb, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_v2_status_apply(jsonb, jsonb, text, jsonb, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_v2_status_cure(jsonb, jsonb, jsonb, integer, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_v2_step_end(jsonb, jsonb)` (live = `combat_v2_monsters.sql`); reverts `public.combat_v2_turn_start(jsonb, jsonb, jsonb, jsonb)` (live = `combat_v2_monsters.sql`) |  |
 | `combat_v2_statuses_roles.sql` | SUPERSEDED: reverts `public.fight_state_check_v2(jsonb)` (live = `combat_v2_monsters.sql`) |  |
 | `combat_v2_testers.sql` | SUPERSEDED: reverts `public.balance_v2_spec(text)` (live = `combat_v2_power.sql`) |  |
@@ -217,9 +219,9 @@ a one-time grant or a settings value would run again.
 - `stat_reset_gift.sql`: stat_reset_gifts (DO block)
 - `ui_v3_flag.sql`: settings
 
-## No change (29)
+## No change (28)
 
-`achievement_rewards.sql`, `achievement_view_old_paid.sql`, `admin_read.sql`, `admin_write.sql`, `backup_role.sql`, `board_tie_order.sql`, `card_tags.sql`, `combat_v2_progress_tables.sql`, `combat_v2_stats.sql`, `d191_pack_color_check.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `dungeon_finish_room.sql`, `f3_elements_beats.sql`, `f3_engine_hunt.sql`, `f3_one_power_number.sql`, `first_pack_ping.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `hunt_squad_down_all_cards.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `profile_spotlight_avatar.sql`, `season_best_day_tie.sql`, `shards_convert_keep_one.sql`, `trade_request.sql`
+`achievement_rewards.sql`, `achievement_view_old_paid.sql`, `admin_read.sql`, `admin_write.sql`, `backup_role.sql`, `board_tie_order.sql`, `card_tags.sql`, `combat_v2_progress_math.sql`, `d191_pack_color_check.sql`, `drop_dead_code.sql`, `drop_dungeon_drop_card.sql`, `dungeon_finish_room.sql`, `f3_elements_beats.sql`, `f3_engine_hunt.sql`, `f3_one_power_number.sql`, `first_pack_ping.sql`, `fks_checks.sql`, `hall_offer_any_card.sql`, `hall_top_want.sql`, `hunt_squad_down_all_cards.sql`, `lockdown_grants.sql`, `logs_app.sql`, `notify_prefs.sql`, `one_source_rules.sql`, `profile_spotlight_avatar.sql`, `season_best_day_tie.sql`, `shards_convert_keep_one.sql`, `trade_request.sql`
 
 ## Live functions that no file gives (1)
 

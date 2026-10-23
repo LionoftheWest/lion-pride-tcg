@@ -93,6 +93,15 @@
     "converge_d": 0.22,
     "target_cp": 260
   },
+  "card_level": {
+    "_rule": "Plan 2.4 (M1b, combat_v2_progress_math.sql). Level L to L + 1 costs cost_base + cost_per_level x L XP. A fight-day gives xp_hunt_day (Hunt) or xp_dungeon_run (Dungeon). Catch-up: a card below the mean level of the player's top catchup_top cards gets floor(XP x catchup_x).",
+    "xp_hunt_day": 10,
+    "xp_dungeon_run": 10,
+    "cost_base": 5,
+    "cost_per_level": 1,
+    "catchup_x": 2,
+    "catchup_top": 8
+  },
   "v2_support": {
     "_rule": "support amounts x F, F = (CP_base / power_ref) ^ power_exp (rarity and stars scale the numbers). Basic attack = basic_x x CP.",
     "basic_x": 0.18,

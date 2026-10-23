@@ -2045,8 +2045,8 @@ v2 HP = 50 + 1.5 x CP'. They are equal at CP 167, so a Gold 4* or 5* or a Full A
 - **Go-live order**: this file can go live at any time before M1b (no reader; the flag stays OFF). `apply-sql.mjs --live`, then
   `check-schema-drift.mjs --live` = 0 differences.
 - **Open for M1b and later**:
-  1. M1b: `card_combat_v2` adds `bonus_points` to the budget of the level, and the pure functions XP -> level and the cost 5 + L. The trigger
-     of this file has the same XP formula: M1b can make the trigger call the new function (one formula).
+  1. CLOSED by M1b (20.12): `card_combat_v2` adds `bonus_points` to the budget of the level, the pure functions XP -> level and the cost 5 + L
+     exist, and the trigger of this file calls `card_level_xp_at` (one formula).
   2. Rounding of the converted points (x1.25, x2.4, x3.33): the deep dive counts use "round up". Not decided yet (M1e).
   3. The reset gift of R3 is one row for each player (`stat_reset_gifts`), not for each card: the ledger of this file does not hold it. M1h
      records it in `stat_reset_gifts` with a new `gift` key.
@@ -2060,3 +2060,77 @@ v2 HP = 50 + 1.5 x CP'. They are equal at CP 167, so a Gold 4* or 5* or a Full A
      must insert the ledger row FIRST and change the progress row only when that insert adds a row. An update first and then an insert with
      `on conflict do nothing` gives double XP on a retry. The M1e and M1f tests must plant this fault.
   8. M1e: the granted level must also cover the converted dead points, or the budget check refuses the row.
+
+### 20.12 M1b: the level math and the bonus points (`tcg-bot/supabase/combat_v2_progress_math.sql`)
+
+M1b adds the pure math of the card levels (plan 2.4) and the bonus points of decision 3 (20.11). Nothing in play calls it. The flag `combat_v2.progress`
+stays false, and both progress tables stay empty.
+
+- **New functions** (each in two forms: a PURE form with the numbers, IMMUTABLE, and a form that reads balance, STABLE):
+  - `card_level_xp_at(level[, numbers])`: the total XP of a level. Level L to L + 1 costs `card_level.cost_base + cost_per_level x L`, so the XP of
+    level L is the sum of these costs for 0 to L - 1 (today 5 + L: level 1 = 5, level 3 = 18, level 10 = 95, level 30 = 585). It refuses a level
+    below 0 or above `v2_level.max_level`, and costs that are not whole numbers.
+  - `card_level_of_xp(xp[, numbers])`: the highest level (0 to `max_level`) whose XP is at most the given XP. It refuses an XP below 0.
+  - `card_level_xp_award(source, level, levels[, numbers])`: the XP of one fight-day: `xp_hunt_day` for `hunt`, `xp_dungeon_run` for `dungeon`
+    (the Gauntlet gives no XP). The catch-up rule: `levels` = the levels of the player's v2 cards. A card below the mean of the top
+    `catchup_top` levels gets `floor(XP x catchup_x)`. The compare is `level x n < sum` (exact). An empty list gives no catch-up.
+  - `card_combat_v2(rarity, stars, cp_mod, level, points, role, numbers, bonus_points)`: the E3 stat line, with the budget
+    `level x points_per_level + bonus_points`. `points_free` = level points + bonus - spent. It refuses a bonus below 0 or null. The bonus
+    changes only the budget and `points_free`, not a stat.
+- **Replaced** (on purpose; their callers are the same):
+  - `card_combat_v2` with 7 arguments: it calls the new form with bonus 0. The answer and the error texts are the same as before (E3).
+    No default argument: a default on the new form makes every 7-argument call "not unique" (the planted fault `cc_default_arg` shows it).
+    The 6-argument form does not change. Its callers (`card_combat_v2` with 6 arguments, `card_power_v2`) do not change.
+  - `card_progress_v2_check` (the M1a trigger): the same checks, and the XP of the level now comes from `card_level_xp_at` (one formula in
+    the game). The error texts show whole numbers (the M1a text showed `18.0000000000000000`, a review finding of M1a).
+- **Fail closed**: a missing balance number raises (`no balance value for ...`). It is never a null that passes a check. The balance guard
+  also refuses a delete of the row `card_level` and the removal of a number of `card_level` or `v2_level`, so the STABLE forms always read a full row.
+- **The simulator** (it had no XP math): `formulas.mjs` `F.xpAt`, `F.levelOfXp`, `F.xpAward`, `F.pointBudget`; `makeCard` takes `bonus`;
+  `config.json` has `card_level` (the balance values: `test-combat-v2-balance.mjs` now compares it leaf by leaf). 4 formula checks and 4 planted
+  faults (`node --test card-studio/v2sim/*.test.mjs` PASS 238).
+- **C1**: the scope of `ci/combat/c1-numbers.json` now has `^card_level_` (no number outside balance in these functions).
+- **Proof** (copy 2, refreshed from live on 2026-10-23, M1a applied first):
+  - `test-combat-v2-progress-math.mjs` PASS all 28, before and after the apply. The block puts back the state before the file (the md5 of the
+    2 old bodies = main), so the file runs inside the block, and then runs a second time.
+    - T1: the md5 of the 533 other public functions is the same; exactly the 2 functions above are replaced and exactly the 7 new ones are added;
+      the callers of `card_combat_v2` and of the trigger and the readers of `combat_v2_on` are the same; no other function calls a new function;
+      the flag is the same (`progress` false); both tables are empty.
+    - Old = new: `card_combat_v2` with 6 and 7 arguments and the new form with bonus 0 give the E3 answer or error text on 8,732 inputs (241 refused;
+      every rarity x stars -1 to 6 x 10 levels x 12 roles with the simulator build, 2,000 random builds, 12 bad inputs).
+    - Old = new: the trigger accepts and refuses the same rows as the M1a body on 1,520 updates (376 accepted): every level -1 to max + 1, 5 XP values at
+      the boundaries, 4 point layouts, with today's balance and with cost 6 + 2L, max level 40, 2 points a level, 12 a stat. The texts are equal after
+      the decimals of the 534 M1a texts are removed.
+    - Fixed hand-computed cases: XP 0, 5, 11, 18, 95, 551, 585; levels at each boundary; the awards (at the top-8 mean 10, below it 20, no cards 10,
+      the top 8 and not all cards); other numbers (6 + 2L, max 40, x1.25 = 12 rounded down, x1.5 = 15, top 2, Hunt 7 / Dungeon 12); the bonus budget
+      in `card_combat_v2` and in the trigger; 26 refusals, each with its text (also each missing number).
+    - SQL = the simulator on 2,000 random balance sets inside the `balance_v2_spec` limits (1,184 awards with catch-up) and on 1,500 random cards
+      with bonus 0 to 15 (207 over the budget, 830 use bonus points).
+    - Pure and server only: volatility, `search_path`, no execute for anon, authenticated and public, a comment on each of the 9 functions.
+  - MUTATE=all, before and after the apply: baseline PASS all 28 in the same run, 33 of 33 planted faults caught. 4 of them read a balance number as
+    null and would fail OPEN (`xp_null_fails_open`, `level_null_fails_open`, `award_null_fails_open`, `trg_next_null_fails_open`): the review
+    finding of M1a.
+  - `test-combat-v2-progress-tables.mjs` (M1a) PASS all 19 unchanged, and PASS all 19 with `MIG` = the M1a file + this file (its checks run on the new
+    trigger). `test-combat-v2-stats.mjs` (E3) PASS all 30.
+  - The goldens with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference.
+  - Then the file applied (`rehearse-sql.mjs`): grants OK. `db/schema/`, `docs/data/` (the tester id of the local copy masked in memory, as in
+    20.10 and 20.11) and `SUPERSEDED.md` regenerated. `test-combat-v2-balance.mjs` lists the 3 new function names as readers of `card_level`.
+    The final `test-all-local.mjs`: 166 of 167 PASS (2 one-time skipped); the 1 failure is the baseline failure of `test-dungeon-finish-room.mjs`
+    (E1, 20.11 Open item 5). Before the apply (main + M1a on the same copy): 164 of 166, the same failure and `test-superseded-list.mjs` (this new
+    file was not yet in `SUPERSEDED.md`). The combat checks C1, C2, C3 and `combat-checks.test.mjs` (16) PASS.
+- **Go-live order**: M1a (`combat_v2_progress_tables.sql`) must be live first: this file replaces its trigger, and `SUPERSEDED.md` now lists
+  M1a (its trigger) and `combat_v2_stats.sql` (its 7-argument `card_combat_v2`), so `apply-sql.mjs` refuses M1a after this file is live.
+  Then this file: `apply-sql.mjs --live`, then `check-schema-drift.mjs --live` = 0 differences.
+- **Open for M1c and later**:
+  1. The catch-up rounds DOWN (`floor`) when `catchup_x` is not a whole number. Today it is 2, so no award changes. A decision for Nathan if the dial
+     changes.
+  2. The catch-up list: M1f decides which levels it passes (all the player's v2 cards, the card included, is the rule of this file).
+  3. Items 2 to 8 of 20.11 stay open (item 6: a tune of `card_level` costs or `max_level` still breaks existing rows; the trigger now reads the costs
+     through `card_level_xp_at`, so the same re-level step is needed).
+  4. Review of M1b (PASS, 4 low findings, observed on copy 2), for M1f (the first writer of an award):
+     - The simulator rounds `base x catchup_x` to 9 decimals before the floor (`v2sim/formulas.mjs` `xpAward`), SQL floors the exact number:
+       `catchup_x` 1.0999999999999 with 10 XP gives 10 in SQL and 11 in the simulator. The spec accepts it (num 1 to 5). Fix: integer math in
+       the simulator (or a spec limit of 2 decimals), and a fuzz case with many decimals.
+     - The pure forms do not check their numbers (only the balance forms get checked numbers): `catchup_top` -1 stops with a LIMIT error,
+       2.5 rounds to 3, and `cost_per_level` -3 makes the XP go down as the level goes up. Server only today; M1f must call the balance forms.
+     - `p_level * n` in the award is integer math: a level above about 268 million raises "integer out of range" (fail closed, unclear text).
+     - Two planted faults (`cc_bonus_ignored`, `cc_default_arg`) stop the whole test block: they are caught, but no named case reports them.

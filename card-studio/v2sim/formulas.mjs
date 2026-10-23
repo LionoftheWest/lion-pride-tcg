@@ -14,6 +14,30 @@ export const F = {
     return cp + f * (L.target_cp - cp);
   },
   levelPoints(cfg, level) { const L = cfg.v2_level; return Math.max(0, Math.min(level, L.max_level)) * L.points_per_level; },
+  // The point budget of a card: the level points + the bonus points of a refund (plan 20.11 decision 3; SQL card_combat_v2 with p_bonus).
+  pointBudget(cfg, level, bonus = 0) { return F.levelPoints(cfg, level) + bonus; },
+  // Card levels (plan 2.4; SQL card_level_xp_at, card_level_of_xp, card_level_xp_award). Level L to L + 1 costs cost_base + cost_per_level x L.
+  xpAt(cfg, level) {
+    const C = cfg.card_level, max = cfg.v2_level.max_level;
+    if (!Number.isInteger(level) || level < 0 || level > max) throw new Error(`xpAt: level ${level} is not 0 to ${max}`);
+    let xp = 0; for (let k = 0; k < level; k++) xp += C.cost_base + C.cost_per_level * k;
+    return xp;
+  },
+  levelOfXp(cfg, xp) {
+    if (!Number.isInteger(xp) || xp < 0) throw new Error(`levelOfXp: xp ${xp}`);
+    let lv = 0; while (lv < cfg.v2_level.max_level && F.xpAt(cfg, lv + 1) <= xp) lv++;
+    return lv;
+  },
+  // The XP of one fight-day: x catchup_x (rounded down) when the level is below the mean of the player's top catchup_top levels.
+  xpAward(cfg, source, level, levels) {
+    const C = cfg.card_level;
+    const base = source === 'hunt' ? C.xp_hunt_day : source === 'dungeon' ? C.xp_dungeon_run : undefined;
+    if (base === undefined) throw new Error(`xpAward: the source must be hunt or dungeon, not ${source}`);
+    const top = [...levels].sort((a, b) => b - a).slice(0, C.catchup_top);
+    const sum = top.reduce((s, x) => s + x, 0);
+    // level x n < sum (exact in whole numbers); the product rounded to 9 decimals first, so a float like 1.57 x 100 = 156.99999 gives 157 as SQL numeric
+    return top.length > 0 && level * top.length < sum ? Math.floor(+(base * C.catchup_x).toFixed(9)) : base;
+  },
   // The 9 stats from the base CP and the spent points. Flat ATK and HP, rates for the rest.
   stats(cfg, cpBase, pts) {
     const S = cfg.v2_stats; const p = k => Math.min(S.max_per_stat, pts[k] || 0); const H = cfg.v2_card_hp;

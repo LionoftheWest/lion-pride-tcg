@@ -145,12 +145,12 @@ export function allocate(cfg, weights, points) {
 export const buildFor = (cfg, role, level) => allocate(cfg, cfg.v2_builds[role], F.levelPoints(cfg, level));
 
 // ---------- the card ----------
-// spec: { key, name, role, rarity, stars, level, points?, template?, cp_mod? }
+// spec: { key, name, role, rarity, stars, level, points?, bonus?, template?, cp_mod? } (bonus: the bonus points of a refund, in the budget)
 export function makeCard(cfg, spec) {
   const role = spec.role, cls = classOf(role);
   const points = spec.points || buildFor(cfg, role, spec.level || 0);
   const used = Object.values(points).reduce((s, x) => s + x, 0);
-  if (used > F.levelPoints(cfg, spec.level || 0) && !spec.freePoints) throw new Error(`makeCard: ${used} points > level ${spec.level}`);
+  if (used > F.pointBudget(cfg, spec.level || 0, spec.bonus || 0) && !spec.freePoints) throw new Error(`makeCard: ${used} points > level ${spec.level} + bonus ${spec.bonus || 0}`);
   const cpBase = F.converge(cfg, F.ascCp(cfg, spec.rarity, spec.stars || 0) * (spec.cp_mod || 1), spec.level || 0);
   const st = F.stats(cfg, cpBase, points);
   const tid = spec.template || templateFor(cfg, spec.key || role, role);

@@ -17,9 +17,24 @@ grant execute on function public.card_combat_v2(text, integer, numeric, integer,
 grant execute on function public.card_combat_v2(text, integer, numeric, integer, jsonb, text) to service_role;
 
 -- @function public.card_combat_v2(text, integer, numeric, integer, jsonb, text, jsonb)
--- md5: e80dee0298940fbbb0ae6be47f848915   (md5(replace(pg_get_functiondef('public.card_combat_v2(text, integer, numeric, integer, jsonb, text, jsonb)'::regprocedure), chr(13), '')))
+-- md5: 246d435fa156319869ad209be816a218   (md5(replace(pg_get_functiondef('public.card_combat_v2(text, integer, numeric, integer, jsonb, text, jsonb)'::regprocedure), chr(13), '')))
 -- owner: postgres
 CREATE OR REPLACE FUNCTION public.card_combat_v2(p_rarity text, p_stars integer, p_mod numeric, p_level integer, p_pts jsonb, p_role text, p_b jsonb)
+ RETURNS jsonb
+ LANGUAGE sql
+ STABLE
+ SET search_path TO 'public'
+AS $function$
+  select card_combat_v2(p_rarity, p_stars, p_mod, p_level, p_pts, p_role, p_b, 0);
+$function$;
+-- @grants public.card_combat_v2(text, integer, numeric, integer, jsonb, text, jsonb)
+grant execute on function public.card_combat_v2(text, integer, numeric, integer, jsonb, text, jsonb) to postgres;
+grant execute on function public.card_combat_v2(text, integer, numeric, integer, jsonb, text, jsonb) to service_role;
+
+-- @function public.card_combat_v2(text, integer, numeric, integer, jsonb, text, jsonb, integer)
+-- md5: b098cd06030a276e64178939a77bc4db   (md5(replace(pg_get_functiondef('public.card_combat_v2(text, integer, numeric, integer, jsonb, text, jsonb, integer)'::regprocedure), chr(13), '')))
+-- owner: postgres
+CREATE OR REPLACE FUNCTION public.card_combat_v2(p_rarity text, p_stars integer, p_mod numeric, p_level integer, p_pts jsonb, p_role text, p_b jsonb, p_bonus integer)
  RETURNS jsonb
  LANGUAGE plpgsql
  STABLE
@@ -37,6 +52,7 @@ begin
   select * into ro from public.roles where key = p_role;
   if not found then raise exception 'card_combat_v2: unknown role % (the roles table)', p_role; end if;
   if p_level is null or p_level < 0 then raise exception 'card_combat_v2: the level must be 0 or more'; end if;
+  if p_bonus is null or p_bonus < 0 then raise exception 'card_combat_v2: the bonus points must be 0 or more'; end if;
   -- ASC-3 (stars clamped to the curve: 0 to 5)
   s := greatest(0, least(coalesce(p_stars, 0), jsonb_array_length(a->'curve') - 1));
   cp_asc := base * (1 + (top / base - 1) * (a->'curve'->>s)::numeric) * coalesce(p_mod, 1);
@@ -46,17 +62,21 @@ begin
   lpts := lvl * (lv->>'points_per_level')::numeric;
   o := combat_v2_stats(cp_base, p_pts, p_role, p_b);
   select coalesce(sum(x.value::numeric), 0) into spent from jsonb_each_text(coalesce(p_pts, '{}'::jsonb)) x;
-  if spent > lpts then raise exception 'card_combat_v2: % points spent, the level % gives %', spent, p_level, lpts; end if;
+  -- the budget: the level points + the bonus points (a refund, plan 20.11 decision 3)
+  if spent > lpts + p_bonus then
+    if p_bonus = 0 then raise exception 'card_combat_v2: % points spent, the level % gives %', spent, p_level, lpts; end if;
+    raise exception 'card_combat_v2: % points spent, the level % gives % and the bonus is %', spent, p_level, lpts, p_bonus;
+  end if;
   return jsonb_build_object(
     'rarity', r, 'stars', s, 'level', lvl, 'role', ro.key, 'class', ro.class,
     'cp_asc', cp_asc, 'cp_base', cp_base,
     'power', case when ro.class = 'support' then power(cp_base / (su->>'power_ref')::numeric, (su->>'power_exp')::numeric) else 1 end,
     'extra_stack', case when su->'enabler_extra_stack' ? p_rarity then 1 else 0 end,
-    'points', o->'points', 'points_level', lpts, 'points_free', lpts - spent,
+    'points', o->'points', 'points_level', lpts, 'points_free', lpts + p_bonus - spent,
     'stats', o - 'points' - 'spd_x', 'spd_x', o->'spd_x',
     'passive', jsonb_build_object('key', ro.key, 'label', ro.label, 'class', ro.class, 'text', ro.passive,
                                   'numbers', balance_path(ro.numbers), 'speed', balance_path(ro.speed)));
 end $function$;
--- @grants public.card_combat_v2(text, integer, numeric, integer, jsonb, text, jsonb)
-grant execute on function public.card_combat_v2(text, integer, numeric, integer, jsonb, text, jsonb) to postgres;
-grant execute on function public.card_combat_v2(text, integer, numeric, integer, jsonb, text, jsonb) to service_role;
+-- @grants public.card_combat_v2(text, integer, numeric, integer, jsonb, text, jsonb, integer)
+grant execute on function public.card_combat_v2(text, integer, numeric, integer, jsonb, text, jsonb, integer) to postgres;
+grant execute on function public.card_combat_v2(text, integer, numeric, integer, jsonb, text, jsonb, integer) to service_role;
