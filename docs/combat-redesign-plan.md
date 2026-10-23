@@ -2126,3 +2126,11 @@ stays false, and both progress tables stay empty.
   2. The catch-up list: M1f decides which levels it passes (all the player's v2 cards, the card included, is the rule of this file).
   3. Items 2 to 8 of 20.11 stay open (item 6: a tune of `card_level` costs or `max_level` still breaks existing rows; the trigger now reads the costs
      through `card_level_xp_at`, so the same re-level step is needed).
+  4. Review of M1b (PASS, 4 low findings, observed on copy 2), for M1f (the first writer of an award):
+     - The simulator rounds `base x catchup_x` to 9 decimals before the floor (`v2sim/formulas.mjs` `xpAward`), SQL floors the exact number:
+       `catchup_x` 1.0999999999999 with 10 XP gives 10 in SQL and 11 in the simulator. The spec accepts it (num 1 to 5). Fix: integer math in
+       the simulator (or a spec limit of 2 decimals), and a fuzz case with many decimals.
+     - The pure forms do not check their numbers (only the balance forms get checked numbers): `catchup_top` -1 stops with a LIMIT error,
+       2.5 rounds to 3, and `cost_per_level` -3 makes the XP go down as the level goes up. Server only today; M1f must call the balance forms.
+     - `p_level * n` in the award is integer math: a level above about 268 million raises "integer out of range" (fail closed, unclear text).
+     - Two planted faults (`cc_bonus_ignored`, `cc_default_arg`) stop the whole test block: they are caught, but no named case reports them.
