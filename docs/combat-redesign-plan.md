@@ -2218,3 +2218,13 @@ Else `reset_used` with `next` (the same rule as v1). A v2 gift is a row of `stat
   4. 20.11 open item 6 stays: a tune of `v2_stats.max_per_stat` or `v2_level.points_per_level` below the stored points makes every spend and reset
      of an older row fail in the trigger (fail closed). The reset sets the points to 0, so after a re-level step the reset works again.
   5. A card that has no v2 role cannot be spent on or reset (`no_role`). Before R2 every pullable card needs `subjects.ability_v2` (section 12).
+  6. Review of M1c (PASS, 4 low findings, observed on copy 2). The SQL is correct in each check: 4 parallel cases (two spends, spend and reset,
+     reset and spend, two resets of one player in one week) give the right answers with no deadlock; 30 bad `p_add` inputs give an `{ok:false}`
+     answer, never a raw exception; the goldens and the allowlists (a planted extra reader fails 3 tests) PASS. The test gaps, for M1d (it
+     changes the same paths), each with a planted fault that the test did not catch:
+     - No concurrency case: `for update` removed (`rev_spend_no_lock`) still PASS. Two parallel spends then reach the trigger, which raises a raw
+       exception in place of `not_enough`. Add a two-session case.
+     - No fixed clock: the week in UTC in place of Mountain time (`rev_week_utc`) still PASS. The two differ only Sunday 18:00 to 24:00 MT.
+     - One stat spent twice only (`crt`): an absolute write in place of `+` (`rev_spend_abs_update`) still PASS. Spend each stat twice.
+     - Design notes: the allowlists exempt by function name (a later overload with the same name is also exempt); `stat_reset_gift_use_v2`
+       alone (server only) uses a gift with no reset; a subject that loses its role later keeps points that cannot be reset.
