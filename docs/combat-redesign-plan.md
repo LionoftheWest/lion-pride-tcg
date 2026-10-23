@@ -579,7 +579,7 @@ Players still spend v1 points every day (107 `stat_point_log` rows after 2026-10
 | Step | Rule | Result (2026-10-23) |
 |---|---|---|
 | 1. Stars | Keep every star. ASC-3 gives every rarity x star the same or more CP and HP | 0 of 1,484 rows lose CP or HP at level 0 [L]. Only because no Full Art, Event or Gold card has a star: the dry run checks it again (20.11) |
-| 2. Level grant | Each card's level at go-live = max(3 x stars, the converted points below). The card starts at the exact XP of that level (20.11 decision 5) | nobody loses a point. Levels 3 to 19 (441 rows get the level from the points) |
+| 2. Level grant | Each card's level at go-live = max(3 x stars, the converted points below). The card starts at the exact XP of that level (20.11 decision 5) | nobody loses a point. Levels 3 to 19 (441 rows get the level from the points; counted with the OLD ratio x1.5 for Potency: the M1e dry run replaces this count) |
 | 3. Point conversion | Attack -> ATK x1, Vitality -> HP x1, Precision -> CRT x1.25, Potency -> ABL x2.4, Haste -> SPD x3.33, each capped at 10. The part above the cap becomes bonus points (step 5) | x2.4 = 0.12 / 0.05: the live v1 Potency is 12% a point and ABL is 5% (the earlier x1.5 was for ABL 8%: with it the 298 support Potency entries lose 37.5%). With x2.4 and x3.33 (linear value), an entry loses value only above the cap, and step 5 refunds that part [I, deep dive Q5 and Q6] |
 | 4. Top-up | "New points = the smallest count that reaches the old value" | 0 attacker rows lose CP from Attack or HP from Health (2 on 2026-10-18). The dry run checks it again |
 | 5. Refunds | The part of a converted stat above the cap of 10 becomes bonus points: a separate `bonus_points` count in v2 points, not extra levels (20.11 decision 3) | 110 entries above the cap: 95 Potency (523 v2 points), 14 Haste (167 v2 points), 1 Vitality (2 points). Haste is converted on its linear value (decision 2), so the play-rate refund of 2026-10-18 is not used |
@@ -2052,3 +2052,11 @@ v2 HP = 50 + 1.5 x CP'. They are equal at CP 167, so a Gold 4* or 5* or a Full A
      records it in `stat_reset_gifts` with a new `gift` key.
   4. The shown Power between R2 and R3 (`card_powers`, `owned_card_power` read v1 `card_combat`): a decision for U0.
   5. The baseline failure of `test-dungeon-finish-room.mjs` (above) needs its own check, outside M1.
+  6. A balance tune breaks existing rows (review of M1a, observed on copy 2): the trigger checks every UPDATE against the balance numbers of now.
+     A change of `card_level.cost_base`, `v2_level.max_level`, `v2_stats.max_per_stat` or `points_per_level` is accepted by `balance_check`, but
+     then every XP award and v2 spend on an older row is refused (fails closed, no bad data). Before R2: a tune of these keys needs a re-level step
+     in the same transaction, or a balance guard that refuses it while rows exist.
+  7. The writer rule for the ledger (review of M1a): service role can change `card_progress_v2` with no ledger row. Each writer (M1e, M1f, M1h)
+     must insert the ledger row FIRST and change the progress row only when that insert adds a row. An update first and then an insert with
+     `on conflict do nothing` gives double XP on a retry. The M1e and M1f tests must plant this fault.
+  8. M1e: the granted level must also cover the converted dead points, or the budget check refuses the row.
