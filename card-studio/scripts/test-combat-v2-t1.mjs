@@ -531,11 +531,12 @@ begin
     and coalesce(col_description('public.ability_blocks'::regclass, (select attnum from pg_attribute where attrelid = 'public.ability_blocks'::regclass and attname = 'attach')), '') <> ''
     and coalesce(col_description('public.ability_blocks'::regclass, (select attnum from pg_attribute where attrelid = 'public.ability_blocks'::regclass and attname = 'hosts')), '') <> '', 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p
-   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}, ${q(E6NEW)}, ${q(E8_AUTO)}, ${q(E9_POWER)}])
+   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}, ${q(E6NEW)}, ${q(E8_AUTO)}, ${q(E9_POWER)}, 'card_progress_v2_view', 'spend_card_points_v2', 'reset_card_points_v2'])   -- + M1c: the v2 spend and reset read the role of subjects.ability_v2
      and (p.prosrc ~ '(ability_v2_pps|ability_v2_or|ability_v2_clause|ability_v2_ally_word|ability_v2_options|ability_v2_coin|combat_effect_v2_has|combat_effect_v2_ally_to|combat_effect_v2_gate|combat_effect_v2_count|combat_effect_v2_amount)'
           or p.prosrc ~ 'ability_v2[^_]' or p.prosrc ~ '(ability_v2_check|ability_v2_text|ability_v2_pp|combat_effect_v2_active)');
   res := res || jsonb_build_object('case', 'no other function calls the new or the replaced functions or reads subjects.ability_v2 (no v1 caller; only the T1 and E6 functions)', 'ok', o = '[]'::jsonb, 'got', o);
-  select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\(' and p.proname <> 'combat_v2_on';
+  select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\(' and p.proname <> 'combat_v2_on'
+    and p.proname <> all (array['spend_card_points_v2', 'reset_card_points_v2']);   -- M1c combat_v2_progress_spend.sql: the v2 spend and reset are gated by the flag (progress)
   select value into v from balance where key = 'combat_v2';
   res := res || jsonb_build_object('case', 'the flag combat_v2 is OFF for every capability and has no reader but combat_v2_on', 'ok',
     o = '[]'::jsonb and (v - 'testers') = '{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}'::jsonb, 'got', jsonb_build_object('readers', o, 'flag', v));

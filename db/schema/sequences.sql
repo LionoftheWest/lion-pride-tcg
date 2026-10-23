@@ -42,6 +42,10 @@ create sequence public.card_progress_v2_log_id_seq as bigint start 1 increment 1
 grant select on sequence public.card_progress_v2_log_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.card_progress_v2_log_id_seq to postgres;
 grant select, update, usage on sequence public.card_progress_v2_log_id_seq to service_role;
+create sequence public.card_progress_v2_ref_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807;
+grant select on sequence public.card_progress_v2_ref_seq to lptcg_backup;
+grant select, update, usage on sequence public.card_progress_v2_ref_seq to postgres;
+grant select, update, usage on sequence public.card_progress_v2_ref_seq to service_role;
 create sequence public.card_trades_id_seq as bigint start 1 increment 1 minvalue 1 maxvalue 9223372036854775807 owned by public.card_trades.id;
 grant select on sequence public.card_trades_id_seq to lptcg_backup;
 grant select, update, usage on sequence public.card_trades_id_seq to postgres;

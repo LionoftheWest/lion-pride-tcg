@@ -9,7 +9,7 @@ Tables and functions that the domain map in gen-data-docs.mjs does not place yet
 
 Tables (8): [element_counters](#table-element-counters), [elements](#table-elements), [elements_cache](#table-elements-cache), [enemy_mechanics](#table-enemy-mechanics), [passives](#table-passives), [set_draw_pool](#table-set-draw-pool), [set_includes](#table-set-includes), [set_pool](#table-set-pool)
 
-Functions (19): [alias_list_ok(text[])](#fn-alias-list-ok-text), [auto_v2_spec()](#fn-auto-v2-spec), [element_beats(text,text)](#fn-element-beats-text-text), [element_counter_gaps()](#fn-element-counter-gaps), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [enemy_mechanics_check()](#fn-enemy-mechanics-check), [enemy_v2_spec()](#fn-enemy-v2-spec), [owned_card_power(text)](#fn-owned-card-power-text), [pack_color_ok(text)](#fn-pack-color-ok-text), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules), [subjects_ability_v2_check()](#fn-subjects-ability-v2-check)
+Functions (21): [alias_list_ok(text[])](#fn-alias-list-ok-text), [auto_v2_spec()](#fn-auto-v2-spec), [element_beats(text,text)](#fn-element-beats-text-text), [element_counter_gaps()](#fn-element-counter-gaps), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [enemy_mechanics_check()](#fn-enemy-mechanics-check), [enemy_v2_spec()](#fn-enemy-v2-spec), [owned_card_power(text)](#fn-owned-card-power-text), [pack_color_ok(text)](#fn-pack-color-ok-text), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [reset_card_points_v2(text,bigint)](#fn-reset-card-points-v2-text-bigint), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules), [spend_card_points_v2(text,bigint,jsonb)](#fn-spend-card-points-v2-text-bigint-jsonb), [subjects_ability_v2_check()](#fn-subjects-ability-v2-check)
 
 ## Tables
 
@@ -381,6 +381,16 @@ The trigger of passives: params is {} or {"balance": "<key>", "keys": [...], "co
 
 F-3: the passive keys of a pool in table order: boss, counter, phase2 or foe (passives).
 
+<a id="fn-reset-card-points-v2-text-bigint"></a>
+
+### reset_card_points_v2(text,bigint)
+
+- Function: `reset_card_points_v2(p_player text, p_card bigint)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 (plan 2.2, 20.13): a player resets the v2 points of a card to 0; the level, the XP and bonus_points do not change. Free: one reset for each Mountain ISO week for each player (players.stat_reset_week, the v1 marker), then one open v2 gift (stat_reset_gift_use_v2); else reset_used with next. Refuses with an answer before any write: disabled, no_player, not_owned, no_progress, no_role, nothing_spent. Writes the ledger FIRST (reason reset, one row for each stat above 0, d_points = minus the count, one ref reset:<n>), then card_progress_v2. Answer {ok, used (week or gift), progress, stats}. combat_v2_progress_spend.sql.
+
 <a id="fn-set-includes-rules"></a>
 
 ### set_includes_rules()
@@ -400,6 +410,16 @@ Trigger on set_includes: refuses a cycle (the included set reaches the set), und
 - Security definer: no
 
 Trigger on set_pool: refuses a card whose home set is the pool set.
+
+<a id="fn-spend-card-points-v2-text-bigint-jsonb"></a>
+
+### spend_card_points_v2(text,bigint,jsonb)
+
+- Function: `spend_card_points_v2(p_player text, p_card bigint, p_add jsonb)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 (plan 2.2, 2.4, 20.13): a player spends v2 points on a card. add = {stat: count} of the 9 stats (atk, def, hp, crd, crt, abl, ddg, acc, spd), 1 to 99 each. Refuses with an answer before any write: disabled (combat_v2_on progress for the player), bad_request, bad_stat, bad_amount, not_owned, no_progress, no_role, stat_cap (v2_stats.max_per_stat), not_enough (level x v2_level.points_per_level + bonus_points; with free). Writes the ledger card_progress_v2_log FIRST (reason spend, one row for each stat, one ref spend:<n> for the call), then card_progress_v2. Answer {ok, progress, stats}. combat_v2_progress_spend.sql.
 
 <a id="fn-subjects-ability-v2-check"></a>
 

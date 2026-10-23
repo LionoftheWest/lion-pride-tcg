@@ -584,7 +584,7 @@ Players still spend v1 points every day (107 `stat_point_log` rows after 2026-10
 | 4. Top-up | "New points = the smallest count that reaches the old value" | 0 attacker rows lose CP from Attack or HP from Health (2 on 2026-10-18). The dry run checks it again |
 | 5. Refunds | The part of a converted stat above the cap of 10 becomes bonus points: a separate `bonus_points` count in v2 points, not extra levels (20.11 decision 3) | 110 entries above the cap: 95 Potency (523 v2 points), 14 Haste (167 v2 points), 1 Vitality (2 points). Haste is converted on its linear value (decision 2), so the play-rate refund of 2026-10-18 is not used |
 | 6. Old dead points | 40 points on attacker Support and Recharge (26 rows) become ABL and SPD, which work for attackers in v2 | a gain |
-| 7. Free reset | One new `stat_reset_gifts` row per player at go-live, valid 30 days (a new `gift` key) | every player can choose again |
+| 7. Free reset | One new `stat_reset_gifts` row per player at go-live, valid 30 days (a new `gift` key that starts with `v2_`: only the v2 reset takes it, 20.13) | every player can choose again |
 
 **Timing** [P]: the progress switch (ASC-3, levels, 9 stats) goes live with the Dungeon v2 switch. Until the Hunt switches, the v1 Hunt
 keeps reading the old point columns (frozen, no new spending: a refusal in the v1 spend and reset paths, never `stat_points.enabled = false`, 20.11).
@@ -2134,3 +2134,87 @@ stays false, and both progress tables stay empty.
        2.5 rounds to 3, and `cost_per_level` -3 makes the XP go down as the level goes up. Server only today; M1f must call the balance forms.
      - `p_level * n` in the award is integer math: a level above about 268 million raises "integer out of range" (fail closed, unclear text).
      - Two planted faults (`cc_bonus_ignored`, `cc_default_arg`) stop the whole test block: they are caught, but no named case reports them.
+
+### 20.13 M1c: a player spends and resets v2 points (`tcg-bot/supabase/combat_v2_progress_spend.sql`)
+
+M1c adds the two player actions on `card_progress_v2`: spend points and reset them. Nothing in play calls them (no Activity or bot code: the
+screens wait for U0). The flag `combat_v2.progress` stays false, so both answer `disabled` for every player who is not a tester.
+
+**Nathan's decision (2026-10-23, the brief of M1c)**: the free v2 reset is one for each Mountain ISO week for each player, with the same marker
+`players.stat_reset_week` as v1 (v1 is frozen when the flag is ON, from M1d, so the two never compete for it). After the weekly one: one open v2 gift.
+Else `reset_used` with `next` (the same rule as v1). A v2 gift is a row of `stat_reset_gifts` whose `gift` key starts with `v2_`.
+
+- **New functions** (server only, `search_path = public`, a `[combat]` comment each; the shape of the v1 paths, which do not change):
+  - `spend_card_points_v2(player, card, add)`: `add` = `{stat: count}` of the 9 v2 stats, each a whole number 1 to 99. Every check runs before any
+    write, and each refusal is an answer `{ok: false, error}`, never a raised error: `disabled` (`combat_v2_on('progress', player)`, the 2-argument
+    form: everyone OR a tester), `bad_request`, `bad_stat` (with `stat`), `bad_amount` (with `stat`), `not_owned` (no `player_cards` row with
+    quantity > 0), `no_progress`, `no_role`, `stat_cap` (with `cap` = `v2_stats.max_per_stat`), `not_enough` (more than
+    `level x v2_level.points_per_level + bonus_points`; with `free`). Then, with the progress row locked (`for update`): the ledger FIRST (reason
+    `spend`, one row for each stat, `d_points` > 0, one ref `spend:<n>` for the call), then the progress row (20.11 open item 7). The insert must
+    add one row for each stat, or the call raises and nothing changes.
+  - `reset_card_points_v2(player, card)`: the 9 point columns to 0; the level, the XP and `bonus_points` do not change. Refusals: `disabled`,
+    `no_player`, `not_owned`, `no_progress`, `no_role`, `nothing_spent`, `reset_used` (with `next`). Lock order of v1: the player row, then the card.
+    The ledger first: reason `reset`, one row for each stat above 0, `d_points` = minus the count, one ref `reset:<n>`. The answer has
+    `used` = `week` or `gift`.
+  - `stat_reset_gift_use_v2(player, card)`: the v1 `stat_reset_gift_use` for the `v2_` gifts only (`starts_with`, not `like 'v2_%'`: in `like` the
+    `_` matches any character). The earliest deadline first. A v1 gift (for example `r_s1_2026_10`) is never taken.
+  - `card_progress_v2_view(player, card)`: the answer of both: `progress {level, xp, bonus, points (the 9 keys), free}` and `stats` =
+    `card_combat_v2` (8 arguments, with the bonus) of the card. The source is the same as for `card_power_v2`: the rarity of `cards`, the stars
+    (`player_cards.ascension`), `subjects.cp_mod`, the role of `subjects.ability_v2`, and the 6 balance keys of the 6-argument `card_combat_v2`.
+  - The sequence `card_progress_v2_ref_seq`: the number `<n>` of each call. A number is never used twice, so two calls never share a ref (the M1a
+    ref rule `^[a-z0-9_]+(:[a-z0-9_.-]+)*$` accepts `spend:<n>` and `reset:<n>`). Service role only.
+- **Decisions of this PR that the brief did not settle**:
+  1. `no_role`: a card whose subject has no `ability_v2` role (3 of 133 subjects on copy 2) is refused before any write. `card_combat_v2`
+     raises for an unknown role, so without the check the answer would be a raised error. The reset refuses it too (no stat line to show).
+  2. `bad_amount` and `bad_stat` name the stat; `stat_cap` gives `cap`. The reset answer adds `used`.
+  3. `no_player` in the reset (as v1): the player row is locked first for the weekly marker.
+  4. A ref collision (only possible if a ledger row is written by hand with a future ref) raises, so the call changes nothing. It is not an answer.
+  5. The shared answer is a 4th new function (`card_progress_v2_view`), not code written twice.
+- **CI check C1**: the scope of `ci/combat/c1-numbers.json` now has the 4 function names. No number is in the file (every limit from balance).
+- **Proof** (copy 2, refreshed from live on 2026-10-23; M1a live, M1b applied first):
+  - `test-combat-v2-progress-spend.mjs` PASS all 30, before and after the apply. The block puts back the state before the file (the 4 functions
+    and the sequence dropped), so the file runs inside the block, and then runs a second time.
+    - T1: the md5 of the 542 other public functions is the same; exactly the 4 new functions are added; the flag is the same (`progress` false);
+      the readers of `combat_v2_on` = before + the spend and the reset; no other function names a new function or the sequence.
+    - T2: no execute for public, anon and authenticated; no sequence privilege for anon and authenticated; `search_path`; a `[combat]` comment each.
+    - The gate: flag OFF (both players), and a non-tester with the tester list on: `disabled` from both, 0 rows written. The tester with `progress`
+      for testers only: both pass the gate. Everyone ON: the non-tester spends.
+    - The spend: 23 refusals, each with its answer and no write; the boundaries (the last point of level + bonus spends, one more is `not_enough`
+      with `free` 0; the 10th point of a stat spends, the 11th is `stat_cap`; 31 points at level 30); `v2_stats.max_per_stat` 12 and
+      `v2_level.points_per_level` 2 each move their limit; the answer = the hand-built progress and `card_combat_v2` of the card.
+    - The ledger: a spend whose ref is taken raises and changes no row; the same stat spent twice gives two refs; 17 calls that wrote have 17 refs,
+      no ref on two progress rows; T6: the ledger deltas of each progress row sum to the stored row (level, XP, bonus, the 9 stats).
+    - The reset: `not_owned`, `no_progress`, `no_role`, `no_player`, `nothing_spent` (the week stays free); reset 1 = the week (the marker = this
+      Mountain week; 5 ledger rows, -13 points); resets 2 and 3 = the two open `v2_` gifts, the earliest deadline first; reset 4 = `reset_used` with
+      `next`, nothing written; never a v1 gift, a `v2x` key, an expired or a used gift; only v1 gifts open = `reset_used`; an older marker = the week
+      again; a second player has its own week.
+  - MUTATE=all, after the apply: baseline PASS all 30 in the same run, 36 of 36 planted faults caught. The first run (before the apply, 29 cases)
+    missed `reset_flag_one_arg`: no case called the reset as a tester with `progress` for testers only. The case "the tester passes the gate of
+    spend and reset" was added, and it catches the fault. The planted faults: no flag gate (spend, reset), the
+    1-argument flag form (spend, reset), the update before the ledger with `on conflict do nothing`, a shared ref (spend, reset), the cap from a fixed
+    number, the cap without `spd`, `points_per_level` fixed, the bonus ignored in the budget and in `free`, amount 0 accepted, a v1 stat name
+    accepted, no `no_role` check, the stats without the bonus or the stars, the reset clears the bonus, one ledger row for the whole reset, the
+    reset takes a v1 gift, `like 'v2_%'`, an expired gift, the latest gift first, no weekly marker, the gift before the week, the week not in
+    Mountain time, no `nothing_spent`, no `not_owned` check, execute to anon, the sequence to authenticated, no `search_path`, a missing comment,
+    the flag ON, another function changed, a new reader of `combat_v2_on`, a new caller.
+  - The goldens with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference.
+  - Then the file applied (`apply-sql.mjs` on copy 2): grants OK. `db/schema/`, `docs/data/` (the tester id of the local copy masked in memory,
+    as in 20.10 to 20.12) and `SUPERSEDED.md` regenerated. `test-combat-v2-balance.mjs` lists the spend, the reset and the view as readers of the
+    v2 keys. The first suite after the apply had 9 failures, all the same kind: 8 earlier tests said "no function but `combat_v2_on` reads the flag"
+    or "no other function reads `subjects.ability_v2` / calls a new function", and the M1a test said "no function but the triggers names
+    `card_progress_v2`". The spend and the reset are the first flag readers on purpose (the brief). Each of these 9 tests now names the M1c
+    functions in its allowlist (abilities, monster-tuning, monsters, power, progress-tables, status-rules, t1, t1b, testers); an other
+    reader still fails them. The final `test-all-local.mjs`: 168 of 168 PASS (2 one-time skipped). Before the apply (main + M1b on the same copy): 166 of 167 PASS (2 one-time skipped); the 1 failure is
+    `test-superseded-list.mjs` (this new file was not yet in `SUPERSEDED.md`). The baseline failure of `test-dungeon-finish-room.mjs` (20.11 Open
+    item 5) did not occur on this copy (#476 is on main). The combat checks C1, C2, C3 and `combat-checks.test.mjs` (16) PASS.
+- **Go-live order**: after M1b (`combat_v2_progress_math.sql`: this file calls `card_combat_v2` with 8 arguments). `apply-sql.mjs --live`, then
+  `check-schema-drift.mjs --live` = 0 differences. The flag stays OFF; nothing calls the functions until U0.
+- **Open for M1d and later**:
+  1. **M1d**: the v1 `stat_reset_gift_use` must skip the `v2_` gifts (today it takes any open gift, the earliest deadline first). No `v2_` gift
+     exists before M1h, so nothing is wrong today. M1d also freezes the v1 spend, reset and Shop reset when `combat_v2_on('progress')` is true
+     (20.11 trap a). Then the weekly marker serves only v2.
+  2. **M1h**: the gift of R3 gets a key that starts with `v2_` (section 11 step 7), so only the v2 reset takes it.
+  3. The Shop has no v2 paid reset (v1 `buy_shop_item('stat_reset')`, Shards). A decision for U0: a paid v2 reset, or none.
+  4. 20.11 open item 6 stays: a tune of `v2_stats.max_per_stat` or `v2_level.points_per_level` below the stored points makes every spend and reset
+     of an older row fail in the trigger (fail closed). The reset sets the points to 0, so after a re-level step the reset works again.
+  5. A card that has no v2 role cannot be spent on or reset (`no_role`). Before R2 every pullable card needs `subjects.ability_v2` (section 12).
