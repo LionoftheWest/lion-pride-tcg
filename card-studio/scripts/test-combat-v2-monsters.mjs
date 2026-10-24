@@ -643,8 +643,8 @@ begin
   end loop;
   res := res || jsonb_build_object('case', 'the three tables: a comment on the table and every column; RLS on; no access for anon / authenticated', 'ok', ok, 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p
-   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}, ${q(E8_AUTO)}]) and replace(p.oid::regprocedure::text, ' ', '') <> all (array[${q([...REPLACED, ...NEW_SIGS])}])
-     and p.prosrc ~ '${NEW_RE}';
+   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}, ${q(E8_AUTO)}, 'combat_v2_step', 'gauntlet_v2_foes']) and replace(p.oid::regprocedure::text, ' ', '') <> all (array[${q([...REPLACED, ...NEW_SIGS])}])
+     and p.prosrc ~ '${NEW_RE}';   -- + R1a combat_v2_gauntlet_builders.sql: the v2 Gauntlet builders call the engine (no caller in play)
   res := res || jsonb_build_object('case', 'no other function calls the new functions or reads the new tables or enemy_v2 (no v1 caller)', 'ok', o = '[]'::jsonb, 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\(' and p.proname <> 'combat_v2_on'
     and p.proname <> all (array['spend_card_points_v2', 'reset_card_points_v2']);   -- M1c combat_v2_progress_spend.sql: the v2 spend and reset are gated by the flag (progress)

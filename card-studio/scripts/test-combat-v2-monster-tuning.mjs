@@ -545,8 +545,8 @@ begin
     before = after and (select count(*) from jsonb_object_keys(before)) > 400, 'got', (select jsonb_agg(k2) from jsonb_object_keys(before) k2 where before->k2 is distinct from after->k2));
   res := res || jsonb_build_object('case', 'the ${TUNED.length} replaced functions each have a new text', 'ok',
     (select count(*) from jsonb_object_keys(t1)) = ${TUNED.length} and (select bool_and(t1->>k2 <> t2->>k2) from jsonb_object_keys(t1) k2), 'got', jsonb_build_object('before', t1, 'after', t2));
-  res := res || jsonb_build_object('case', 'the callers of the replaced functions are the same before and after, and each is a combat v2 function or a balance trigger (no v1 caller)', 'ok',
-    c1 = c2 and (select bool_and(x ~ '^(combat_v2_|combat_effect_v2_|balance_check_|hunt_bosses_v2_check|fight_state_check_v2)') from jsonb_array_elements_text(c2) x), 'got', jsonb_build_object('before', c1, 'after', c2));
+  res := res || jsonb_build_object('case', 'the callers of the replaced functions are the same before and after, and each is a combat v2 function or a balance trigger (no v1 caller)', 'ok',   -- + R1a combat_v2_gauntlet_builders.sql: the v2 Gauntlet builders call the engine (no caller in play)
+    c1 = c2 and (select bool_and((x ~ '^(combat_v2_|combat_effect_v2_|balance_check_|hunt_bosses_v2_check|fight_state_check_v2)' or x = 'gauntlet_v2_foes')) from jsonb_array_elements_text(c2) x), 'got', jsonb_build_object('before', c1, 'after', c2));
   select jsonb_object_agg(p.proname, p.provolatile) into o from pg_proc p where p.pronamespace = 'public'::regnamespace and replace(p.oid::regprocedure::text, ' ', '') in (${q(TUNED)});
   res := res || jsonb_build_object('case', 'volatility: the hits VOLATILE (draws), the spec IMMUTABLE, the builders STABLE', 'ok', o = ${sqlLit(VOL)}::jsonb, 'got', o);
   select coalesce(jsonb_agg(p.oid::regprocedure::text || ' ' || r2x), '[]') into o

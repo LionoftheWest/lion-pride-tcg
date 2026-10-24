@@ -306,7 +306,7 @@ begin
    where p.pronamespace = 'public'::regnamespace and p.proname in (${q(NEW)}, '${REPLACED}') and coalesce(obj_description(p.oid, 'pg_proc'), '') = '';
   res := res || jsonb_build_object('case', 'every function has a comment', 'ok', o = '[]'::jsonb, 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p
-   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}, '${REPLACED}', ${q(V2_CALLERS)}])
+   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}, '${REPLACED}', ${q(V2_CALLERS)}, 'combat_v2_step'])   -- + R1a combat_v2_gauntlet_builders.sql: the v2 Gauntlet builders call the engine (no caller in play)
      and p.prosrc ~ '(combat_v2_status_(numbers|check|drop|remove|apply|cure|strip)|combat_v2_unit_path|combat_v2_units|combat_v2_up\(|combat_v2_damage|combat_v2_hit_apply|combat_v2_heal|combat_v2_step_end|combat_v2_turn_start|combat_v2_confused_target|combat_v2_next|combat_v2_fall|combat_v2_turn_order)';
   res := res || jsonb_build_object('case', 'no other function calls the new functions or the strip (no v1 caller)', 'ok', o = '[]'::jsonb, 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\(' and p.proname <> 'combat_v2_on'
