@@ -168,10 +168,11 @@ Power              = Offense x Survival x k[role]
 
 ### 3.2 What the player sees
 
-- A **turn-order strip** across the full width: as many projected actors (cards and enemies) as fit, 10 at 430 px, 33 at 1280 px,
-  52 at 1990 px (UI-67, Nathan 2026-10-19). The projection draws no random number. When a speed or control status changes the order,
+- A **turn-order strip** with the next 10 turns (projected actors, cards and enemies) on every size (Nathan 2026-10-23, D-203; replaces the
+  full-width count of UI-67 review-3). The projection draws no random number. When a speed or control status changes the order,
   the chips redraw in place. Enemy turns and the turn on which a card's active is charged are marked. The clock itself stays hidden.
 - On a card's turn: the basic attack, or the active when it is charged, and the target (an ally for most supports). Auto plays for the player.
+  The acting card has the gold ring; its active is a pill on that card (tap the pill = the active, tap the card = the basic attack; UI-52 review-5, D-204).
 - A charge mark on each card (for example 2 pips). The "Charging" warning before a Cataclysm stays.
 - Status icons on every unit (section 6). One line on tap.
 - The steps left today (Hunt) or in the fight (Dungeon), shown as "turns left".
@@ -662,7 +663,7 @@ New IDs are reserved at request time (the next free ID on `main` today is UI-67)
 | Boss detail | UI-20 | Weak to / Resists / Signature / Bring |
 | Dungeon lobby | UI-46 | role chips and Power |
 | Dungeon fight | UI-47 | turn-order strip, status slots, supports as targets |
-| Gauntlet | UI-52 | the same fight changes |
+| Gauntlet | UI-52 | the same fight changes (design approved 2026-10-23, review-5) |
 | Card picker | UI-64 | role filter |
 | Help, explainers, walkthrough | UI-38, UI-39, UI-37 | new texts ("Each star gives 3 stat points" becomes false [L]). A Dungeon and Gauntlet explainer |
 | Status tap line (one-line tooltip) | new ID | new |
