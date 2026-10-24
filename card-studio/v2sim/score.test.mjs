@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { loadConfig, HERE } from './util.mjs';
+import { loadConfig, HERE, squadKey } from './util.mjs';
 import { makeCard } from './cards.mjs';
 import { withSet1, hasSet1Batch, loadSet1Batch, SET1_BATCH_PATH } from './teams.mjs';
 import { poolEntry, pickBase, pickBoss } from './auto.mjs';
@@ -75,6 +75,18 @@ function checks() {
     C('sum.paired', 'the paired gain is candidate - live over the pools with sd / sqrt(n - 1); a boss below x0.85 counts once',
       Math.abs(s.c.m - m) < 1e-12 && Math.abs(s.c.se - se) < 1e-12 && s[LIVE].below === 1 && s.c.below === 0 && s.c.better === 2 && s.c.worse === 0, JSON.stringify(s.c));
   });
+  // the memo key of the picked squad keeps the slot order (the fight draws per slot): two candidates that pick the same cards in two orders are two squads
+  guard('memo.order', () => {
+    const P7 = [...POOL.filter((c) => c.class === 'attacker').slice(0, 5), POOL.find((c) => c.role === 'warden'), POOL.find((c) => c.role === 'medic')];
+    const att = (f) => ({ value: (cf, c) => (c.class === 'attacker' ? c.atk * (1 + c.crt * (c.crd - 1)) * c.spd * f(c) : undefined) });
+    const calls = []; const R = [{ key: 'camper_colossus', pi: 0, boss: BOSS, pool: P7, vB: 1, eval: (ids) => { calls.push(ids.join()); return ids.reduce((s, id, i) => s + id * (i + 1) ** 2, 0) / 1000; } }];
+    const run = (C) => scorePickLab(cfg, { set1: HAND, refs: R, pools: 1, candidates: C }).data.rows[0].ratios;
+    const UP = 'order up', DN = 'order down'; const dn = att((c) => 1 - 0.01 * c.id), up = att((c) => 1 + 0.5 * c.id);
+    const full = run({ [LIVE]: {}, [UP]: up, [DN]: dn }); const alone = run({ [LIVE]: {}, [DN]: dn });
+    const sorted = (s) => s.split(',').sort().join();
+    C('memo.order', 'two candidates that pick the same cards in two slot orders each get their own value; a candidate scores the same alone and in a list',
+      new Set(calls.filter((k) => sorted(k) === sorted(calls[0]))).size >= 2 && full[UP] !== full[DN] && full[DN] === alone[DN], JSON.stringify({ full, alone, calls }));
+  });
   return out;
 }
 const failing = () => checks().filter((x) => !x.ok).map((x) => x.id);
@@ -92,6 +104,7 @@ const FAULTS = [
   ['prep.enemy', 'the Weak to patch is dropped', swap('prepare', (o) => (c, p, cand) => o(c, p, { ...cand, enemy: undefined }))],
   ['why.pairs', 'the diagnosis does not see a tie (the tie counts as the offense)', swap('why', (o) => (...a) => { const w = o(...a); return { ...w, pairs: w.pairs.map((p) => (p.wrong === 'none: tie' ? { ...p, wrong: 'off' } : p)) }; })],
   ['why.pairs', 'the diagnosis puts a card id in a pair', swap('why', (o) => (...a) => { const w = o(...a); return { ...w, pairs: w.pairs.map((p, i) => ({ ...p, id: i })) }; })],
+  ['memo.order', 'the memo key is the sorted member list (the old key: a second order reuses the first value)', [() => { squadKey.of = (ids) => [...ids].sort((a, b) => a - b).join(); }, () => { squadKey.of = (ids) => ids.join(); }]],
   ['sum.paired', 'the paired gain is taken against another candidate, not the live score', swap('base', () => 'z')],
 ];
 for (const [id, name, [apply, undo]] of FAULTS) {

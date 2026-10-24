@@ -15,7 +15,7 @@ import { huntDay, bossKeys } from './modes.mjs';
 import { autoPick, pickBase, pairOf, pickBoss } from './auto.mjs';
 import { powerInput, familyPP, powerOf } from './power.mjs';
 import { referencePools, poolSource } from './shape.mjs';
-import { hash, mean, median, sd, table, ratio, fmt, patch, HERE } from './util.mjs';
+import { hash, mean, median, sd, table, ratio, fmt, patch, HERE, squadKey } from './util.mjs';
 import { loadSet1Batch, withSet1 } from './teams.mjs';
 
 export const OUT = () => join(HERE, '..', 'out', 'v2sim');
@@ -149,7 +149,7 @@ export function scorePickLab(cfg, { seed = 101, pools = 2, set1, candidates, ref
     for (const n of names) {
       const p = SC.prepare(c1, r.pool, C[n]); const ids = autoPick(p.cfg, p.pool, r.boss, 8).ids;
       if (n === LIVE) liveIds = ids;
-      const k = [...ids].sort((a, b) => a - b).join(); if (!memo.has(k)) memo.set(k, r.eval(ids) / r.vB);
+      const k = squadKey.of(ids); if (!memo.has(k)) memo.set(k, r.eval(ids) / r.vB);
       ratios[n] = memo.get(k);
     }
     const row = { key: r.key, pi: r.pi, weak: r.boss.weak_role || null, ratios };
