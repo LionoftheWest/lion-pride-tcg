@@ -2210,15 +2210,15 @@ Else `reset_used` with `next` (the same rule as v1). A v2 gift is a row of `stat
 - **Go-live order**: after M1b (`combat_v2_progress_math.sql`: this file calls `card_combat_v2` with 8 arguments). `apply-sql.mjs --live`, then
   `check-schema-drift.mjs --live` = 0 differences. The flag stays OFF; nothing calls the functions until U0.
 - **Open for M1d and later**:
-  1. **M1d**: the v1 `stat_reset_gift_use` must skip the `v2_` gifts (today it takes any open gift, the earliest deadline first). No `v2_` gift
+  1. DONE in M1d (20.14). **M1d**: the v1 `stat_reset_gift_use` must skip the `v2_` gifts (today it takes any open gift, the earliest deadline first). No `v2_` gift
      exists before M1h, so nothing is wrong today. M1d also freezes the v1 spend, reset and Shop reset when `combat_v2_on('progress')` is true
      (20.11 trap a). Then the weekly marker serves only v2.
   2. **M1h**: the gift of R3 gets a key that starts with `v2_` (section 11 step 7), so only the v2 reset takes it.
-  3. The Shop has no v2 paid reset (v1 `buy_shop_item('stat_reset')`, Shards). A decision for U0: a paid v2 reset, or none.
+  3. DECIDED and built in M1d (20.14, Nathan 2026-10-23 "Yes A"): with progress ON the Shop reset is the v2 reset. The Shop had no v2 paid reset (v1 `buy_shop_item('stat_reset')`, Shards).
   4. 20.11 open item 6 stays: a tune of `v2_stats.max_per_stat` or `v2_level.points_per_level` below the stored points makes every spend and reset
      of an older row fail in the trigger (fail closed). The reset sets the points to 0, so after a re-level step the reset works again.
   5. A card that has no v2 role cannot be spent on or reset (`no_role`). Before R2 every pullable card needs `subjects.ability_v2` (section 12).
-  6. Review of M1c (PASS, 4 low findings, observed on copy 2). The SQL is correct in each check: 4 parallel cases (two spends, spend and reset,
+  6. The 3 test gaps below: DONE in M1d (20.14), each with its planted fault caught. Review of M1c (PASS, 4 low findings, observed on copy 2). The SQL is correct in each check: 4 parallel cases (two spends, spend and reset,
      reset and spend, two resets of one player in one week) give the right answers with no deadlock; 30 bad `p_add` inputs give an `{ok:false}`
      answer, never a raw exception; the goldens and the allowlists (a planted extra reader fails 3 tests) PASS. The test gaps, for M1d (it
      changes the same paths), each with a planted fault that the test did not catch:

@@ -23,6 +23,9 @@ import './localdb-guard.mjs';
  *   The reset: the weekly free one (the marker players.stat_reset_week), then the v2 gifts (the earliest deadline first; never a v1 gift,
  *      a 'v2x' key, an expired or a used gift), then reset_used with next; the level, the XP and the bonus do not change.
  *   The file runs twice: the rows stay and the sequence goes on.
+ *   Added by M1d (plan 20.13 "Open for M1d" item 6, 20.14): each of the 9 stats spent twice (the + write, not an absolute write), and the
+ *      reset at 6 fixed instants (the Mountain week boundary in summer and winter time: now() of the reset is read from a test clock).
+ *      The concurrency case (two sessions) is test-combat-v2-progress-concurrency.mjs (it needs two real connections and committed rows).
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -83,6 +86,11 @@ const MUT = {
   gift_before_week: ["  if v_used is distinct from v_week then\n    v_how := 'week';\n  else\n    if not stat_reset_gift_use_v2(p_player, p_card) then",
     "  if stat_reset_gift_use_v2(p_player, p_card) then\n    v_how := 'gift';\n  elsif v_used is distinct from v_week then\n    v_how := 'week';\n  else\n    if true then"],
   week_not_mountain: ["v_week text := to_char(now() at time zone 'America/Denver', 'IYYY-IW');", "v_week text := to_char(now(), 'YYYY-MM');"],
+  // M1d: the planted faults of the M1c review (plan 20.13 item 6): the week in UTC, and an absolute write in place of + (all stats, then each stat)
+  rev_week_utc: ["v_week text := to_char(now() at time zone 'America/Denver', 'IYYY-IW');", "v_week text := to_char(now(), 'IYYY-IW');"],
+  rev_spend_abs_update: [SPEND_UPDATE, SPEND_UPDATE.replace(/(\w+)_pts = \1_pts \+ coalesce\(\(p_add->>'(\w+)'\)::int, 0\)/g, "$1_pts = coalesce((p_add->>'$2')::int, $1_pts)")],
+  ...Object.fromEntries(['atk', 'def', 'hp', 'crd', 'crt', 'abl', 'ddg', 'acc', 'spd'].map((k) => [`rev_spend_abs_${k}`,
+    [`${k}_pts = ${k}_pts + coalesce((p_add->>'${k}')::int, 0)`, `${k}_pts = coalesce((p_add->>'${k}')::int, ${k}_pts)`]])),
   nothing_spent_off: ["  if v_want = 0 then return jsonb_build_object('ok', false, 'error', 'nothing_spent'); end if;\n", ''],
   not_owned_skipped: ["  if not exists (select 1 from player_cards where player_id = p_player and card_id = p_card and quantity > 0) then\n    return jsonb_build_object('ok', false, 'error', 'not_owned'); end if;\n  select * into r from card_progress_v2 where player_id = p_player and card_id = p_card for update;\n  if not found then return jsonb_build_object('ok', false, 'error', 'no_progress'); end if;\n  select s.ability_v2->>'role' into v_role from cards c left join subjects s on s.id = c.subject_id where c.id = p_card;\n  if v_role is null or not exists (select 1 from roles where key = v_role) then\n    return jsonb_build_object('ok', false, 'error', 'no_role'); end if;\n  v_cap",
     "  select * into r from card_progress_v2 where player_id = p_player and card_id = p_card for update;\n  if not found then return jsonb_build_object('ok', false, 'error', 'no_progress'); end if;\n  select s.ability_v2->>'role' into v_role from cards c left join subjects s on s.id = c.subject_id where c.id = p_card;\n  if v_role is null or not exists (select 1 from roles where key = v_role) then\n    return jsonb_build_object('ok', false, 'error', 'no_role'); end if;\n  v_cap"],
@@ -133,7 +141,7 @@ const sig = "replace(p.oid::regprocedure::text, ', ', ',')";
 const body = String.raw`do $t$
 declare res jsonb := '[]'; bad text[] := '{}'; ok boolean; md5a jsonb; md5b jsonb; flag_a jsonb; callers_a text[]; callers_b text[]; fns_a text[]; fns_b text[];
   mine text[] := array[${MINE.map(lit).join(', ')}]; readers text[] := array[${READERS.map(lit).join(', ')}];
-  v_p text; v_q text; c1 bigint; c2 bigint; c3 bigint; c4 bigint; c5 bigint; pa bigint; pb bigint; pc3 bigint; pq bigint;
+  v_p text; v_q text; c1 bigint; c2 bigint; c3 bigint; c4 bigint; c5 bigint; c6 bigint; p6 bigint; ck jsonb; pa bigint; pb bigint; pc3 bigint; pq bigint;
   r jsonb; s0 jsonb; s1 jsonb; k text; rw record; n int; v_week text := to_char(now() at time zone 'America/Denver', 'IYYY-IW');
   refs text[] := '{}'; nxt bigint; exp jsonb; flag_off jsonb; flag_testers jsonb; flag_all jsonb; marker_p text; ncalls int := 0;
 begin
@@ -164,7 +172,8 @@ begin
   res := res || jsonb_build_object('case', 'T1 the readers of combat_v2_on = before + spend_card_points_v2 and reset_card_points_v2', 'ok',
     callers_b = (select array_agg(x order by x) from (select unnest(callers_a) x union select unnest(readers)) q), 'now', (select array_agg(x) from unnest(callers_b) x where x <> all (callers_a)));
   select coalesce(array_agg(${sig} order by ${sig}), '{}') into bad from pg_proc p
-   where p.pronamespace = 'public'::regnamespace and ${sig} <> all (mine) and p.prosrc ~ '(spend_card_points_v2|reset_card_points_v2|stat_reset_gift_use_v2|card_progress_v2_view|card_progress_v2_ref_seq)';
+   where p.pronamespace = 'public'::regnamespace and ${sig} <> all (mine) and p.prosrc ~ '(spend_card_points_v2|reset_card_points_v2|stat_reset_gift_use_v2|card_progress_v2_view|card_progress_v2_ref_seq)'
+     and p.proname <> 'card_progress_v2_reset';   -- M1d combat_v2_progress_freeze_v1.sql: the v2 reset, shared by reset_card_points_v2 and the Shop (its own test)
   res := res || jsonb_build_object('case', 'T1 no other function names a new function or the sequence', 'ok', cardinality(bad) = 0, 'names', bad);
 
   -- T2. server only
@@ -225,10 +234,13 @@ begin
    where c.id > c2 and c.subject_id not in (select subject_id from public.cards where id in (c1, c2, c5))
      and not exists (select 1 from public.player_cards pc where pc.card_id = c.id and pc.player_id in (v_p, v_q)) order by c.id limit 1;
   select c.id into c4 from public.cards c where c.id > c3 and not exists (select 1 from public.player_cards pc where pc.card_id = c.id and pc.player_id in (v_p, v_q)) order by c.id limit 1;
-  if v_p is null or v_q is null or c1 is null or c2 is null or c3 is null or c4 is null or c5 is null then raise exception 'the sample: no players or no free cards'; end if;
+  select c.id into c6 from public.cards c join public.subjects s on s.id = c.subject_id
+   where s.ability_v2 is not null and c.id > c4 and c.subject_id <> (select subject_id from public.cards where id = c3)
+     and not exists (select 1 from public.player_cards pc where pc.card_id = c.id and pc.player_id in (v_p, v_q)) order by c.id limit 1;
+  if v_p is null or v_q is null or c1 is null or c2 is null or c3 is null or c4 is null or c5 is null or c6 is null then raise exception 'the sample: no players or no free cards'; end if;
   update public.subjects set ability_v2 = null where id = (select subject_id from public.cards where id = c3);   -- c3: a card with no v2 role
   insert into public.player_cards (player_id, card_id, quantity, first_source, ascension) values
-    (v_p, c1, 1, 'admin', 2), (v_p, c5, 1, 'admin', 0), (v_p, c2, 1, 'admin', 0), (v_p, c3, 1, 'admin', 0), (v_q, c1, 1, 'admin', 1);
+    (v_p, c1, 1, 'admin', 2), (v_p, c5, 1, 'admin', 0), (v_p, c2, 1, 'admin', 0), (v_p, c3, 1, 'admin', 0), (v_q, c1, 1, 'admin', 1), (v_p, c6, 1, 'admin', 0);
   -- the progress rows, each with the ledger rows of its start (so T6 holds from the start)
   insert into public.card_progress_v2 (player_id, card_id, level, xp, bonus_points) values (v_p, c1, 5, card_level_xp_at(5), 3) returning id into pa;   -- budget 5 + 3
   insert into public.card_progress_v2 (player_id, card_id, level, xp) values (v_p, c5, 30, card_level_xp_at(30)) returning id into pb;               -- budget 30
@@ -438,6 +450,16 @@ begin
   res := res || jsonb_build_object('case', 'the reset of a second player uses its own week (the first player''s marker does not count)', 'ok', r->>'used' = 'week'
     and (select stat_reset_week from public.players where id = v_q) = v_week and (select atk_pts + crt_pts + def_pts from public.card_progress_v2 where id = pq) = 0, 'got', r - 'stats');
 
+  -- M1d: each of the 9 stats spent twice (1, then 2): every stat must be 3 (an absolute write gives 2)
+  insert into public.card_progress_v2 (player_id, card_id, level, xp) values (v_p, c6, 30, card_level_xp_at(30)) returning id into p6;
+  insert into public.card_progress_v2_log (progress_id, player_id, card_id, reason, stat, ref, d_level, d_xp) values (p6, v_p, c6, 'grant_level', '', 'm1ctest', 30, card_level_xp_at(30));
+  r := pg_temp.sp(v_p, c6, '{"atk": 1, "def": 1, "hp": 1, "crd": 1, "crt": 1, "abl": 1, "ddg": 1, "acc": 1, "spd": 1}'); ncalls := ncalls + 1;
+  s1 := pg_temp.sp(v_p, c6, '{"atk": 2, "def": 2, "hp": 2, "crd": 2, "crt": 2, "abl": 2, "ddg": 2, "acc": 2, "spd": 2}'); ncalls := ncalls + 1;
+  res := res || jsonb_build_object('case', 'each of the 9 stats spent twice (1, then 2): each stat is 3 in the answer and in the stored row (the + write)', 'ok',
+    (r->>'ok')::boolean is true and s1->'progress'->'points' = '{"atk": 3, "def": 3, "hp": 3, "crd": 3, "crt": 3, "abl": 3, "ddg": 3, "acc": 3, "spd": 3}'::jsonb
+    and (select row(atk_pts, def_pts, hp_pts, crd_pts, crt_pts, abl_pts, ddg_pts, acc_pts, spd_pts)::text from public.card_progress_v2 where id = p6) = '(3,3,3,3,3,3,3,3,3)'
+    and (s1->'progress'->>'free')::int = 3, 'got', s1->'progress');
+
   -- T6 and the refs: the ledger sums to the stored rows; one ref for each call that wrote, never shared
   res := res || jsonb_build_object('case', 'T6: the ledger deltas of each progress row sum to the stored row (level, XP, bonus, the 9 stats) after the spends and resets', 'ok',
     cardinality(pg_temp.t6(v_p, v_q)) = 0, 'rows', pg_temp.t6(v_p, v_q));
@@ -453,6 +475,29 @@ begin
   execute $m$${mig}$m$;
   res := res || jsonb_build_object('case', 'a second run of the file keeps the rows and the sequence goes on', 'ok',
     pg_temp.snap(v_p, v_q) = s0 and nextval('public.card_progress_v2_ref_seq') = nxt + 1);
+
+  -- M1d: the reset at 6 fixed instants. now() cannot be set in Postgres, so the block makes the reset and the v2 gift use again with now()
+  -- read from a test clock (the setting m1c.now) and the session in UTC (the server time zone of live). The Mountain week 43 ends on Sunday
+  -- 2026-10-25 at 24:00 MDT = Monday 06:00 UTC; week 45 ends on Sunday 2026-11-08 at 24:00 MST = Monday 07:00 UTC. A week in UTC differs
+  -- only on Sunday 18:00 (17:00 in winter) to 24:00 Mountain time: the instants 19:00 MDT and 18:30 MST are in that window.
+  perform set_config('timezone', 'UTC', true);
+  create function pg_temp.m1c_now() returns timestamptz language sql stable as $q$ select current_setting('m1c.now')::timestamptz $q$;
+  execute replace(pg_get_functiondef('public.reset_card_points_v2(text, bigint)'::regprocedure), 'now()', 'pg_temp.m1c_now()');
+  execute replace(pg_get_functiondef('public.stat_reset_gift_use_v2(text, bigint)'::regprocedure), 'now()', 'pg_temp.m1c_now()');
+  update public.balance set value = flag_all where key = 'combat_v2';
+  update public.players set stat_reset_week = null where id = v_q;
+  insert into public.stat_reset_gifts (player_id, gift, expires_at) values (v_q, 'v2_m1c_clock', '2026-12-31 00:00:00+00');
+  ck := '[]';
+  foreach k in array array['2026-10-25 17:59:00-06', '2026-10-25 19:00:00-06', '2026-10-25 19:00:00-06', '2026-10-26 00:00:00-06', '2026-11-08 17:30:00-07', '2026-11-08 18:30:00-07'] loop
+    perform set_config('m1c.now', k, true);
+    r := pg_temp.sp(v_q, c1, '{"atk": 1}');
+    r := pg_temp.rs(v_q, c1);
+    ck := ck || jsonb_build_array(jsonb_build_array(coalesce(r->>'used', r->>'error', r->>'raised'), (select stat_reset_week from public.players where id = v_q), r->'next'));
+  end loop;
+  res := res || jsonb_build_object('case', 'the Mountain week at 6 fixed instants: week (Sun 17:59 MDT), gift and reset_used (Sun 19:00 MDT: still week 43, UTC is Monday), week 44 (Mon 00:00 MDT), week 45 (Sun 17:30 MST), reset_used (Sun 18:30 MST); next = the Monday 00:00 MT', 'ok',
+    ck = jsonb_build_array(jsonb_build_array('week', '2026-43', null), jsonb_build_array('gift', '2026-43', null),
+      jsonb_build_array('reset_used', '2026-43', to_jsonb('2026-10-26 06:00:00+00'::timestamptz)), jsonb_build_array('week', '2026-44', null),
+      jsonb_build_array('week', '2026-45', null), jsonb_build_array('reset_used', '2026-45', to_jsonb('2026-11-09 07:00:00+00'::timestamptz))), 'got', ck);
 
   raise exception 'RESULT:%', res::text;
 end $t$;`;

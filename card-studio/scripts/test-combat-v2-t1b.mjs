@@ -508,7 +508,8 @@ begin
      and p.proname <> 'balance_check_ability_v2';
   res := res || jsonb_build_object('case', 'no other function calls the replaced functions or reads subjects.ability_v2 (no v1 caller)', 'ok', o = '[]'::jsonb, 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\(' and p.proname <> 'combat_v2_on'
-    and p.proname <> all (array['spend_card_points_v2', 'reset_card_points_v2']);   -- M1c combat_v2_progress_spend.sql: the v2 spend and reset are gated by the flag (progress)
+    and p.proname <> all (array['spend_card_points_v2', 'reset_card_points_v2'])   -- M1c combat_v2_progress_spend.sql: the v2 spend and reset are gated by the flag (progress)
+    and p.proname <> all (array['spend_stat_points', 'reset_stat_points', 'buy_shop_item']);   -- M1d combat_v2_progress_freeze_v1.sql: the v1 spend and reset refuse, and the Shop reset routes to v2, when progress is ON (2-argument form)
   select value into v from balance where key = 'combat_v2';
   res := res || jsonb_build_object('case', 'the flag combat_v2 is OFF for every capability and has no reader but combat_v2_on', 'ok',
     o = '[]'::jsonb and (v - 'testers') = '{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}'::jsonb, 'got', jsonb_build_object('readers', o, 'flag', v));
