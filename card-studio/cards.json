@@ -6416,7 +6416,8 @@
         "event": ""
       }
     },
-    "ability": null
+    "ability": null,
+    "pushedAt": 1792789948294
   },
   {
     "id": "zeoic-server-rack",
@@ -6485,7 +6486,7 @@
       "full_art",
       "gold"
     ],
-    "updatedAt": 1791778746647,
+    "updatedAt": 1792787069083,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6496,7 +6497,41 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "tierDetails": {
+      "full_art": {
+        "genre": "Pokemon Unite",
+        "lore": "*Mashes buttons correctly with this one*",
+        "season": "Season 2",
+        "event": ""
+      },
+      "illustrated_rare": {
+        "genre": "Pokemon Unite",
+        "lore": "*Mashes buttons correctly with this one*",
+        "season": "Season 2",
+        "event": ""
+      },
+      "gold": {
+        "genre": "Pokemon Unite",
+        "lore": "*Mashes buttons correctly with this one*",
+        "season": "Season 2",
+        "event": ""
+      },
+      "secret_rare": {
+        "genre": "Pokemon Unite",
+        "lore": "*Mashes buttons correctly with this one*",
+        "season": "Season 2",
+        "event": ""
+      },
+      "normal": {
+        "genre": "Pokemon Unite",
+        "lore": "*Mashes buttons correctly with this one*",
+        "season": "Season 2",
+        "event": ""
+      }
+    },
+    "ability": null,
+    "pushedAt": 1792789969116
   },
   {
     "id": "broken-warden-pineapple-pizza",
@@ -6629,7 +6664,7 @@
       "full_art",
       "gold"
     ],
-    "updatedAt": 1792187214468,
+    "updatedAt": 1792787397884,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6643,13 +6678,38 @@
     "type": "Character",
     "tierDetails": {
       "normal": {
-        "genre": "",
+        "genre": "Party Games",
+        "lore": "Wait how is he DOING that?!",
+        "season": "Season 2",
+        "event": ""
+      },
+      "illustrated_rare": {
+        "genre": "Party Games",
+        "lore": "Wait how is he DOING that?!",
+        "season": "Season 2",
+        "event": ""
+      },
+      "secret_rare": {
+        "genre": "Party Games",
+        "lore": "Wait how is he DOING that?!",
+        "season": "Season 2",
+        "event": ""
+      },
+      "gold": {
+        "genre": "Party Games",
+        "lore": "Wait how is he DOING that?!",
+        "season": "Season 2",
+        "event": ""
+      },
+      "full_art": {
+        "genre": "Party Games",
         "lore": "Wait how is he DOING that?!",
         "season": "Season 2",
         "event": ""
       }
     },
-    "ability": null
+    "ability": null,
+    "pushedAt": 1792790337535
   },
   {
     "id": "mephiles029-little-mac",
@@ -6666,7 +6726,7 @@
       "full_art",
       "gold"
     ],
-    "updatedAt": 1791779583873,
+    "updatedAt": 1792787965447,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6677,7 +6737,34 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "tierDetails": {
+      "normal": {
+        "genre": "",
+        "lore": "Smash Bros after Dark only",
+        "season": "Season 2",
+        "event": ""
+      },
+      "illustrated_rare": {
+        "genre": "",
+        "lore": "Smash Bros after Dark only",
+        "season": "Season 2",
+        "event": ""
+      },
+      "secret_rare": {
+        "genre": "",
+        "lore": "Smash Bros after Dark only",
+        "season": "Season 2",
+        "event": ""
+      },
+      "full_art": {
+        "genre": "",
+        "lore": "Smash Bros after Dark only",
+        "season": "Season 2",
+        "event": ""
+      }
+    },
+    "pushedAt": 1792790362541
   },
   {
     "id": "flink-pikachu",
@@ -6694,7 +6781,7 @@
       "full_art",
       "gold"
     ],
-    "updatedAt": 1792019382516,
+    "updatedAt": 1792788737182,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6705,7 +6792,41 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "tierDetails": {
+      "normal": {
+        "genre": "Super Smash Bros",
+        "lore": "The much more wholesome \"stupid rat\"",
+        "season": "Season 2",
+        "event": ""
+      },
+      "illustrated_rare": {
+        "genre": "Super Smash Bros",
+        "lore": "The much more wholesome \"stupid rat\"",
+        "season": "Season 2",
+        "event": ""
+      },
+      "secret_rare": {
+        "genre": "Super Smash Bros",
+        "lore": "The much more wholesome \"stupid rat\"",
+        "season": "Season 2",
+        "event": ""
+      },
+      "full_art": {
+        "genre": "Super Smash Bros",
+        "lore": "The much more wholesome \"stupid rat\"",
+        "season": "Season 2",
+        "event": ""
+      },
+      "gold": {
+        "genre": "Super Smash Bros",
+        "lore": "The much more wholesome \"stupid rat\"",
+        "season": "Season 2",
+        "event": ""
+      }
+    },
+    "ability": null,
+    "pushedAt": 1792790721772
   },
   {
     "id": "thetraveler-ender-dragon",
@@ -6738,7 +6859,7 @@
   },
   {
     "id": "xokrissie-blissey",
-    "name": "xoKrissie & Blissey",
+    "name": "xoKrissie's Blissey",
     "genre": "",
     "lore": "",
     "season": "Season 2",
@@ -6751,7 +6872,7 @@
       "full_art",
       "gold"
     ],
-    "updatedAt": 1792012839374,
+    "updatedAt": 1792789284603,
     "tags": {
       "class": "attacker",
       "type": "creature",
@@ -6762,7 +6883,41 @@
       "realm": [],
       "traits": []
     },
-    "type": "Creature"
+    "type": "Creature",
+    "ability": null,
+    "tierDetails": {
+      "normal": {
+        "genre": "Pokemon Unite",
+        "lore": "If she doesn't get 100k+ healing in a game, she threw",
+        "season": "Season 2",
+        "event": ""
+      },
+      "illustrated_rare": {
+        "genre": "Pokemon Unite",
+        "lore": "If she doesn't get 100k+ healing in a game, she threw",
+        "season": "Season 2",
+        "event": ""
+      },
+      "secret_rare": {
+        "genre": "Pokemon Unite",
+        "lore": "If she doesn't get 100k+ healing in a game, she threw",
+        "season": "Season 2",
+        "event": ""
+      },
+      "full_art": {
+        "genre": "Pokemon Unite",
+        "lore": "If she doesn't get 100k+ healing in a game, she threw",
+        "season": "Season 2",
+        "event": ""
+      },
+      "gold": {
+        "genre": "Pokemon Unite",
+        "lore": "If she doesn't get 100k+ healing in a game, she threw",
+        "season": "Season 2",
+        "event": ""
+      }
+    },
+    "pushedAt": 1792790753290
   },
   {
     "id": "mrs-foxtrot",
@@ -6774,12 +6929,10 @@
     "event": "",
     "finishes": [
       "normal",
-      "illustrated_rare",
-      "secret_rare",
       "full_art",
       "gold"
     ],
-    "updatedAt": 1792012840435,
+    "updatedAt": 1792789519049,
     "tags": {
       "class": "attacker",
       "type": "character",
@@ -6790,35 +6943,29 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
-  },
-  {
-    "id": "thetraveler-s-map",
-    "name": "TheTraveler's Map",
-    "genre": "",
-    "lore": "",
-    "season": "Season 2",
-    "set": "S2",
-    "event": "",
-    "finishes": [
-      "normal",
-      "illustrated_rare",
-      "secret_rare",
-      "full_art",
-      "gold"
-    ],
-    "updatedAt": 1792012840828,
-    "tags": {
-      "class": "support",
-      "type": "item",
-      "origin": [
-        "minecraft"
-      ],
-      "genre": [],
-      "realm": [],
-      "traits": []
+    "type": "Character",
+    "tierDetails": {
+      "normal": {
+        "genre": "",
+        "lore": "Foxtrots only saving grace",
+        "season": "Season 2",
+        "event": ""
+      },
+      "full_art": {
+        "genre": "",
+        "lore": "Foxtrots only saving grace",
+        "season": "Season 2",
+        "event": ""
+      },
+      "gold": {
+        "genre": "",
+        "lore": "Foxtrots only saving grace",
+        "season": "Season 2",
+        "event": ""
+      }
     },
-    "type": "Item"
+    "ability": null,
+    "pushedAt": 1792790929923
   },
   {
     "id": "alexlayden-s-airship",
@@ -6914,12 +7061,10 @@
     "event": "",
     "finishes": [
       "normal",
-      "illustrated_rare",
-      "secret_rare",
       "full_art",
       "gold"
     ],
-    "updatedAt": 1792012842628,
+    "updatedAt": 1792789539715,
     "tags": {
       "class": "attacker",
       "type": "character",
