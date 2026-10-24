@@ -2228,3 +2228,47 @@ Else `reset_used` with `next` (the same rule as v1). A v2 gift is a row of `stat
      - One stat spent twice only (`crt`): an absolute write in place of `+` (`rev_spend_abs_update`) still PASS. Spend each stat twice.
      - Design notes: the allowlists exempt by function name (a later overload with the same name is also exempt); `stat_reset_gift_use_v2`
        alone (server only) uses a gift with no reset; a subject that loses its role later keeps points that cannot be reset.
+
+### 20.14 R1: Gauntlet v2 for testers
+
+R1 lets the players on `balance combat_v2.testers` play the weekly Gauntlet in combat v2. Every other player keeps v1. The flag
+`combat_v2.gauntlet` stays false. R1 has 5 PRs: R1a (the pure SQL builders, this section), R1b (the tester branch in `gauntlet_start` and the
+v2 run functions), R1c (the server routes), R1d (the Lab Gauntlet section) and R1e (the screen, after the UI-52 review-4 approval).
+
+**Nathan's decisions (2026-10-23, all 7 approved as recommended):**
+
+| # | Question | Decision |
+|---|---|---|
+| D1 | Tester v2 runs on the board and in the prizes? | No. Tester v2 runs stay off the weekly board and out of the weekly prizes. The daily task still counts |
+| D2 | A squad card with no `ability_v2` | The tester plays v1 that day. No placeholder |
+| D3 | The offers `buff` and `reset` in v2 | `reset` fills every charge. `buff` makes the attackers Empowered at the next room start |
+| D4 | The tester is removed during an active v2 run | A run that started in v2 finishes in v2 |
+| D5 | Between rooms | HP and downs carry. Statuses and meters reset each room |
+| D6 | Manual play | The clock picks the card that acts. The player picks basic or active, the target and the ally |
+| D7 | The order of release | The owner is removed from the tester list before R1b goes live, and added again after R1e |
+
+#### R1a: the builders (`tcg-bot/supabase/combat_v2_gauntlet_builders.sql`)
+
+R1a adds 3 pure functions. No function calls them, no v1 function changes, and no flag is read. They move the state builder and the fight
+driver of the Admin Combat v2 Lab into SQL, so that R1b plays the same fight as the Lab (C3: no combat math in JS).
+
+- `combat_v2_card_unit(card[, numbers])` (STABLE): the v2 unit of a card at 0 stars, level 0 and no points (plan 3.3: no progress in the
+  Gauntlet). Role and blocks from `subjects.ability_v2`, stats from `card_combat_v2`, speed `v2_speed.role_base[role]`, charge `v2_charge.start`,
+  no status, meter 0. It is the unit of the Lab (`fightSql`), key by key. A card with no `ability_v2` (or no role of the `roles` table or no
+  list of blocks) is REFUSED with SQLSTATE `P0002` (`no_data_found`) and the D2 text. R1b catches this and plays v1 (D2).
+- `gauntlet_v2_foes(foes, floor, room[, numbers])` (STABLE): each foe of a week room (`dungeon_make_foe`) becomes
+  `combat_v2_dungeon_foe(key, floor, room, kind)` with no extra mechanic, plus `show {name, model, element}` for the screen only. No v1 key or number
+  (`hp`, `atk`, `weak`, `resist`, `passives`, `tags`, `wk`, `st`, the element bonus) enters the v2 unit.
+- `combat_v2_step(state, choice[, numbers])` (VOLATILE: the engine draws random numbers): one call of a v2 fight.
+  - The state must pass `fight_state_check_v2` (a v1 key is refused).
+  - When a card has the turn (`ext.turn`), the choice `{use, target, ally}` plays its action through `combat_v2_card_act` (D6). Any other key
+    (for example `actor`) is refused: the player does not pick the card.
+  - Then the clock runs (`combat_v2_next`, `combat_v2_enemy_act`): every enemy turn and every skipped turn, until the next card turn
+    (event `choose`, the card goes into `ext.turn`), the end (event `end`, `won` = no standing enemy) or the step cap of the mode (event `cap`,
+    `v2_dungeon.round_cap`). The client never drives an enemy turn.
+  - The first call of a fight has no card turn and needs choice null.
+  - The answer: `state`, `event`, `actor`, `won`, `clock`, `steps_left` (= round_cap - clock, the "turns left"), `actions` and `log` (one entry
+    for each clock call: clock, event, actor, skip, reason, ticks, ended; one for each action: actor, action or move, target, ally, hits).
+- **Not in R1a (R1b):** the meters of a room start (the test draws them as the Lab does: 0 to `v2_speed.act_at`, 2 decimals), the room
+  carry-over (D5), the offers (D3), the run row and its lock, the turn-order projection in the state.
+- **C1**: the scope of `ci/combat/c1-numbers.json` now has `^gauntlet_v2_` (the `combat_v2_*` names were in scope already).
