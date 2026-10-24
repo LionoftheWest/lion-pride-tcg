@@ -6,7 +6,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { loadConfig, loadFixture, HERE } from './util.mjs';
+import { loadConfig, loadFixture, HERE, squadKey } from './util.mjs';
+import { makeCard } from './cards.mjs';
+import { poolEntry } from './auto.mjs';
 import { ROLES, roleOf, cardPool } from './cards.mjs';
 import { withSet1, set1FromRows, hasSet1Batch, loadSet1Batch, SET1_BATCH_PATH } from './teams.mjs';
 import { S1, poolSource, referencePools, shapePickLab } from './shape.mjs';
@@ -61,6 +63,21 @@ function checks() {
         && ids(R[0]) === ids(R2[0]) && T[0].pool.every((c) => !c.card.active.id.startsWith('s1.')), JSON.stringify({ n: R[0].pool.length, keys: keys.size, tmpl: T[0].pool.length })); });
   guard('e2e.small', () => { let err = null; try { referencePools(cfg, { seed: 1, pools: 1, poolSize: 20, bosses: ['maw'], src: { cfg, pool0: cardPool(cfg).slice(0, 5) } }); } catch (e) { err = e.message; }
     C('e2e.small', 'a draw list smaller than the pool size is refused (no endless draw)', /fewer than the pool size/.test(err || ''), err); });
+  // the memo key of the picked squad keeps the slot order (the fight draws per slot): two candidates that pick the same cards in two orders are two squads
+  guard('memo.order', () => {
+    const cS = withSet1(cfg, SYN); const IV = cfg.v2_investment.casual; const role = (k) => SYN[k].role;
+    const keys = ['syn-breaker-1', 'syn-striker-1', 'syn-striker-2', 'syn-flurry-1', 'syn-breaker-2', 'syn-warden-1', 'syn-medic-1'].filter((k) => SYN[k]);
+    const pool = keys.map((k, i) => poolEntry(makeCard(cS, { key: k, role: role(k), rarity: 'normal', cp_mod: 1, template: `s1.${k}`, ...IV }), i + 1));
+    const calls = []; const ev = (ids) => { calls.push(ids.join()); return ids.reduce((s, id, i) => s + id * (i + 1) ** 2, 0) / 1000; };
+    const R = [{ key: 'camper_colossus', pi: 0, boss: { mechanics: ['bloodrot'], weak_role: null }, pool, best: pool.map((c) => c.id), vB: 1, eval: ev }];
+    const A = 'breakers first', B = 'breakers last';
+    const run = (cands) => shapePickLab(cfg, { set1: SYN, refs: R, candidates: cands }).data.res;
+    const ca = { answers: { bloodrot: { breaker: 3 } } }, cb = { answers: { bloodrot: { breaker: 0.2 } } };
+    const full = run({ [A]: ca, [B]: cb }); const alone = run({ [B]: cb });
+    const sorted = (s) => s.split(',').sort().join();
+    C('memo.order', 'two candidates that pick the same cards in two slot orders each get their own value; a candidate scores the same alone and in a list',
+      new Set(calls.filter((k) => sorted(k) === sorted(calls[0]))).size >= 2 && full[A].camper_colossus[0] !== full[B].camper_colossus[0] && full[B].camper_colossus[0] === alone[B].camper_colossus[0], JSON.stringify({ full, alone, calls }));
+  });
   return out;
 }
 const failing = () => checks().filter((x) => !x.ok).map((x) => x.id);
@@ -72,6 +89,7 @@ test('Set 1 pick pools baseline: every check is green', () => {
 
 const swap = (key, make) => { const o = S1[key]; return [() => { S1[key] = make(o); }, () => { S1[key] = o; }]; };
 const FAULTS = [
+  ['memo.order', 'the memo key is the sorted member list (the old key: a second order reuses the first value)', [() => { squadKey.of = (ids) => [...ids].sort((a, b) => a - b).join(); }, () => { squadKey.of = (ids) => ids.join(); }]],
   ['pool.role', 'the draw list takes the placeholder role of the live subject', swap('pool0', (o) => (c1, set1) => o(c1, set1).map((s) => { const f = FX.find((x) => x.key === s.key); return f ? { ...s, role: roleOf(cfg, f) } : s; }))],
   ['pool.rule', 'the draw list ignores the pullable rule', swap('pool0', (o) => (c1, set1) => [...o(c1, set1), { key: 'hand-nopool', role: 'striker', cp_mod: 1, pullable: ['normal'], template: 's1.hand-nopool' }].sort((a, b) => (a.key < b.key ? -1 : 1)))],
   ['pool.card', 'the pool card drops its own active (a placeholder plays)', swap('card', (o) => (c, s, rar, iv) => o(c, { ...s, template: undefined }, rar, iv))],

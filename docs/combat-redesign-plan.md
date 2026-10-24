@@ -1966,6 +1966,7 @@ does not change. The Set 1 actives and their factors are PRIVATE: this section g
   2. The factor is relative to the other actives of its role: a change of one Set 1 active needs `run.mjs factors --set1` and a push of all the factors.
   3. The Lab memo (above): a squad keeps the value of its first evaluated slot order. A fix is a Lab change (the memo key with the order); it does not
      change the pick.
+     **Fixed 2026-10-23 (lane 3, `fix/lab-memo-slot-order`): the memo key keeps the slot order (`squadKey` in `util.mjs`; score, shape and power Labs). Measured on `activepick`, the built form, before -> after: Set 1 seed 202 mean x0.8817 -> x0.8824 (3 below, unchanged), Warlord .774 -> .779, Hydra and Camper Colossus unchanged (.827, .854); Set 1 seed 101 unchanged (x0.9051); template seed 1 x0.9018 -> x0.9012 (4 below, unchanged), Camper Colossus .846 -> .850. The Set 1 seed 202 Camper Colossus .866 vs .854 difference was between candidate lists. Only the Lab numbers move, by 0.001 or less in a mean; no live pick changes.**
 
 ### 20.11 M1: decisions and M1a (`tcg-bot/supabase/combat_v2_progress_tables.sql`)
 
