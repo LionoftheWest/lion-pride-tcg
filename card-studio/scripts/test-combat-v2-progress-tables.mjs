@@ -190,7 +190,7 @@ begin
   select coalesce(array_agg(p.oid::regprocedure::text order by 1), '{}') into bad from pg_proc p
    where p.pronamespace = 'public'::regnamespace and p.oid::regprocedure::text <> all (mine) and p.prosrc ~ 'card_progress_v2'
      -- the named writers of the later M1 steps (each has its own test): M1c combat_v2_progress_spend.sql
-     and p.proname <> all (array['card_progress_v2_view', 'spend_card_points_v2', 'reset_card_points_v2']);
+     and p.proname <> all (array['card_progress_v2_view', 'spend_card_points_v2', 'reset_card_points_v2', 'card_progress_v2_reset']);   -- + M1d combat_v2_progress_freeze_v1.sql
   res := res || jsonb_build_object('case', 'T2 no function except the two new triggers and the named M1 writers names card_progress_v2 (no other reader or caller)', 'ok', cardinality(bad) = 0, 'names', bad);
   select coalesce(array_agg(p.oid::regprocedure::text order by 1), '{}') into callers_b from pg_proc p
    where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\s*\(';
