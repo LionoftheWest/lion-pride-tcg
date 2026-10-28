@@ -2228,3 +2228,63 @@ Else `reset_used` with `next` (the same rule as v1). A v2 gift is a row of `stat
      - One stat spent twice only (`crt`): an absolute write in place of `+` (`rev_spend_abs_update`) still PASS. Spend each stat twice.
      - Design notes: the allowlists exempt by function name (a later overload with the same name is also exempt); `stat_reset_gift_use_v2`
        alone (server only) uses a gift with no reset; a subject that loses its role later keeps points that cannot be reset.
+
+### 20.14 (lane 3) The Lab with the Set 2 actives (provisional; measurement only)
+
+The Combat Lab (`card-studio/v2sim`) now runs the Set 2 "Double Team" actives next to the Set 1 actives. No SQL, no database, no lock. The Set 1 and Set 2 actives
+are private: every output of this section holds roles, counts and ratios only. (20.14 is the next free number at the time of writing: renumber it if another lane took it first.)
+
+- **The provisional Set 2 batch** (private file `batches/set2-prov.json` beside the Set 1 batch; never pushed). Nathan has not chosen the engine parts yet, so the file holds
+  73 rows, one for each Set 2 key of `cards.json` (checked): the 50 rows that the live validator accepts, the 5 proposed fixes of the 5 refused rows, and the 18 tested
+  stand-ins of the rows that need an unbuilt part. Every one of the 73 rows passed the live validator in the Set 2 check. A result below changes when Nathan picks the parts.
+- **What was built** (all in `card-studio/v2sim`, small and general; the Set 1 code path is reused, not copied):
+  - `teams.mjs`: the Set 2 batch path (env `V2SIM_SET2_BATCH`, default `<repo parent>/discord-card-ideas/batches/set2-t1.json`), `loadSet2Batch`, `loadSets({set2})` (Set 1,
+    or Set 1 + Set 2; a key in both is an error) and `loadSetRows`. Set 2 is not in `fixture.json` (the live snapshot), so each Set 2 card gets a synthetic subject from the
+    public `cards.json`: its finishes without `event` are the pullable finishes (this rule gives the pullable finishes of 128 of the 130 Set 1 cards in the fixture; the 2 others are event-only), and
+    `cp_mod` is 1 (the Set 1 mean is 1.00).
+  - `run.mjs`: `--set2 [path]` on every mode that takes `--set1` (`scorepick`, `scoresum`, `shapepick`, `answers1`, `factors`, `activepick`, `activesum`) and on `targets` = Set 1 + Set 2 together.
+    A file name of a Set 1 + Set 2 run has the tag `-s2`, so a Set 1 cache is never read for the combined pools.
+  - `active.mjs`: `factors --set1 --set2` measures every support active of both sets against the mean of ALL actives of its role in the combined set (the rule of 20.10; the
+    measure of 20.9 already divides by the role mean of the config). It writes ONE private file beside the Set 2 batch (`<batch>.factors.json`) with the factors of both sets,
+    because a Set 1 factor changes when the role mean changes. It reports the Set 2 ranges, how far the Set 1 factors move against the Set 1 file, and the per-role power table.
+  - `targets.mjs`: `targets --set1` / `--set2` draw the pool with the real actives (`setPool`: each batch card with its own active and role, each other fixture card with the
+    placeholder template that the placeholder run gives it, each Set 2 card with a pullable finish). The role, shape and archetype sections keep the placeholder templates
+    (the role targets are about the placeholders). The status checks run on the placeholder config: with the real actives they printed one `pp.s1.<key>` check per card (a leak that the new test found).
+- **Fairness targets, 400 runs a cell** (`targets --runs 400 --seed N`; 45 s a run, 6 runs in parallel). Baseline = the placeholder pool of today's main. Cells = seed 1 / seed 2.
+
+  | run | PASS / FAIL / CHECK | Hunt end gap Gold / Normal (goal x2.0-2.5) | Dungeon end gap (goal x2.0-2.5) |
+  |---|---|---|---|
+  | baseline (placeholder pool) | 20 / 2 / 1 and 20 / 2 / 1 | x2.29 / x2.22 | x1.41 / x1.38 |
+  | Set 1 real actives | 20 / 2 / 1 and 20 / 2 / 1 | x2.47 / x2.40 | x1.37 / x1.36 |
+  | Set 1 + Set 2 (provisional) | 19 / 3 / 1 and 19 / 3 / 1 | x2.57 / x2.58 (FAIL) | x1.35 / x1.35 |
+
+  The 2 FAIL and the CHECK of the baseline are the same ones as on 2026-10-19 (Dungeon end gap, role scale k, Lockdown x0.79; the Dungeon gap is x1.41 / x1.38 here against x1.34 then). They do not
+  change with the pool: the Lockdown and the role scale are measured on the placeholder templates. New with Set 1 + Set 2, on both seeds: the Hunt end gap leaves its band. The Normal
+  day falls from 6711 / 6941 (placeholder pool) to 6020 / 6063; the Gold day stays near 15.4k to 15.6k. The Gold finish is 71 of the 201 cards of the combined draw list (52 of 128 in Set 1 alone), the Normal
+  finish is all 201. Every shape, archetype and counter target stays PASS. The Hunt gap already rises to x2.47 / x2.40 with the real Set 1 actives alone, so most of the move is the real actives
+  and the pool mix, not one Set 2 fault. The 2026-10-19 result for Set 1 + Set 2 (20 / 2 / 1) does not repeat here for the Hunt gap.
+- **Factors with Set 1 + Set 2** (`factors --set1 --set2 --runs 400`, 9.8 s). 104 support actives (70 Set 1, 34 Set 2; 6 roles); the file check has 0 errors; all factors are inside the stored range 0.5 to 2.
+  The Set 2 support factors by role (min to max, count): warden 0.962 to 1.109 (7), medic 0.895 to 1.078 (4), controller 0.908 to 1.127 (5), spotter 0.946 to 1.079 (6), herald 0.916 to 1.057 (5),
+  artillery 0.946 to 1.017 (7). All Set 2 factors lie between 0.895 and 1.127, inside the range of the combined set (0.894 to 1.191). The Set 1 factors move at most 0.011
+  against the Set 1 file (median 0.006; by role from 0.004 to 0.011), because the role means move by about 1%. The factor noise is about 0.01, so the Set 2 batch alone does not force a new push of the Set 1 factors.
+- **Per-role power check** (mean strength of the Set 2 actives / the Set 1 actives; the same active-factor method: a Normal casual card plus the 4 reference cards, Hunt Heroic net damage a day).
+
+  | role | Set 1 actives | Set 2 actives | Set 2 / Set 1 |
+  |---|---|---|---|
+  | breaker / striker / flurry | 7 / 16 / 11 | 8 / 3 / 6 | x1.005 / x1.002 / x0.993 |
+  | finisher / survivor / cleaver | 10 / 9 / 7 | 6 / 7 / 9 | x0.999 / x1.001 / x0.997 |
+  | warden / medic / controller | 9 / 15 / 17 | 7 / 4 / 5 | x1.008 / x0.985 / x0.976 |
+  | spotter / herald / artillery | 9 / 11 / 9 | 6 / 5 / 7 | x1.026 / x0.974 / x0.985 |
+
+  In no role is Set 2 stronger or weaker than Set 1 by more than 3%. The attacker rows carry little signal: every attacker active of both sets lies within 1% to 5% of its role mean in this measure,
+  so x1.00 there means "no measurable difference", not a tight test. The support rows (spread 0.88 to 1.19) do carry signal; the weakest are controller and herald (x0.976, x0.974), the strongest is spotter (x1.026).
+- **Proof** (observed). `node --test card-studio/v2sim/*.test.mjs`: 238 pass before, 246 pass after (8 new tests in `set2.test.mjs`). The new checks: the combined pool holds both sets and leaves out the event-only Set 2 card;
+  a Set 2 card keeps its finishes and `cp_mod` 1, and a key outside `cards.json` is refused; the factors of a role average 1 over the combined set and a Set 1 factor moves when Set 2 changes the role mean;
+  the factors file is beside the Set 2 batch, holds both sets and passes its check; no card key and no active name in the report; the targets pool carries the real actives and `targets` runs on it;
+  a private-batch check (it skips with a message when the file is missing). 4 planted faults, each caught by its own check and green again after: the draw list drops the Set 2 cards, an event-only finish is
+  pullable, the Set 2 `cp_mod` is 0.9, the factor is not divided by the role mean. Run times: tests 14 s, factors 9.8 s, targets 45 s.
+- **Open**:
+  1. The result is for the PROVISIONAL batch (23 of 73 rows are fixes or stand-ins). Measure again when Nathan picks the engine parts, and again before the real factors are pushed. The provisional factors file is not for a push.
+  2. The Set 2 `cp_mod` is 1 here. The real values come with the push of the Set 2 subjects. A spread of 5% in `cp_mod` moves a role ratio by about as much as the differences above.
+  3. The Hunt end gap x2.57 (goal 2.0 to 2.5): a decision for lane 1 and Nathan: move the band, move the Gold or Normal Hunt CP, or keep the placeholder pool as the reference of this target.
+  4. Not extended: `lab12` and the designed teams (`teams.json`) use the 20 fixed Set 1 teams and take no Set 2 card.
