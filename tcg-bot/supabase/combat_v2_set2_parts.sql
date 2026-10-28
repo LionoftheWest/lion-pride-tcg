@@ -34,7 +34,7 @@ declare r record; m text;
 begin
   for r in select * from (values
     ('public.ability_v2_spec()', '506695aa71732b49545beee9f9a22995', 'b99b6e108bca8e275429097c37a38952'),
-    ('public.ability_v2_check(text,jsonb,jsonb)', '4d05f095bf8b1dd20effbaa86f47b97b', 'edf7203f90b7eac70ff9dd9e7940ce2b'),
+    ('public.ability_v2_check(text,jsonb,jsonb)', '4d05f095bf8b1dd20effbaa86f47b97b', 'a9a71ed84974eabe75a8dd52fbadf913'),
     ('public.ability_v2_block_pp(jsonb,text,numeric,jsonb)', '8f4f4be81d51315dcc09e9c5d5e8ffe4', '247990218c9f56eba202f0da064534a1'),
     ('public.ability_v2_pps(text,jsonb,jsonb)', '4c36c5a72a85a9bec3ae9556f26f982b', '9c7b6dba5b9013b73e901eda2d963efb'),
     ('public.ability_v2_text(text,jsonb,jsonb)', 'd08f9e6ad2c6b7bc62e1c6a3314fe4fa', '747e8dbfa442e93e15a8f2efe045e04b'),
@@ -648,6 +648,7 @@ begin
         si := (sv->>'block')::int - 1; sf := sv->>'field'; k := blocks->si->>'k';
         if sf = 'chance' then errs := errs || 'silver: more rider chance (type 2) is cut (plan 5.3)'::text;
         elsif sf = 'stacks' then errs := errs || 'silver: one more stack (type 4) waits for the guardian price factor (plan 5.3)'::text;
+        elsif k = 'payoff_dmg' and blocks->si ? 'kinds' then errs := errs || 'silver: a payoff_dmg with kinds has no Silver line (its words need a status)'::text;
         elsif sf is distinct from bl->k->>'amount' then errs := errs || format('silver: only the amount %s of block %s (%s) can grow (type 1, a stronger number)', coalesce(bl->k->>'amount', '(none)'), si + 1, k);
         elsif jsonb_typeof(sv->'value') is distinct from 'number' or (sv->>'value')::numeric <= (blocks->si->>sf)::numeric then
           errs := errs || 'silver.value must be a number above the base value (a stronger number)'::text;

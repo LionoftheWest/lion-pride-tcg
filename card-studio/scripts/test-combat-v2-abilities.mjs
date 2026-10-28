@@ -326,7 +326,7 @@ begin
     and (select relrowsecurity from pg_class where oid = 'public.ability_blocks'::regclass)
     and not has_table_privilege('anon', 'public.ability_blocks', 'select') and not has_table_privilege('authenticated', 'public.ability_blocks', 'select'), 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p
-   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}, ${q(T1_FUNCS)}, ${q(E7_FUNCS)}])
+   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}, ${q(T1_FUNCS)}, ${q(E7_FUNCS)}, 'combat_effect_v2_holds'])   -- + Set 2 (combat_v2_set2_parts.sql)
      and p.prosrc ~ '(ability_v2_|combat_effect_v2_|combat_v2_action_numbers|combat_v2_draws_rest|combat_v2_card_act|ability_blocks)';
   res := res || jsonb_build_object('case', 'no other function calls the new functions or reads ability_blocks (no v1 caller)', 'ok', o = '[]'::jsonb, 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\(' and p.proname <> 'combat_v2_on'

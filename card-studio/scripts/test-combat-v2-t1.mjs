@@ -531,7 +531,7 @@ begin
     and coalesce(col_description('public.ability_blocks'::regclass, (select attnum from pg_attribute where attrelid = 'public.ability_blocks'::regclass and attname = 'attach')), '') <> ''
     and coalesce(col_description('public.ability_blocks'::regclass, (select attnum from pg_attribute where attrelid = 'public.ability_blocks'::regclass and attname = 'hosts')), '') <> '', 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p
-   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}, ${q(E6NEW)}, ${q(E8_AUTO)}, ${q(E9_POWER)}, 'card_progress_v2_view', 'spend_card_points_v2', 'reset_card_points_v2'])   -- + M1c: the v2 spend and reset read the role of subjects.ability_v2
+   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(NEW)}, ${q(E6NEW)}, ${q(E8_AUTO)}, ${q(E9_POWER)}, 'card_progress_v2_view', 'spend_card_points_v2', 'reset_card_points_v2', 'combat_effect_v2_holds'])   -- + M1c: the v2 spend and reset read the role of subjects.ability_v2   -- + Set 2 (combat_v2_set2_parts.sql): the holds function calls has and count
      and (p.prosrc ~ '(ability_v2_pps|ability_v2_or|ability_v2_clause|ability_v2_ally_word|ability_v2_options|ability_v2_coin|combat_effect_v2_has|combat_effect_v2_ally_to|combat_effect_v2_gate|combat_effect_v2_count|combat_effect_v2_amount)'
           or p.prosrc ~ 'ability_v2[^_]' or p.prosrc ~ '(ability_v2_check|ability_v2_text|ability_v2_pp|combat_effect_v2_active)');
   res := res || jsonb_build_object('case', 'no other function calls the new or the replaced functions or reads subjects.ability_v2 (no v1 caller; only the T1 and E6 functions)', 'ok', o = '[]'::jsonb, 'got', o);
@@ -751,7 +751,7 @@ try {
   const leaves = (o, p = []) => (o !== null && typeof o === 'object' && !Array.isArray(o) ? Object.entries(o).filter(([k]) => !k.startsWith('_')).flatMap(([k, v]) => leaves(v, [...p, k])) : [[p.join('.'), JSON.stringify(o)]]);
   // pp.vs_smite, share.self_has_each, share.area_payoff and ref.list_extra are the keys of PR T1b (combat_v2_ability_prices.sql, test-combat-v2-t1b.mjs)
   const bal = new Map(leaves(results.find((r) => r.case === 'ABILITY_V2').v)),
-    cfgL = new Map(leaves(CONFIG.ability_v2).filter(([p]) => !/^(pp\.vs_smite|share\.area_payoff|ref\.list_extra|limits\.min_share)$|^share\.self_has_each\./.test(p)));
+    cfgL = new Map(leaves(CONFIG.ability_v2).filter(([p]) => !/^(pp\.vs_smite|share\.area_payoff|ref\.list_extra|limits\.min_share)$|^share\.(self_has_each|status_kinds)\./.test(p)));   // + share.status_kinds: combat_v2_set2_parts.sql
   const lp = [...bal].filter(([p, v]) => cfgL.get(p) !== v).concat([...cfgL].filter(([p]) => !bal.has(p)));
   say(lp.length === 0 && bal.size === 18, `balance ability_v2 = config.json ability_v2 (${bal.size} leaves equal, with share and ref; one number, one home)`, JSON.stringify(lp));
   const LIB = results.find((r) => r.case === 'LIBRARY').rows;

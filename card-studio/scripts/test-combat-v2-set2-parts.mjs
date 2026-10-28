@@ -88,6 +88,7 @@ const MUT = {
   spec_kinds_wide: ['"3": "num 0 1"', '"3": "num 0 9"'],
   spec_kinds_missing: ['"status_kinds": {"2": "num 0 1", "3": "num 0 1", "4": "num 0 1", "5": "num 0 1"}}', '"status_kinds": {"2": "num 0 1", "4": "num 0 1", "5": "num 0 1"}}'],
   // the guard, the rights, the comments, the play
+  silver_kinds_allowed: ["        elsif k = 'payoff_dmg' and blocks->si ? 'kinds' then errs", "        elsif false then errs"],
   guard_off: ["    if m not in (r.md5_from, r.md5_own) then\n", "    if false then\n"],
   grant_anon: ["    execute format('grant execute on function public.%s to service_role', f);", "    execute format('grant execute on function public.%s to service_role, anon', f);"],
   comment_missing: [/comment on function public\.combat_effect_v2_holds\([^)]*\) is \$cm\$[^\n]*\n/, ''],
@@ -406,7 +407,7 @@ const fit = (cfg, role, blocks, i = 0, target = cfg.v2_pp.budget) => {         /
   bl[i][f] = Math.round((bl[i][f] + (target - p0) / per) * 1000) / 1000; return bl;
 };
 function validatorCases(cfg) {
-  const C = []; const add = (name, role, blocks, expect, tag = '') => C.push({ name, role, ability: { name: 'Zz', blocks }, expect, tag });
+  const C = []; const add = (name, role, blocks, expect, tag = '', silver) => C.push({ name, role, ability: { name: 'Zz', blocks, ...(silver ? { silver } : {}) }, expect, tag });
   const hit = (x = 1.5) => ({ k: 'hit', x });
   const A = (role, blocks, i) => fit(cfg, role, blocks, i);
   // accepted, with the exact text
@@ -444,6 +445,8 @@ function validatorCases(cfg) {
   add('kinds is not a field of payoff_crit', 'striker', [hit(), { k: 'payoff_crit', kinds: 2, v: 0.2 }], { err: /block 2 \(payoff_crit\): unknown field kinds$/ });
   add('kinds is not a field of vs_status', 'striker', [hit(), { k: 'vs_status', kinds: 2, x: 2 }], { err: /block 2 \(vs_status\): unknown field kinds$/ });
   add('a support payoff_dmg with kinds needs a smite', 'artillery', [{ k: 'payoff_dmg', kinds: 2, v: 0.4 }], { err: /a support payoff_dmg needs a smite block/ });
+  add('no Silver on a payoff_dmg with kinds (its Silver words need a status)', 'striker', A('striker', [hit(), { k: 'payoff_dmg', kinds: 2, v: 0.6 }], 0), { err: /^silver: a payoff_dmg with kinds has no Silver line \(its words need a status\)$/ }, '', { block: 2, field: 'v', value: 1.0 });
+  add('Silver on the execute of a line_status with kinds still reads well', 'finisher', A('finisher', [hit(), { k: 'execute', line: 0.3, v: 0.7 }, { k: 'line_status', kinds: 2 }], 0), { ok: true }, '', { block: 2, field: 'v', value: 1.2 });
   add('the minimum share: 3 or more (0.0059) is refused with its own message (an attacker)', 'finisher', [hit(), { k: 'execute', line: 0.3, v: 0.7 }, { k: 'line_status', kinds: 3 }], { err: /^block 3 \(line_status kinds 3\): the condition is true at only 0\.0059 of the actives \(the measured share\), below the minimum 0\.01 \(limits\.min_share\): it costs almost 0 PP and almost never works$/ });
   add('the minimum share: payoff_dmg kinds 4 (0.0002) is refused', 'striker', A('striker', [hit(), { k: 'payoff_dmg', kinds: 4, v: 0.4 }], 0), { err: /block 2 \(payoff_dmg kinds 4\): the condition is true at only 0\.0002 of the actives/ });
   add('the minimum share: kinds 5 (0) is refused', 'striker', [hit(), { k: 'payoff_dmg', kinds: 5, v: 0.4 }], { err: /block 2 \(payoff_dmg kinds 5\): the condition is true at only 0 of the actives/ });
@@ -539,6 +542,10 @@ try {
   }
   for (const [st] of FS0) for (const id of Object.keys(st.cards)) { const c = st.cards[id]; if (rngF() < 0.75) { c.active = { blocks: genNew(rngF, c.class) }; if (c.active.blocks.some((b) => NEW_BLOCKS.includes(b.k))) withNew++; if (c.active.blocks.some((b) => b.kinds !== undefined)) withKinds++; } }
   const FP = await parity(FS0, sim);
+  // A fight that ends exactly at the last scripted action: the simulator also writes the end event, the SQL driver stops at the script end (length SQL n, sim n + 1).
+  // Every compared action is equal, so this is the end of the script, not a difference.
+  const isEnd = (m) => { const x = /length SQL (\d+) sim (\d+)/.exec(m); return !!x && Number(x[2]) === Number(x[1]) + 1; };
+  const ends = FP.fbad.filter(isEnd).length; FP.fbad = FP.fbad.filter((m) => m && !isEnd(m));
   for (const m of FP.fbad.slice(0, 2)) { const f = /^fight (\d+)/.exec(m); if (f) console.log(`  fight ${f[1]} cards: ${JSON.stringify(Object.entries(FS0[Number(f[1])][0].cards).map(([id, c]) => [id, c.role, c.active.blocks.map((b) => ({ ...b }))]))}`); }
   if (process.env.DEBUG_FIGHT) {   // the two logs of one fight, around an action: DEBUG_FIGHT=<fight>:<action>
     const [fi, ak] = process.env.DEBUG_FIGHT.split(':').map(Number);
@@ -554,7 +561,7 @@ try {
    SQL ${JSON.stringify(sq[k]).slice(0, 1800)}
    SIM ${JSON.stringify(sm[k]).slice(0, 1800)}`);
   }
-  say(FP.fbad.length === 0 && FP.facts > 20 * nF && FP.fev.active > nF * 2 && withNew > nF && withKinds > nF / 2, `SQL = the simulator on ${nF} random fights with the parts (${FP.fsame} equal action by action, ${FP.ftie} float near-ties; ${FP.facts} actions, ${FP.fev.active} actives; ${withNew} cards with dispel, heal_all or quicken, ${withKinds} with kinds)`, JSON.stringify(FP.fbad.slice(0, 4)));
+  say(FP.fbad.length === 0 && FP.facts > 20 * nF && FP.fev.active > nF * 2 && withNew > nF && withKinds > nF / 2, `SQL = the simulator on ${nF} random fights with the parts (${FP.fsame} equal action by action, ${FP.ftie} float near-ties, ${ends} ended at the last scripted action; ${FP.facts} actions, ${FP.fev.active} actives; ${withNew} cards with dispel, heal_all or quicken, ${withKinds} with kinds)`, JSON.stringify(FP.fbad.slice(0, 4)));
 
   // 7. the old fights: the same SQL answers before and after the file
   const nO = Number(process.env.V2_OLD || 24);
