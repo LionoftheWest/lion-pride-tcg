@@ -53,11 +53,16 @@ export const gateShare = (cfg, b) => (b.k === 'self_has' && cfg.ability_v2.share
 // The minimum share (Nathan 2026-10-20, approved after PR T1b; SQL ability_v2_check, combat_v2_min_share.sql): a condition with a measured share (a gate:
 // self_has with the share of its status, enemy_charging, foes_alive, self_shield; the trigger on_kill) below ability_v2.limits.min_share is refused. Such a
 // block costs almost 0 PP and almost never works. Answer: the refused blocks [{block (1 = the first), k, status, share}]; [] = none.
-export const measuredShare = (cfg, b) => (GATES.includes(b.k) ? gateShare(cfg, b) : b.k === 'on_kill' ? cfg.ability_v2.share.on_kill : undefined);
+// Set 2 part (c): a payoff_dmg or line_status with kinds = N (the target has N or more different harmful statuses) costs its raw price x the MEASURED share
+// share.status_kinds.<N> (one share for each N, run.mjs shares), and the minimum share rule counts it too.
+export const KINDS_BLOCKS = ['payoff_dmg', 'line_status'];
+export const kindsShare = (cfg, n) => { const s = cfg.ability_v2.share.status_kinds?.[n]; if (typeof s !== 'number') throw new Error(`blockPP: no share.status_kinds for ${n} statuses`); return s; };
+export const measuredShare = (cfg, b) => (GATES.includes(b.k) ? gateShare(cfg, b) : b.k === 'on_kill' ? cfg.ability_v2.share.on_kill
+  : KINDS_BLOCKS.includes(b.k) && b.kinds !== undefined ? cfg.ability_v2.share.status_kinds?.[b.kinds] : undefined);
 export function minShareErrors(cfg, blocks) {
   const m = cfg.ability_v2.limits?.min_share;
   if (typeof m !== 'number') throw new Error('minShareErrors: config ability_v2 has no limits.min_share');
-  return blocks.flatMap((b, i) => { const s = measuredShare(cfg, b); return typeof s === 'number' && s < m ? [{ block: i + 1, k: b.k, status: b.status, share: s }] : []; });
+  return blocks.flatMap((b, i) => { const s = measuredShare(cfg, b); return typeof s === 'number' && s < m ? [{ block: i + 1, k: b.k, status: b.status, share: s, ...(b.kinds !== undefined ? { kinds: b.kinds } : {}) }] : []; });
 }
 export function blockPP(cfg, tid, b) {
   const t = cfg.v2_templates[tid]; const P = cfg.v2_pp, R = P.ref, A = cfg.ability_v2.pp; const C = chargeOf(cfg, tid) + 1;
@@ -90,14 +95,15 @@ export function blockPP(cfg, tid, b) {
     case 'true_strike': return k * R.miss;
     case 'area': return att ? k * b.x * R.foes_other : P.support_pp.smite * b.x * R.foes_other * sk; // support area smite (P3): smite price x the other foes
     case 'cure': return P.support_pp.cure * sk; // Revision 5: the cure and its immunity are free (0 PP)
-    case 'payoff_dmg': return att ? k * b.v * listShare(cfg, R.payoff, b) * areaX : P.support_pp.smite * b.v * sk * listShare(cfg, R.payoff, b); // support: +v on the smite (PR T1)
+    case 'payoff_dmg': { const sh = b.kinds !== undefined ? kindsShare(cfg, b.kinds) : listShare(cfg, R.payoff, b); // Set 2 (c): kinds = the measured share, not the assumed payoff
+      return att ? k * b.v * sh * areaX : P.support_pp.smite * b.v * sk * sh; } // support: +v on the smite (PR T1)
     case 'payoff_crit': return k * b.v * listShare(cfg, R.payoff, b) * areaX;
     case 'per_stack': return k * b.v * R.stacks * R.payoff;
     case 'per_kind': return k * b.v * R.kinds * R.payoff;
     case 'vs_status': if (att || A.vs_smite === undefined) return (att ? k : sk * A.sup_vs_k) * (b.x - 1) * listShare(cfg, R.frozen_share * R.payoff, b);
       return P.support_pp.smite * B.find(x => x.k === 'smite').x * (b.x - 1) * A.vs_smite * listShare(cfg, R.frozen_share * R.payoff, b) * sk; // PR T1b (1a)
     case 'execute': return k * b.v * b.line;
-    case 'line_status': return A.line_status * b.statuses.length;
+    case 'line_status': return A.line_status * (b.statuses ? b.statuses.length : 0) + (b.kinds !== undefined ? k * B.find(x => x.k === 'execute').v * kindsShare(cfg, b.kinds) : 0); // Set 2 (c): kinds = the execute bonus x the measured share
     case 'lifesteal': case 'guard_up': return k * b.v * R.heal_value;
     case 'shield_break': return k * (b.x - 1) * R.shield_share * R.payoff;
     case 'on_crit': return sv(b.status, b) * b.chance * R.crit_share * (att ? 1 / C : sk) * (b.status === 'stunned' ? 1 : 1);
