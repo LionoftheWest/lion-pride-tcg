@@ -2228,3 +2228,80 @@ Else `reset_used` with `next` (the same rule as v1). A v2 gift is a row of `stat
      - One stat spent twice only (`crt`): an absolute write in place of `+` (`rev_spend_abs_update`) still PASS. Spend each stat twice.
      - Design notes: the allowlists exempt by function name (a later overload with the same name is also exempt); `stat_reset_gift_use_v2`
        alone (server only) uses a gift with no reset; a subject that loses its role later keeps points that cannot be reset.
+
+### 20.14 R1: Gauntlet v2 for testers
+
+R1 lets the players on `balance combat_v2.testers` play the weekly Gauntlet in combat v2. Every other player keeps v1. The flag
+`combat_v2.gauntlet` stays false. R1 has 5 PRs: R1a (the pure SQL builders, this section), R1b (the tester branch in `gauntlet_start` and the
+v2 run functions), R1c (the server routes), R1d (the Lab Gauntlet section) and R1e (the screen, after the UI-52 review-4 approval).
+
+**Nathan's decisions (2026-10-23, all 7 approved as recommended):**
+
+| # | Question | Decision |
+|---|---|---|
+| D1 | Tester v2 runs on the board and in the prizes? | No. Tester v2 runs stay off the weekly board and out of the weekly prizes. The daily task still counts |
+| D2 | A squad card with no `ability_v2` | The tester plays v1 that day. No placeholder |
+| D3 | The offers `buff` and `reset` in v2 | `reset` fills every charge. `buff` makes the attackers Empowered at the next room start |
+| D4 | The tester is removed during an active v2 run | A run that started in v2 finishes in v2 |
+| D5 | Between rooms | HP and downs carry. Statuses and meters reset each room |
+| D6 | Manual play | The clock picks the card that acts. The player picks basic or active, the target and the ally |
+| D7 | The order of release | The owner is removed from the tester list before R1b goes live, and added again after R1e |
+
+#### R1a: the builders (`tcg-bot/supabase/combat_v2_gauntlet_builders.sql`)
+
+R1a adds 3 pure functions. No function calls them, no v1 function changes, and no flag is read. They move the state builder and the fight
+driver of the Admin Combat v2 Lab into SQL, so that R1b plays the same fight as the Lab (C3: no combat math in JS).
+
+- `combat_v2_card_unit(card[, numbers])` (STABLE): the v2 unit of a card at 0 stars, level 0 and no points (plan 3.3: no progress in the
+  Gauntlet). Role and blocks from `subjects.ability_v2`, stats from `card_combat_v2`, speed `v2_speed.role_base[role]`, charge `v2_charge.start`,
+  no status, meter 0. It is the unit of the Lab (`fightSql`), key by key. A card with no `ability_v2` (or no role of the `roles` table or no
+  list of blocks) is REFUSED with SQLSTATE `P0002` (`no_data_found`) and the D2 text. R1b catches this and plays v1 (D2).
+- `gauntlet_v2_foes(foes, floor, room[, numbers])` (STABLE): each foe of a week room (`dungeon_make_foe`) becomes
+  `combat_v2_dungeon_foe(key, floor, room, kind)` with no extra mechanic, plus `show {name, model, element}` for the screen only. No v1 key or number
+  (`hp`, `atk`, `weak`, `resist`, `passives`, `tags`, `wk`, `st`, the element bonus) enters the v2 unit.
+- `combat_v2_step(state, choice[, numbers])` (VOLATILE: the engine draws random numbers): one call of a v2 fight.
+  - The state must pass `fight_state_check_v2` (a v1 key is refused).
+  - When a card has the turn (`ext.turn`), the choice `{use, target, ally}` plays its action through `combat_v2_card_act` (D6). Any other key
+    (for example `actor`) is refused: the player does not pick the card.
+  - Then the clock runs (`combat_v2_next`, `combat_v2_enemy_act`): every enemy turn and every skipped turn, until the next card turn
+    (event `choose`, the card goes into `ext.turn`), the end (event `end`, `won` = no standing enemy) or the step cap of the mode (event `cap`,
+    `v2_dungeon.round_cap`). The client never drives an enemy turn.
+  - The first call of a fight has no card turn and needs choice null.
+  - The answer: `state`, `event`, `actor`, `won`, `clock`, `steps_left` (= round_cap - clock, the "turns left"), `actions` and `log` (one entry
+    for each clock call: clock, event, actor, skip, reason, ticks, ended; one for each action: actor, action or move, target, ally, hits).
+- **Not in R1a (R1b):** the meters of a room start (the test draws them as the Lab does: 0 to `v2_speed.act_at`, 2 decimals), the room
+  carry-over (D5), the offers (D3), the run row and its lock, the turn-order projection in the state.
+- **C1**: the scope of `ci/combat/c1-numbers.json` now has `^gauntlet_v2_` (the `combat_v2_*` names were in scope already).
+- **Proof** (copy 2, refreshed from live on 2026-10-23, M1c applied on the copy first so that it equals main):
+  - `test-combat-v2-gauntlet-builders.mjs` PASS all 20, before and after the apply. The block drops the 3 functions first (the state before
+    the file), runs the file, and runs it a second time.
+    - T1: the md5 of the 546 other public functions is the same; exactly the 3 new functions are added; no other function calls them; the
+      readers of `combat_v2_on` are the same (R1a reads no flag); the flag is the same.
+    - The card unit = the Lab unit (the text of `fightSql`) at 0 stars, level 0, no points and meter 0 for each of the 352 cards with an
+      `ability_v2` (exact with the stored `cp_mod`). The Lab sends `cp_mod` through a JS number: then 38 support units differ only below 1e-12
+      in `power`. The unit takes its numbers (`v2_charge.start` 2 gives charge 2, a role speed 33 gives speed 33).
+    - D2: a card whose subject has no `ability_v2` is refused with SQLSTATE `P0002` and the D2 text (39 cards of the copy have none today).
+    - The foes = `combat_v2_dungeon_foe` + `show`, no other key, on every fight room of 4 generated Gauntlet weeks (941 foes: fight 537,
+      horde 209, guardian 120, elite 48, miniboss 27). A state of the builders passes `fight_state_check_v2`.
+    - SQL = the Lab driver (`DRIVER` read from `combat-lab-routes.js`, not a copy) on 120 seeded fights (random squads of 5 cards with an
+      `ability_v2`, rooms of every kind on floors 1 to 6, Auto v2 choices, the same `setseed`): the same flat log (2,088 actions: 1,198 card
+      choices, 261 actives; 14 skipped turns; 315 ticks), the same units (HP, down, statuses, charge) at every card choice and at the end, and
+      the same end (won 110, lost 7, cap 3). 1,318 calls of `combat_v2_step`: each stops only on a card turn, the end or the cap, and has
+      `steps_left` = round_cap - clock.
+    - The step cap comes from the given numbers: `round_cap` 3 ends a long fight with event `cap` at clock 3.
+    - 22 refusals, each with its text (a v1 key in an enemy or a card, a v1 state, a choice at the start, no choice, an `actor` key, a bad
+      `use`, an active not charged, a card as the target, no `round_cap`, bad foes, an unknown card, a missing number).
+    - Server only: volatility (unit and foes STABLE, step VOLATILE), `search_path`, no execute for anon, authenticated and public, a `[combat]`
+      comment that names the file.
+  - MUTATE=all, before and after the apply (the second run 2026-10-28, on the branch rebased on main f76db54d): baseline PASS all 20 in the same run, 29 of 29 planted faults caught: stars not 0, level not 0,
+    points not empty, a placeholder for a card with no `ability_v2`, no SQLSTATE, a fixed charge, a kept meter, a v1 key (`wk`, `st`) in a
+    foe, the v1 foe merged, v1 HP and ATK, v1 passives, floor and room swapped, the step stops on an enemy turn, a skipped turn acts, no state
+    check, a fixed step cap (40), the clock reads the live numbers, `ext.turn` kept, the choice keys not checked, a choice at the start, `won`
+    wrong, a flag read, volatility, `search_path`, a grant to anon, a missing comment, the flag on, a v1 function touched, an extra caller.
+    Two of them (`foes_v1_key`, `step_stops_on_enemy`) stop the whole test block: they are caught, but no named case reports them.
+  - The goldens with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference.
+  - C1, C2, C3 and `combat-checks.test.mjs` PASS. C1: the scope now has `^gauntlet_v2_`.
+  - The full suite `test-all-local.mjs`: before the apply 168 of 169 PASS (the 1 failure: `test-superseded-list.mjs`, this new file was not yet in
+    `SUPERSEDED.md`); after the apply and the regenerated files 169 of 169 PASS (2 one-time skipped; run again on 2026-10-28 on the rebased branch: 169 of 169, C1, C2, C3 PASS, combat-checks.test.mjs 16 of 16). The rehearsal run (before the 7 allowlists
+    were extended) failed only the 7 "no other caller" lists and the 3 generated files. The 7 lists now name the new functions by exact name.
+  - Then `db/schema/`, `docs/data/` (the tester id of the local copy masked in memory, as in 20.10 to 20.13) and `SUPERSEDED.md` regenerated.
