@@ -1,5 +1,5 @@
 # The three combat checks of the effect engine (docs/f3-effect-engine.md section 3, row "4e"). Scripts and allowlists: ci/combat/, ci/README.md.
-# No database and no secret: they read the schema snapshot (db/schema), the changed migrations, docs/data/balance.md and the client code (about 10 s).
+# No database and no secret: the apply-sql guard test uses a stub server. The checks read the schema snapshot (db/schema), the changed migrations, docs/data/balance.md and the client code (about 10 s).
 # One job, no matrix: one of the 20 job slots (the slot guard, ci/gates/slot-guard.test.mjs, reads every workflow).
 name: Combat checks
 
@@ -26,7 +26,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: apply-sql guards (a local apply never contacts live; no network, a stub server plays the local copy)
+        working-directory: card-studio
+        run: |
+          npm ci --ignore-scripts --omit=dev --no-audit --no-fund
+          node --test scripts/apply-sql-guard.test.mjs
       - name: Test the checks (each one fails on a planted violation)
+        if: success() || failure()
         run: node --test ci/combat/combat-checks.test.mjs
       - name: C1 no combat number outside balance
         env:
