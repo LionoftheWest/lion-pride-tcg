@@ -51,7 +51,8 @@ export class Battle {
   val(u, s) { return u.st[s] ? (u.st[s].v ?? u.st[s].stacks ?? 1) : 0; }
   negKinds(u) { return this.cfg.v2_status.negative.filter(s => u.st[s]).length; }
   // PR T1: a status or any status of a list (the field status or statuses of a block)
-  hasAny(u, b) { return b.statuses ? b.statuses.some(s => this.has(u, s)) : this.has(u, b.status); }
+  // Set 2 part (c): a block may also name kinds = N: the unit has N or more different harmful statuses (negKinds), an OR next to its statuses
+  hasAny(u, b) { return (b.statuses ? b.statuses.some(s => this.has(u, s)) : b.status !== undefined && this.has(u, b.status)) || (b.kinds !== undefined && this.negKinds(u) >= b.kinds); }
   // PR T1: the ally of a block with a target: most_hurt = the lowest HP share (the first in the fixed order on a tie), strongest = the attacker with the most power
   allyTo(to) {
     const a = this.alive('card');
@@ -438,7 +439,7 @@ export class Battle {
       const wrong = this.confusedRedirect(u);
       if (wrong) { this.damage(u, wrong, u.cp * cfg.v2_status.confused.self_x); return; }
       const o = { x: 1, n: 1, critAdd: 0, pierce: 0, trueStrike: false, bonus: 0, critBonus: 0, shieldX: 1 };
-      let area = 0, lifesteal = 0, guardUp = 0, stealTo = null; const rid = [], onCrit = [], onKill = [], pays = [];
+      let area = 0, lifesteal = 0, guardUp = 0, stealTo = null; const rid = [], onCrit = [], onKill = [], pays = [], post = [];
       // PR T1: an attachment is read with its host; a gate that does not hold now turns its host off for this active
       for (let j = 0; j < B.length; j++) { const b = B[j]; if (ATTACH.includes(b.k)) continue;
       const a = ATTACH.includes(B[j + 1]?.k) ? B[j + 1] : null;
@@ -458,7 +459,7 @@ export class Battle {
         case 'vs_status': if (this.hasAny(tgt, b)) o.vsX = b.x; break;
         case 'execute': {
           const line = B.find(x => x.k === 'line_status');
-          if (tgt.hp / tgt.maxHp < b.line || (line && line.statuses.some(s => this.has(tgt, s)))) o.bonus += b.v * ab; break; }
+          if (tgt.hp / tgt.maxHp < b.line || (line && this.hasAny(tgt, line))) o.bonus += b.v * ab; break; }
         case 'line_status': break;
         case 'lifesteal': lifesteal = b.v * ab; stealTo = b.to || null; break;
         case 'guard_up': guardUp = b.v * ab; break;
@@ -466,6 +467,10 @@ export class Battle {
         case 'apply': case 'random_apply': rid.push(b); break;
         case 'on_crit': onCrit.push(b); break;
         case 'on_kill': onKill.push(b); break;
+        // Set 2 part (b): support blocks on an attacker. dispel strips the target when its block comes (before the hits; a later payoff reads the stripped
+        // target); heal_all and quicken (self) run after the hits, with no crit roll (the hits have their own)
+        case 'dispel': for (const s of BOONS) delete tgt.st[s]; tgt.shield = 0; break;
+        case 'heal_all': case 'quicken': post.push(b); break;
         default: throw new Error(`doActive: block ${b.k} not for attackers`);
       } }
       if (this.alive('enemy').length === 1 && area) { o.bonus += area * cfg.v2_roles.cleaver.hunt_area_x; area = 0; }
@@ -490,6 +495,10 @@ export class Battle {
       if (area) for (const e of this.alive('enemy')) if (e !== tgt) { const r = this.cardHit(u, e, { ...o, x: area, bonus: 0, vsX: null, kind: 'area', ...(areaPay ? payOn(e) : {}) }); dealt += r.dealt; if (!r.miss) ridersOn(e, true); }
       if (lifesteal && dealt > 0) { const t = stealTo ? this.allyTo(stealTo) : u; if (t) this.heal(t, lifesteal * dealt); }
       if (guardUp && dealt > 0) this.addShield(u, guardUp * dealt);
+      for (const b of post) {
+        if (b.k === 'heal_all') { for (const t of this.alive('card')) this.heal(t, b.v * ab * t.maxHp); }
+        else this.apply(u, u, 'quickened', { value: 1 + b.v * ab });
+      }
       delete u.st.empowered; this.consumeMark(tgt);
       return;
     }

@@ -2291,6 +2291,118 @@ are private: every output of this section holds roles, counts and ratios only. (
   3. The Hunt end gap x2.57 (goal 2.0 to 2.5): a decision for lane 1 and Nathan: move the band, move the Gold or Normal Hunt CP, or keep the placeholder pool as the reference of this target.
   4. Not extended: `lab12` and the designed teams (`teams.json`) use the 20 fixed Set 1 teams and take no Set 2 card.
 
+### 20.15 R1: Gauntlet v2 for testers
+
+R1 lets the players on `balance combat_v2.testers` play the weekly Gauntlet in combat v2. Every other player keeps v1. The flag
+`combat_v2.gauntlet` stays false. R1 has 5 PRs: R1a (the pure SQL builders, this section), R1b (the tester branch in `gauntlet_start` and the
+v2 run functions), R1c (the server routes), R1d (the Lab Gauntlet section) and R1e (the screen, after the UI-52 review-4 approval).
+
+**Nathan's decisions (2026-10-23, all 7 approved as recommended):**
+
+| # | Question | Decision |
+|---|---|---|
+| D1 | Tester v2 runs on the board and in the prizes? | No. Tester v2 runs stay off the weekly board and out of the weekly prizes. The daily task still counts |
+| D2 | A squad card with no `ability_v2` | The tester plays v1 that day. No placeholder |
+| D3 | The offers `buff` and `reset` in v2 | `reset` fills every charge. `buff` makes the attackers Empowered at the next room start |
+| D4 | The tester is removed during an active v2 run | A run that started in v2 finishes in v2 |
+| D5 | Between rooms | HP and downs carry. Statuses and meters reset each room |
+| D6 | Manual play | The clock picks the card that acts. The player picks basic or active, the target and the ally |
+| D7 | The order of release | The owner is removed from the tester list before R1b goes live, and added again after R1e |
+
+#### R1a: the builders (`tcg-bot/supabase/combat_v2_gauntlet_builders.sql`)
+
+R1a adds 3 pure functions. No function calls them, no v1 function changes, and no flag is read. They move the state builder and the fight
+driver of the Admin Combat v2 Lab into SQL, so that R1b plays the same fight as the Lab (C3: no combat math in JS).
+
+- `combat_v2_card_unit(card[, numbers])` (STABLE): the v2 unit of a card at 0 stars, level 0 and no points (plan 3.3: no progress in the
+  Gauntlet). Role and blocks from `subjects.ability_v2`, stats from `card_combat_v2`, speed `v2_speed.role_base[role]`, charge `v2_charge.start`,
+  no status, meter 0. It is the unit of the Lab (`fightSql`), key by key. A card with no `ability_v2` (or no role of the `roles` table or no
+  list of blocks) is REFUSED with SQLSTATE `P0002` (`no_data_found`) and the D2 text. R1b catches this and plays v1 (D2).
+- `gauntlet_v2_foes(foes, floor, room[, numbers])` (STABLE): each foe of a week room (`dungeon_make_foe`) becomes
+  `combat_v2_dungeon_foe(key, floor, room, kind)` with no extra mechanic, plus `show {name, model, element}` for the screen only. No v1 key or number
+  (`hp`, `atk`, `weak`, `resist`, `passives`, `tags`, `wk`, `st`, the element bonus) enters the v2 unit.
+- `combat_v2_step(state, choice[, numbers])` (VOLATILE: the engine draws random numbers): one call of a v2 fight.
+  - The state must pass `fight_state_check_v2` (a v1 key is refused).
+  - When a card has the turn (`ext.turn`), the choice `{use, target, ally}` plays its action through `combat_v2_card_act` (D6). Any other key
+    (for example `actor`) is refused: the player does not pick the card.
+  - Then the clock runs (`combat_v2_next`, `combat_v2_enemy_act`): every enemy turn and every skipped turn, until the next card turn
+    (event `choose`, the card goes into `ext.turn`), the end (event `end`, `won` = no standing enemy) or the step cap of the mode (event `cap`,
+    `v2_dungeon.round_cap`). The client never drives an enemy turn.
+  - The first call of a fight has no card turn and needs choice null.
+  - The answer: `state`, `event`, `actor`, `won`, `clock`, `steps_left` (= round_cap - clock, the "turns left"), `actions` and `log` (one entry
+    for each clock call: clock, event, actor, skip, reason, ticks, ended; one for each action: actor, action or move, target, ally, hits).
+- **Not in R1a (R1b):** the meters of a room start (the test draws them as the Lab does: 0 to `v2_speed.act_at`, 2 decimals), the room
+  carry-over (D5), the offers (D3), the run row and its lock, the turn-order projection in the state.
+- **C1**: the scope of `ci/combat/c1-numbers.json` now has `^gauntlet_v2_` (the `combat_v2_*` names were in scope already).
+- **Proof** (copy 2, refreshed from live on 2026-10-23, M1c applied on the copy first so that it equals main):
+  - `test-combat-v2-gauntlet-builders.mjs` PASS all 25 (2026-10-30, copy 1, after the review fixes: 382 cards with an `ability_v2`, 922 foes; the earlier 20 cases ran before and after the apply). The block drops the 3 functions first (the state before
+    the file), runs the file, and runs it a second time.
+    - T1: the md5 of the 546 other public functions is the same; exactly the 3 new functions are added; no other function calls them; the
+      readers of `combat_v2_on` are the same (R1a reads no flag); the flag is the same.
+    - The card unit = the Lab unit (the text of `fightSql`) at 0 stars, level 0, no points and meter 0 for each of the 352 cards with an
+      `ability_v2` (exact with the stored `cp_mod`). The Lab sends `cp_mod` through a JS number: then 38 support units differ only below 1e-12
+      in `power`. The unit takes its numbers (`v2_charge.start` 2 gives charge 2, a role speed 33 gives speed 33; `v2_asc.base` doubled gives the `hp` and `atk` of `card_combat_v2` with those numbers, a value that goes through `card_combat_v2` with `b`). The Lab unit is read from the text of `fightSql` (not copied), with the meter 0.
+    - D2: a card with no usable `ability_v2` is refused with SQLSTATE `P0002` and the D2 text: one case for each of the 3 tests of the file (a: no `ability_v2`; b: a role that is not in the `roles` table; c: blocks that are not a list) and d: an `ability_v2` that is not an object (9 cards of the copy have none today). The trigger of `subjects` refuses b, c and d at a write, so the test disables it inside the rolled-back block.
+    - The foes = `combat_v2_dungeon_foe` + `show`, no other key, on every fight room of 4 generated Gauntlet weeks (941 foes: fight 537,
+      horde 209, guardian 120, elite 48, miniboss 27). A state of the builders passes `fight_state_check_v2`.
+    - SQL = the Lab driver (`DRIVER` read from `combat-lab-routes.js`, not a copy) on 120 seeded fights (random squads of 5 cards with an
+      `ability_v2`, rooms of every kind on floors 1 to 6, Auto v2 choices, the same `setseed`): the same flat log (2,088 actions: 1,198 card
+      choices, 261 actives; 14 skipped turns; 315 ticks), the same units (HP, down, statuses, charge) at every card choice and at the end, and
+      the same end (won 110, lost 7, cap 3). 1,318 calls of `combat_v2_step`: each stops only on a card turn, the end or the cap, and has
+      `steps_left` = round_cap - clock.
+    - The step cap comes from the given numbers: `round_cap` 3 ends a long fight with event `cap` at clock 3. The Hunt mode reads `v2_hunt.round_cap` (the `v2_hunt` branch of `ckey` is TESTED, not removed: mode hunt with `round_cap` 7 gives `steps_left` = 7 - clock, mode gauntlet keeps the dungeon cap). Every call has `actions` = the actions of its log, and the log of a card action has the `target` and the `ally` of the choice (the Lab compare reads `target` too).
+    - 22 refusals, each with its text (a v1 key in an enemy or a card, a v1 state, a choice at the start, no choice, an `actor` key, a bad
+      `use`, an active not charged, a card as the target, no `round_cap`, bad foes, an unknown card, a missing number).
+    - Server only: volatility (unit and foes STABLE, step VOLATILE), `search_path`, no execute for anon, authenticated and public, a `[combat]`
+      comment that names the file.
+  - MUTATE=all (2026-10-30, copy 1, after the review fixes; the test drops the 3 functions first, so it does not depend on the apply): baseline PASS all 25 in the same run,
+    36 of 36 planted faults caught (29 before the fixes). The 7 new ones and the case that catches each: `role_check_removed` (D2 case b),
+    `blocks_check_removed` (D2 case c), `unit_ignores_b` (the stats of the given numbers), `hunt_ckey_dungeon` (the step cap of the mode),
+    `ckey_always_hunt` (the step cap of the mode and the cap 3), `enemy_actions_not_counted` (`actions` of the log), `log_drops_target_ally` (target and ally
+    of the log, and the Lab compare). `foes_v1_key` and `step_stops_on_enemy` are now named FAILs (7 and 4 cases): each step call has its own sub-block, so a raise
+    of the step is the FAIL of its case and does not stop the block. The review probes (the reviewer's 5 files) each FAIL the fixed test: `role_check_removed`
+    (D2 case b), `hunt_ckey_dungeon` (the step cap of the mode), `enemy_actions_not_counted` (the cap case: `actions`; and the Lab compare), `unit_ignores_b`
+    (the stats of the given numbers), `log_drops_target_ally` (the cap case: target and ally; and the Lab compare). Earlier run (2026-10-28, rebased on main f76db54d):
+    baseline PASS all 20, 29 of 29 caught: stars not 0, level not 0, points not empty, a placeholder for a card with no `ability_v2`, no SQLSTATE, a fixed charge, a kept meter,
+    a v1 key (`wk`, `st`) in a foe, the v1 foe merged, v1 HP and ATK, v1 passives, floor and room swapped, the step stops on an enemy turn, a skipped turn acts, no state
+    check, a fixed step cap (40), the clock reads the live numbers, `ext.turn` kept, the choice keys not checked, a choice at the start, `won`
+    wrong, a flag read, volatility, `search_path`, a grant to anon, a missing comment, the flag on, a v1 function touched, an extra caller.
+  - The goldens with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference.
+  - C1, C2, C3 and `combat-checks.test.mjs` PASS. C1: the scope now has `^gauntlet_v2_`. Run again 2026-10-30 after the review fixes (test and plan only, the SQL is the same): C1, C2, C3 PASS, `combat-checks.test.mjs` 16 of 16.
+  - The full suite `test-all-local.mjs`: before the apply 168 of 169 PASS (the 1 failure: `test-superseded-list.mjs`, this new file was not yet in
+    `SUPERSEDED.md`); after the apply and the regenerated files 169 of 169 PASS (2 one-time skipped; run again on 2026-10-28 on the rebased branch: 169 of 169, C1, C2, C3 PASS, combat-checks.test.mjs 16 of 16). The rehearsal run (before the 7 allowlists
+    were extended) failed only the 7 "no other caller" lists and the 3 generated files. The 7 lists now name the new functions by exact name.
+  - Then `db/schema/`, `docs/data/` (the tester id of the local copy masked in memory, as in 20.10 to 20.13) and `SUPERSEDED.md` regenerated.
+
+### 20.16 Set 2 engine parts (b) and (c) (`tcg-bot/supabase/combat_v2_set2_parts.sql`)
+
+Nathan's decision (2026-10-28, Set 2 question Q1 = C): build engine part (b) and part (c) for 5 Set 2 actives. Part (a), an attacker bonus while this
+card is Empowered or Shielded, is NOT built. It is a post-Nov-6 item. The file changes no play: the flag `combat_v2` stays OFF, no v1 function calls a
+replaced function, and an ability with none of the new parts gives the same price (PP), text and fights as before.
+
+- **(b) Three support blocks are legal for an attacker.** The price is the rule of 5.2 (a support main uses the library price at cycle 2, so x 2 / C
+  with C = the attacker cycle). No new number: `dispel` 4 x 2 / C, `heal_all` 60 x v x 2 / C, `quicken` 13.3 x v x 2 / C.
+  - `dispel`: removes the shield and the boosts of the target BEFORE the hits. It takes no attachment. A payoff later in the scan reads the stripped target.
+  - `heal_all`: every standing ally (this card too) heals v x its max HP after the hits. No crit roll, no draw.
+  - `quicken` with the new flag field `self`: the card Quickens itself after the hits (value 1 + v x ABL, the same status as a support Quicken).
+    An attacker quicken must be `self` and there is at most one. A support quicken must not be `self`.
+  - A Confused attacker (the redirect to its own side) runs none of the three.
+- **(c) A status count condition.** The new field `kinds` (N = 2 to 5) of `line_status` (an OR next to its named statuses and the HP line of its
+  execute block) and of `payoff_dmg` (alone: no `status` or `statuses`). It holds while the target has N or more different harmful statuses.
+  The new function `combat_effect_v2_holds(unit, block, clock, numbers)` is the one place that decides it. The main hit, each area hit and a support
+  smite read it. Price (rule T1c): the raw price x the MEASURED share of the time it is true, the new balance leaf `ability_v2.share.status_kinds.<N>`
+  (2 or more 0.0757, 3 or more 0.0059, 4 or more 0.0002, 5 or more 0; `card-studio/v2sim/run.mjs shares --runs 2000`, seed 1, seed 7 within 0.004).
+  The existing minimum share rule (`limits.min_share` 0.01) refuses a count whose share is below it. A `payoff_dmg` with `kinds` takes no Silver.
+- **Replaced** (each rebuilt from the LIVE text, with an md5 guard): `ability_v2_spec`, `ability_v2_block_pp`, `ability_v2_pps`, `ability_v2_text`,
+  `ability_v2_check`, `combat_effect_v2_active`. **New**: `combat_effect_v2_holds`. The library rows `dispel`, `heal_all`, `quicken`, `line_status`
+  and `payoff_dmg` get the new classes, fields and sentences. The simulator `card-studio/v2sim` has the same rules.
+- **Open (a decision for Nathan)**: "3 or more statuses" has a measured share of 0.0059, BELOW the minimum share 0.01, so the validator REFUSES it today.
+  2 of the 5 Set 2 actives (the 2 cards of part (c), Mrs. Foxtrot and Ottozone's Head) are refused for this reason. Options: lower `limits.min_share`
+  to 0.005 (one balance edit; the rule then lets a 3-or-more card through), change the 2 cards to "2 or more", or leave them to a later set.
+  The 3 cards of part (b) are accepted.
+- **Test**: `card-studio/scripts/test-combat-v2-set2-parts.mjs` (rolled back; SQL = the simulator on 500 random abilities and 120 random fights;
+  `MUTATE=all` plants each fault in the file and in the simulator). Results are in the PR description.
+
 ### 20.17 M1d: the v1 stat paths are frozen when v2 progress is ON (`tcg-bot/supabase/combat_v2_progress_freeze_v1.sql`)
 
 M1d closes the open items 1, 3 and 6 of 20.13 and the trap a of 20.11. Nothing in play changes: `combat_v2.progress` is false and the tester list
@@ -2343,14 +2455,18 @@ is the live text with ADDED lines only; each added line has the mark `-- M1d`, a
   - `test-stat-points-r-stars-s1.mjs` applies the old `stat_reset_gift.sql`, whose guard needs the v1 functions of before M1d. The test now puts that
     text back first (section 3 of this file minus the `-- M1d` lines) inside its rolled-back block: PASS all 35, MUTATE=all all caught.
     `test-combat-v2-progress-tables.mjs` lists `buy_shop_item` as a named reader of `card_progress_v2` (it names the new reset): PASS all 19, 35 of 35.
-  - **Copy 2 had R1a (PR #483, not merged)** applied: its 3 functions (`combat_v2_card_unit`, `gauntlet_v2_foes`, `combat_v2_step`) made 7 older
-    allowlist tests fail with and without M1d (the same 7 messages on copy 2 put back to before M1d; each lists only those function names), and put 3 functions in
-    the schema snapshot that are not in this PR. For the final run the 3 functions were taken off copy 2 and put back after. **R1a and M1d both edit
-    the allowlists of these 7 tests and the end of this file**: the second PR to merge keeps both edits and its section number (R1 is 20.14, M1d is 20.17).
-  - The final run on copy 2 (main + M1a to M1c + this file): the rehearsal applied the file (grants OK), then `test-all-local.mjs` **170 of 170 PASS**
-    (2 one-time skipped), after `db/schema/`, `docs/data/` (the tester id of the local copy masked in memory: live has none) and `SUPERSEDED.md` were
-    made again in this PR. The first suite run (before the 7 allowlist failures were traced) had 12 failures: 7 from R1a, and 5 of this file (the
-    gift test, the tables test, the docs page, the snapshot and the superseded list), each fixed above. The combat checks C1, C2, C3 and
-    `combat-checks.test.mjs` (16) PASS.
+  - **Section number and the merge.** M1d was built as 20.14, then 20.15, because lane 3 (Lab Set 2) and R1 took the numbers first. Main now has
+    20.14 (Lab Set 2), 20.15 (R1 Gauntlet v2) and 20.16 (Set 2 engine parts), so M1d is 20.17. Main was merged into this branch (merge, no force
+    push). Conflicts kept both intents: the allowlists of `test-combat-v2-balance.mjs`, `test-combat-v2-t1.mjs` and `test-combat-v2-t1b.mjs` name the R1a
+    functions and the M1d functions; the generated pages were made again on copy 2 and not merged by hand.
+  - **The earlier copy 2 carried R1a before it was merged**: its 3 functions made 7 older allowlist tests fail with and without M1d (the same
+    messages on copy 2 put back to before M1d). That is gone: R1a and the Set 2 parts are on main, and the allowlists of those tests are on main.
+  - The final run on the merged branch (copy 2: main 5c4cfeca with all its migrations applied, M1a to M1c live, then this file): freeze test PASS all 27,
+    MUTATE=all baseline PASS and 30 of 30 caught; spend 32 (47 of 47), concurrency 6 (1 of 1), tables 19 (35 of 35), r-stars 35 (all caught). The goldens
+    on copy 2 put back to before M1d, with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference. The rehearsal applied the
+    file (grants OK); the suite then failed only the two generated-file tests (snapshot, superseded list), as expected. After `db/schema/`, `docs/data/` (the
+    tester id of the local copy masked in memory: live has none) and `SUPERSEDED.md` were made again in this PR: `test-all-local.mjs` **172 of 172 PASS**
+    (2 one-time skipped). The combat checks C1, C2, C3 and `combat-checks.test.mjs` (16) PASS. The first suite run of the unmerged branch had 12
+    failures (7 from R1a on copy 2, 5 from this file: the gift test, the tables test, the docs page, the snapshot, the superseded list), each fixed above.
 - **Go-live order**: after M1c (live). `rehearse-sql.mjs` on copy 1, then `apply-sql.mjs --live` (grants OK), then `check-schema-drift.mjs --live` = 0
   differences, then `ops/deploy.sh` is NOT needed (SQL only: no Activity or bot code changes). The flag stays OFF; nothing changes in play until U0.

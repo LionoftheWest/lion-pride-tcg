@@ -29,10 +29,10 @@ do $g$
 declare m text; f record;
 begin
   for f in select * from (values
-    ('public.spend_stat_points(text, bigint, jsonb)', '37f6cdc603e05ba871f5d9f1dadb80a6', '901186be650014a16dc349023de3c649'),
-    ('public.reset_stat_points(text, bigint)', 'd86606fdd8fe2f9e3a7f4cb8ef75d064', '41496df26ef213d95ae65e1d5f760ac1'),
+    ('public.spend_stat_points(text, bigint, jsonb)', '37f6cdc603e05ba871f5d9f1dadb80a6', '1b5c675561687da207c0889d676850f0'),
+    ('public.reset_stat_points(text, bigint)', 'd86606fdd8fe2f9e3a7f4cb8ef75d064', 'd54d10b7fdea06d76b697e81a58203ed'),
     ('public.stat_reset_gift_use(text, bigint)', '36102de297b7c70871508c74c8aef9c9', '4e02a71bc65ebb8cd0acb664e949bf0f'),
-    ('public.buy_shop_item(text, text, integer, bigint, integer)', 'e2856fa90e8246f9023a62bcf456b951', 'dc2db4d5e63ed04f935170ac8613ecb3'),
+    ('public.buy_shop_item(text, text, integer, bigint, integer)', 'e2856fa90e8246f9023a62bcf456b951', 'bfb80045fcb1efa2d6789db4e8b544e8'),
     ('public.reset_card_points_v2(text, bigint)', 'b3278aac743a4eaca4e3a07f6414bc1e', '09dfeb345fafdf77808098e681ae44a8')
   ) x(fn, old_md5, new_md5) loop
     select md5(replace(pg_get_functiondef(f.fn::regprocedure), chr(13), '')) into strict m;

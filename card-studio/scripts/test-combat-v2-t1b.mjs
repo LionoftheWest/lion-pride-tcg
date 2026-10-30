@@ -503,7 +503,7 @@ begin
    where p.pronamespace = 'public'::regnamespace and p.proname in (${q(REPLACED)}) and coalesce(obj_description(p.oid, 'pg_proc'), '') not like '%combat_v2_ability_prices.sql%';
   res := res || jsonb_build_object('case', 'every replaced function has a comment that names this file', 'ok', o = '[]'::jsonb, 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p
-   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(T1NEW)}, ${q(E6NEW)}, 'card_power_v2_numbers', 'card_power_v2_families', 'card_power_v2', 'combat_v2_squad_value', 'card_progress_v2_view', 'spend_card_points_v2', 'reset_card_points_v2', 'card_progress_v2_reset'])   -- + M1c: the v2 spend and reset read the role of subjects.ability_v2 (M1d: the reset is card_progress_v2_reset)   -- + the E9 Power functions (combat_v2_power.sql): they read the block prices by design
+   where p.pronamespace = 'public'::regnamespace and p.proname <> all (array[${q(T1NEW)}, ${q(E6NEW)}, 'card_power_v2_numbers', 'card_power_v2_families', 'card_power_v2', 'combat_v2_squad_value', 'card_progress_v2_view', 'spend_card_points_v2', 'reset_card_points_v2', 'card_progress_v2_reset', 'combat_v2_card_unit'])   -- + R1a combat_v2_gauntlet_builders.sql: the v2 unit of a card reads subjects.ability_v2   -- + M1c: the v2 spend and reset read the role of subjects.ability_v2   -- + the E9 Power functions (combat_v2_power.sql): they read the block prices by design   -- + M1d combat_v2_progress_freeze_v1.sql: the v2 reset is card_progress_v2_reset
      and (p.prosrc ~ '(ability_v2_spec|ability_v2_block_pp|ability_v2_pps|combat_effect_v2_active)' or p.prosrc ~ 'ability_v2[^_]')
      and p.proname <> 'balance_check_ability_v2';
   res := res || jsonb_build_object('case', 'no other function calls the replaced functions or reads subjects.ability_v2 (no v1 caller)', 'ok', o = '[]'::jsonb, 'got', o);
@@ -682,7 +682,7 @@ try {
   const NUM = results.find((r) => r.case === 'NUMBERS'); const B = NUM.b, AB = NUM.ab;
   for (const r of results.filter((x) => !['NUMBERS', 'ABILITY_V2'].includes(x.case))) { const { case: name, ok, ...rest } = r; say(ok, name, JSON.stringify(rest).slice(0, 900)); }
   const leaves = (o, p = []) => (o !== null && typeof o === 'object' && !Array.isArray(o) ? Object.entries(o).filter(([k]) => !k.startsWith('_')).flatMap(([k, v]) => leaves(v, [...p, k])) : [[p.join('.'), JSON.stringify(o)]]);
-  const bal = new Map(leaves(results.find((r) => r.case === 'ABILITY_V2').v)), cfgL = new Map(leaves(CONFIG.ability_v2).filter(([p]) => p !== 'limits.min_share')); // limits.min_share: combat_v2_min_share.sql
+  const bal = new Map(leaves(results.find((r) => r.case === 'ABILITY_V2').v)), cfgL = new Map(leaves(CONFIG.ability_v2).filter(([p]) => p !== 'limits.min_share' && !p.startsWith('share.status_kinds.'))); // limits.min_share: combat_v2_min_share.sql; share.status_kinds: combat_v2_set2_parts.sql
   const lp = [...bal].filter(([p, v]) => cfgL.get(p) !== v).concat([...cfgL].filter(([p]) => !bal.has(p)));
   say(lp.length === 0 && bal.size === 36 && bal.has('share.self_has_each.focused') && bal.has('pp.vs_smite') && bal.has('pp.sup_vs_k') && bal.has('share.self_has'),
     `balance ability_v2 = config.json ability_v2 (${bal.size} leaves equal: + pp.vs_smite, share.self_has_each for 15 statuses, share.area_payoff, ref.list_extra; one number, one home)`, JSON.stringify(lp));

@@ -36,6 +36,7 @@ import { hash, mkRng, mean, table, fmt } from './util.mjs';
 export const CARD_STATUSES = ['empowered', 'focused', 'quickened', 'shield', 'poison', 'burn', 'chill', 'weakened', 'stunned', 'slowed', 'blinded', 'confused',
   'frozen', 'sleep', 'paralyzed', 'exposed'];
 export const HORDE_FLOOR = 9;
+export const STATUS_KINDS = [2, 3, 4, 5]; // the counts that a kinds condition may name (balance ability_v2.share.status_kinds has one share for each)
 export const VS_SMITES = [1.2, 1.52, 1.7];
 
 export function measureShares(cfg, { runs = 200, seed = 1 } = {}) {
@@ -47,7 +48,7 @@ export function measureShares(cfg, { runs = 200, seed = 1 } = {}) {
     const r = { cls: u.cls, charging: !!tgt.charging, foes2: foes.length >= 2, shield: (u.shield || 0) > 0,
       st: Object.fromEntries(CARD_STATUSES.map((s) => [s, s === 'shield' ? (u.shield || 0) > 0 : !!u.st[s]])),
       allies: this.alive('card').filter((c) => c !== u && c.cls === 'attacker').length,
-      tst: Object.fromEntries(NEG.map((s) => [s, !!tgt.st[s]])) };
+      tst: Object.fromEntries(NEG.map((s) => [s, !!tgt.st[s]])), kinds: this.negKinds(tgt) };
     const res = doActive0.call(this, u, tgt);
     r.kill = u.cls === 'attacker' && tgt.down && this.alive('enemy').length > 0;
     rec[mode].push(r);
@@ -73,6 +74,8 @@ export function measureShares(cfg, { runs = 200, seed = 1 } = {}) {
     self_has: Object.fromEntries(CARD_STATUSES.filter((s) => s !== 'shield').map((s) => [s, both((r) => r.st[s])])),
     per_ally: { hunt: mean(rec.hunt.filter(att).map((r) => r.allies)), dungeon: mean(rec.dungeon.filter(att).map((r) => r.allies)) },
     target_status: Object.fromEntries(NEG.map((s) => [s, both((r) => r.tst[s])])),
+    // Set 2 part (c): status_kinds.<N> = the target has N or more different harmful statuses (the share of ALL actives, attackers and supports)
+    status_kinds: Object.fromEntries(STATUS_KINDS.map((n) => [n, both((r) => r.kinds >= n)])),
     actives: { hunt: rec.hunt.length, dungeon: rec.dungeon.length },
   };
   out.per_ally.mean = (out.per_ally.hunt + out.per_ally.dungeon) / 2;
@@ -138,11 +141,13 @@ export function shares(cfg, opts = {}) {
   md += `\nlist_extra = the mean over the ${Object.keys(m.target_status).length} statuses = ${fmt(m.list_extra.hunt, 4)} (Hunt), ${fmt(m.list_extra.dungeon, 4)} (Dungeon), mean **${fmt(m.list_extra.mean, 4)}**.\n`;
   md += `\n### The payoff on the area hits (share.area_payoff)\n\n` + table(['Where', 'area actives', 'mean other enemies', 'main targets with a status (sum)', 'other enemies with it (sum of shares)'],
     [['Dungeon run', ar.run.n, fmt(ar.run.n ? ar.run.others / ar.run.n : 0, 2), fmt(ar.run.main, 0), fmt(ar.run.other, 2)], [`Horde room, floor ${HORDE_FLOOR}`, ar.horde.n, fmt(ar.horde.n ? ar.horde.others / ar.horde.n : 0, 2), fmt(ar.horde.main, 0), fmt(ar.horde.other, 2)]]);
+  md += `\n## Set 2 part (c): the status count condition (share.status_kinds)\n\nThe share of the actives (attackers and supports, before their blocks run) whose target has N or more different harmful statuses (the count of per_kind):\n\n` + table(['N or more statuses', 'Hunt', 'Dungeon', 'Share (mean)'], STATUS_KINDS.map((n) => row(String(n), m.status_kinds[n])));
   md += `\narea_payoff = the ratio of the sums = **${fmt(ar.ratio, 4)}**.\n`;
   md += `\n### The raw value of a support vs_status (pp.vs_smite)\n\n` + table(['Smite S', 'measured PP of vs_status x2 (always true)', 'smite price x S x (x - 1)', 'ratio'], vs.rows.map((r) => [fmt(r.S, 2), fmt(r.pp, 3), fmt(r.formula, 2), fmt(r.ratio, 3)]));
   md += `\nvs_smite = the mean ratio = **${fmt(vs.ratio, 4)}**.\n`;
   const head = [`on_kill ${fmt(m.on_kill.mean, 3)}, enemy_charging ${fmt(m.enemy_charging.mean, 3)}, foes_alive ${fmt(m.foes_alive.mean, 3)}, self_shield ${fmt(m.self_shield.mean, 3)}, self_has ${fmt(m.self_has_one, 3)}, per_ally ${fmt(m.per_ally.mean, 2)}`,
     `T1b: self_has_each ${Object.entries(m.self_has).map(([k, x]) => `${k} ${fmt(x.mean, 3)}`).join(', ')}`,
+    `Set 2 (c): status_kinds ${STATUS_KINDS.map((n) => `${n}+ ${fmt(m.status_kinds[n].mean, 4)}`).join(', ')}`,
     `T1b: list_extra ${fmt(m.list_extra.mean, 4)}, area_payoff ${fmt(ar.ratio, 4)} (${ar.run.n + ar.horde.n} area actives), vs_smite ${fmt(vs.ratio, 4)}`];
   return { md, head, data: { ...m, area_payoff: ar, vs_smite: vs } };
 }
