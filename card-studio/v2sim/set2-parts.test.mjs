@@ -1,4 +1,4 @@
-// Set 2 engine parts (b) and (c) (Nathan 2026-10-28, plan 20.15): the simulator side. SQL = the simulator: card-studio/scripts/test-combat-v2-set2-parts.mjs
+// Set 2 engine parts (b) and (c) (Nathan 2026-10-28, plan 20.16): the simulator side. SQL = the simulator: card-studio/scripts/test-combat-v2-set2-parts.mjs
 // (SQL: tcg-bot/supabase/combat_v2_set2_parts.sql).
 //   (b) dispel, heal_all and quicken (self) on an attacker: the price is the support library price x sup_cycle / C (plan 5.2), the execution is in engine.mjs doActive.
 //   (c) kinds = N (the target has N or more different harmful statuses) on a line_status and a payoff_dmg: the price is the raw price x the measured share

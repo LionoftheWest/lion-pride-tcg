@@ -1,4 +1,4 @@
--- combat_v2_set2_parts.sql (2026-10-28): combat v2, Set 2 engine parts (b) and (c) (docs/combat-redesign-plan.md section 20.15). Nathan approved building them on
+-- combat_v2_set2_parts.sql (2026-10-28): combat v2, Set 2 engine parts (b) and (c) (docs/combat-redesign-plan.md section 20.16). Nathan approved building them on
 -- 2026-10-28 (his answer "Q1: C" to question 1 of the Set 2 questions; the parts were approved for Set 2 on 2026-10-19). Needs combat_v2_monsters.sql (E7) first
 -- (it replaces functions of E6, T1, T1b, T1c and E7). Part (a), an attacker bonus while this card is Empowered or Shielded, is NOT built: a post-Nov-6 item.
 -- The reference is the simulator card-studio/v2sim (cards.mjs blockPP, engine.mjs doActive and hasAny); the measured numbers: node card-studio/v2sim/run.mjs
@@ -16,7 +16,7 @@
 --       payoff_dmg kinds = the payoff price with that share in place of the assumed payoff share (0.6); line_status kinds = att_k / C x the execute bonus v x the
 --       share (added to the flat price of its named statuses). The minimum share rule (limits.min_share 0.01) refuses a count whose share is below it.
 --       MEASURED: 2 or more 0.0757, 3 or more 0.0059, 4 or more 0.0002, 5 or more 0. So 3 or more is BELOW the minimum today: the validator refuses it (the
---       cards Mrs. Foxtrot and Ottozone's Head need a decision, see the plan 20.15).
+--       cards Mrs. Foxtrot and Ottozone's Head need a decision, see the plan 20.16).
 -- REPLACED (one change each, rebuilt from the LIVE text, with an md5 guard at the top): ability_v2_spec (+ share.status_kinds), ability_v2_block_pp and ability_v2_pps
 --   (the kinds prices), ability_v2_text (the sentences), ability_v2_check (the field rules, the class rules, the minimum share of kinds) and combat_effect_v2_active
 --   (the attacker blocks; payoffs and the execute line read kinds through combat_effect_v2_holds). NEW: combat_effect_v2_holds(unit, block, clock, numbers).

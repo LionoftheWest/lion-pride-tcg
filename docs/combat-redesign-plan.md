@@ -168,10 +168,11 @@ Power              = Offense x Survival x k[role]
 
 ### 3.2 What the player sees
 
-- A **turn-order strip** across the full width: as many projected actors (cards and enemies) as fit, 10 at 430 px, 33 at 1280 px,
-  52 at 1990 px (UI-67, Nathan 2026-10-19). The projection draws no random number. When a speed or control status changes the order,
+- A **turn-order strip** with the next 10 turns (projected actors, cards and enemies) on every size (Nathan 2026-10-23, D-203; replaces the
+  full-width count of UI-67 review-3). The projection draws no random number. When a speed or control status changes the order,
   the chips redraw in place. Enemy turns and the turn on which a card's active is charged are marked. The clock itself stays hidden.
 - On a card's turn: the basic attack, or the active when it is charged, and the target (an ally for most supports). Auto plays for the player.
+  The acting card has the gold ring; its active is a pill on that card (tap the pill = the active, tap the card = the basic attack; UI-52 review-5, D-204).
 - A charge mark on each card (for example 2 pips). The "Charging" warning before a Cataclysm stays.
 - Status icons on every unit (section 6). One line on tap.
 - The steps left today (Hunt) or in the fight (Dungeon), shown as "turns left".
@@ -662,7 +663,7 @@ New IDs are reserved at request time (the next free ID on `main` today is UI-67)
 | Boss detail | UI-20 | Weak to / Resists / Signature / Bring |
 | Dungeon lobby | UI-46 | role chips and Power |
 | Dungeon fight | UI-47 | turn-order strip, status slots, supports as targets |
-| Gauntlet | UI-52 | the same fight changes |
+| Gauntlet | UI-52 | the same fight changes (design approved 2026-10-23, review-5) |
 | Card picker | UI-64 | role filter |
 | Help, explainers, walkthrough | UI-38, UI-39, UI-37 | new texts ("Each star gives 3 stat points" becomes false [L]). A Dungeon and Gauntlet explainer |
 | Status tap line (one-line tooltip) | new ID | new |
@@ -1966,6 +1967,7 @@ does not change. The Set 1 actives and their factors are PRIVATE: this section g
   2. The factor is relative to the other actives of its role: a change of one Set 1 active needs `run.mjs factors --set1` and a push of all the factors.
   3. The Lab memo (above): a squad keeps the value of its first evaluated slot order. A fix is a Lab change (the memo key with the order); it does not
      change the pick.
+     **Fixed 2026-10-23 (lane 3, `fix/lab-memo-slot-order`): the memo key keeps the slot order (`squadKey` in `util.mjs`; score, shape and power Labs). Measured on `activepick`, the built form, before -> after: Set 1 seed 202 mean x0.8817 -> x0.8824 (3 below, unchanged), Warlord .774 -> .779, Hydra and Camper Colossus unchanged (.827, .854); Set 1 seed 101 unchanged (x0.9051); template seed 1 x0.9018 -> x0.9012 (4 below, unchanged), Camper Colossus .846 -> .850. The Set 1 seed 202 Camper Colossus .866 vs .854 difference was between candidate lists. Only the Lab numbers move, by 0.001 or less in a mean; no live pick changes.**
 
 ### 20.11 M1: decisions and M1a (`tcg-bot/supabase/combat_v2_progress_tables.sql`)
 
@@ -2229,7 +2231,150 @@ Else `reset_used` with `next` (the same rule as v1). A v2 gift is a row of `stat
      - Design notes: the allowlists exempt by function name (a later overload with the same name is also exempt); `stat_reset_gift_use_v2`
        alone (server only) uses a gift with no reset; a subject that loses its role later keeps points that cannot be reset.
 
-### 20.15 Set 2 engine parts (b) and (c) (`tcg-bot/supabase/combat_v2_set2_parts.sql`)
+### 20.14 (lane 3) The Lab with the Set 2 actives (provisional; measurement only)
+
+The Combat Lab (`card-studio/v2sim`) now runs the Set 2 "Double Team" actives next to the Set 1 actives. No SQL, no database, no lock. The Set 1 and Set 2 actives
+are private: every output of this section holds roles, counts and ratios only. (20.14 is the next free number at the time of writing: renumber it if another lane took it first.)
+
+- **The provisional Set 2 batch** (private file `batches/set2-prov.json` beside the Set 1 batch; never pushed). Nathan has not chosen the engine parts yet, so the file holds
+  73 rows, one for each Set 2 key of `cards.json` (checked): the 50 rows that the live validator accepts, the 5 proposed fixes of the 5 refused rows, and the 18 tested
+  stand-ins of the rows that need an unbuilt part. Every one of the 73 rows passed the live validator in the Set 2 check. A result below changes when Nathan picks the parts.
+- **What was built** (all in `card-studio/v2sim`, small and general; the Set 1 code path is reused, not copied):
+  - `teams.mjs`: the Set 2 batch path (env `V2SIM_SET2_BATCH`, default `<repo parent>/discord-card-ideas/batches/set2-t1.json`), `loadSet2Batch`, `loadSets({set2})` (Set 1,
+    or Set 1 + Set 2; a key in both is an error) and `loadSetRows`. Set 2 is not in `fixture.json` (the live snapshot), so each Set 2 card gets a synthetic subject from the
+    public `cards.json`: its finishes without `event` are the pullable finishes (this rule gives the pullable finishes of 128 of the 130 Set 1 cards in the fixture; the 2 others are event-only), and
+    `cp_mod` is 1 (the Set 1 mean is 1.00).
+  - `run.mjs`: `--set2 [path]` on every mode that takes `--set1` (`scorepick`, `scoresum`, `shapepick`, `answers1`, `factors`, `activepick`, `activesum`) and on `targets` = Set 1 + Set 2 together.
+    A file name of a Set 1 + Set 2 run has the tag `-s2`, so a Set 1 cache is never read for the combined pools.
+  - `active.mjs`: `factors --set1 --set2` measures every support active of both sets against the mean of ALL actives of its role in the combined set (the rule of 20.10; the
+    measure of 20.9 already divides by the role mean of the config). It writes ONE private file beside the Set 2 batch (`<batch>.factors.json`) with the factors of both sets,
+    because a Set 1 factor changes when the role mean changes. It reports the Set 2 ranges, how far the Set 1 factors move against the Set 1 file, and the per-role power table.
+  - `targets.mjs`: `targets --set1` / `--set2` draw the pool with the real actives (`setPool`: each batch card with its own active and role, each other fixture card with the
+    placeholder template that the placeholder run gives it, each Set 2 card with a pullable finish). The role, shape and archetype sections keep the placeholder templates
+    (the role targets are about the placeholders). The status checks run on the placeholder config: with the real actives they printed one `pp.s1.<key>` check per card (a leak that the new test found).
+- **Fairness targets, 400 runs a cell** (`targets --runs 400 --seed N`; 45 s a run, 6 runs in parallel). Baseline = the placeholder pool of today's main. Cells = seed 1 / seed 2.
+
+  | run | PASS / FAIL / CHECK | Hunt end gap Gold / Normal (goal x2.0-2.5) | Dungeon end gap (goal x2.0-2.5) |
+  |---|---|---|---|
+  | baseline (placeholder pool) | 20 / 2 / 1 and 20 / 2 / 1 | x2.29 / x2.22 | x1.41 / x1.38 |
+  | Set 1 real actives | 20 / 2 / 1 and 20 / 2 / 1 | x2.47 / x2.40 | x1.37 / x1.36 |
+  | Set 1 + Set 2 (provisional) | 19 / 3 / 1 and 19 / 3 / 1 | x2.57 / x2.58 (FAIL) | x1.35 / x1.35 |
+
+  The 2 FAIL and the CHECK of the baseline are the same ones as on 2026-10-19 (Dungeon end gap, role scale k, Lockdown x0.79; the Dungeon gap is x1.41 / x1.38 here against x1.34 then). They do not
+  change with the pool: the Lockdown and the role scale are measured on the placeholder templates. New with Set 1 + Set 2, on both seeds: the Hunt end gap leaves its band. The Normal
+  day falls from 6711 / 6941 (placeholder pool) to 6020 / 6063; the Gold day stays near 15.4k to 15.6k. The Gold finish is 71 of the 201 cards of the combined draw list (52 of 128 in Set 1 alone), the Normal
+  finish is all 201. Every shape, archetype and counter target stays PASS. The Hunt gap already rises to x2.47 / x2.40 with the real Set 1 actives alone, so most of the move is the real actives
+  and the pool mix, not one Set 2 fault. The 2026-10-19 result for Set 1 + Set 2 (20 / 2 / 1) does not repeat here for the Hunt gap.
+- **Factors with Set 1 + Set 2** (`factors --set1 --set2 --runs 400`, 9.8 s). 104 support actives (70 Set 1, 34 Set 2; 6 roles); the file check has 0 errors; all factors are inside the stored range 0.5 to 2.
+  The Set 2 support factors by role (min to max, count): warden 0.962 to 1.109 (7), medic 0.895 to 1.078 (4), controller 0.908 to 1.127 (5), spotter 0.946 to 1.079 (6), herald 0.916 to 1.057 (5),
+  artillery 0.946 to 1.017 (7). All Set 2 factors lie between 0.895 and 1.127, inside the range of the combined set (0.894 to 1.191). The Set 1 factors move at most 0.011
+  against the Set 1 file (median 0.006; by role from 0.004 to 0.011), because the role means move by about 1%. The factor noise is about 0.01, so the Set 2 batch alone does not force a new push of the Set 1 factors.
+- **Per-role power check** (mean strength of the Set 2 actives / the Set 1 actives; the same active-factor method: a Normal casual card plus the 4 reference cards, Hunt Heroic net damage a day).
+
+  | role | Set 1 actives | Set 2 actives | Set 2 / Set 1 |
+  |---|---|---|---|
+  | breaker / striker / flurry | 7 / 16 / 11 | 8 / 3 / 6 | x1.005 / x1.002 / x0.993 |
+  | finisher / survivor / cleaver | 10 / 9 / 7 | 6 / 7 / 9 | x0.999 / x1.001 / x0.997 |
+  | warden / medic / controller | 9 / 15 / 17 | 7 / 4 / 5 | x1.008 / x0.985 / x0.976 |
+  | spotter / herald / artillery | 9 / 11 / 9 | 6 / 5 / 7 | x1.026 / x0.974 / x0.985 |
+
+  In no role is Set 2 stronger or weaker than Set 1 by more than 3%. The attacker rows carry little signal: every attacker active of both sets lies within 1% to 5% of its role mean in this measure,
+  so x1.00 there means "no measurable difference", not a tight test. The support rows (spread 0.88 to 1.19) do carry signal; the weakest are controller and herald (x0.976, x0.974), the strongest is spotter (x1.026).
+- **Proof** (observed). `node --test card-studio/v2sim/*.test.mjs`: 238 pass before, 246 pass after (8 new tests in `set2.test.mjs`). The new checks: the combined pool holds both sets and leaves out the event-only Set 2 card;
+  a Set 2 card keeps its finishes and `cp_mod` 1, and a key outside `cards.json` is refused; the factors of a role average 1 over the combined set and a Set 1 factor moves when Set 2 changes the role mean;
+  the factors file is beside the Set 2 batch, holds both sets and passes its check; no card key and no active name in the report; the targets pool carries the real actives and `targets` runs on it;
+  a private-batch check (it skips with a message when the file is missing). 4 planted faults, each caught by its own check and green again after: the draw list drops the Set 2 cards, an event-only finish is
+  pullable, the Set 2 `cp_mod` is 0.9, the factor is not divided by the role mean. Run times: tests 14 s, factors 9.8 s, targets 45 s.
+- **Open**:
+  1. The result is for the PROVISIONAL batch (23 of 73 rows are fixes or stand-ins). Measure again when Nathan picks the engine parts, and again before the real factors are pushed. The provisional factors file is not for a push.
+  2. The Set 2 `cp_mod` is 1 here. The real values come with the push of the Set 2 subjects. A spread of 5% in `cp_mod` moves a role ratio by about as much as the differences above.
+  3. The Hunt end gap x2.57 (goal 2.0 to 2.5): a decision for lane 1 and Nathan: move the band, move the Gold or Normal Hunt CP, or keep the placeholder pool as the reference of this target.
+  4. Not extended: `lab12` and the designed teams (`teams.json`) use the 20 fixed Set 1 teams and take no Set 2 card.
+
+### 20.15 R1: Gauntlet v2 for testers
+
+R1 lets the players on `balance combat_v2.testers` play the weekly Gauntlet in combat v2. Every other player keeps v1. The flag
+`combat_v2.gauntlet` stays false. R1 has 5 PRs: R1a (the pure SQL builders, this section), R1b (the tester branch in `gauntlet_start` and the
+v2 run functions), R1c (the server routes), R1d (the Lab Gauntlet section) and R1e (the screen, after the UI-52 review-4 approval).
+
+**Nathan's decisions (2026-10-23, all 7 approved as recommended):**
+
+| # | Question | Decision |
+|---|---|---|
+| D1 | Tester v2 runs on the board and in the prizes? | No. Tester v2 runs stay off the weekly board and out of the weekly prizes. The daily task still counts |
+| D2 | A squad card with no `ability_v2` | The tester plays v1 that day. No placeholder |
+| D3 | The offers `buff` and `reset` in v2 | `reset` fills every charge. `buff` makes the attackers Empowered at the next room start |
+| D4 | The tester is removed during an active v2 run | A run that started in v2 finishes in v2 |
+| D5 | Between rooms | HP and downs carry. Statuses and meters reset each room |
+| D6 | Manual play | The clock picks the card that acts. The player picks basic or active, the target and the ally |
+| D7 | The order of release | The owner is removed from the tester list before R1b goes live, and added again after R1e |
+
+#### R1a: the builders (`tcg-bot/supabase/combat_v2_gauntlet_builders.sql`)
+
+R1a adds 3 pure functions. No function calls them, no v1 function changes, and no flag is read. They move the state builder and the fight
+driver of the Admin Combat v2 Lab into SQL, so that R1b plays the same fight as the Lab (C3: no combat math in JS).
+
+- `combat_v2_card_unit(card[, numbers])` (STABLE): the v2 unit of a card at 0 stars, level 0 and no points (plan 3.3: no progress in the
+  Gauntlet). Role and blocks from `subjects.ability_v2`, stats from `card_combat_v2`, speed `v2_speed.role_base[role]`, charge `v2_charge.start`,
+  no status, meter 0. It is the unit of the Lab (`fightSql`), key by key. A card with no `ability_v2` (or no role of the `roles` table or no
+  list of blocks) is REFUSED with SQLSTATE `P0002` (`no_data_found`) and the D2 text. R1b catches this and plays v1 (D2).
+- `gauntlet_v2_foes(foes, floor, room[, numbers])` (STABLE): each foe of a week room (`dungeon_make_foe`) becomes
+  `combat_v2_dungeon_foe(key, floor, room, kind)` with no extra mechanic, plus `show {name, model, element}` for the screen only. No v1 key or number
+  (`hp`, `atk`, `weak`, `resist`, `passives`, `tags`, `wk`, `st`, the element bonus) enters the v2 unit.
+- `combat_v2_step(state, choice[, numbers])` (VOLATILE: the engine draws random numbers): one call of a v2 fight.
+  - The state must pass `fight_state_check_v2` (a v1 key is refused).
+  - When a card has the turn (`ext.turn`), the choice `{use, target, ally}` plays its action through `combat_v2_card_act` (D6). Any other key
+    (for example `actor`) is refused: the player does not pick the card.
+  - Then the clock runs (`combat_v2_next`, `combat_v2_enemy_act`): every enemy turn and every skipped turn, until the next card turn
+    (event `choose`, the card goes into `ext.turn`), the end (event `end`, `won` = no standing enemy) or the step cap of the mode (event `cap`,
+    `v2_dungeon.round_cap`). The client never drives an enemy turn.
+  - The first call of a fight has no card turn and needs choice null.
+  - The answer: `state`, `event`, `actor`, `won`, `clock`, `steps_left` (= round_cap - clock, the "turns left"), `actions` and `log` (one entry
+    for each clock call: clock, event, actor, skip, reason, ticks, ended; one for each action: actor, action or move, target, ally, hits).
+- **Not in R1a (R1b):** the meters of a room start (the test draws them as the Lab does: 0 to `v2_speed.act_at`, 2 decimals), the room
+  carry-over (D5), the offers (D3), the run row and its lock, the turn-order projection in the state.
+- **C1**: the scope of `ci/combat/c1-numbers.json` now has `^gauntlet_v2_` (the `combat_v2_*` names were in scope already).
+- **Proof** (copy 2, refreshed from live on 2026-10-23, M1c applied on the copy first so that it equals main):
+  - `test-combat-v2-gauntlet-builders.mjs` PASS all 25 (2026-10-30, copy 1, after the review fixes: 382 cards with an `ability_v2`, 922 foes; the earlier 20 cases ran before and after the apply). The block drops the 3 functions first (the state before
+    the file), runs the file, and runs it a second time.
+    - T1: the md5 of the 546 other public functions is the same; exactly the 3 new functions are added; no other function calls them; the
+      readers of `combat_v2_on` are the same (R1a reads no flag); the flag is the same.
+    - The card unit = the Lab unit (the text of `fightSql`) at 0 stars, level 0, no points and meter 0 for each of the 352 cards with an
+      `ability_v2` (exact with the stored `cp_mod`). The Lab sends `cp_mod` through a JS number: then 38 support units differ only below 1e-12
+      in `power`. The unit takes its numbers (`v2_charge.start` 2 gives charge 2, a role speed 33 gives speed 33; `v2_asc.base` doubled gives the `hp` and `atk` of `card_combat_v2` with those numbers, a value that goes through `card_combat_v2` with `b`). The Lab unit is read from the text of `fightSql` (not copied), with the meter 0.
+    - D2: a card with no usable `ability_v2` is refused with SQLSTATE `P0002` and the D2 text: one case for each of the 3 tests of the file (a: no `ability_v2`; b: a role that is not in the `roles` table; c: blocks that are not a list) and d: an `ability_v2` that is not an object (9 cards of the copy have none today). The trigger of `subjects` refuses b, c and d at a write, so the test disables it inside the rolled-back block.
+    - The foes = `combat_v2_dungeon_foe` + `show`, no other key, on every fight room of 4 generated Gauntlet weeks (941 foes: fight 537,
+      horde 209, guardian 120, elite 48, miniboss 27). A state of the builders passes `fight_state_check_v2`.
+    - SQL = the Lab driver (`DRIVER` read from `combat-lab-routes.js`, not a copy) on 120 seeded fights (random squads of 5 cards with an
+      `ability_v2`, rooms of every kind on floors 1 to 6, Auto v2 choices, the same `setseed`): the same flat log (2,088 actions: 1,198 card
+      choices, 261 actives; 14 skipped turns; 315 ticks), the same units (HP, down, statuses, charge) at every card choice and at the end, and
+      the same end (won 110, lost 7, cap 3). 1,318 calls of `combat_v2_step`: each stops only on a card turn, the end or the cap, and has
+      `steps_left` = round_cap - clock.
+    - The step cap comes from the given numbers: `round_cap` 3 ends a long fight with event `cap` at clock 3. The Hunt mode reads `v2_hunt.round_cap` (the `v2_hunt` branch of `ckey` is TESTED, not removed: mode hunt with `round_cap` 7 gives `steps_left` = 7 - clock, mode gauntlet keeps the dungeon cap). Every call has `actions` = the actions of its log, and the log of a card action has the `target` and the `ally` of the choice (the Lab compare reads `target` too).
+    - 22 refusals, each with its text (a v1 key in an enemy or a card, a v1 state, a choice at the start, no choice, an `actor` key, a bad
+      `use`, an active not charged, a card as the target, no `round_cap`, bad foes, an unknown card, a missing number).
+    - Server only: volatility (unit and foes STABLE, step VOLATILE), `search_path`, no execute for anon, authenticated and public, a `[combat]`
+      comment that names the file.
+  - MUTATE=all (2026-10-30, copy 1, after the review fixes; the test drops the 3 functions first, so it does not depend on the apply): baseline PASS all 25 in the same run,
+    36 of 36 planted faults caught (29 before the fixes). The 7 new ones and the case that catches each: `role_check_removed` (D2 case b),
+    `blocks_check_removed` (D2 case c), `unit_ignores_b` (the stats of the given numbers), `hunt_ckey_dungeon` (the step cap of the mode),
+    `ckey_always_hunt` (the step cap of the mode and the cap 3), `enemy_actions_not_counted` (`actions` of the log), `log_drops_target_ally` (target and ally
+    of the log, and the Lab compare). `foes_v1_key` and `step_stops_on_enemy` are now named FAILs (7 and 4 cases): each step call has its own sub-block, so a raise
+    of the step is the FAIL of its case and does not stop the block. The review probes (the reviewer's 5 files) each FAIL the fixed test: `role_check_removed`
+    (D2 case b), `hunt_ckey_dungeon` (the step cap of the mode), `enemy_actions_not_counted` (the cap case: `actions`; and the Lab compare), `unit_ignores_b`
+    (the stats of the given numbers), `log_drops_target_ally` (the cap case: target and ally; and the Lab compare). Earlier run (2026-10-28, rebased on main f76db54d):
+    baseline PASS all 20, 29 of 29 caught: stars not 0, level not 0, points not empty, a placeholder for a card with no `ability_v2`, no SQLSTATE, a fixed charge, a kept meter,
+    a v1 key (`wk`, `st`) in a foe, the v1 foe merged, v1 HP and ATK, v1 passives, floor and room swapped, the step stops on an enemy turn, a skipped turn acts, no state
+    check, a fixed step cap (40), the clock reads the live numbers, `ext.turn` kept, the choice keys not checked, a choice at the start, `won`
+    wrong, a flag read, volatility, `search_path`, a grant to anon, a missing comment, the flag on, a v1 function touched, an extra caller.
+  - The goldens with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference.
+  - C1, C2, C3 and `combat-checks.test.mjs` PASS. C1: the scope now has `^gauntlet_v2_`. Run again 2026-10-30 after the review fixes (test and plan only, the SQL is the same): C1, C2, C3 PASS, `combat-checks.test.mjs` 16 of 16.
+  - The full suite `test-all-local.mjs`: before the apply 168 of 169 PASS (the 1 failure: `test-superseded-list.mjs`, this new file was not yet in
+    `SUPERSEDED.md`); after the apply and the regenerated files 169 of 169 PASS (2 one-time skipped; run again on 2026-10-28 on the rebased branch: 169 of 169, C1, C2, C3 PASS, combat-checks.test.mjs 16 of 16). The rehearsal run (before the 7 allowlists
+    were extended) failed only the 7 "no other caller" lists and the 3 generated files. The 7 lists now name the new functions by exact name.
+  - Then `db/schema/`, `docs/data/` (the tester id of the local copy masked in memory, as in 20.10 to 20.13) and `SUPERSEDED.md` regenerated.
+
+### 20.16 Set 2 engine parts (b) and (c) (`tcg-bot/supabase/combat_v2_set2_parts.sql`)
 
 Nathan's decision (2026-10-28, Set 2 question Q1 = C): build engine part (b) and part (c) for 5 Set 2 actives. Part (a), an attacker bonus while this
 card is Empowered or Shielded, is NOT built. It is a post-Nov-6 item. The file changes no play: the flag `combat_v2` stays OFF, no v1 function calls a

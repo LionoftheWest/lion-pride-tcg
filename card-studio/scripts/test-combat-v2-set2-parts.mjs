@@ -1,6 +1,6 @@
 import './localdb-guard.mjs';
 /**
- * Acceptance test for tcg-bot/supabase/combat_v2_set2_parts.sql (combat v2, Set 2 engine parts (b) and (c); plan 20.15; Nathan 2026-10-28). NO lasting
+ * Acceptance test for tcg-bot/supabase/combat_v2_set2_parts.sql (combat v2, Set 2 engine parts (b) and (c); plan 20.16; Nathan 2026-10-28). NO lasting
  * change: every request is one DO block, undone by its final RAISE. V1, E1 to E7 and this file run inside each block (all idempotent), so the test passes
  * before and after they are applied.
  *   LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/test-combat-v2-set2-parts.mjs     must PASS
@@ -530,7 +530,7 @@ try {
   // 6. SQL = the simulator on random fights with the parts
   const nF = Number(process.env.V2_FIGHTS || 120);
   // the enemy mechanics Venom and Toxic Born are left out: on origin/main the simulator and SQL differ on them (a basic attack and an enemy move draw a different
-  // number of times; found by this test, with no part of this file in the fight; reported in plan 20.15). The parts of this file do not depend on a mechanic.
+  // number of times; found by this test, with no part of this file in the fight; reported in plan 20.16). The parts of this file do not depend on a mechanic.
   const MECHS = [...Object.keys(CONFIG.v2_enemy.mechanics), ...Object.keys(CONFIG.v2_dungeon.passive_params), ...Object.keys(CONFIG.v2_boss_rules).filter((k) => k !== 'undying')].filter((k) => !k.startsWith('_') && !['venom', 'toxic_born'].includes(k));
   const FS0 = fightSpecs(nF, 20261028, numbers.b, { mechs: MECHS }); const rngF = mkRng(551177);
   let withNew = 0, withKinds = 0;
