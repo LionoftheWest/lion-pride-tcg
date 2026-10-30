@@ -1,7 +1,7 @@
 import './localdb-guard.mjs';
 /**
  * Acceptance test for tcg-bot/supabase/combat_v2_gauntlet_builders.sql (combat v2 step R1a: the pure builders of a v2 Gauntlet fight;
- * plan 3.3 and 20.14). NO lasting change: every request is one DO block, undone by its final RAISE. Each block first drops the 3 new functions
+ * plan 3.3 and 20.15). NO lasting change: every request is one DO block, undone by its final RAISE. Each block first drops the 3 new functions
  * (the state before the file), so the test passes before and after the file is applied. Nothing is printed about a member (counts only).
  *   LOCALDB=1 node --import ./scripts/localdb-preload.mjs scripts/test-combat-v2-gauntlet-builders.mjs     must PASS
  *   MUTATE=<name> ...                                                                                       must FAIL, for every name in MUT below

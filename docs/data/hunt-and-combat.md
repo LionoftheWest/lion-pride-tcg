@@ -1642,7 +1642,7 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Gauntlet (plan 3.3, 20.14 R1a): the v2 unit of a card at 0 stars, level 0 and no points (the Gauntlet has no progress): the role and the blocks of subjects.ability_v2, the stats of card_combat_v2, the speed of the role (v2_speed.role_base), the charge at the start (v2_charge.start), no status, meter 0 (the caller draws the meters of a room). The unit of the Admin Combat v2 Lab. Refuses a card with no ability_v2 with the SQLSTATE no_data_found (decision D2: the player plays v1; never a placeholder). Reads only. combat_v2_gauntlet_builders.sql.
+[combat] Combat v2 Gauntlet (plan 3.3, 20.15 R1a): the v2 unit of a card at 0 stars, level 0 and no points (the Gauntlet has no progress): the role and the blocks of subjects.ability_v2, the stats of card_combat_v2, the speed of the role (v2_speed.role_base), the charge at the start (v2_charge.start), no status, meter 0 (the caller draws the meters of a room). The unit of the Admin Combat v2 Lab. Refuses a card with no ability_v2 with the SQLSTATE no_data_found (decision D2: the player plays v1; never a placeholder). Reads only. combat_v2_gauntlet_builders.sql.
 
 <a id="fn-combat-v2-confused-target-jsonb-jsonb-jsonb-jsonb"></a>
 
@@ -2012,7 +2012,7 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 (plan 3.3, 20.14 R1a): one call of a v2 fight. When a card has the turn (ext.turn), the choice {use, target, ally} plays its action (decision D6: the clock picks the card, the player picks basic or active, the target and the ally); then the clock runs every enemy turn and every skipped turn until the next card turn (event choose, the card in ext.turn), the end (event end, won) or the step cap of the mode (event cap: v2_dungeon.round_cap, v2_hunt.round_cap). The first call of a fight needs choice null. The client never drives an enemy turn. Refuses a state that fight_state_check_v2 refuses. Pure (state in, state out; draws random numbers). combat_v2_gauntlet_builders.sql.
+[combat] Combat v2 (plan 3.3, 20.15 R1a): one call of a v2 fight. When a card has the turn (ext.turn), the choice {use, target, ally} plays its action (decision D6: the clock picks the card, the player picks basic or active, the target and the ally); then the clock runs every enemy turn and every skipped turn until the next card turn (event choose, the card in ext.turn), the end (event end, won) or the step cap of the mode (event cap: v2_dungeon.round_cap, v2_hunt.round_cap). The first call of a fight needs choice null. The client never drives an enemy turn. Refuses a state that fight_state_check_v2 refuses. Pure (state in, state out; draws random numbers). combat_v2_gauntlet_builders.sql.
 
 <a id="fn-combat-v2-step-end-jsonb-jsonb-jsonb"></a>
 

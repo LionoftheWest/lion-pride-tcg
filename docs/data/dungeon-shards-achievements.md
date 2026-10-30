@@ -1071,7 +1071,7 @@ POST /api/gauntlet/start: starts a Gauntlet run with the week's squad. Checks bo
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Gauntlet (20.14 R1a): the v2 foes of one room of a Gauntlet week: each week foe (dungeon_make_foe) becomes combat_v2_dungeon_foe(key, floor, room, kind) with no extra mechanic, plus show {name, model, element} for the screen only. No v1 number or rule (hp, atk, weak, resist, passives, tags, the element bonus) enters the v2 unit. Refuses an empty list and a foe with no key or kind. Reads only. combat_v2_gauntlet_builders.sql.
+[combat] Combat v2 Gauntlet (20.15 R1a): the v2 foes of one room of a Gauntlet week: each week foe (dungeon_make_foe) becomes combat_v2_dungeon_foe(key, floor, room, kind) with no extra mechanic, plus show {name, model, element} for the screen only. No v1 number or rule (hp, atk, weak, resist, passives, tags, the element bonus) enters the v2 unit. Refuses an empty list and a foe with no key or kind. Reads only. combat_v2_gauntlet_builders.sql.
 
 <a id="fn-gauntlet-view-text"></a>
 
