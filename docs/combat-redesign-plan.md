@@ -2273,14 +2273,14 @@ driver of the Admin Combat v2 Lab into SQL, so that R1b plays the same fight as 
   carry-over (D5), the offers (D3), the run row and its lock, the turn-order projection in the state.
 - **C1**: the scope of `ci/combat/c1-numbers.json` now has `^gauntlet_v2_` (the `combat_v2_*` names were in scope already).
 - **Proof** (copy 2, refreshed from live on 2026-10-23, M1c applied on the copy first so that it equals main):
-  - `test-combat-v2-gauntlet-builders.mjs` PASS all 20, before and after the apply. The block drops the 3 functions first (the state before
+  - `test-combat-v2-gauntlet-builders.mjs` PASS all 25 (2026-10-30, copy 1, after the review fixes: 382 cards with an `ability_v2`, 922 foes; the earlier 20 cases ran before and after the apply). The block drops the 3 functions first (the state before
     the file), runs the file, and runs it a second time.
     - T1: the md5 of the 546 other public functions is the same; exactly the 3 new functions are added; no other function calls them; the
       readers of `combat_v2_on` are the same (R1a reads no flag); the flag is the same.
     - The card unit = the Lab unit (the text of `fightSql`) at 0 stars, level 0, no points and meter 0 for each of the 352 cards with an
       `ability_v2` (exact with the stored `cp_mod`). The Lab sends `cp_mod` through a JS number: then 38 support units differ only below 1e-12
-      in `power`. The unit takes its numbers (`v2_charge.start` 2 gives charge 2, a role speed 33 gives speed 33).
-    - D2: a card whose subject has no `ability_v2` is refused with SQLSTATE `P0002` and the D2 text (39 cards of the copy have none today).
+      in `power`. The unit takes its numbers (`v2_charge.start` 2 gives charge 2, a role speed 33 gives speed 33; `v2_asc.base` doubled gives the `hp` and `atk` of `card_combat_v2` with those numbers, a value that goes through `card_combat_v2` with `b`). The Lab unit is read from the text of `fightSql` (not copied), with the meter 0.
+    - D2: a card with no usable `ability_v2` is refused with SQLSTATE `P0002` and the D2 text: one case for each of the 3 tests of the file (a: no `ability_v2`; b: a role that is not in the `roles` table; c: blocks that are not a list) and d: an `ability_v2` that is not an object (9 cards of the copy have none today). The trigger of `subjects` refuses b, c and d at a write, so the test disables it inside the rolled-back block.
     - The foes = `combat_v2_dungeon_foe` + `show`, no other key, on every fight room of 4 generated Gauntlet weeks (941 foes: fight 537,
       horde 209, guardian 120, elite 48, miniboss 27). A state of the builders passes `fight_state_check_v2`.
     - SQL = the Lab driver (`DRIVER` read from `combat-lab-routes.js`, not a copy) on 120 seeded fights (random squads of 5 cards with an
@@ -2288,19 +2288,25 @@ driver of the Admin Combat v2 Lab into SQL, so that R1b plays the same fight as 
       choices, 261 actives; 14 skipped turns; 315 ticks), the same units (HP, down, statuses, charge) at every card choice and at the end, and
       the same end (won 110, lost 7, cap 3). 1,318 calls of `combat_v2_step`: each stops only on a card turn, the end or the cap, and has
       `steps_left` = round_cap - clock.
-    - The step cap comes from the given numbers: `round_cap` 3 ends a long fight with event `cap` at clock 3.
+    - The step cap comes from the given numbers: `round_cap` 3 ends a long fight with event `cap` at clock 3. The Hunt mode reads `v2_hunt.round_cap` (the `v2_hunt` branch of `ckey` is TESTED, not removed: mode hunt with `round_cap` 7 gives `steps_left` = 7 - clock, mode gauntlet keeps the dungeon cap). Every call has `actions` = the actions of its log, and the log of a card action has the `target` and the `ally` of the choice (the Lab compare reads `target` too).
     - 22 refusals, each with its text (a v1 key in an enemy or a card, a v1 state, a choice at the start, no choice, an `actor` key, a bad
       `use`, an active not charged, a card as the target, no `round_cap`, bad foes, an unknown card, a missing number).
     - Server only: volatility (unit and foes STABLE, step VOLATILE), `search_path`, no execute for anon, authenticated and public, a `[combat]`
       comment that names the file.
-  - MUTATE=all, before and after the apply (the second run 2026-10-28, on the branch rebased on main f76db54d): baseline PASS all 20 in the same run, 29 of 29 planted faults caught: stars not 0, level not 0,
-    points not empty, a placeholder for a card with no `ability_v2`, no SQLSTATE, a fixed charge, a kept meter, a v1 key (`wk`, `st`) in a
-    foe, the v1 foe merged, v1 HP and ATK, v1 passives, floor and room swapped, the step stops on an enemy turn, a skipped turn acts, no state
+  - MUTATE=all (2026-10-30, copy 1, after the review fixes; the test drops the 3 functions first, so it does not depend on the apply): baseline PASS all 25 in the same run,
+    36 of 36 planted faults caught (29 before the fixes). The 7 new ones and the case that catches each: `role_check_removed` (D2 case b),
+    `blocks_check_removed` (D2 case c), `unit_ignores_b` (the stats of the given numbers), `hunt_ckey_dungeon` (the step cap of the mode),
+    `ckey_always_hunt` (the step cap of the mode and the cap 3), `enemy_actions_not_counted` (`actions` of the log), `log_drops_target_ally` (target and ally
+    of the log, and the Lab compare). `foes_v1_key` and `step_stops_on_enemy` are now named FAILs (7 and 4 cases): each step call has its own sub-block, so a raise
+    of the step is the FAIL of its case and does not stop the block. The review probes (the reviewer's 5 files) each FAIL the fixed test: `role_check_removed`
+    (D2 case b), `hunt_ckey_dungeon` (the step cap of the mode), `enemy_actions_not_counted` (the cap case: `actions`; and the Lab compare), `unit_ignores_b`
+    (the stats of the given numbers), `log_drops_target_ally` (the cap case: target and ally; and the Lab compare). Earlier run (2026-10-28, rebased on main f76db54d):
+    baseline PASS all 20, 29 of 29 caught: stars not 0, level not 0, points not empty, a placeholder for a card with no `ability_v2`, no SQLSTATE, a fixed charge, a kept meter,
+    a v1 key (`wk`, `st`) in a foe, the v1 foe merged, v1 HP and ATK, v1 passives, floor and room swapped, the step stops on an enemy turn, a skipped turn acts, no state
     check, a fixed step cap (40), the clock reads the live numbers, `ext.turn` kept, the choice keys not checked, a choice at the start, `won`
     wrong, a flag read, volatility, `search_path`, a grant to anon, a missing comment, the flag on, a v1 function touched, an extra caller.
-    Two of them (`foes_v1_key`, `step_stops_on_enemy`) stop the whole test block: they are caught, but no named case reports them.
   - The goldens with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference.
-  - C1, C2, C3 and `combat-checks.test.mjs` PASS. C1: the scope now has `^gauntlet_v2_`.
+  - C1, C2, C3 and `combat-checks.test.mjs` PASS. C1: the scope now has `^gauntlet_v2_`. Run again 2026-10-30 after the review fixes (test and plan only, the SQL is the same): C1, C2, C3 PASS, `combat-checks.test.mjs` 16 of 16.
   - The full suite `test-all-local.mjs`: before the apply 168 of 169 PASS (the 1 failure: `test-superseded-list.mjs`, this new file was not yet in
     `SUPERSEDED.md`); after the apply and the regenerated files 169 of 169 PASS (2 one-time skipped; run again on 2026-10-28 on the rebased branch: 169 of 169, C1, C2, C3 PASS, combat-checks.test.mjs 16 of 16). The rehearsal run (before the 7 allowlists
     were extended) failed only the 7 "no other caller" lists and the 3 generated files. The 7 lists now name the new functions by exact name.

@@ -12,14 +12,18 @@ import './localdb-guard.mjs';
  * Invariants:
  *   T1 (no change in play): the md5 of every other public function does not change; exactly the 3 new functions are added; no other function
  *      calls them; the readers of combat_v2_on do not change (R1a reads no flag); the flag combat_v2 does not change.
- *   The card unit = the Lab unit at 0 stars, level 0, no points (meter 0) for every card with an ability_v2; the charge at the start and the
- *      speed come from the given numbers; a card with no ability_v2 is REFUSED with the SQLSTATE no_data_found (D2), never a placeholder.
+ *   The card unit = the Lab unit (the text of fightSql, read from the file) at 0 stars, level 0, no points (meter 0) for every card with an
+ *      ability_v2; the charge at the start, the speed and the stats come from the given numbers; a card with no usable ability_v2 is REFUSED
+ *      with the SQLSTATE no_data_found (D2), never a placeholder: one case for each test of the file (null, a role not in the roles table,
+ *      blocks that are not a list, an ability_v2 that is not an object).
  *   The foes = combat_v2_dungeon_foe(key, floor, room, kind) + show {name, model, element} for every fight room of 4 Gauntlet weeks: no v1 key
  *      or number enters the unit. A state of the builders passes fight_state_check_v2.
  *   The step: SQL = the Lab driver on FIGHTS seeded fights (Auto v2 choices): the same flat log (every clock call: clock, event, actor, skip,
  *      ticks, ended; every action: actor, action or move, hits), the same units (HP, down, statuses, charge) at every card choice and at the end,
  *      the same end. Every call stops only on a card turn (ext.turn), the end or the cap; steps_left = round_cap - clock; won = no standing enemy.
- *      The step cap comes from the given numbers (round_cap 3). The refusals, each with its text.
+ *      The step cap comes from the given numbers (round_cap 3; mode hunt reads v2_hunt.round_cap). `actions` = the actions of the log of each
+ *      call; the log of an action has the target and the ally of the choice. A raise of a step call is a named FAIL of its case. The
+ *      refusals, each with its text.
  *   Server only: volatility, search_path, no execute for anon, authenticated and public, a comment each. The file runs twice.
  */
 import { readFileSync } from 'node:fs';
@@ -34,6 +38,12 @@ mig = mig.replace(/notify pgrst[^\n]*\n/g, '');
 // the Lab driver: the real text of card-studio/src/combat-lab-routes.js
 const DRIVER = (read('../src/combat-lab-routes.js').match(/const DRIVER = String\.raw`([\s\S]*?)`;/) || [])[1];
 if (!DRIVER || !/pg_temp\.v2lab_fight/.test(DRIVER)) throw new Error('the Lab driver (DRIVER) was not found in card-studio/src/combat-lab-routes.js');
+// the Lab card unit: the real text of fightSql (the card_combat_v2 call and the unit of the squad), not a copy; the meter is 0 here (the Lab draws it)
+const LAB_SRC = read('../src/combat-lab-routes.js');
+const LAB_CC = (LAB_SRC.match(/cc := (card_combat_v2\(x->>'rarity'[^;]*\));/) || [])[1];
+const LAB_UNIT0 = (LAB_SRC.match(/cards := cards \|\| jsonb_build_object\(i::text, (jsonb_build_object\('role'[\s\S]*?'active', jsonb_build_object\('blocks', x->'blocks'\)\))\);/) || [])[1];
+if (!LAB_CC || !LAB_UNIT0 || LAB_UNIT0.split("round((random() * 100)::numeric, 2)").length !== 2) throw new Error('the Lab card unit (fightSql) was not found in card-studio/src/combat-lab-routes.js');
+const LAB_UNIT = LAB_UNIT0.replace("round((random() * 100)::numeric, 2)", '0');
 const FIGHTS = Number(process.env.FIGHTS || 120);
 const CHUNK = 30;
 
@@ -45,6 +55,9 @@ const MUT = {
   unit_placeholder: ["    raise exception using errcode = 'no_data_found',\n      message = format('combat_v2_card_unit: card %s has no ability_v2 (a role of the roles table and a list of blocks), so it has no v2 unit (decision D2: the player plays v1)', p_card);\n",
     "    a := '{\"role\": \"striker\", \"blocks\": []}'::jsonb;\n"],
   unit_no_errcode: ["raise exception using errcode = 'no_data_found',\n      message =", 'raise exception using message ='],
+  role_check_removed: ["\n     or not exists (select 1 from public.roles x where x.key = a->>'role')", ''],
+  blocks_check_removed: [" or jsonb_typeof(a->'blocks') is distinct from 'array'", ''],
+  unit_ignores_b: ["a->>'role', b);", "a->>'role');"],
   unit_charge_fixed: ["'charge', (b->'v2_charge'->>'start')::int,", "'charge', 0,"],
   unit_meter_kept: ["'meter', 0, 'charge'", "'meter', 50, 'charge'"],
   foes_v1_key: ["|| jsonb_build_object('show', jsonb_build_object(", "|| jsonb_build_object('wk', 0, 'st', 0, 'show', jsonb_build_object("],
@@ -57,6 +70,10 @@ const MUT = {
   step_stops_on_enemy: ["    if r->'actor'->>'side' = 'card' then\n      s := jsonb_set(s, '{ext}',", "    if r->'actor'->>'side' in ('card', 'enemy') then\n      s := jsonb_set(s, '{ext}',"],
   step_skip_acts: ["    continue when coalesce((r->>'skip')::boolean, false);\n", ''],
   step_no_state_check: ["  if cardinality(bad) > 0 then raise exception 'combat_v2_step: the state is not a fight state v 2: %', array_to_string(bad, '; '); end if;\n", ''],
+  hunt_ckey_dungeon: ["ckey := case when p_state->>'mode' = 'hunt' then 'v2_hunt' else 'v2_dungeon' end;", "ckey := 'v2_dungeon';"],
+  ckey_always_hunt: ["ckey := case when p_state->>'mode' = 'hunt' then 'v2_hunt' else 'v2_dungeon' end;", "ckey := 'v2_hunt';"],
+  enemy_actions_not_counted: ["    s := a->'state'; n := n + 1;\n    log := log || jsonb_build_array(jsonb_build_object('k', 'act', 'actor', r->'actor', 'move'", "    s := a->'state';\n    log := log || jsonb_build_array(jsonb_build_object('k', 'act', 'actor', r->'actor', 'move'"],
+  log_drops_target_ally: ["'action', a->'action', 'target', p_choice->'target', 'ally', p_choice->'ally',", "'action', a->'action',"],
   step_fixed_cap: ["  cap := (b->ckey->>'round_cap')::int;\n", '  cap := 40;\n'],
   step_clock_live_numbers: ['r := combat_v2_next(s, null, b);', 'r := combat_v2_next(s, null, null);'],
   step_turn_kept: ["    s := s #- '{ext,turn}';\n", ''],
@@ -103,7 +120,7 @@ if (process.env.MUTATE) {
     mig = a instanceof RegExp ? mig.replace(a, b) : mig.split(a).join(b);
   }
 }
-for (const t of [mig, DRIVER]) if (['$m$', '$t$', '$d$'].some((x) => t.includes(x))) throw new Error('the SQL must not contain $m$, $t$ or $d$');
+for (const t of [mig, DRIVER, LAB_CC, LAB_UNIT]) if (['$m$', '$t$', '$d$'].some((x) => t.includes(x))) throw new Error('the SQL must not contain $m$, $t$ or $d$');
 
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 const arr = (xs) => `array[${xs.map(lit).join(', ')}]::text[]`;
@@ -120,6 +137,13 @@ const OK_V2 = `jsonb_typeof(s.ability_v2) = 'object' and jsonb_typeof(s.ability_
 // the helpers of the fight compare: the flat log of the Lab driver and of combat_v2_step; the squad state of a fight
 const HELPERS = String.raw`
   ${DRIVER}
+  -- the card unit of the Lab (the text of fightSql) for a card x {rarity, cp_mod, role, blocks} at 0 stars, level 0, no points, meter 0
+  create function pg_temp.r1a_lab_unit(x0 jsonb, b jsonb) returns jsonb language plpgsql as $x$
+  declare x jsonb := x0 || jsonb_build_object('stars', 0, 'level', 0, 'points', '{}'::jsonb); cc jsonb;
+  begin
+    cc := ${LAB_CC};
+    return ${LAB_UNIT};
+  end $x$;
   create function pg_temp.r1a_clock(e jsonb, ev text) returns jsonb language sql as $x$
     select jsonb_build_object('k', 'clock', 'clock', e->'clock', 'event', ev, 'actor', case when ev = 'act' then e->'actor' end,
       'skip', coalesce(e->'skip', 'false'::jsonb), 'reason', case when coalesce((e->>'skip')::boolean, false) then e->'reason' end,
@@ -132,7 +156,7 @@ const HELPERS = String.raw`
       out := out || jsonb_build_array(pg_temp.r1a_clock(e, e->>'event'));
       if e->>'event' = 'act' and not coalesce((e->>'skip')::boolean, false) then
         out := out || jsonb_build_array(case when e->'actor'->>'side' = 'card'
-          then jsonb_build_object('k', 'act', 'actor', e->'actor', 'action', e->'action', 'hits', coalesce(e->'hits', '[]'::jsonb))
+          then jsonb_build_object('k', 'act', 'actor', e->'actor', 'action', e->'action', 'target', e->'target', 'hits', coalesce(e->'hits', '[]'::jsonb))
           else jsonb_build_object('k', 'act', 'actor', e->'actor', 'move', e->'move') end);
       end if;
     end loop;
@@ -143,7 +167,7 @@ const HELPERS = String.raw`
   begin
     for e in select v from jsonb_array_elements(lg) v loop
       out := out || jsonb_build_array(case when e->>'k' = 'clock' then pg_temp.r1a_clock(e, e->>'event')
-        when e->'actor'->>'side' = 'card' then jsonb_build_object('k', 'act', 'actor', e->'actor', 'action', e->'action', 'hits', e->'hits')
+        when e->'actor'->>'side' = 'card' then jsonb_build_object('k', 'act', 'actor', e->'actor', 'action', e->'action', 'target', e->'target', 'hits', e->'hits')
         else jsonb_build_object('k', 'act', 'actor', e->'actor', 'move', e->'move') end);
     end loop;
     return out;
@@ -172,10 +196,15 @@ const HELPERS = String.raw`
       if r->>'event' = 'choose' and (r->'actor'->>'side' is distinct from 'card' or r->'actor' is distinct from r->'state'->'ext'->'turn') then bad := bad || to_jsonb('the call stopped on a turn that is not a card turn'::text); end if;
       if (r->>'steps_left')::int is distinct from greatest(0, cap - (r->'state'->>'clock')::int) or r->'clock' is distinct from r->'state'->'clock' then bad := bad || to_jsonb('steps_left or clock is wrong'::text); end if;
       if (r->>'event' = 'end') is distinct from (r->'won' is not null and r->'won' <> 'null'::jsonb) then bad := bad || to_jsonb('won is set only at the end'::text); end if;
+      -- actions = the number of actions (not of clock calls) in the log of the call
+      if (r->>'actions')::int is distinct from (select count(*)::int from jsonb_array_elements(r->'log') z where z->>'k' = 'act') then bad := bad || to_jsonb('actions is not the number of actions of the log'::text); end if;
       exit when r->>'event' <> 'choose' or calls > 2000;
       snaps := snaps || jsonb_build_array(pg_temp.v2lab_snap(r->'state'));
       d := combat_v2_auto(r->'state', r->'actor', b, null);
       r := combat_v2_step(r->'state', jsonb_build_object('use', d->'use', 'target', d->'target', 'ally', d->'ally'), b);
+      -- the first entry of the log is the action of the card, with the target and the ally that the player chose
+      if r->'log'->0->>'k' is distinct from 'act' or r->'log'->0->'target' is distinct from coalesce(d->'target', 'null'::jsonb)
+         or r->'log'->0->'ally' is distinct from coalesce(d->'ally', 'null'::jsonb) then bad := bad || to_jsonb('the log of the action drops the target or the ally of the choice'::text); end if;
     end loop;
     return jsonb_build_object('flat', flat, 'snaps', snaps, 'calls', calls, 'final', pg_temp.v2lab_snap(r->'state'), 'last', r - 'state' - 'log', 'bad', bad);
   end $x$;`;
@@ -183,7 +212,7 @@ const HELPERS = String.raw`
 // ---------------------------------------------------------------------------------------------------------------- block 1
 const body1 = String.raw`do $t$
 declare res jsonb := '[]'; bad text[] := '{}'; o jsonb := '[]'; f text; md5_all_a jsonb; md5_all_b jsonb; md5_new jsonb; flag_a jsonb;
-  on_a text[]; on_b text[]; b jsonb; bc jsonb; x jsonb; u jsonb; lab jsonb; cc jsonb; n int := 0; m int := 0; k int; t text; st text; msg text;
+  on_a text[]; on_b text[]; b jsonb; bc jsonb; x jsonb; u jsonb; lab jsonb; cc jsonb; n int := 0; m int := 0; k int; t text; st text; msg text; ur record;
   wk date; w record; fl int; rm int; fo jsonb; en jsonb; i int; ids bigint[]; st0 jsonb; r jsonb; r2 jsonb; pend jsonb; e jsonb; v_subj bigint; v_card bigint;
   mine text[] := ${arr(NEW)}; nj int := 0; nf int := 0; nw int := 0; nfo int := 0; nkinds jsonb := '{}';
 begin
@@ -210,18 +239,12 @@ begin
   res := res || jsonb_build_object('case', 'T1 the readers of combat_v2_on do not change (R1a reads no flag)', 'ok', on_a = on_b, 'now', on_b);
   res := res || jsonb_build_object('case', 'T1 the flag combat_v2 does not change', 'ok', (select value from public.balance where key = 'combat_v2') = flag_a);
 
-  -- the card unit = the Lab unit (fightSql: cp_mod through a JS number, stars 0, level 0, points {}, meter 0) for every card with an ability_v2
+  -- the card unit = the Lab unit (the text of fightSql, read from the file: stars 0, level 0, points {}, meter 0) for every card with an ability_v2
   b := combat_v2_enemy_numbers();
   o := '[]';
   for x in select jsonb_build_object('id', c.id, 'rarity', c.rarity::text, 'cp_mod', to_jsonb(coalesce(s.cp_mod, 1)), 'cp_js', to_jsonb(coalesce(s.cp_mod, 1)::float8), 'role', s.ability_v2->>'role', 'blocks', s.ability_v2->'blocks') v
              from public.cards c join public.subjects s on s.id = c.subject_id where ${OK_V2} order by c.id loop
-    cc := card_combat_v2(x->>'rarity', 0, (x->>'cp_mod')::numeric, 0, '{}'::jsonb, x->>'role');
-    lab := jsonb_build_object('role', cc->>'role', 'class', cc->>'class',
-      'atk', cc->'stats'->'atk', 'crt', cc->'stats'->'crt', 'crd', cc->'stats'->'crd', 'abl', cc->'stats'->'abl', 'acc', cc->'stats'->'acc',
-      'def', cc->'stats'->'def', 'ddg', cc->'stats'->'ddg', 'max', cc->'stats'->'hp', 'hp', cc->'stats'->'hp', 'down', false,
-      'speed', b->'v2_speed'->'role_base'->(cc->>'role'), 'spd', coalesce(cc->'points'->'spd', '0'::jsonb), 'power', cc->'power', 'extra_stack', cc->'extra_stack',
-      'meter', 0, 'charge', (b->'v2_charge'->>'start')::int, 'held', 0, 'status', '{}'::jsonb,
-      'active', jsonb_build_object('blocks', x->'blocks'));
+    lab := pg_temp.r1a_lab_unit(x, b);
     u := combat_v2_card_unit((x->>'id')::bigint);
     n := n + 1;
     -- the Lab sends cp_mod through a JS number (cardsOf): the same unit to 1e-12 (the support power differs only in far decimals)
@@ -242,21 +265,40 @@ begin
   res := res || jsonb_build_object('case', 'the card unit takes its numbers: v2_charge.start 2 gives charge 2; role_base 33 gives speed 33; no progress (stars 0, level 0, no points, meter 0)', 'ok',
     (u->>'charge')::int = 2 and (r->>'speed')::numeric = 33 and (u->>'meter')::numeric = 0 and (u->>'spd')::numeric = 0
     and u - 'charge' = combat_v2_card_unit(v_card) - 'charge', 'got', jsonb_build_object('charge', u->'charge', 'speed', r->'speed'));
+  -- a number that goes through card_combat_v2: v2_asc.base doubled gives the stats of card_combat_v2 with those numbers (hp, atk), not the live ones
+  select s.cp_mod, c.rarity::text as rarity, s.ability_v2->>'role' as role into ur from public.cards c join public.subjects s on s.id = c.subject_id where c.id = v_card;
+  bc := jsonb_set(bc, '{v2_asc,base}', (select jsonb_object_agg(q.key, (q.value::numeric * 2)) from jsonb_each_text(bc->'v2_asc'->'base') q));
+  u := combat_v2_card_unit(v_card, bc);
+  cc := card_combat_v2(ur.rarity, 0, ur.cp_mod, 0, '{}'::jsonb, ur.role, bc);
+  res := res || jsonb_build_object('case', 'the card unit takes the stats from the given numbers: v2_asc.base doubled gives the hp and the atk of card_combat_v2 with those numbers, and not the live unit', 'ok',
+    (u->>'hp')::numeric = (cc->'stats'->>'hp')::numeric and (u->>'atk')::numeric = (cc->'stats'->>'atk')::numeric and (u->>'power')::numeric = (cc->>'power')::numeric
+    and ((u->>'hp')::numeric <> (combat_v2_card_unit(v_card)->>'hp')::numeric or (u->>'atk')::numeric <> (combat_v2_card_unit(v_card)->>'atk')::numeric),
+    'got', jsonb_build_object('hp', u->'hp', 'atk', u->'atk', 'want_hp', cc->'stats'->'hp', 'live_hp', combat_v2_card_unit(v_card)->'hp'));
 
-  -- D2: a card with no ability_v2 is refused with no_data_found (never a placeholder)
+  -- D2: a card with no usable ability_v2 is refused with no_data_found (never a placeholder): each of the 3 tests of the file has its own case
   select count(*) into k from public.cards c join public.subjects s on s.id = c.subject_id where not (${OK_V2});
-  select s.id, c.id into v_subj, v_card from public.cards c join public.subjects s on s.id = c.subject_id where ${OK_V2} order by c.id limit 1;
-  update public.subjects set ability_v2 = null where id = v_subj;
-  o := '[]';
-  begin
-    u := combat_v2_card_unit(v_card);
-    o := o || to_jsonb('accepted: ' || u::text);
-  exception when others then
-    get stacked diagnostics st = returned_sqlstate, msg = message_text;
-    if st <> 'P0002' or position('has no ability_v2' in msg) = 0 or position('decision D2' in msg) = 0 then o := o || to_jsonb(st || ' ' || msg); end if;
-  end;
-  res := res || jsonb_build_object('case', format('D2: a card whose subject has no ability_v2 is refused with SQLSTATE P0002 (no_data_found) and the D2 text, never a placeholder (%s cards of the copy have none)', k),
-    'ok', o = '[]'::jsonb, 'got', o);
+  select s.id, c.id, s.ability_v2 into v_subj, v_card, x from public.cards c join public.subjects s on s.id = c.subject_id where ${OK_V2} order by c.id limit 1;
+  -- the trigger of subjects refuses these values at a write (ability_v2_check): off inside this rolled-back block, so that the function itself is tested
+  alter table public.subjects disable trigger subjects_ability_v2_check;
+  for t, u in select * from (values
+      ('a (no ability_v2: null)', null::jsonb),
+      ('b (a role that is not in the roles table)', x || '{"role": "no_such_role"}'::jsonb),
+      ('c (blocks that are not a list)', x || '{"blocks": {"k": "damage"}}'::jsonb),
+      ('d (an ability_v2 that is not an object)', '"striker"'::jsonb)) q(n, v) loop
+    update public.subjects set ability_v2 = u where id = v_subj;
+    o := '[]';
+    begin
+      r := combat_v2_card_unit(v_card);
+      o := o || to_jsonb('accepted: ' || r::text);
+    exception when others then
+      get stacked diagnostics st = returned_sqlstate, msg = message_text;
+      if st <> 'P0002' or position('has no ability_v2' in msg) = 0 or position('decision D2' in msg) = 0 then o := o || to_jsonb(st || ' ' || msg); end if;
+    end;
+    res := res || jsonb_build_object('case', format('D2 case %s: refused with SQLSTATE P0002 (no_data_found) and the D2 text, never a placeholder (%s cards of the copy have no ability_v2)', t, k),
+      'ok', o = '[]'::jsonb, 'got', o);
+  end loop;
+  update public.subjects set ability_v2 = x where id = v_subj;
+  alter table public.subjects enable trigger subjects_ability_v2_check;
 
   -- the foes of 4 Gauntlet weeks (made in this block): every fight room
   o := '[]'; m := 0;
@@ -285,25 +327,45 @@ begin
   res := res || jsonb_build_object('case', format('the foes = combat_v2_dungeon_foe(key, floor, room, kind) + show {name, model, element}, no other key, on every fight room of %s Gauntlet weeks (%s foes: %s)', nw, nfo, nkinds),
     'ok', nw = 4 and nfo > 50 and m = 0, 'differ', m, 'first', o);
 
-  -- a state of the builders passes fight_state_check_v2 and the step; the first call stops on a card turn
+  -- a state of the builders passes fight_state_check_v2 and the step; the first call stops on a card turn. Each step call is in its own sub-block:
+  -- a raise of the step is a named FAIL of its case (it does not hide the later cases)
   select array_agg(q.id order by q.o) into ids from (select c.id, row_number() over (order by c.id) o from public.cards c join public.subjects s on s.id = c.subject_id where ${OK_V2} order by c.id limit 5) q;
   fo := dungeon_room_foes('r1a|state', 2, 3, 'horde');
   perform setseed(0.25);
   st0 := pg_temp.r1a_state(ids, gauntlet_v2_foes(fo, 2, 3), b);
-  r := combat_v2_step(st0, null, b);
+  r := null; msg := null;
+  begin
+    r := combat_v2_step(st0, null, b);
+  exception when others then msg := sqlerrm;
+  end;
   res := res || jsonb_build_object('case', 'a fight state of the builders (5 cards, a horde) passes fight_state_check_v2 (no v1 key); the first call (choice null) stops on a card turn', 'ok',
-    fight_state_check_v2(st0) = '{}'::text[] and r->>'event' = 'choose' and r->'actor'->>'side' = 'card' and r->'state'->'ext'->'turn' = r->'actor',
-    'got', jsonb_build_object('check', fight_state_check_v2(st0), 'event', r->'event', 'actor', r->'actor'));
+    msg is null and fight_state_check_v2(st0) = '{}'::text[] and r->>'event' = 'choose' and r->'actor'->>'side' = 'card' and r->'state'->'ext'->'turn' = r->'actor',
+    'got', jsonb_build_object('check', fight_state_check_v2(st0), 'raised', msg, 'event', r->'event', 'actor', r->'actor'));
   pend := r->'state';
   e := (select jsonb_build_object('side', 'enemy', 'id', (q.o - 1)) from jsonb_array_elements(pend->'enemies') with ordinality q(v, o) where combat_v2_up(q.v) order by q.o limit 1);
   -- the step cap from the given numbers (v2_dungeon.round_cap 3) on a strong room; and today's cap (steps_left = round_cap - clock)
   bc := jsonb_set(b, '{v2_dungeon,round_cap}', '3');
   perform setseed(0.5);
-  r2 := pg_temp.r1a_play(pg_temp.r1a_state(ids, gauntlet_v2_foes(dungeon_room_foes('r1a|cap', 9, 5, 'guardian'), 9, 5), bc), bc);
-  res := res || jsonb_build_object('case', 'the step cap comes from the given numbers: v2_dungeon.round_cap 3 ends a long fight with event cap at clock 3, steps_left 0; every call has steps_left = 3 - clock', 'ok',
-    r2->'last'->>'event' = 'cap' and (r2->'last'->>'clock')::int = 3 and (r2->'last'->>'steps_left')::int = 0 and r2->'bad' = '[]'::jsonb, 'got', r2->'last', 'bad', r2->'bad');
+  r2 := null; msg := null;
+  begin
+    r2 := pg_temp.r1a_play(pg_temp.r1a_state(ids, gauntlet_v2_foes(dungeon_room_foes('r1a|cap', 9, 5, 'guardian'), 9, 5), bc), bc);
+  exception when others then msg := sqlerrm;
+  end;
+  res := res || jsonb_build_object('case', 'the step cap comes from the given numbers: v2_dungeon.round_cap 3 ends a long fight with event cap at clock 3, steps_left 0; every call has steps_left = 3 - clock, actions = the actions of its log, and the log of an action has the target and the ally of the choice', 'ok',
+    msg is null and r2->'last'->>'event' = 'cap' and (r2->'last'->>'clock')::int = 3 and (r2->'last'->>'steps_left')::int = 0 and r2->'bad' = '[]'::jsonb, 'got', r2->'last', 'bad', r2->'bad', 'raised', msg);
   res := res || jsonb_build_object('case', 'today''s cap: the first call has steps_left = v2_dungeon.round_cap - clock', 'ok',
     (r->>'steps_left')::int = (b->'v2_dungeon'->>'round_cap')::int - (r->'state'->>'clock')::int and (r->>'steps_left')::int > 3, 'got', r - 'state' - 'log');
+  -- the Hunt mode reads its own cap: mode hunt with v2_hunt.round_cap 7 (dungeon: today's) gives steps_left = 7 - clock; mode gauntlet with the same numbers keeps the dungeon cap
+  bc := b || jsonb_build_object('v2_hunt', coalesce(b->'v2_hunt', '{}'::jsonb) || '{"round_cap": 7}'::jsonb);
+  r2 := null; msg := null;
+  begin
+    r2 := combat_v2_step(jsonb_set(st0, '{mode}', '"hunt"'), null, bc);
+    r := combat_v2_step(st0, null, bc);
+  exception when others then msg := sqlerrm;
+  end;
+  res := res || jsonb_build_object('case', 'the step cap of the mode: mode hunt reads v2_hunt.round_cap (7), mode gauntlet reads v2_dungeon.round_cap', 'ok',
+    msg is null and (r2->>'steps_left')::int = 7 - (r2->'state'->>'clock')::int and (r->>'steps_left')::int = (bc->'v2_dungeon'->>'round_cap')::int - (r->'state'->>'clock')::int
+    and (bc->'v2_dungeon'->>'round_cap')::int <> 7, 'got', jsonb_build_object('hunt', r2->'steps_left', 'hunt_clock', r2->'state'->'clock', 'gauntlet', r->'steps_left', 'raised', msg));
 
   -- the refusals, each with its text
   o := '[]';
@@ -382,7 +444,11 @@ begin
     perform setseed(i / 1000.0 - 0.5);
     lab := pg_temp.v2lab_fight(st, b, 600);
     perform setseed(i / 1000.0 - 0.5);
-    my := pg_temp.r1a_play(st, b);
+    begin
+      my := pg_temp.r1a_play(st, b);
+    exception when others then
+      my := jsonb_build_object('bad', jsonb_build_array('the step raised: ' || sqlerrm), 'flat', '[]'::jsonb, 'snaps', '[]'::jsonb, 'calls', 0, 'final', 'null'::jsonb, 'last', '{}'::jsonb);
+    end;
     lf := pg_temp.r1a_lab_flat(lab);
     select coalesce(jsonb_agg(e->'pre' order by o), '[]') into lsnaps from jsonb_array_elements(lab->'log') with ordinality q(e, o) where e->>'event' = 'act' and e->'actor'->>'side' = 'card' and not coalesce((e->>'skip')::boolean, false);
     won := not exists (select 1 from jsonb_each(lab->'final') q where q.key like 'enemy:%' and not (q.value->>2)::boolean);
