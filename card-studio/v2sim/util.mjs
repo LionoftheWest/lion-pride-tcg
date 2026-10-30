@@ -21,6 +21,10 @@ export function hash(...parts) {
   return h >>> 0;
 }
 
+// The memo key of a picked squad in the Labs (score, shape, power). The slot order changes the fight (each unit draws from hash(seed, slot), engine.mjs), so the
+// key keeps the order: two orders of the same cards are two squads. (An object, so that a test can plant the old sorted key.)
+export const squadKey = { of: (ids) => ids.join() };
+
 export const clone = o => JSON.parse(JSON.stringify(o));
 // Deep merge of a patch into a copy of the config. Arrays and scalars replace.
 export function patch(base, p) {

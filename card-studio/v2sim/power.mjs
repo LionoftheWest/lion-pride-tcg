@@ -22,7 +22,7 @@
 // of its status among the other cards; plan 5.2).
 import { blockPP, classOf, ROLES, STATS, templatesOf, makeCard, allocate, cardPool } from './cards.mjs';
 import { huntDay, dungeonRun, bossKeys } from './modes.mjs';
-import { mkRng, hash, mean, median, spearman, table, fmt, ratio } from './util.mjs';
+import { mkRng, hash, mean, median, spearman, table, fmt, ratio, squadKey } from './util.mjs';
 import { autoPick, poolEntry, pickBoss } from './auto.mjs';
 
 export const SMITE_BLOCKS = ['smite', 'area', 'vs_status', 'payoff_dmg', 'crit_add', 'consume'];
@@ -239,8 +239,8 @@ export function powerPickLab(cfg, { seed = 1, pools = 2, poolSize = 20, searchDa
       for (const r of supRoles(best)) mix.best[r] = (mix.best[r] || 0) + 1;
       for (const v of V) { for (const r of supRoles(picks[v])) mix[v][r] = (mix[v][r] || 0) + 1; overlap[v].push(picks[v].filter((id) => best.includes(id)).length); }
       (detail[key] ||= []).push({ best: best.map((id) => roleOfId.get(id)), ...Object.fromEntries(V.map((v) => [v, picks[v].map((id) => roleOfId.get(id))])) });
-      for (const v of V) { const k = [...picks[v]].sort((a, b) => a - b).join(); if (!memo.has(k)) memo.set(k, days(sq(picks[v]), key, 'autov2', evalDays, `eval-${pi}`));
-        r[v].push(memo.get(k) / vB); if (k === [...e8].sort((a, b) => a - b).join()) same[v]++; }
+      for (const v of V) { const k = squadKey.of(picks[v]); if (!memo.has(k)) memo.set(k, days(sq(picks[v]), key, 'autov2', evalDays, `eval-${pi}`));
+        r[v].push(memo.get(k) / vB); if ([...picks[v]].sort((a, b) => a - b).join() === [...e8].sort((a, b) => a - b).join()) same[v]++; }
     }
     per[key] = Object.fromEntries(V.map((v) => [v, { mean: mean(r[v]), low: Math.min(...r[v]), same: same[v] }]));
     for (const v of V) all[v].push(...r[v]);

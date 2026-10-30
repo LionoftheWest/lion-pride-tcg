@@ -168,10 +168,11 @@ Power              = Offense x Survival x k[role]
 
 ### 3.2 What the player sees
 
-- A **turn-order strip** across the full width: as many projected actors (cards and enemies) as fit, 10 at 430 px, 33 at 1280 px,
-  52 at 1990 px (UI-67, Nathan 2026-10-19). The projection draws no random number. When a speed or control status changes the order,
+- A **turn-order strip** with the next 10 turns (projected actors, cards and enemies) on every size (Nathan 2026-10-23, D-203; replaces the
+  full-width count of UI-67 review-3). The projection draws no random number. When a speed or control status changes the order,
   the chips redraw in place. Enemy turns and the turn on which a card's active is charged are marked. The clock itself stays hidden.
 - On a card's turn: the basic attack, or the active when it is charged, and the target (an ally for most supports). Auto plays for the player.
+  The acting card has the gold ring; its active is a pill on that card (tap the pill = the active, tap the card = the basic attack; UI-52 review-5, D-204).
 - A charge mark on each card (for example 2 pips). The "Charging" warning before a Cataclysm stays.
 - Status icons on every unit (section 6). One line on tap.
 - The steps left today (Hunt) or in the fight (Dungeon), shown as "turns left".
@@ -662,7 +663,7 @@ New IDs are reserved at request time (the next free ID on `main` today is UI-67)
 | Boss detail | UI-20 | Weak to / Resists / Signature / Bring |
 | Dungeon lobby | UI-46 | role chips and Power |
 | Dungeon fight | UI-47 | turn-order strip, status slots, supports as targets |
-| Gauntlet | UI-52 | the same fight changes |
+| Gauntlet | UI-52 | the same fight changes (design approved 2026-10-23, review-5) |
 | Card picker | UI-64 | role filter |
 | Help, explainers, walkthrough | UI-38, UI-39, UI-37 | new texts ("Each star gives 3 stat points" becomes false [L]). A Dungeon and Gauntlet explainer |
 | Status tap line (one-line tooltip) | new ID | new |
@@ -1966,6 +1967,7 @@ does not change. The Set 1 actives and their factors are PRIVATE: this section g
   2. The factor is relative to the other actives of its role: a change of one Set 1 active needs `run.mjs factors --set1` and a push of all the factors.
   3. The Lab memo (above): a squad keeps the value of its first evaluated slot order. A fix is a Lab change (the memo key with the order); it does not
      change the pick.
+     **Fixed 2026-10-23 (lane 3, `fix/lab-memo-slot-order`): the memo key keeps the slot order (`squadKey` in `util.mjs`; score, shape and power Labs). Measured on `activepick`, the built form, before -> after: Set 1 seed 202 mean x0.8817 -> x0.8824 (3 below, unchanged), Warlord .774 -> .779, Hydra and Camper Colossus unchanged (.827, .854); Set 1 seed 101 unchanged (x0.9051); template seed 1 x0.9018 -> x0.9012 (4 below, unchanged), Camper Colossus .846 -> .850. The Set 1 seed 202 Camper Colossus .866 vs .854 difference was between candidate lists. Only the Lab numbers move, by 0.001 or less in a mean; no live pick changes.**
 
 ### 20.11 M1: decisions and M1a (`tcg-bot/supabase/combat_v2_progress_tables.sql`)
 

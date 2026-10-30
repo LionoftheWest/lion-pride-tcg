@@ -9,7 +9,7 @@
 import { makeCard, cardPool, classOf } from './cards.mjs';
 import { huntDay, bossKeys } from './modes.mjs';
 import { autoPick, poolEntry, pickBoss } from './auto.mjs';
-import { mkRng, hash, mean, sd, table, ratio, patch } from './util.mjs';
+import { mkRng, hash, mean, sd, table, ratio, patch, squadKey } from './util.mjs';
 import { subjects, withSet1, loadSets } from './teams.mjs';
 
 // The parts of the Set 1 pool in one object, so that a test can plant a fault in one part (shape.test.mjs; the pattern of lab12.mjs K).
@@ -152,7 +152,7 @@ export function shapePickLab(cfg, { seed = 1, pools = 2, candidates = SHAPE_CAND
     for (const c of C) {
       const ids = autoPick(patch(c1, { auto_v2: { pick: candidates[c] } }), r.pool, r.boss, 8).ids;
       if (c === LIVE) liveIds.set(r, ids);
-      const k = [...ids].sort((a, b) => a - b).join(); if (!memo.has(k)) memo.set(k, r.eval(ids) / r.vB);
+      const k = squadKey.of(ids); if (!memo.has(k)) memo.set(k, r.eval(ids) / r.vB);
       (res[c][r.key] ||= []).push(memo.get(k));
     }
     if (!liveIds.has(r)) liveIds.set(r, autoPick(c1, r.pool, r.boss, 8).ids);
