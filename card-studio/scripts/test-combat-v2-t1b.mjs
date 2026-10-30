@@ -681,7 +681,7 @@ try {
   const NUM = results.find((r) => r.case === 'NUMBERS'); const B = NUM.b, AB = NUM.ab;
   for (const r of results.filter((x) => !['NUMBERS', 'ABILITY_V2'].includes(x.case))) { const { case: name, ok, ...rest } = r; say(ok, name, JSON.stringify(rest).slice(0, 900)); }
   const leaves = (o, p = []) => (o !== null && typeof o === 'object' && !Array.isArray(o) ? Object.entries(o).filter(([k]) => !k.startsWith('_')).flatMap(([k, v]) => leaves(v, [...p, k])) : [[p.join('.'), JSON.stringify(o)]]);
-  const bal = new Map(leaves(results.find((r) => r.case === 'ABILITY_V2').v)), cfgL = new Map(leaves(CONFIG.ability_v2).filter(([p]) => p !== 'limits.min_share')); // limits.min_share: combat_v2_min_share.sql
+  const bal = new Map(leaves(results.find((r) => r.case === 'ABILITY_V2').v)), cfgL = new Map(leaves(CONFIG.ability_v2).filter(([p]) => p !== 'limits.min_share' && !p.startsWith('share.status_kinds.'))); // limits.min_share: combat_v2_min_share.sql; share.status_kinds: combat_v2_set2_parts.sql
   const lp = [...bal].filter(([p, v]) => cfgL.get(p) !== v).concat([...cfgL].filter(([p]) => !bal.has(p)));
   say(lp.length === 0 && bal.size === 36 && bal.has('share.self_has_each.focused') && bal.has('pp.vs_smite') && bal.has('pp.sup_vs_k') && bal.has('share.self_has'),
     `balance ability_v2 = config.json ability_v2 (${bal.size} leaves equal: + pp.vs_smite, share.self_has_each for 15 statuses, share.area_payoff, ref.list_extra; one number, one home)`, JSON.stringify(lp));

@@ -2373,3 +2373,32 @@ driver of the Admin Combat v2 Lab into SQL, so that R1b plays the same fight as 
     `SUPERSEDED.md`); after the apply and the regenerated files 169 of 169 PASS (2 one-time skipped; run again on 2026-10-28 on the rebased branch: 169 of 169, C1, C2, C3 PASS, combat-checks.test.mjs 16 of 16). The rehearsal run (before the 7 allowlists
     were extended) failed only the 7 "no other caller" lists and the 3 generated files. The 7 lists now name the new functions by exact name.
   - Then `db/schema/`, `docs/data/` (the tester id of the local copy masked in memory, as in 20.10 to 20.13) and `SUPERSEDED.md` regenerated.
+
+### 20.16 Set 2 engine parts (b) and (c) (`tcg-bot/supabase/combat_v2_set2_parts.sql`)
+
+Nathan's decision (2026-10-28, Set 2 question Q1 = C): build engine part (b) and part (c) for 5 Set 2 actives. Part (a), an attacker bonus while this
+card is Empowered or Shielded, is NOT built. It is a post-Nov-6 item. The file changes no play: the flag `combat_v2` stays OFF, no v1 function calls a
+replaced function, and an ability with none of the new parts gives the same price (PP), text and fights as before.
+
+- **(b) Three support blocks are legal for an attacker.** The price is the rule of 5.2 (a support main uses the library price at cycle 2, so x 2 / C
+  with C = the attacker cycle). No new number: `dispel` 4 x 2 / C, `heal_all` 60 x v x 2 / C, `quicken` 13.3 x v x 2 / C.
+  - `dispel`: removes the shield and the boosts of the target BEFORE the hits. It takes no attachment. A payoff later in the scan reads the stripped target.
+  - `heal_all`: every standing ally (this card too) heals v x its max HP after the hits. No crit roll, no draw.
+  - `quicken` with the new flag field `self`: the card Quickens itself after the hits (value 1 + v x ABL, the same status as a support Quicken).
+    An attacker quicken must be `self` and there is at most one. A support quicken must not be `self`.
+  - A Confused attacker (the redirect to its own side) runs none of the three.
+- **(c) A status count condition.** The new field `kinds` (N = 2 to 5) of `line_status` (an OR next to its named statuses and the HP line of its
+  execute block) and of `payoff_dmg` (alone: no `status` or `statuses`). It holds while the target has N or more different harmful statuses.
+  The new function `combat_effect_v2_holds(unit, block, clock, numbers)` is the one place that decides it. The main hit, each area hit and a support
+  smite read it. Price (rule T1c): the raw price x the MEASURED share of the time it is true, the new balance leaf `ability_v2.share.status_kinds.<N>`
+  (2 or more 0.0757, 3 or more 0.0059, 4 or more 0.0002, 5 or more 0; `card-studio/v2sim/run.mjs shares --runs 2000`, seed 1, seed 7 within 0.004).
+  The existing minimum share rule (`limits.min_share` 0.01) refuses a count whose share is below it. A `payoff_dmg` with `kinds` takes no Silver.
+- **Replaced** (each rebuilt from the LIVE text, with an md5 guard): `ability_v2_spec`, `ability_v2_block_pp`, `ability_v2_pps`, `ability_v2_text`,
+  `ability_v2_check`, `combat_effect_v2_active`. **New**: `combat_effect_v2_holds`. The library rows `dispel`, `heal_all`, `quicken`, `line_status`
+  and `payoff_dmg` get the new classes, fields and sentences. The simulator `card-studio/v2sim` has the same rules.
+- **Open (a decision for Nathan)**: "3 or more statuses" has a measured share of 0.0059, BELOW the minimum share 0.01, so the validator REFUSES it today.
+  2 of the 5 Set 2 actives (the 2 cards of part (c), Mrs. Foxtrot and Ottozone's Head) are refused for this reason. Options: lower `limits.min_share`
+  to 0.005 (one balance edit; the rule then lets a 3-or-more card through), change the 2 cards to "2 or more", or leave them to a later set.
+  The 3 cards of part (b) are accepted.
+- **Test**: `card-studio/scripts/test-combat-v2-set2-parts.mjs` (rolled back; SQL = the simulator on 500 random abilities and 120 random fights;
+  `MUTATE=all` plants each fault in the file and in the simulator). Results are in the PR description.

@@ -243,7 +243,7 @@ try {
   for (const r of results.filter((x) => !['T1B', 'ABILITY_V2'].includes(x.case))) { const { case: name, ok, ...rest } = r; say(ok, name, JSON.stringify(rest).slice(0, 900)); }
   const { t1b, nw, b: B } = results.find((r) => r.case === 'T1B');
   const leaves = (o, p = []) => (o !== null && typeof o === 'object' && !Array.isArray(o) ? Object.entries(o).filter(([k]) => !k.startsWith('_')).flatMap(([k, v]) => leaves(v, [...p, k])) : [[p.join('.'), JSON.stringify(o)]]);
-  const bal = new Map(leaves(results.find((r) => r.case === 'ABILITY_V2').v)), cfgL = new Map(leaves(CONFIG.ability_v2));
+  const bal = new Map(leaves(results.find((r) => r.case === 'ABILITY_V2').v)), cfgL = new Map(leaves(CONFIG.ability_v2).filter(([p]) => !p.startsWith('share.status_kinds.'))); // share.status_kinds: combat_v2_set2_parts.sql
   const lp = [...bal].filter(([p, v]) => cfgL.get(p) !== v).concat([...cfgL].filter(([p]) => !bal.has(p)));
   say(lp.length === 0 && bal.size === 37 && bal.get('limits.min_share') === '0.01', `balance ability_v2 = config.json ability_v2 (${bal.size} leaves equal, + limits.min_share; one number, one home)`, JSON.stringify(lp));
   const cfg = patch(CONFIG, {}); cfg.ability_v2 = JSON.parse(JSON.stringify(B.ability_v2));

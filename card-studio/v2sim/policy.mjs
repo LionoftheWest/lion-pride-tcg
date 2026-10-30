@@ -69,7 +69,7 @@ export const best = {
     if (need) { const squadMakes = b.alive('card').some(c => need.some(s => makes(c, s))); return !squadMakes || need.some(s => tgt.st[s]); }
     if (id === 'finisher.execute' || id === 'finisher.ko') {
       const blk = u.active.blocks; const ex = blk.find(x => x.k === 'execute'), line = blk.find(x => x.k === 'line_status');
-      return tgt.hp / tgt.maxHp < ex.line || (line && line.statuses.some(s => tgt.st[s]));
+      return tgt.hp / tgt.maxHp < ex.line || (line && b.hasAny(tgt, line));
     }
     if (id === 'finisher.pileon') return b.negKinds(tgt) >= 2;
     return true;
@@ -161,7 +161,7 @@ function autoUse(b, u) {
   const ex = B.find((x) => x.k === 'execute');
   if (ex) {
     const ls = B.find((x) => x.k === 'line_status');
-    return tgt.hp / tgt.maxHp < ex.line || (ls && ls.statuses.some((s) => tgt.st[s])) ? { use: true, why: 'execute' } : { use: false, why: 'hold_execute' };
+    return tgt.hp / tgt.maxHp < ex.line || (ls && ls.statuses?.some((s) => tgt.st[s])) ? { use: true, why: 'execute' } : { use: false, why: 'hold_execute' };
   }
   for (let j = 0; j + 1 < B.length; j++) if (GATE_KEYS.includes(B[j + 1].k) && !b.gateOn(u, tgt, B[j + 1])) return { use: false, why: 'hold_gate' };
   const P = paysOf(B);
