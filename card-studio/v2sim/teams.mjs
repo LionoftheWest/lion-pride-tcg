@@ -56,6 +56,39 @@ export function loadSet1Batch() {
   return set1FromRows(JSON.parse(readFileSync(p, 'utf8')).rows);
 }
 
+// The Set 2 batch (Double Team; lane 3): the same private format, a second file. Path: env V2SIM_SET2_BATCH, else <repo parent>/discord-card-ideas/batches/set2-t1.json.
+// Set 2 is not in fixture.json (the live snapshot), so each Set 2 card gets a synthetic subject from the PUBLIC card-studio/cards.json: its name, type, every
+// finish except event as a pullable finish (the rule of the Set 1 fixture: 128 of 128 cards with a normal finish match; 2 are event-only), and cp_mod 1 (the Set 1 mean is 1.00; the real value is set when the card is pushed).
+export const SET2_BATCH_PATH = () => process.env.V2SIM_SET2_BATCH || join(HERE, '..', '..', '..', 'discord-card-ideas', 'batches', 'set2-t1.json');
+export const hasSet2Batch = () => existsSync(SET2_BATCH_PATH());
+export const CARDS_PATH = () => process.env.V2SIM_CARDS || join(HERE, '..', 'cards.json');
+// The synthetic subject of a Set 2 card (an object, so that a test can plant a fault in it).
+export const SET2 = { subject: (c) => ({ name: c.name, type: c.type, cp_mod: 1, finishes: c.finishes.filter((f) => f !== 'event').map((f) => ({ rarity: f, pool: true })) }) };
+export function loadSet2Batch(cardsPath = CARDS_PATH()) {
+  const p = SET2_BATCH_PATH();
+  if (!existsSync(p)) throw new Error(`teams: the private Set 2 batch is missing (${p}). Set V2SIM_SET2_BATCH to its path. It is private: never commit it to this repo.`);
+  const S = set1FromRows(JSON.parse(readFileSync(p, 'utf8')).rows);
+  const byId = new Map(JSON.parse(readFileSync(cardsPath, 'utf8')).filter((c) => c.set === 'S2').map((c) => [c.id, c]));
+  for (const [k, a] of Object.entries(S)) {
+    const c = byId.get(k);
+    if (!c) throw new Error('teams: a Set 2 batch row is not a Set 2 card of cards.json');
+    a.set = 2; a.subject = SET2.subject(c);
+  }
+  return S;
+}
+/** The batch map of a run: Set 1, or Set 1 + Set 2 together (set2 true). A key in both sets is an error. */
+export function loadSets({ set2 = false } = {}) {
+  const S1 = loadSet1Batch(); if (!set2) return S1;
+  const S2 = loadSet2Batch(); const dup = Object.keys(S2).filter((k) => S1[k]);
+  if (dup.length) throw new Error(`teams: ${dup.length} card keys are in both batches`);
+  return { ...S1, ...S2 };
+}
+/** The rows of the batch files of a run and the path of the batch that holds the factors file beside it (the Set 2 file when Set 2 is in). */
+export function loadSetRows({ set2 = false } = {}) {
+  const r1 = JSON.parse(readFileSync(SET1_BATCH_PATH(), 'utf8')).rows;
+  return set2 ? { rows: [...r1, ...JSON.parse(readFileSync(SET2_BATCH_PATH(), 'utf8')).rows], path: SET2_BATCH_PATH() } : { rows: r1, path: SET1_BATCH_PATH() };
+}
+
 // The config with every Set 1 active as template "s1.<card key>". A template that the config already has (a --patch what-if) wins.
 export function withSet1(cfg, set1 = loadSet1()) {
   const out = { ...cfg, v2_templates: { ...cfg.v2_templates } };

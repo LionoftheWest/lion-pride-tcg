@@ -1,7 +1,8 @@
 // targets.mjs - the tuning targets of 2026-10-18 (Nathan approved the 6 recommendations).
 // One command measures every target: node card-studio/v2sim/run.mjs targets [--runs N] [--tag name]
 // Returns { md, head, data } (data = the numbers, for before/after tables). PROTOTYPE ESTIMATES.
-import { cardPool, pickCards, makeCard, templatesOf, ATTACKER_ROLES, SUPPORT_ROLES, ROLES } from './cards.mjs';
+import { cardPool, pickCards, makeCard, templatesOf, templateFor, ATTACKER_ROLES, SUPPORT_ROLES, ROLES } from './cards.mjs';
+import { loadSets, withSet1, subjects } from './teams.mjs';
 import { buildSquad, huntDay, makeFoe, setFoeMech } from './modes.mjs';
 import { Battle } from './engine.mjs';
 import { POLICIES } from './policy.mjs';
@@ -11,8 +12,21 @@ import { mkRng, hash, mean, median, table, fmt, pct, ratio } from './util.mjs';
 
 export const CLEAR_THRESHOLD = 0.70;
 
-export function targets(cfg, { runs = 200, seed = 1 } = {}) {
-  const pool = cardPool(cfg); const head = []; const D = {}; const rows = [];
+/** The card pool of a Set 1 / Set 1 + Set 2 run: the fixture cards of the batch with their own active (template s1.<key>) and their batch role, the other fixture cards
+ * with the placeholder template that the placeholder run gives them, and each Set 2 card (a synthetic subject, teams.mjs loadSet2Batch) with a pullable finish. */
+export function setPool(cfg, S) {
+  const tpl = (role) => templatesOf(cfg, role).filter((t) => !t.startsWith('s1.'));
+  const base = cardPool(cfg).map((p) => (S[p.key] ? { ...p, role: S[p.key].role, template: `s1.${p.key}` } : { ...p, template: tpl(p.role)[hash('template', p.key) % tpl(p.role).length] }));
+  const have = new Set(base.map((p) => p.key)); const subj = subjects(cfg);
+  const add = Object.keys(S).sort().filter((k) => !have.has(k)).map((k) => { const s = subj.get(k); return { key: k, name: s.name, type: s.type, cp_mod: s.cp_mod, role: S[k].role, traits: [], finishes: s.finishes.map((f) => f.rarity), pullable: s.finishes.filter((f) => f.pool).map((f) => f.rarity), template: `s1.${k}` }; });
+  return [...base, ...add];
+}
+
+/** set1 / set2: the pool holds the real actives of the private batch (Set 1) or of Set 1 + Set 2 (set2); the roles, the shapes and the archetypes keep the placeholder templates. */
+export function targets(cfg0, { runs = 200, seed = 1, set1, set2 } = {}) {
+  const S = set1 || set2 ? (set1 && set1 !== true ? set1 : loadSets({ set2 })) : null; const cfg = S ? withSet1(cfg0, S) : cfg0;
+  const tplOf = (role) => templatesOf(cfg, role).filter((t) => !S || !t.startsWith('s1.'));
+  const pool = S ? setPool(cfg, S) : cardPool(cfg); const head = []; const D = {}; const rows = [];
   const thr = CLEAR_THRESHOLD; const ok = b => (b ? 'PASS' : 'FAIL');
   const A = cfg.v2_investment.active, Cs = cfg.v2_investment.casual;
 
@@ -58,7 +72,7 @@ export function targets(cfg, { runs = 200, seed = 1 } = {}) {
   }
   const med = median(Object.entries(ar).filter(([n]) => !n.startsWith('Neutral')).map(([, r]) => r.n));
   D.arch = Object.fromEntries(Object.entries(ar).map(([n, r]) => [n, { vsMedian: +(r.n / med).toFixed(3), counter: r.c === null ? null : +(r.c / r.n).toFixed(3) }]));
-  const ch = allChecks(cfg); const nolock = ch.find(c => c.id === 'control.nolock');
+  const ch = allChecks(cfg0); const nolock = ch.find(c => c.id === 'control.nolock');
   rows.push(['4 Lockdown vs the median archetype (Hunt)', 'rises toward x1.0', ratio(D.arch.Lockdown.vsMedian), D.arch.Lockdown.vsMedian >= 0.8 ? 'PASS' : 'CHECK']);
   rows.push(['4 no permanent lock (all 4 controls every step, Hunt boss)', `skipped ${nolock.expect}`, String(nolock.got), ok(nolock.ok)]);
   const lk = ARCHETYPES.Lockdown.hunt.map(mk); let sk = 0, tt = 0;
@@ -85,7 +99,7 @@ export function targets(cfg, { runs = 200, seed = 1 } = {}) {
   const sur = c => c.maxHp / (1 - c.def) / (1 - 0.7 * c.ddg);
   const rv = {}, tv = {}, kr = {};
   for (const role of ROLES) {
-    const vals = templatesOf(cfg, role).map(t => { const c = makeCard(cfg, { key: t, role, rarity: 'normal', template: t, stars: 2, level: 15 }); const v = strength(cfg, c, runs * 3, hash(seed, 'rv', role)); tv[t] = v; return [v, off(c) * sur(c)]; });
+    const vals = tplOf(role).map(t => { const c = makeCard(cfg, { key: t, role, rarity: 'normal', template: t, stars: 2, level: 15 }); const v = strength(cfg, c, runs * 3, hash(seed, 'rv', role)); tv[t] = v; return [v, off(c) * sur(c)]; });
     rv[role] = mean(vals.map(x => x[0])); kr[role] = rv[role] / mean(vals.map(x => x[1]));
   }
   const mR = mean(Object.values(rv)), mK = mean(Object.values(kr));
@@ -106,13 +120,13 @@ export function targets(cfg, { runs = 200, seed = 1 } = {}) {
   rows.push(['7 silver bullet (> x1.30 the median AND its counter cuts < 10%)', 'none', silver.join(', ') || 'none', ok(!silver.length)]);
   rows.push(['7 every counter boss cuts its archetype', 'counter < x1.00', Object.entries(D.arch).filter(([, r]) => r.counter !== null).map(([n, r]) => `${n} ${ratio(r.counter)}`).join(', '), ok(!notCut.length)]);
   rows.push(['7 archetypes vs the median (Hunt)', 'info', Object.entries(D.arch).map(([n, r]) => `${n} ${ratio(r.vsMedian)}`).join(', '), '-']);
-  const sp = speed(cfg, { runs: Math.ceil(runs * 1.5), seed }); const m = sp.head[0].match(/for (\d+) of (\d+) roles on a neutral boss/);
+  const sp = speed(cfg0, { runs: Math.ceil(runs * 1.5), seed }); const m = sp.head[0].match(/for (\d+) of (\d+) roles on a neutral boss/);
   D.spdBest = m ? +m[1] : null;
   rows.push(['7 Speed not dominant: roles where +10 SPD is the best stat (neutral boss)', '<= 2 of 8', `${D.spdBest} of 8`, ok(D.spdBest !== null && D.spdBest <= 2)]);
   const fails = ch.filter(c => !c.ok).map(c => c.id); D.checks = { total: ch.length, fail: fails };
   rows.push(['7 status, meter and formula checks', 'all PASS', `${ch.length - fails.length} of ${ch.length}${fails.length ? ' (FAIL ' + fails.join(', ') + ')' : ''}`, ok(!fails.length)]);
 
-  const md = `# Tuning targets\n\n${PROTO}\n${runs} runs a cell, seed ${seed}. Clear-rate threshold: ${pct(thr, 0)} of the runs.\n\n` + table(['target', 'goal', 'measured', 'result'], rows);
+  const md = `# Tuning targets${S ? ` (pool: the real actives of Set 1${Object.values(S).some((a) => a.set === 2) ? ' + Set 2' : ''}; ${Object.keys(S).length} cards, ${pool.length} in the pool; roles and counts only)` : ''}\n\n${PROTO}\n${runs} runs a cell, seed ${seed}. Clear-rate threshold: ${pct(thr, 0)} of the runs.\n\n` + table(['target', 'goal', 'measured', 'result'], rows);
   for (const r of rows) if (r[3] === 'FAIL' || r[3] === 'CHECK') head.push(`${r[3]}: ${r[0]} = ${r[2]}`);
   head.push(`${rows.filter(r => r[3] === 'PASS').length} PASS, ${rows.filter(r => r[3] === 'FAIL').length} FAIL, ${rows.filter(r => r[3] === 'CHECK').length} CHECK.`);
   return { md, head, data: D, rows };

@@ -10,7 +10,7 @@ import { makeCard, cardPool, classOf } from './cards.mjs';
 import { huntDay, bossKeys } from './modes.mjs';
 import { autoPick, poolEntry, pickBoss } from './auto.mjs';
 import { mkRng, hash, mean, sd, table, ratio, patch, squadKey } from './util.mjs';
-import { subjects, withSet1, loadSet1Batch } from './teams.mjs';
+import { subjects, withSet1, loadSets } from './teams.mjs';
 
 // The parts of the Set 1 pool in one object, so that a test can plant a fault in one part (shape.test.mjs; the pattern of lab12.mjs K).
 export const S1 = {
@@ -26,10 +26,11 @@ export const S1 = {
   card: (cfg, s, rar, iv) => makeCard(cfg, { key: s.key, role: s.role, rarity: rar, cp_mod: s.cp_mod, ...(s.template ? { template: s.template } : {}), ...iv }),
 };
 /** The pool source of a run: the template pools (cards.mjs cardPool, the placeholder actives) or the Set 1 pools (the real actives). */
-export function poolSource(cfg, { set1 } = {}) {
-  if (!set1) return { cfg, pool0: cardPool(cfg).filter((p) => p.pullable.length), mode: 'template' };
-  const S = set1 === true ? loadSet1Batch() : set1; const c1 = withSet1(cfg, S);
-  return { cfg: c1, pool0: S1.pool0(c1, S), mode: 'set1', cards: Object.keys(S).length };
+export function poolSource(cfg, { set1, set2 } = {}) {
+  if (!set1 && !set2) return { cfg, pool0: cardPool(cfg).filter((p) => p.pullable.length), mode: 'template' };
+  const S = set1 && set1 !== true ? set1 : loadSets({ set2 }); const c1 = withSet1(cfg, S);
+  // s2: the map holds Set 2 cards (a file name tag, so that a Set 1 cache is never read for Set 1 + Set 2 pools)
+  return { cfg: c1, pool0: S1.pool0(c1, S), mode: 'set1', cards: Object.keys(S).length, s2: Object.values(S).some((a) => a.set === 2) };
 }
 
 /** One pool set: for each boss and pool the pool, the E8 pick, the searched best squad and its value (the E8 protocol). */
@@ -140,8 +141,8 @@ export function pickOrPool(cfg, R, pool0, liveIds) {
 
 /** The candidates on one pool set: mean ratio vs the searched best, the bosses below x0.85, per boss. set1: true (the private batch) or a {key: active}
  * map (a test) for the Set 1 pools; ref: the reference play (referencePools); base: the candidate of the paired column (default the first). */
-export function shapePickLab(cfg, { seed = 1, pools = 2, candidates = SHAPE_CANDIDATES, refs, set1, ref = 'best', base, shapeSearch, ...o } = {}) {
-  const src = poolSource(cfg, { set1 }); const c1 = src.cfg;
+export function shapePickLab(cfg, { seed = 1, pools = 2, candidates = SHAPE_CANDIDATES, refs, set1, set2, ref = 'best', base, shapeSearch, ...o } = {}) {
+  const src = poolSource(cfg, { set1, set2 }); const c1 = src.cfg;
   const R = refs || referencePools(cfg, { seed, pools, src, ref, shapeSearch: shapeSearch ?? !!set1, ...o });
   const keys = [...new Set(R.map((r) => r.key))]; const C = Object.keys(candidates);
   const B0 = base || (set1 && C.includes(LIVE) ? LIVE : C[0]);
