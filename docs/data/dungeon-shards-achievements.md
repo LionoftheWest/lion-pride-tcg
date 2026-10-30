@@ -451,7 +451,7 @@ GET /api/achievements: the member's tracks (value, reached and claimed tiers), t
 - Returns: `jsonb`
 - Security definer: no
 
-A member buys with Shards: packs, a card of the day or a stat reset. The shop_purchases row comes first; the Shards row and the pack row have ref ('shop_purchase', its id). A free weekly stat reset writes no Shards row.
+A member buys with Shards: packs, a card of the day or a stat reset. The shop_purchases row comes first; the Shards row and the pack row have ref ('shop_purchase', its id). A free weekly stat reset writes no Shards row. When combat v2 progress is ON for the player (combat_v2_on('progress', player): everyone or a tester) the stat reset is the v2 reset (card_progress_v2_reset with the Shop price: the free week, then one v2_ gift, else the price; Nathan 2026-10-23 "Yes A"), then the shop_purchases row, then the Shards when the price > 0; the answer has the v2 progress and stats. Packs and cards do not change (plan 20.11 trap a, 20.15, combat_v2_progress_freeze_v1.sql).
 
 <a id="fn-claim-achievement-text-text-integer-text-text"></a>
 

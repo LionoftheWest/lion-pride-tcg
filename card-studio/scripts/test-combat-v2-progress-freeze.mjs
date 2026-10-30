@@ -1,6 +1,6 @@
 import './localdb-guard.mjs';
 /**
- * Acceptance test for tcg-bot/supabase/combat_v2_progress_freeze_v1.sql (combat v2 step M1d; plan 11, 20.11 trap a, 20.14):
+ * Acceptance test for tcg-bot/supabase/combat_v2_progress_freeze_v1.sql (combat v2 step M1d; plan 11, 20.11 trap a, 20.15):
  * when combat_v2_on('progress', player) is true the v1 spend and reset refuse, and the v1 Shop reset ROUTES to the v2 reset
  * (Nathan 2026-10-23 "Yes A"); the v1 gift use skips the v2_ gifts; the v2 reset is one function (card_progress_v2_reset) for
  * reset_card_points_v2 and the Shop.
@@ -51,9 +51,7 @@ const REFUSE = "    if combat_v2_on('progress', p_player) then return jsonb_buil
 const GIFT_LINE = "       and not starts_with(gift, 'v2_')";
 const MARK = '-- ============================================================ 4. server only';
 // a second copy of the v2 reset for the Shop that differs (its ref is shop:<n>): the brief asks for ONE shared write
-const CORE = (mig.match(/create or replace function public.card_progress_v2_reset(p_player text[sS]*?
-end $fn$;
-/) || [])[0];
+const CORE = (mig.match(/create or replace function public\.card_progress_v2_reset\(p_player text[\s\S]*?\nend \$fn\$;\n/) || [])[0];
 if (!CORE) throw new Error('card_progress_v2_reset not found in the file');
 const CORE_COPY = CORE.replace('public.card_progress_v2_reset(', 'public.card_progress_v2_reset_shop(').replace("v_ref := 'reset:' ||", "v_ref := 'shop:' ||");
 const MARK2 = '-- ============================================================ 2. reset_card_points_v2';
@@ -80,15 +78,12 @@ const MUT = {
   core_no_price_check: ["    if coalesce(v_bal, 0) < p_price then return jsonb_build_object('ok', false, 'error', 'not_enough', 'balance', v_bal, 'price', p_price); end if;\n", ''],
   core_week_utc: ["  v_week text := to_char(now() at time zone 'America/Denver', 'IYYY-IW'); v_used text; v_how text; v_bal int;", "  v_week text := to_char(now(), 'IYYY-IW'); v_used text; v_how text; v_bal int;"],
   core_no_marker: ["  if v_how = 'week' then update players set stat_reset_week = v_week where id = p_player; end if;\n  return jsonb_build_object('ok', true, 'used', v_how)", "  return jsonb_build_object('ok', true, 'used', v_how)"],
-  shop_own_copy: ["      v_v2 := card_progress_v2_reset(p_player, p_card, v_price);   -- M1d
-", "      v_v2 := card_progress_v2_reset_shop(p_player, p_card, v_price);   -- M1d
-", MARK2, CORE_COPY + '
-' + MARK2],
+  shop_own_copy: ["      v_v2 := card_progress_v2_reset(p_player, p_card, v_price);   -- M1d\n", "      v_v2 := card_progress_v2_reset_shop(p_player, p_card, v_price);   -- M1d\n", MARK2, CORE_COPY + '\n' + MARK2],
   rv2_price_zero: ['  return card_progress_v2_reset(p_player, p_card, null);', '  return card_progress_v2_reset(p_player, p_card, 0);'],
   gift_no_skip: [GIFT_LINE, '       and true'],
   gift_like_wildcard: [GIFT_LINE, "       and gift not like 'v2_%'"],
   grant_anon: ['grant execute on function public.card_progress_v2_reset(text, bigint, integer) to service_role;', 'grant execute on function public.card_progress_v2_reset(text, bigint, integer) to service_role, anon;'],
-  comment_no_freeze: [/comment on function public\.reset_stat_points\(text, bigint\) is \$c\$[^\n]*\n/, "comment on function public.reset_stat_points(text, bigint) is $c$Clears the stat points of one card.$c$;\n"],
+  comment_no_freeze: [/comment on function public\.reset_stat_points\(text, bigint\) is \$cm\$[^\n]*\n/, "comment on function public.reset_stat_points(text, bigint) is $cm$Clears the stat points of one card.$cm$;\n"],
   flag_on: [MARK, `update public.balance set value = jsonb_set(value, '{progress}', 'true') where key = 'combat_v2';\n${MARK}`],
   other_fn_changed: [MARK, `create or replace function public.balance_who() returns text language sql stable set search_path to 'public' as $p$
   select coalesce(nullif(current_setting('balance.by', true), ''), session_user::text) || '';
