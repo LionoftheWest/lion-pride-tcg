@@ -15,8 +15,8 @@ import { huntDay, bossKeys } from './modes.mjs';
 import { autoPick, pickBase, pairOf, pickBoss } from './auto.mjs';
 import { powerInput, familyPP, powerOf } from './power.mjs';
 import { referencePools, poolSource } from './shape.mjs';
-import { hash, mean, median, sd, table, ratio, fmt, patch, HERE } from './util.mjs';
-import { loadSet1Batch, withSet1 } from './teams.mjs';
+import { hash, mean, median, sd, table, ratio, fmt, patch, HERE, squadKey } from './util.mjs';
+import { loadSets, withSet1 } from './teams.mjs';
 
 export const OUT = () => join(HERE, '..', 'out', 'v2sim');
 const ACT = new WeakMap(); const ACT_RUNS = 400;
@@ -135,13 +135,13 @@ function refCache(file) {
 }
 /** The candidates on the pools of one seed. set1: true (the private batch) or a {key: active} map (a test). Returns per pool: the boss, the ratio of each
  * candidate, the live / in-shape diagnosis (Set 1 mode). */
-export function scorePickLab(cfg, { seed = 101, pools = 2, set1, candidates, refs, cache = true, save = false, ...o } = {}) {
-  const src = poolSource(cfg, { set1 }); const c1 = src.cfg; const mode = src.mode;
+export function scorePickLab(cfg, { seed = 101, pools = 2, set1, set2, candidates, refs, cache = true, save = false, ...o } = {}) {
+  const src = poolSource(cfg, { set1, set2 }); const c1 = src.cfg; const mode = src.mode + (src.s2 ? '-s2' : '');
   const C = candidates || scoreCandidates(c1); const names = Object.keys(C);
   if (!names.includes(LIVE)) throw new Error(`scorePickLab: the candidates need the live score "${LIVE}"`);
   const refTag = o.ref && o.ref !== 'best' ? `-ref${o.ref}` : '';
   const rc = cache && !refs ? refCache(join(OUT(), `score-ref-${mode}${refTag}-${seed}${o.bosses ? `-${o.bosses.join('_')}` : ''}.json`)) : null;
-  const R = refs || referencePools(cfg, { seed, pools, src, shapeSearch: mode === 'set1', cache: rc || undefined, ...o });
+  const R = refs || referencePools(cfg, { seed, pools, src, shapeSearch: src.mode === 'set1', cache: rc || undefined, ...o });
   rc?.save();
   const rows = [];
   for (const r of R) {
@@ -149,7 +149,7 @@ export function scorePickLab(cfg, { seed = 101, pools = 2, set1, candidates, ref
     for (const n of names) {
       const p = SC.prepare(c1, r.pool, C[n]); const ids = autoPick(p.cfg, p.pool, r.boss, 8).ids;
       if (n === LIVE) liveIds = ids;
-      const k = [...ids].sort((a, b) => a - b).join(); if (!memo.has(k)) memo.set(k, r.eval(ids) / r.vB);
+      const k = squadKey.of(ids); if (!memo.has(k)) memo.set(k, r.eval(ids) / r.vB);
       ratios[n] = memo.get(k);
     }
     const row = { key: r.key, pi: r.pi, weak: r.boss.weak_role || null, ratios };
@@ -157,13 +157,13 @@ export function scorePickLab(cfg, { seed = 101, pools = 2, set1, candidates, ref
     rows.push(row);
   }
   const sum = SC.summarize(rows, names);
-  let md = `# The per-card score of the Hunt auto-pick (seed ${seed}, ${R.length} pools, ${mode === 'set1' ? `the PRIVATE Set 1 actives (${src.cards} cards, ${src.pool0.length} in the draw list; roles, terms and ratios only)` : 'the template actives'})\n\n`;
+  let md = `# The per-card score of the Hunt auto-pick (seed ${seed}, ${R.length} pools, ${src.mode === 'set1' ? `the PRIVATE Set 1${src.s2 ? ' + Set 2' : ''} actives (${src.cards} cards, ${src.pool0.length} in the draw list; roles, terms and ratios only)` : 'the template actives'})\n\n`;
   md += 'Ratio = the pick of the candidate + Auto v2 / the searched best squad + play best (plan 20.7 and 20.8). The live shape rule in every candidate. Paired = candidate - live over the pools (standard error).\n\n';
   md += table(['candidate', 'mean', 'bosses below x0.85', 'paired vs live', 'pools better / worse', 'hydra', 'camper_colossus', 'warlord'], names.map((n) => {
     const s = sum[n]; return [n, ratio(s.mean, 3), String(s.below), `${s.m >= 0 ? '+' : ''}${s.m.toFixed(4)} (${s.se.toFixed(4)})`, `${s.better} / ${s.worse}`, ...['hydra', 'camper_colossus', 'warlord'].map((k) => (s.per[k] === undefined ? '-' : ratio(s.per[k], 3)))];
   }));
   md += `\nBosses below x0.85 (live): ${sum[LIVE].lowKeys.join(', ') || 'none'}.\n`;
-  if (mode === 'set1') md += '\n' + whyReport(rows, sum[LIVE]).md;
+  if (src.mode === 'set1') md += '\n' + whyReport(rows, sum[LIVE]).md;
   const head = [`seed ${seed} (${mode}): ${names.map((n) => `${n} ${ratio(sum[n].mean, 3)} (${sum[n].below})`).join('; ')}`];
   const data = { seed, mode, pools: R.length, names, rows };
   if (save) { mkdirSync(OUT(), { recursive: true }); writeFileSync(join(OUT(), `scorepick-${mode}${refTag}-${seed}.json`), JSON.stringify(data)); }
@@ -224,7 +224,7 @@ export function scoreSum(cfg, { mode = 'set1', seeds = [101, 1, 202, 303, 404], 
   const show = [...named, ...lowAny];
   md += `\n### The named bosses and every boss below x0.85 with the live score (per seed: ${seeds.join(' / ')})\n\n`;
   md += table(['candidate', ...show], names.map((n) => [n, ...show.map((k) => S.map((s) => (s[n].per[k] === undefined ? '-' : s[n].per[k] >= 1 ? s[n].per[k].toFixed(3) : s[n].per[k].toFixed(3).slice(1))).join('/'))]));
-  if (mode === 'set1') { const flagged = D.flatMap((d, i) => d.rows.map((r) => ({ ...r, low: S[i][LIVE].lowKeys.includes(r.key) })));
+  if (mode === 'set1' || mode === 'set1-s2') { const flagged = D.flatMap((d, i) => d.rows.map((r) => ({ ...r, low: S[i][LIVE].lowKeys.includes(r.key) })));
     md += '\n' + whyReport(flagged, { lowKeys: [] }).md.replace('### ', '### (all seeds) '); }
   const head = [`${mode}: ${names.map((n) => `${n} ${tot[n].m >= 0 ? '+' : ''}${tot[n].m.toFixed(4)} (${tot[n].se.toFixed(4)})${n !== LIVE && better(n) ? ' BETTER' : ''}`).join('; ')}`];
   return { md, head, data: { seeds, names, per: S.map((s) => Object.fromEntries(names.map((n) => [n, { mean: s[n].mean, below: s[n].below, per: s[n].per }]))), total: Object.fromEntries(names.map((n) => [n, { m: tot[n].m, se: tot[n].se }])), better: names.filter((n) => n !== LIVE && better(n)) } };
@@ -235,8 +235,8 @@ export function scoreSum(cfg, { mode = 'set1', seeds = [101, 1, 202, 303, 404], 
 // scripts only the placeholder ids): for each mechanic of the 16 named bosses at Heroic, the strength of each Set 1 card (Normal, casual; the card + the
 // 4 reference cards, Hunt Heroic net damage a day) with the mechanic alone on the tier boss / with no mechanic; the role mean of that ratio / the median
 // role. Rounded, inside [0.5, 2], 1 when it differs from 1 by less than 0.05 (the stored rule).
-export function measureAnswersSet1(cfg, { runs = 300, seeds = [1, 7], minDev = 0.05, lo = 0.5, hi = 2, set1 } = {}) {
-  const S = set1 || loadSet1Batch(); const c1 = withSet1(cfg, S);
+export function measureAnswersSet1(cfg, { runs = 300, seeds = [1, 7], minDev = 0.05, lo = 0.5, hi = 2, set1, set2 } = {}) {
+  const S = set1 && set1 !== true ? set1 : loadSets({ set2 }); const c1 = withSet1(cfg, S);
   const mechs = [...new Set(bossKeys(c1).flatMap((k) => pickBoss(c1, k, 'Heroic').mechanics))].sort();
   const inv = c1.v2_investment.casual; const ref = REF.map(([role, t]) => makeCard(c1, { key: `ref-${role}`, role, rarity: 'normal', template: t, stars: 2, level: 15 }));
   const byRole = Object.fromEntries(ROLES.map((r) => [r, Object.keys(S).filter((k) => S[k].role === r).sort().map((k) => makeCard(c1, { key: `s1-${r}`, role: r, rarity: 'normal', template: `s1.${k}`, ...inv }))]));

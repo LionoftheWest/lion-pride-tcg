@@ -179,7 +179,7 @@ export function pickCards(cfg, pool, roles, rarity, rng, opts = {}) {
     let c = pool.filter(p => p.role === role && p.finishes.includes(rarity) && !used.has(p.key));
     if (!c.length) c = pool.filter(p => classOf(p.role) === classOf(role) && p.finishes.includes(rarity) && !used.has(p.key));
     const s = c[Math.floor(rng() * c.length)]; used.add(s.key);
-    out.push({ key: s.key, name: s.name, role: s.role, cp_mod: s.cp_mod, rarity, stars: opts.stars || 0, level: opts.level || 0, template: opts.templates?.[role] });
+    out.push({ key: s.key, name: s.name, role: s.role, cp_mod: s.cp_mod, rarity, stars: opts.stars || 0, level: opts.level || 0, template: s.template ?? opts.templates?.[role] });
   }
   return out;
 }

@@ -23,11 +23,13 @@ import { factorsExperiment, activePickLab, activeSum } from './active.mjs';
 import { HERE, loadConfig, patch } from './util.mjs';
 
 const ALL = { ...EXPERIMENTS, targets, teams, monsters, shares, auto: autoLab, answers: answersExperiment, power: (c, o) => powerLab(c, { ...o, pairOf }), powerpick: powerPickLab, lab12, lab12prices, shapepick: shapePickLab,
-  scorepick: (c, o) => scorePickLab(c, { ...o, save: true }), scoresum: (c, o) => scoreSum(c, { mode: o.set1 ? 'set1' : 'template', ...(o.ref ? { ref: o.ref } : {}), ...(o.seedlist ? { seeds: o.seedlist } : {}) }), answers1: answersSet1Experiment,
-  factors: factorsExperiment, activepick: activePickLab, activesum: (c, o) => activeSum(c, { set1: o.set1, ...(o.seedlist ? { seeds: o.seedlist } : {}) }) };
+  scorepick: (c, o) => scorePickLab(c, { ...o, save: true }), scoresum: (c, o) => scoreSum(c, { mode: o.set1 ? 'set1' + (o.set2 ? '-s2' : '') : 'template', ...(o.ref ? { ref: o.ref } : {}), ...(o.seedlist ? { seeds: o.seedlist } : {}) }), answers1: answersSet1Experiment,
+  factors: factorsExperiment, activepick: activePickLab, activesum: (c, o) => activeSum(c, { set1: o.set1, set2: o.set2, ...(o.seedlist ? { seeds: o.seedlist } : {}) }) };
 const args = process.argv.slice(2);
 const opt = k => { const i = args.indexOf(`--${k}`); return i >= 0 ? args[i + 1] : undefined; };
 const flag = k => args.includes(`--${k}`);
+// --set2 [path]: Set 1 + Set 2 together; the optional path is the Set 2 batch (else env V2SIM_SET2_BATCH, else the default of teams.mjs)
+if (flag('set2')) { const v = opt('set2'); if (v && !v.startsWith('--')) process.env.V2SIM_SET2_BATCH = v; }
 const name = args[0];
 if (!name || (name !== 'all' && !ALL[name])) {
   console.log(`usage: node run.mjs <${Object.keys(ALL).join('|')}|all> [--runs N] [--seed S] [--config file] [--patch json] [--tag name] [--tier Heroic|Mythic]`);
@@ -41,9 +43,9 @@ const outDir = join(HERE, '..', 'out', 'v2sim'); mkdirSync(outDir, { recursive: 
 const list = name === 'all' ? Object.keys(EXPERIMENTS) : [name];
 for (const n of list) {
   const t0 = Date.now();
-  const r = ALL[n](cfg, { ...(runs ? { runs } : {}), seed, ...(opt('tier') ? { tier: opt('tier') } : {}), ...(opt('seeds') ? { seeds: Number(opt('seeds')) } : {}), ...(opt('pools') ? { pools: Number(opt('pools')) } : {}), ...(flag('set1') ? { set1: true } : {}), ...(opt('ref') ? { ref: opt('ref') } : {}), ...(opt('seedlist') ? { seedlist: opt('seedlist').split(',').map(Number) } : {}) });
+  const r = ALL[n](cfg, { ...(runs ? { runs } : {}), seed, ...(opt('tier') ? { tier: opt('tier') } : {}), ...(opt('seeds') ? { seeds: Number(opt('seeds')) } : {}), ...(opt('pools') ? { pools: Number(opt('pools')) } : {}), ...(flag('set1') || flag('set2') ? { set1: true } : {}), ...(flag('set2') ? { set2: true } : {}), ...(opt('ref') ? { ref: opt('ref') } : {}), ...(opt('seedlist') ? { seedlist: opt('seedlist').split(',').map(Number) } : {}) });
   const s = ((Date.now() - t0) / 1000).toFixed(1);
-  const md = r.md + `\n---\nRun: \`node card-studio/v2sim/run.mjs ${n}${runs ? ` --runs ${runs}` : ''} --seed ${seed}${opt('tier') ? ` --tier ${opt('tier')}` : ''}${opt('seeds') ? ` --seeds ${opt('seeds')}` : ''}${opt('pools') ? ` --pools ${opt('pools')}` : ''}${flag('set1') ? ' --set1' : ''}${opt('ref') ? ` --ref ${opt('ref')}` : ''}${opt('patch') ? ` --patch '${opt('patch')}'` : ''}\`, ${s} s.\n\n## Headline\n\n` + r.head.map(h => `- ${h}`).join('\n') + '\n';
+  const md = r.md + `\n---\nRun: \`node card-studio/v2sim/run.mjs ${n}${runs ? ` --runs ${runs}` : ''} --seed ${seed}${opt('tier') ? ` --tier ${opt('tier')}` : ''}${opt('seeds') ? ` --seeds ${opt('seeds')}` : ''}${opt('pools') ? ` --pools ${opt('pools')}` : ''}${flag('set1') ? ' --set1' : ''}${flag('set2') ? ' --set2' : ''}${opt('ref') ? ` --ref ${opt('ref')}` : ''}${opt('patch') ? ` --patch '${opt('patch')}'` : ''}\`, ${s} s.\n\n## Headline\n\n` + r.head.map(h => `- ${h}`).join('\n') + '\n';
   writeFileSync(join(outDir, `${n}${tag}.md`), md);
   if (r.data) writeFileSync(join(outDir, `${n}${tag}.json`), JSON.stringify(r.data, null, 1));
   console.log(`\n## ${n} (${s} s) -> out/v2sim/${n}${tag}.md`); for (const h of r.head) console.log(`- ${h}`);
