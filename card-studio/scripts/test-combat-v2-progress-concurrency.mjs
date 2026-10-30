@@ -1,7 +1,7 @@
 import './localdb-guard.mjs';
 /**
  * Concurrency test of the v2 spend (tcg-bot/supabase/combat_v2_progress_spend.sql, spend_card_points_v2; plan 20.13 "Open for M1d" item 6,
- * done in 20.15). Two sessions spend on the same card at the same time, on two real connections:
+ * done in 20.17). Two sessions spend on the same card at the same time, on two real connections:
  *   session A spends 3 points and holds its transaction open for 1.5 s; session B starts 0.3 s later and spends 3 more (budget 5).
  *   Expected: A {ok: true}; B waits for A (the row lock of `for update`), then answers {ok: false, error: 'not_enough', free: 2}, never a raw
  *   exception; the stored row and the ledger have only the spend of A.

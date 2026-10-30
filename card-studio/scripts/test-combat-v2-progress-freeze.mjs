@@ -1,6 +1,6 @@
 import './localdb-guard.mjs';
 /**
- * Acceptance test for tcg-bot/supabase/combat_v2_progress_freeze_v1.sql (combat v2 step M1d; plan 11, 20.11 trap a, 20.15):
+ * Acceptance test for tcg-bot/supabase/combat_v2_progress_freeze_v1.sql (combat v2 step M1d; plan 11, 20.11 trap a, 20.17):
  * when combat_v2_on('progress', player) is true the v1 spend and reset refuse, and the v1 Shop reset ROUTES to the v2 reset
  * (Nathan 2026-10-23 "Yes A"); the v1 gift use skips the v2_ gifts; the v2 reset is one function (card_progress_v2_reset) for
  * reset_card_points_v2 and the Shop.

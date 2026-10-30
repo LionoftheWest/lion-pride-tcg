@@ -2212,15 +2212,15 @@ Else `reset_used` with `next` (the same rule as v1). A v2 gift is a row of `stat
 - **Go-live order**: after M1b (`combat_v2_progress_math.sql`: this file calls `card_combat_v2` with 8 arguments). `apply-sql.mjs --live`, then
   `check-schema-drift.mjs --live` = 0 differences. The flag stays OFF; nothing calls the functions until U0.
 - **Open for M1d and later**:
-  1. DONE in M1d (20.15). **M1d**: the v1 `stat_reset_gift_use` must skip the `v2_` gifts (today it takes any open gift, the earliest deadline first). No `v2_` gift
+  1. DONE in M1d (20.17). **M1d**: the v1 `stat_reset_gift_use` must skip the `v2_` gifts (today it takes any open gift, the earliest deadline first). No `v2_` gift
      exists before M1h, so nothing is wrong today. M1d also freezes the v1 spend, reset and Shop reset when `combat_v2_on('progress')` is true
      (20.11 trap a). Then the weekly marker serves only v2.
   2. **M1h**: the gift of R3 gets a key that starts with `v2_` (section 11 step 7), so only the v2 reset takes it.
-  3. DECIDED and built in M1d (20.15, Nathan 2026-10-23 "Yes A"): with progress ON the Shop reset is the v2 reset. The Shop had no v2 paid reset (v1 `buy_shop_item('stat_reset')`, Shards).
+  3. DECIDED and built in M1d (20.17, Nathan 2026-10-23 "Yes A"): with progress ON the Shop reset is the v2 reset. The Shop had no v2 paid reset (v1 `buy_shop_item('stat_reset')`, Shards).
   4. 20.11 open item 6 stays: a tune of `v2_stats.max_per_stat` or `v2_level.points_per_level` below the stored points makes every spend and reset
      of an older row fail in the trigger (fail closed). The reset sets the points to 0, so after a re-level step the reset works again.
   5. A card that has no v2 role cannot be spent on or reset (`no_role`). Before R2 every pullable card needs `subjects.ability_v2` (section 12).
-  6. The 3 test gaps below: DONE in M1d (20.15), each with its planted fault caught. Review of M1c (PASS, 4 low findings, observed on copy 2). The SQL is correct in each check: 4 parallel cases (two spends, spend and reset,
+  6. The 3 test gaps below: DONE in M1d (20.17), each with its planted fault caught. Review of M1c (PASS, 4 low findings, observed on copy 2). The SQL is correct in each check: 4 parallel cases (two spends, spend and reset,
      reset and spend, two resets of one player in one week) give the right answers with no deadlock; 30 bad `p_add` inputs give an `{ok:false}`
      answer, never a raw exception; the goldens and the allowlists (a planted extra reader fails 3 tests) PASS. The test gaps, for M1d (it
      changes the same paths), each with a planted fault that the test did not catch:
@@ -2291,7 +2291,7 @@ are private: every output of this section holds roles, counts and ratios only. (
   3. The Hunt end gap x2.57 (goal 2.0 to 2.5): a decision for lane 1 and Nathan: move the band, move the Gold or Normal Hunt CP, or keep the placeholder pool as the reference of this target.
   4. Not extended: `lab12` and the designed teams (`teams.json`) use the 20 fixed Set 1 teams and take no Set 2 card.
 
-### 20.15 M1d: the v1 stat paths are frozen when v2 progress is ON (`tcg-bot/supabase/combat_v2_progress_freeze_v1.sql`)
+### 20.17 M1d: the v1 stat paths are frozen when v2 progress is ON (`tcg-bot/supabase/combat_v2_progress_freeze_v1.sql`)
 
 M1d closes the open items 1, 3 and 6 of 20.13 and the trap a of 20.11. Nothing in play changes: `combat_v2.progress` is false and the tester list
 has no player on live, so every v1 answer and every v1 write is the same as before. The file replaces 5 functions and adds 1. Each v1 function
@@ -2346,7 +2346,7 @@ is the live text with ADDED lines only; each added line has the mark `-- M1d`, a
   - **Copy 2 had R1a (PR #483, not merged)** applied: its 3 functions (`combat_v2_card_unit`, `gauntlet_v2_foes`, `combat_v2_step`) made 7 older
     allowlist tests fail with and without M1d (the same 7 messages on copy 2 put back to before M1d; each lists only those function names), and put 3 functions in
     the schema snapshot that are not in this PR. For the final run the 3 functions were taken off copy 2 and put back after. **R1a and M1d both edit
-    the allowlists of these 7 tests and the end of this file**: the second PR to merge keeps both edits and its section number (R1 is 20.14, M1d is 20.15).
+    the allowlists of these 7 tests and the end of this file**: the second PR to merge keeps both edits and its section number (R1 is 20.14, M1d is 20.17).
   - The final run on copy 2 (main + M1a to M1c + this file): the rehearsal applied the file (grants OK), then `test-all-local.mjs` **170 of 170 PASS**
     (2 one-time skipped), after `db/schema/`, `docs/data/` (the tester id of the local copy masked in memory: live has none) and `SUPERSEDED.md` were
     made again in this PR. The first suite run (before the 7 allowlist failures were traced) had 12 failures: 7 from R1a, and 5 of this file (the

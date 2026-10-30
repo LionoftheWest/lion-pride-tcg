@@ -23,7 +23,7 @@ import './localdb-guard.mjs';
  *   The reset: the weekly free one (the marker players.stat_reset_week), then the v2 gifts (the earliest deadline first; never a v1 gift,
  *      a 'v2x' key, an expired or a used gift), then reset_used with next; the level, the XP and the bonus do not change.
  *   The file runs twice: the rows stay and the sequence goes on.
- *   Added by M1d (plan 20.13 "Open for M1d" item 6, 20.15): each of the 9 stats spent twice (the + write, not an absolute write), and the
+ *   Added by M1d (plan 20.13 "Open for M1d" item 6, 20.17): each of the 9 stats spent twice (the + write, not an absolute write), and the
  *      reset at 6 fixed instants (the Mountain week boundary in summer and winter time: now() of the reset is read from a test clock).
  *      The concurrency case (two sessions) is test-combat-v2-progress-concurrency.mjs (it needs two real connections and committed rows).
  */
