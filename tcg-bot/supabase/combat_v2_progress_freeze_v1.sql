@@ -231,7 +231,7 @@ begin
 
   elsif p_kind = 'stat_reset' then
     -- M1d (plan 20.11 trap a, 20.14; Nathan 2026-10-23 "Yes A"): v2 progress ON for this player (everyone or a tester) = the Shop
-    -- M1d: reset is the v2 reset (card_progress_v2_reset, the same function as reset_card_points_v2): the free Mountain week first, then one
+    -- M1d: reset is the v2 reset (card_progress_v2_reset, one function for the Shop and the v2 reset): the free Mountain week first, then one
     -- M1d: open v2_ gift, else this price (not_enough before any write). Then the purchase row, then the Shards only when the price > 0.
     -- M1d: The v1 points (player_cards.stat_points) do not change. Before the stat_points flag: the v2 reset does not read that v1 flag.
     if combat_v2_on('progress', p_player) then   -- M1d

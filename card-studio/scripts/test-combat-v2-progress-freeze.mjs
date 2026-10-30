@@ -50,6 +50,13 @@ const ROUTE = "    if combat_v2_on('progress', p_player) then   -- M1d\n";
 const REFUSE = "    if combat_v2_on('progress', p_player) then return jsonb_build_object('ok', false, 'error', 'stats_disabled'); end if;   -- M1d\n";
 const GIFT_LINE = "       and not starts_with(gift, 'v2_')";
 const MARK = '-- ============================================================ 4. server only';
+// a second copy of the v2 reset for the Shop that differs (its ref is shop:<n>): the brief asks for ONE shared write
+const CORE = (mig.match(/create or replace function public.card_progress_v2_reset(p_player text[sS]*?
+end $fn$;
+/) || [])[0];
+if (!CORE) throw new Error('card_progress_v2_reset not found in the file');
+const CORE_COPY = CORE.replace('public.card_progress_v2_reset(', 'public.card_progress_v2_reset_shop(').replace("v_ref := 'reset:' ||", "v_ref := 'shop:' ||");
+const MARK2 = '-- ============================================================ 2. reset_card_points_v2';
 const MUT = {
   spend_no_gate: [GATE + CFG + SPEND_AFTER, CFG + SPEND_AFTER],
   reset_no_gate: [GATE + CFG + RESET_AFTER, CFG + RESET_AFTER],
@@ -73,6 +80,10 @@ const MUT = {
   core_no_price_check: ["    if coalesce(v_bal, 0) < p_price then return jsonb_build_object('ok', false, 'error', 'not_enough', 'balance', v_bal, 'price', p_price); end if;\n", ''],
   core_week_utc: ["  v_week text := to_char(now() at time zone 'America/Denver', 'IYYY-IW'); v_used text; v_how text; v_bal int;", "  v_week text := to_char(now(), 'IYYY-IW'); v_used text; v_how text; v_bal int;"],
   core_no_marker: ["  if v_how = 'week' then update players set stat_reset_week = v_week where id = p_player; end if;\n  return jsonb_build_object('ok', true, 'used', v_how)", "  return jsonb_build_object('ok', true, 'used', v_how)"],
+  shop_own_copy: ["      v_v2 := card_progress_v2_reset(p_player, p_card, v_price);   -- M1d
+", "      v_v2 := card_progress_v2_reset_shop(p_player, p_card, v_price);   -- M1d
+", MARK2, CORE_COPY + '
+' + MARK2],
   rv2_price_zero: ['  return card_progress_v2_reset(p_player, p_card, null);', '  return card_progress_v2_reset(p_player, p_card, 0);'],
   gift_no_skip: [GIFT_LINE, '       and true'],
   gift_like_wildcard: [GIFT_LINE, "       and gift not like 'v2_%'"],
@@ -385,13 +396,14 @@ begin
   s0 := pg_temp.snap('${P}');
   r := pg_temp.sh('${P}', 'stat_reset', null, ca, 1);
   s1 := pg_temp.snap('${P}');
-  res := res || jsonb_build_object('case', 'Shop reset 1 (v2): the free week: free, price 0, the Shards and the gifts unchanged, the marker = this week, one purchase row (price 0), no Shards row, 2 ledger rows', 'ok',
+  res := res || jsonb_build_object('case', 'Shop reset 1 (v2, P a tester): the free week: free, price 0, the Shards and the gifts unchanged, the marker = this week, one purchase row (price 0), no Shards row, 2 ledger rows (reason reset, one ref reset:<n>)', 'ok',
     (r - 'progress' - 'stats') = jsonb_build_object('ok', true, 'kind', 'stat_reset', 'free', true, 'price', 0, 'balance', v_bal, 'used', 'week')
     and r->'progress' = (public.card_progress_v2_view('${P}', ca))->'progress' and r->'stats' = (public.card_progress_v2_view('${P}', ca))->'stats'
     and s1->'player'->>'week' = v_week and s1->'player'->'shards' = s0->'player'->'shards' and s1->'gifts' = s0->'gifts' and s1->'shards' = s0->'shards'
     and jsonb_array_length(s1->'shop') = jsonb_array_length(s0->'shop') + 1 and s1->'shop'->-1 = jsonb_build_object('day', shop_day(), 'kind', 'stat_reset', 'slot', null, 'card', ca, 'qty', 1, 'price', 0)
     and jsonb_array_length(s1->'v2log') = jsonb_array_length(s0->'v2log') + 2 and s1->'cards' = s0->'cards'
-    and (select atk_pts + def_pts from public.card_progress_v2 where id = pa) = 0, 'got', r - 'stats');
+    and (select atk_pts + def_pts from public.card_progress_v2 where id = pa) = 0
+    and (select count(*) = 2 and count(distinct ref) = 1 and bool_and(ref ~ '^reset:[0-9]+$') from public.card_progress_v2_log where player_id = '${P}' and card_id = ca and reason = 'reset'), 'got', r - 'stats');
   r := pg_temp.sp2('${P}', ca, '{"atk": 1}');
   s0 := pg_temp.snap('${P}');
   r := pg_temp.sh('${P}', 'stat_reset', null, ca, 1);
@@ -400,11 +412,12 @@ begin
     r->>'used' = 'gift' and (r->>'free')::boolean and (r->>'price')::int = 0 and s1->'shards' = s0->'shards'
     and (select used_card from public.stat_reset_gifts where player_id = '${P}' and gift = 'v2_m1d_route') = ca
     and (select used_at from public.stat_reset_gifts where player_id = '${P}' and gift = 'r_m1d_route') is null, 'got', r - 'stats' - 'progress');
+  update public.balance set value = flag_all where key = 'combat_v2';   -- resets 3 and 4 with progress ON for everyone (1 and 2: P as a tester)
   r := pg_temp.sp2('${P}', ca, '{"hp": 1}');
   s0 := pg_temp.snap('${P}');
   r := pg_temp.sh('${P}', 'stat_reset', null, ca, 1);
   s1 := pg_temp.snap('${P}');
-  res := res || jsonb_build_object('case', format('Shop reset 3 (v2): no free reset left, so the price %s: Shards taken once (one ledger row, ref shop_purchase), one purchase row; the v1 gift stays open', v_price), 'ok',
+  res := res || jsonb_build_object('case', format('Shop reset 3 (v2, progress ON for everyone): no free reset left, so the price %s: Shards taken once (one ledger row, ref shop_purchase), one purchase row; the v1 gift stays open', v_price), 'ok',
     v_price > 0 and r->>'used' = 'paid' and (r->>'free')::boolean is false and (r->>'price')::int = v_price and (r->>'balance')::int = v_bal - v_price
     and (s1->'player'->>'shards')::int = v_bal - v_price and jsonb_array_length(s1->'shards') = jsonb_array_length(s0->'shards') + 1
     and s1->'shards'->-1 = jsonb_build_object('a', -v_price, 'r', 'shop', 'k', 'shop_purchase')
