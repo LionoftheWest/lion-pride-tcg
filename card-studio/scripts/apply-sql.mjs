@@ -88,5 +88,8 @@ if (resolve(file) !== LOCKDOWN) {
   await run(readFileSync(LOCKDOWN, 'utf8'));
   console.log('re-applied lockdown_grants.sql');
 }
-const check = spawnSync(process.execPath, [CHECK], { stdio: 'inherit' });
+// A local apply checks the LOCAL copy: the child needs the preload too. Without it check-grants.mjs read the live project
+// from .env (2026-10-30). Under rehearse-sql.mjs the preload is already in NODE_OPTIONS; the same module loads once.
+const preload = process.env.LOCALDB === '1' ? ['--import', new URL('./localdb-preload.mjs', import.meta.url).href] : [];
+const check = spawnSync(process.execPath, [...preload, CHECK], { stdio: 'inherit' });
 process.exitCode = check.status ?? 1;
