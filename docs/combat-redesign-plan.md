@@ -2406,7 +2406,7 @@ replaced function, and an ability with none of the new parts gives the same pric
 ### 20.17 M1d: the v1 stat paths are frozen when v2 progress is ON (`tcg-bot/supabase/combat_v2_progress_freeze_v1.sql`)
 
 M1d closes the open items 1, 3 and 6 of 20.13 and the trap a of 20.11. Nothing in play changes: `combat_v2.progress` is false and the tester list
-has no player on live, so every v1 answer and every v1 write is the same as before. The file replaces 5 functions and adds 1. Each v1 function
+has no player on live, so every v1 answer and every v1 write is the same as before. The file replaces 6 functions and adds 1. Each v1 function
 is the live text with ADDED lines only; each added line has the mark `-- M1d`, and the test proves that the file minus those lines is the old text.
 
 - **The freeze is a refusal**, never `stat_points.enabled = false` (with that, `card_combat` returns the base CP with no points, so the v1 Hunt and
@@ -2424,6 +2424,12 @@ is the live text with ADDED lines only; each added line has the mark `-- M1d`, a
   fails.
 - **`stat_reset_gift_use` (v1) skips every `v2_` gift** (`starts_with`, not `like`: in `like` the `_` matches any character, so `v2xfoo` would
   be skipped). A v2 gift is for the v2 reset only. Then the weekly marker `players.stat_reset_week` serves only v2 when the flag is ON.
+- **`shop_today` shows the free reset that the Shop then takes** (round 2, REVIEW-r1 F1). Before, `free_reset`, `gift_reset` and
+  `gift_reset_until` counted any open gift, but the Shop reset takes only a `v2_` gift when progress is ON and never a `v2_` gift when it is
+  OFF. Example: a tester, progress ON, the week used, one open v1 gift: `shop_today` said free, the Shop took 150 Shards. Now the 3 keys count
+  only the gifts of the path that `buy_shop_item('stat_reset')` takes (`starts_with(gift, 'v2_') = combat_v2_on('progress', player)`).
+  The 3 keys come again after the live keys (added lines only: in `jsonb` the last value of a key is kept). Flag OFF with no `v2_` gift
+  (live): the same answer.
 - **GUARD**: each replaced function must have the old md5 (the live text of 2026-10-23 with M1c) or the new md5 (the text of this file).
   The md5 values of the new text were read from copy 2 after the apply.
 - **The 3 test gaps of 20.13 item 6** (the M1c review), each with its planted fault now caught:
@@ -2468,5 +2474,17 @@ is the live text with ADDED lines only; each added line has the mark `-- M1d`, a
     tester id of the local copy masked in memory: live has none) and `SUPERSEDED.md` were made again in this PR: `test-all-local.mjs` **172 of 172 PASS**
     (2 one-time skipped). The combat checks C1, C2, C3 and `combat-checks.test.mjs` (16) PASS. The first suite run of the unmerged branch had 12
     failures (7 from R1a on copy 2, 5 from this file: the gift test, the tables test, the docs page, the snapshot, the superseded list), each fixed above.
+  - **Round 2 (REVIEW-r1 F1, `shop_today`), copy 2, 2026-10-30.** The new F1 case of the freeze test (progress ON for a tester and flag OFF, each
+    with one open v1 gift and one open `v2_` gift, the week used: `shop_today` = what `buy_shop_item('stat_reset')` then does) FAILED 2 of 4 on
+    the round 1 file (ON + v1 gift: "free", then 150 Shards paid; OFF + `v2_` gift: the same). With `shop_today` in the file: freeze test PASS
+    all 31 (the flag OFF series now also compares 3 `shop_today` reads before and after the file); MUTATE=all baseline PASS and **34 of 34**
+    caught (4 new: `today_free_any_gift`, `today_gift_any_gift`, `today_v1_rule`, `today_one_arg`). The 8 allowlist tests that list the readers of
+    `combat_v2_on` now name `shop_today`. `test-all-local.mjs` **172 of 172 PASS** (2 one-time skipped); r-stars MUTATE=all all caught. The goldens
+    on copy 2 put back to before M1d (the 6 md5 values = the old ones, checked), CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128
+    fights, no difference; the boss-counter `--old` run fails as it must. `db/schema/`, `docs/data/` (tester id masked in memory) and
+    `SUPERSEDED.md` made again. C1, C2, C3 and `combat-checks.test.mjs` (16) PASS.
+- **Open for U0**: the Activity render of the routed Shop reset with progress ON (REVIEW-r1 F2, low). `src/shop-routes.js` passes the routed
+  answer through (`used`, `progress`, `stats`; no v1 `points`). How the Shop screen shows that answer is not traced. U0 owns the Activity
+  work, and the flag stays OFF until then.
 - **Go-live order**: after M1c (live). `rehearse-sql.mjs` on copy 1, then `apply-sql.mjs --live` (grants OK), then `check-schema-drift.mjs --live` = 0
   differences, then `ops/deploy.sh` is NOT needed (SQL only: no Activity or bot code changes). The flag stays OFF; nothing changes in play until U0.

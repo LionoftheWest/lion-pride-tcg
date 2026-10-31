@@ -4,7 +4,7 @@ import './localdb-guard.mjs';
  * when combat_v2_on('progress', player) is true the v1 spend and reset refuse, and the v1 Shop reset ROUTES to the v2 reset
  * (Nathan 2026-10-23 "Yes A"); the v1 gift use skips the v2_ gifts; the v2 reset is one function (card_progress_v2_reset) for
  * reset_card_points_v2 and the Shop.
- * NO lasting change: one DO block, undone by its final RAISE. The block first puts back the state before the file: the 4 v1 functions as
+ * NO lasting change: one DO block, undone by its final RAISE. The block first puts back the state before the file: the 5 v1 functions as
  * the file minus its lines with the mark "-- M1d", reset_card_points_v2 as the M1c file, and no card_progress_v2_reset. The md5 of each
  * must be the "old" md5 of the guard. So the test passes before and after the file is applied. The sample uses two new test players (ids
  * of 18 digits, so that the tester list accepts them) and cards they get only in this block; nothing is printed about a member.
@@ -14,8 +14,8 @@ import './localdb-guard.mjs';
  * Invariants:
  *   T0 the v1 functions only get ADDED lines (the file minus the "-- M1d" lines = the live text of main); the guard accepts the old and the
  *      new text and refuses another text.
- *   T1 (no other change): the md5 of every other public function does not change; exactly the 5 functions change and card_progress_v2_reset
- *      is added; the flag does not change; the readers of combat_v2_on = before + the 3 v1 functions; only the two callers name the new one.
+ *   T1 (no other change): the md5 of every other public function does not change; exactly the 6 functions change and card_progress_v2_reset
+ *      is added; the flag does not change; the readers of combat_v2_on = before + the 4 v1 functions; only the two callers name the new one.
  *   T2 server only, search_path, and the comments.
  *   Flag OFF (the live state, no v2_ gift): 17 v1 calls (spend, reset, Shop reset, pack, card; ok and refused) give the SAME answers and
  *      the SAME writes before and after the file, for two players.
@@ -26,6 +26,8 @@ import './localdb-guard.mjs';
  *   reset_card_points_v2 = the M1c function: the same answers and rows on a series at 6 fixed instants (the Mountain week boundary,
  *      summer and winter time), with the expected week, gift and reset_used order.
  *   The v1 gift use: never a v2_ gift (also through reset_stat_points), still a v1 gift; a key like 'v2xfoo' is NOT skipped.
+ *   F1 (REVIEW-r1): shop_today free_reset / gift_reset / gift_reset_until = what buy_shop_item(stat_reset) then does, for {progress ON for a
+ *      tester, flag OFF} x {one open v1 gift, one open v2_ gift}, the week used.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -50,6 +52,8 @@ const ROUTE = "    if combat_v2_on('progress', p_player) then   -- M1d\n";
 const REFUSE = "    if combat_v2_on('progress', p_player) then return jsonb_build_object('ok', false, 'error', 'stats_disabled'); end if;   -- M1d\n";
 const GIFT_LINE = "       and not starts_with(gift, 'v2_')";
 const MARK = '-- ============================================================ 4. server only';
+const TODAY_GIFT = "and g.expires_at > now() and starts_with(g.gift, 'v2_') = v_v2)";
+const TODAY_V2 = "  v_v2 boolean := combat_v2_on('progress', p_player);";
 // a second copy of the v2 reset for the Shop that differs (its ref is shop:<n>): the brief asks for ONE shared write
 const CORE = (mig.match(/create or replace function public\.card_progress_v2_reset\(p_player text[\s\S]*?\nend \$fn\$;\n/) || [])[0];
 if (!CORE) throw new Error('card_progress_v2_reset not found in the file');
@@ -89,6 +93,11 @@ const MUT = {
   select coalesce(nullif(current_setting('balance.by', true), ''), session_user::text) || '';
 $p$;
 ${MARK}`],
+  today_free_any_gift: [TODAY_GIFT + ",   -- M1d\n    'gift_reset', exists", "and g.expires_at > now()),   -- M1d\n    'gift_reset', exists"],
+  today_gift_any_gift: [TODAY_GIFT + ",   -- M1d\n    'gift_reset_until'", "and g.expires_at > now()),   -- M1d\n    'gift_reset_until'",
+    TODAY_GIFT + ",   -- M1d\n    'free_reset_next'", "and g.expires_at > now()),   -- M1d\n    'free_reset_next'"],
+  today_v1_rule: [TODAY_V2, "  v_v2 boolean := false;"],
+  today_one_arg: [TODAY_V2, "  v_v2 boolean := combat_v2_on('progress');"],
   other_reader: [MARK, `create or replace function public.m1d_probe() returns boolean language sql stable set search_path = public as $p$ select combat_v2_on('progress', 'x') $p$;\n${MARK}`],
 };
 
@@ -126,16 +135,16 @@ const GUARD_RE = /\ndo \$g\$[\s\S]*?-- GUARD-END\n/;
 const guard = (mig.match(GUARD_RE) || [])[0];
 if (!guard) throw new Error('the file has no guard');
 const MD5 = Object.fromEntries([...guard.matchAll(/\('public\.([a-z0-9_]+)\([^']*\)', '([0-9a-f]{32})', '([0-9a-f]{32})'\)/g)].map((m) => [m[1], { old: m[2], new: m[3] }]));
-if (Object.keys(MD5).length !== 5) throw new Error('the guard must name 5 functions with an old and a new md5');
+if (Object.keys(MD5).length !== 6) throw new Error('the guard must name 6 functions with an old and a new md5');
 const body0 = mig.replace(GUARD_RE, '\n');
 const OLD_V1 = [...body0.replace(/^.*-- M1d\b.*\n/gm, '').matchAll(/^CREATE OR REPLACE FUNCTION[\s\S]*?^end \$function\$;\n/gm)].map((m) => m[0]);
-if (OLD_V1.length !== 4) throw new Error('the file must have the 4 v1 functions in the live format');
+if (OLD_V1.length !== 5) throw new Error('the file must have the 5 v1 functions in the live format');
 const OLD_FNS = OLD_V1.join('\n') + '\n' + M1C_RESET + '\ndrop function if exists public.card_progress_v2_reset(text, bigint, integer);\n';
 const ADDED = (body0.match(/^.*-- M1d\b.*\n/gm) || []).length;
 
-const MINE = ['spend_stat_points(text,bigint,jsonb)', 'reset_stat_points(text,bigint)', 'stat_reset_gift_use(text,bigint)', 'buy_shop_item(text,text,integer,bigint,integer)', 'reset_card_points_v2(text,bigint)'];
+const MINE = ['spend_stat_points(text,bigint,jsonb)', 'reset_stat_points(text,bigint)', 'stat_reset_gift_use(text,bigint)', 'buy_shop_item(text,text,integer,bigint,integer)', 'reset_card_points_v2(text,bigint)', 'shop_today(text)'];
 const NEWFN = 'card_progress_v2_reset(text,bigint,integer)';
-const READERS = ['spend_stat_points(text,bigint,jsonb)', 'reset_stat_points(text,bigint)', 'buy_shop_item(text,text,integer,bigint,integer)'];
+const READERS = ['spend_stat_points(text,bigint,jsonb)', 'reset_stat_points(text,bigint)', 'buy_shop_item(text,text,integer,bigint,integer)', 'shop_today(text)'];
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 const sig = "replace(p.oid::regprocedure::text, ', ', ',')";
 const P = '999999999999999961', Q = '999999999999999962';
@@ -159,7 +168,7 @@ begin
     m := md5(replace(pg_get_functiondef(('public.' || k)::regprocedure), chr(13), ''));
     if m is distinct from (${md5lit}::jsonb -> split_part(k, '(', 1) ->> 'old') then bad := bad || k; end if;
   end loop;
-  res := res || jsonb_build_object('case', 'T0 the state before: the file minus its ${ADDED} "-- M1d" lines (the 4 v1 functions) and the M1c reset_card_points_v2 have the old md5 of the guard (= main)', 'ok', cardinality(bad) = 0, 'bad', bad);
+  res := res || jsonb_build_object('case', 'T0 the state before: the file minus its ${ADDED} "-- M1d" lines (the 5 v1 functions) and the M1c reset_card_points_v2 have the old md5 of the guard (= main)', 'ok', cardinality(bad) = 0, 'bad', bad);
   select jsonb_object_agg(${sig}, md5(pg_get_functiondef(p.oid))) into md5a from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prokind in ('f', 'p');
   select coalesce(array_agg(${sig} order by ${sig}), '{}') into fns_a from pg_proc p where p.pronamespace = 'public'::regnamespace;
   select value into flag_a from public.balance where key = 'combat_v2';
@@ -178,6 +187,26 @@ begin
   begin return public.spend_card_points_v2(p, c, a); exception when others then return jsonb_build_object('raised', sqlerrm); end $q$;
   create function pg_temp.rs2(p text, c bigint) returns jsonb language plpgsql as $q$
   begin return public.reset_card_points_v2(p, c); exception when others then return jsonb_build_object('raised', sqlerrm); end $q$;
+  -- F1 (REVIEW-r1): shop_today, then buy_shop_item('stat_reset') on the same state: the week used, one open gift (key g), the flag f
+  create function pg_temp.tb(p text, c bigint, f jsonb, g text, t jsonb) returns jsonb language plpgsql as $q$
+  declare d jsonb; r jsonb; b int;
+  begin
+    update public.balance set value = t where key = 'combat_v2';   -- P a tester: the v2 points to reset
+    if not exists (select 1 from public.card_progress_v2 where player_id = p and card_id = c) then
+      insert into public.card_progress_v2 (player_id, card_id, level, xp) values (p, c, 30, card_level_xp_at(30)); end if;
+    perform pg_temp.sp2(p, c, '{"atk": 1}');
+    update public.balance set value = f where key = 'combat_v2';
+    update public.player_cards set stat_points = '{"attack": 1}' where player_id = p and card_id = c;   -- the v1 points to reset
+    delete from public.stat_reset_gifts where player_id = p;
+    insert into public.stat_reset_gifts (player_id, gift, expires_at) values (p, g, now() + interval '1 hour');
+    update public.players set stat_reset_week = to_char(now() at time zone 'America/Denver', 'IYYY-IW') where id = p;
+    perform public.grant_shards(p, 5000, 'admin', 'test', 'm1d test');
+    select shard_balance into b from public.players where id = p;
+    d := public.shop_today(p);
+    r := pg_temp.sh(p, 'stat_reset', null, c, 1);
+    return jsonb_build_object('free_reset', d->'free_reset', 'gift_reset', d->'gift_reset', 'until', d->'gift_reset_until', 'bal0', b,
+      'buy', r - 'stats' - 'progress' - 'points');
+  end $q$;
   create function pg_temp.m1d_now() returns timestamptz language sql stable as $q$ select current_setting('m1d.now')::timestamptz $q$;
   create function pg_temp.snap(p text) returns jsonb language sql as $q$
     select jsonb_build_object(
@@ -193,15 +222,18 @@ begin
       'v2log', (select coalesce(jsonb_agg(jsonb_build_object('c', l.card_id, 'r', l.reason, 's', l.stat, 'd', l.d_points) order by l.id), '[]') from public.card_progress_v2_log l where l.player_id = p)) $q$;
   -- the v1 series of one player (17 calls): every answer, then the snapshot of its rows
   create function pg_temp.scn(p text, ca bigint, cb bigint, cn bigint, j int) returns jsonb language plpgsql as $q$
-  declare a jsonb := '[]';
+  declare a jsonb := '[]'; t jsonb := '[]';
   begin
+    t := t || public.shop_today(p);                               -- shop_today (F1): the week free
     a := a || pg_temp.sp(p, ca, '{"attack": 2, "haste": 1}');
     a := a || pg_temp.sp(p, ca, '{"attack": 60}');
     a := a || pg_temp.sp(p, ca, '{"luck": 1}');
     a := a || pg_temp.sp(p, cn, '{"attack": 1}');
     a := a || pg_temp.rs(p, ca);                                  -- the weekly free reset
+    t := t || public.shop_today(p);                               -- shop_today: the week used, the v1 gift open
     a := a || pg_temp.sp(p, ca, '{"vitality": 1}');
     a := a || pg_temp.rs(p, ca);                                  -- the v1 gift
+    t := t || public.shop_today(p);                               -- shop_today: no free reset left
     a := a || pg_temp.sp(p, ca, '{"precision": 1}');
     a := a || pg_temp.rs(p, ca);                                  -- reset_used with next
     a := a || pg_temp.sh(p, 'stat_reset', null, ca, 1);          -- the Shop reset with Shards
@@ -213,7 +245,7 @@ begin
     a := a || pg_temp.rs(p, cb);                                  -- nothing_spent
     a := a || pg_temp.sh(p, 'stat_reset', null, cb, 1);          -- nothing_spent
     a := a || pg_temp.sp(p, cb, '{"attack": 1}');
-    return jsonb_build_object('answers', a, 'codes', (select jsonb_agg(coalesce(x->>'error', case when x ? 'raised' then 'raised' else 'ok' end) order by n) from jsonb_array_elements(a) with ordinality q(x, n)), 'rows', pg_temp.snap(p));
+    return jsonb_build_object('answers', a, 'today', t, 'codes', (select jsonb_agg(coalesce(x->>'error', case when x ? 'raised' then 'raised' else 'ok' end) order by n) from jsonb_array_elements(a) with ordinality q(x, n)), 'rows', pg_temp.snap(p));
   end $q$;
   -- the v2 reset series at 6 fixed instants (Mountain week 43 ends Sunday 2026-10-25 24:00 MDT = 06:00 UTC; week 45 ends 2026-11-08 24:00 MST)
   create function pg_temp.clk(p text, c bigint) returns jsonb language plpgsql as $q$
@@ -263,7 +295,8 @@ begin
   ${sub('', `pg_temp.scn('${Q}', ca, cb, cn, j)`, 'old_q')}
   res := res || jsonb_build_object('case', 'the v1 series before the file has the expected answers (so the compare below is not empty)', 'ok',
     old_p->'codes' = '["ok", "not_enough", "bad_stat", "not_owned", "ok", "ok", "ok", "ok", "reset_used", "ok", "ok", "ok", "ok", "ok", "nothing_spent", "nothing_spent", "ok"]'::jsonb
-    and old_q->'codes' = old_p->'codes' and (old_p->'answers'->9->>'free')::boolean is false and (old_p->'answers'->11->>'free')::boolean is true, 'got', old_p->'codes');
+    and old_q->'codes' = old_p->'codes' and (old_p->'answers'->9->>'free')::boolean is false and (old_p->'answers'->11->>'free')::boolean is true
+    and (select jsonb_agg(jsonb_build_array(x->'free_reset', x->'gift_reset')) from jsonb_array_elements(old_p->'today') x) = '[[true, true], [true, true], [false, false]]'::jsonb, 'got', old_p->'codes');
   -- the M1c reset_card_points_v2 at the fixed instants (a tester; one open v2 gift)
   ${sub(`update public.balance set value = flag_testers where key = 'combat_v2';
     insert into public.card_progress_v2 (player_id, card_id, level, xp) values ('${P}', cb, 30, card_level_xp_at(30));
@@ -276,7 +309,7 @@ begin
 
   -- T1. no other change
   select jsonb_object_agg(${sig}, md5(pg_get_functiondef(p.oid))) into md5b from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prokind in ('f', 'p');
-  res := res || jsonb_build_object('case', format('T1 the md5 of the %s other public functions does not change; exactly the 5 functions change', (select count(*) from jsonb_object_keys(md5a)) - 5), 'ok',
+  res := res || jsonb_build_object('case', format('T1 the md5 of the %s other public functions does not change; exactly the 6 functions change', (select count(*) from jsonb_object_keys(md5a)) - 6), 'ok',
     (select coalesce(array_agg(x.key order by x.key), '{}') from jsonb_each_text(md5b) x where md5a ? x.key and md5a->>x.key is distinct from x.value) = (select array_agg(x order by x) from unnest(mine) x)
     and not exists (select 1 from jsonb_each_text(md5a) x where not md5b ? x.key),
     'changed', (select jsonb_agg(x.key) from jsonb_each_text(md5b) x where md5a ? x.key and md5a->>x.key is distinct from x.value));
@@ -284,7 +317,7 @@ begin
   res := res || jsonb_build_object('case', 'T1 exactly one function is added: card_progress_v2_reset', 'ok', fns_b = array[${lit(NEWFN)}], 'added', fns_b);
   res := res || jsonb_build_object('case', 'T1 the flag combat_v2 does not change (progress stays false)', 'ok', (select value from public.balance where key = 'combat_v2') = flag_off);
   select coalesce(array_agg(${sig} order by ${sig}), '{}') into callers_b from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\s*\(';
-  res := res || jsonb_build_object('case', 'T1 the readers of combat_v2_on = before + spend_stat_points, reset_stat_points and buy_shop_item', 'ok',
+  res := res || jsonb_build_object('case', 'T1 the readers of combat_v2_on = before + spend_stat_points, reset_stat_points, buy_shop_item and shop_today', 'ok',
     callers_b = (select array_agg(x order by x) from (select unnest(callers_a) x union select unnest(readers)) q) and not (callers_a && readers),
     'now', (select array_agg(x) from unnest(callers_b) x where x <> all (callers_a)));
   select coalesce(array_agg(${sig} order by ${sig}), '{}') into bad from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'card_progress_v2_reset' and p.proname <> 'card_progress_v2_reset';
@@ -293,7 +326,7 @@ begin
   foreach k in array mine loop
     if md5(replace(pg_get_functiondef(('public.' || k)::regprocedure), chr(13), '')) is distinct from (${md5lit}::jsonb -> split_part(k, '(', 1) ->> 'new') then bad := bad || k; end if;
   end loop;
-  res := res || jsonb_build_object('case', 'T0 the guard: its new md5 = the md5 of the 5 functions this file made', 'ok', cardinality(bad) = 0, 'bad', bad);
+  res := res || jsonb_build_object('case', 'T0 the guard: its new md5 = the md5 of the 6 functions this file made', 'ok', cardinality(bad) = 0, 'bad', bad);
   begin execute $m$${guard}$m$; ok := true; exception when others then ok := false; end;
   res := res || jsonb_build_object('case', 'T0 the guard accepts the state after the file (a second run)', 'ok', ok);`}
   begin
@@ -320,15 +353,15 @@ begin
   if coalesce(obj_description('public.stat_reset_gift_use(text, bigint)'::regprocedure, 'pg_proc'), '') !~ 'starts with v2_' then bad := bad || 'the gift comment does not give the v2_ rule'::text; end if;
   if coalesce(obj_description('public.card_progress_v2_reset(text, bigint, integer)'::regprocedure, 'pg_proc'), '') !~ '^\[combat\] ' then bad := bad || 'no [combat] comment on card_progress_v2_reset'::text; end if;
   foreach k in array array['combat_v2_on(text)', 'combat_v2_on(text,text)'] loop
-    if coalesce(obj_description(('public.' || k)::regprocedure, 'pg_proc'), '') ~ 'No v1 function calls it' or coalesce(obj_description(('public.' || k)::regprocedure, 'pg_proc'), '') !~ '^\[combat\] .*spend_stat_points.*reset_stat_points.*buy_shop_item' then
-      bad := bad || ('the comment of ' || k || ' does not name the 3 v1 readers'); end if;
+    if coalesce(obj_description(('public.' || k)::regprocedure, 'pg_proc'), '') ~ 'No v1 function calls it' or coalesce(obj_description(('public.' || k)::regprocedure, 'pg_proc'), '') !~ '^\[combat\] .*spend_stat_points.*reset_stat_points.*buy_shop_item.*shop_today' then
+      bad := bad || ('the comment of ' || k || ' does not name the 4 v1 readers'); end if;
   end loop;
-  res := res || jsonb_build_object('case', 'T2 server only (no execute for public, anon, authenticated), search_path, and the comments (the rule; combat_v2_on names the 3 v1 readers)', 'ok', cardinality(bad) = 0, 'bad', bad);
+  res := res || jsonb_build_object('case', 'T2 server only (no execute for public, anon, authenticated), search_path, and the comments (the rule; combat_v2_on names the 4 v1 readers)', 'ok', cardinality(bad) = 0, 'bad', bad);
 
   -- 3. flag OFF (the live state): the same answers and the same writes as before the file
   ${sub('', `pg_temp.scn('${P}', ca, cb, cn, j)`, 'new_p')}
   ${sub('', `pg_temp.scn('${Q}', ca, cb, cn, j)`, 'new_q')}
-  res := res || jsonb_build_object('case', 'flag OFF: the 17 v1 calls (spend, reset, Shop reset, pack, card) give the same answers and the same writes as before the file (2 players)', 'ok',
+  res := res || jsonb_build_object('case', 'flag OFF: the 17 v1 calls (spend, reset, Shop reset, pack, card) and 3 shop_today reads give the same answers and the same writes as before the file (2 players)', 'ok',
     new_p = old_p and new_q = old_q, 'got', new_p->'codes', 'rows_same', new_p->'rows' = old_p->'rows');
 
   -- 4. progress ON for everyone: spend and reset refuse, write nothing, lock nothing; the Shop reset is the v2 one; pack and card work
@@ -364,7 +397,7 @@ begin
   if pg_temp.snap('${P}') is distinct from s0 then bad := bad || 'rows written'::text; end if;
   res := res || jsonb_build_object('case', 'progress for testers only: the tester gets disabled from spend and reset and the v2 Shop reset (no_progress), 0 rows written', 'ok', cardinality(bad) = 0, 'bad', bad);
   ${sub('', `pg_temp.scn('${Q}', ca, cb, cn, j)`, 'tst_q')}
-  res := res || jsonb_build_object('case', 'progress for testers only: the non-tester spends, resets and buys the v1 reset as before the file (the same 17 answers and writes)', 'ok',
+  res := res || jsonb_build_object('case', 'progress for testers only: the non-tester spends, resets and buys the v1 reset as before the file (the same 17 answers, 3 shop_today reads and writes)', 'ok',
     tst_q = old_q, 'got', tst_q->'codes', 'rows_same', tst_q->'rows' = old_q->'rows');
 
   -- 6. reset_card_points_v2 = the M1c function: the same answers and rows at the 6 fixed instants, and the expected order
@@ -459,6 +492,20 @@ begin
   res := res || jsonb_build_object('case', 'the v1 Shop reset (flag OFF) with the week and the v1 gift used: not free (Shards or not_enough), the v2_ gift stays open', 'ok',
     coalesce((r->>'free')::boolean, false) is false and coalesce(r->>'error', 'ok') in ('ok', 'not_enough')
     and (select used_at from public.stat_reset_gifts where player_id = '${P}' and gift = 'v2_m1d_a') is null, 'got', r - 'stats');
+
+  -- 8b. F1 (REVIEW-r1): shop_today reports a free reset only when buy_shop_item('stat_reset') then takes it, for {progress ON for a tester,
+  -- flag OFF} x {one open v1 gift, one open v2_ gift}, the week used. ON: only a v2_ gift is free (the v2 reset); OFF: only a v1 gift.
+  foreach k in array array['on r_m1d_today', 'on v2_m1d_today', 'off r_m1d_today', 'off v2_m1d_today'] loop
+    ok := (split_part(k, ' ', 1) = 'on') = starts_with(split_part(k, ' ', 2), 'v2_');   -- the expected answer: free (the gift) or paid
+    ${sub('', `pg_temp.tb('${P}', ca, case when split_part(k, ' ', 1) = 'on' then flag_testers else flag_off end, split_part(k, ' ', 2), flag_testers)`, 'r')}
+    res := res || jsonb_build_object('case', format('F1 %s gift %s, the week used: shop_today free_reset and gift_reset = %s = what buy_shop_item(stat_reset) then does (free, price, balance%s)',
+      case when split_part(k, ' ', 1) = 'on' then 'progress ON (tester),' else 'flag OFF,' end, split_part(k, ' ', 2), ok, case when split_part(k, ' ', 1) = 'on' then ', used' else '' end), 'ok',
+      (r->'buy'->>'ok')::boolean is true and (r->'buy'->>'free')::boolean = ok
+      and (r->>'free_reset')::boolean = (r->'buy'->>'free')::boolean and (r->>'gift_reset')::boolean = (r->'buy'->>'free')::boolean
+      and (jsonb_typeof(r->'until') = 'null') = not ok
+      and (r->'buy'->>'price')::int = case when ok then 0 else v_price end and (r->'buy'->>'balance')::int = (r->>'bal0')::int - case when ok then 0 else v_price end
+      and (split_part(k, ' ', 1) = 'off' or r->'buy'->>'used' = case when ok then 'gift' else 'paid' end), 'got', r);
+  end loop;
 
   -- 9. the file runs twice
   select jsonb_object_agg(${sig}, md5(pg_get_functiondef(p.oid))) into md5a from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prokind in ('f', 'p');

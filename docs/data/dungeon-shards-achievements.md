@@ -1161,4 +1161,4 @@ Internal helper: picks the card stock of a Shop day once (count, prices and cool
 - Returns: `jsonb`
 - Security definer: no
 
-GET /api/shop: the Shop of today for the member: balance, pack and reset prices, the free weekly reset, and the stock with a bought flag for each slot. Picks the stock when needed.
+GET /api/shop: the Shop of today for the member: balance, pack and reset prices, the free weekly reset, and the stock with a bought flag for each slot. Picks the stock when needed. free_reset, gift_reset and gift_reset_until count only the gifts that buy_shop_item(stat_reset) takes: when combat v2 progress is ON for the player (combat_v2_on('progress', player): everyone or a tester) only a v2_ gift (the v2 reset), else no v2_ gift (the v1 gift use) (plan 20.17, combat_v2_progress_freeze_v1.sql).

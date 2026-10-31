@@ -15,6 +15,9 @@
 --     price null = the M1c rule (reset_used with next after the week and the v2 gift). reset_card_points_v2 now calls it: the same answers.
 --   stat_reset_gift_use(player, card): skips every gift whose key starts with 'v2_' (starts_with, not like: in like the '_' matches any
 --     character, so 'v2xfoo' would be skipped too). A v2_ gift is for stat_reset_gift_use_v2 (the v2 reset) only.
+--   shop_today(player): free_reset, gift_reset and gift_reset_until count only the gifts that buy_shop_item(stat_reset) then takes
+--     (REVIEW-r1 F1): progress ON for the player = only a v2_ gift (the v2 reset), else no v2_ gift (the v1 gift use). The 3 keys come
+--     again after the live keys (in jsonb the last value of a key is kept), so the live lines stay as they are.
 -- Why (plan 20.11 trap a): with progress ON a player could still spend v1 points that the v1 Hunt reads and that the M1h conversion
 -- counted, and the v1 and v2 resets would compete for the one weekly marker players.stat_reset_week. The freeze is a refusal, never
 -- stat_points.enabled = false: with that, card_combat returns the base CP with NO points, so the v1 Hunt and Dungeon lose every v1 bonus.
@@ -33,7 +36,8 @@ begin
     ('public.reset_stat_points(text, bigint)', 'd86606fdd8fe2f9e3a7f4cb8ef75d064', 'd54d10b7fdea06d76b697e81a58203ed'),
     ('public.stat_reset_gift_use(text, bigint)', '36102de297b7c70871508c74c8aef9c9', '4e02a71bc65ebb8cd0acb664e949bf0f'),
     ('public.buy_shop_item(text, text, integer, bigint, integer)', 'e2856fa90e8246f9023a62bcf456b951', 'bfb80045fcb1efa2d6789db4e8b544e8'),
-    ('public.reset_card_points_v2(text, bigint)', 'b3278aac743a4eaca4e3a07f6414bc1e', '09dfeb345fafdf77808098e681ae44a8')
+    ('public.reset_card_points_v2(text, bigint)', 'b3278aac743a4eaca4e3a07f6414bc1e', '09dfeb345fafdf77808098e681ae44a8'),
+    ('public.shop_today(text)', 'd8508da3888ccfa7a02fd92a82e2e4e4', '8933bebb433f06b896697f69951696d1')
   ) x(fn, old_md5, new_md5) loop
     select md5(replace(pg_get_functiondef(f.fn::regprocedure), chr(13), '')) into strict m;
     if m not in (f.old_md5, f.new_md5) then
@@ -270,6 +274,44 @@ begin
   return jsonb_build_object('ok', false, 'error', 'bad_kind');
 end $function$;
 
+CREATE OR REPLACE FUNCTION public.shop_today(p_player text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+declare cfg jsonb := shard_cfg(); v_day date := shop_day();
+  v_week text := to_char(now() at time zone 'America/Denver', 'IYYY-IW');
+  v_v2 boolean := combat_v2_on('progress', p_player);   -- M1d: the Shop reset of this player is the v2 reset (buy_shop_item)
+begin
+  if not coalesce((cfg->>'enabled')::boolean, false) then return jsonb_build_object('ok', false, 'error', 'disabled'); end if;
+  perform shop_pick_stock(v_day);
+  return jsonb_build_object('ok', true,
+    'day', v_day,
+    'next_at', ((v_day + 1)::timestamp at time zone 'America/Denver'),
+    'balance', coalesce((select shard_balance from players where id = p_player), 0),
+    'pack_price', game_shop_price((cfg->>'pack_price')::int),
+    'stat_reset_price', game_shop_price((cfg->>'stat_reset_price')::int),
+    -- The free weekly reset (stat_points.sql): a Shop reset uses it first, at 0 Shards.
+    -- A free reset is the weekly one OR a gift that is not used and not expired (stat_reset_gifts). gift_reset says that a gift is
+    -- left, gift_reset_until is its deadline.
+    'free_reset', (select stat_reset_week from players where id = p_player) is distinct from v_week
+      or exists (select 1 from stat_reset_gifts g where g.player_id = p_player and g.used_at is null and g.expires_at > now()),
+    'gift_reset', exists (select 1 from stat_reset_gifts g where g.player_id = p_player and g.used_at is null and g.expires_at > now()),
+    'gift_reset_until', (select min(g.expires_at) from stat_reset_gifts g where g.player_id = p_player and g.used_at is null and g.expires_at > now()),
+    -- M1d (plan 20.17, REVIEW-r1 F1): the free reset that this answer shows is the one that buy_shop_item(stat_reset) then takes. v2 progress
+    -- M1d: ON = the v2 reset takes only a v2_ gift; OFF = the v1 gift use skips every v2_ gift. The 3 keys below come again after the 3 keys
+    -- M1d: above: in jsonb the LAST value of a key is kept, so these 3 values are the answer (and the lines above stay the live text).
+    'free_reset', (select stat_reset_week from players where id = p_player) is distinct from v_week   -- M1d
+      or exists (select 1 from stat_reset_gifts g where g.player_id = p_player and g.used_at is null and g.expires_at > now() and starts_with(g.gift, 'v2_') = v_v2),   -- M1d
+    'gift_reset', exists (select 1 from stat_reset_gifts g where g.player_id = p_player and g.used_at is null and g.expires_at > now() and starts_with(g.gift, 'v2_') = v_v2),   -- M1d
+    'gift_reset_until', (select min(g.expires_at) from stat_reset_gifts g where g.player_id = p_player and g.used_at is null and g.expires_at > now() and starts_with(g.gift, 'v2_') = v_v2),   -- M1d
+    'free_reset_next', ((date_trunc('week', now() at time zone 'America/Denver') + interval '7 days') at time zone 'America/Denver'),
+    'max_packs_per_buy', coalesce((cfg->>'max_packs_per_buy')::int, 10),
+    'stock', coalesce((select jsonb_agg(jsonb_build_object('slot', s.slot, 'card_id', s.card_id, 'rarity', s.rarity, 'price', game_shop_price(s.price),
+                 'bought', exists (select 1 from shop_purchases p where p.player_id = p_player and p.day = v_day and p.kind = 'card' and p.slot = s.slot))
+                 order by s.slot) from shop_stock s where s.day = v_day), '[]'::jsonb));
+end $function$;
+
 
 -- ============================================================ 4. server only (no change for the live functions), and the comments
 revoke all on function public.card_progress_v2_reset(text, bigint, integer) from public, anon, authenticated;
@@ -280,18 +322,21 @@ revoke all on function public.spend_stat_points(text, bigint, jsonb) from public
 revoke all on function public.reset_stat_points(text, bigint) from public, anon, authenticated;
 revoke all on function public.stat_reset_gift_use(text, bigint) from public, anon, authenticated;
 revoke all on function public.buy_shop_item(text, text, integer, bigint, integer) from public, anon, authenticated;
+revoke all on function public.shop_today(text) from public, anon, authenticated;
 grant execute on function public.spend_stat_points(text, bigint, jsonb) to service_role;
 grant execute on function public.reset_stat_points(text, bigint) to service_role;
 grant execute on function public.stat_reset_gift_use(text, bigint) to service_role;
 grant execute on function public.buy_shop_item(text, text, integer, bigint, integer) to service_role;
+grant execute on function public.shop_today(text) to service_role;
 
 comment on function public.spend_stat_points(text, bigint, jsonb) is $cm$Adds stat points to one card (attack, vitality, precision, potency, haste) up to the cap of its stars (balance key stat_points). Activity /api/stats/spend. Returns ok, points and stats, or an error. Frozen when combat v2 progress is ON for the player (combat_v2_on('progress', player): everyone or a tester): the answer disabled, before any lock or write (plan 20.11 trap a, combat_v2_progress_freeze_v1.sql).$cm$;
 comment on function public.reset_stat_points(text, bigint) is $cm$Clears the stat points of one card, once per game week (players.stat_reset_week, America/Denver), then with one open v1 gift reset (stat_reset_gift_use). Activity /api/stats/reset. Returns ok and the new stats, or an error. Frozen when combat v2 progress is ON for the player (combat_v2_on('progress', player): everyone or a tester): the answer disabled, before any lock or write (plan 20.11 trap a, combat_v2_progress_freeze_v1.sql).$cm$;
 comment on function public.stat_reset_gift_use(text, bigint) is $cm$Uses the next v1 gift reset of a player (stat_reset_gifts, not used, not expired, the earliest deadline first): true = used. Skips every gift whose key starts with v2_ (starts_with): those are for the v2 reset only (stat_reset_gift_use_v2). Called by reset_stat_points and buy_shop_item after the weekly free reset. combat_v2_progress_freeze_v1.sql.$cm$;
 comment on function public.buy_shop_item(text, text, integer, bigint, integer) is $cm$A member buys with Shards: packs, a card of the day or a stat reset. The shop_purchases row comes first; the Shards row and the pack row have ref ('shop_purchase', its id). A free weekly stat reset writes no Shards row. When combat v2 progress is ON for the player (combat_v2_on('progress', player): everyone or a tester) the stat reset is the v2 reset (card_progress_v2_reset with the Shop price: the free week, then one v2_ gift, else the price; Nathan 2026-10-23 "Yes A"), then the shop_purchases row, then the Shards when the price > 0; the answer has the v2 progress and stats. Packs and cards do not change (plan 20.11 trap a, 20.17, combat_v2_progress_freeze_v1.sql).$cm$;
+comment on function public.shop_today(text) is $cm$GET /api/shop: the Shop of today for the member: balance, pack and reset prices, the free weekly reset, and the stock with a bought flag for each slot. Picks the stock when needed. free_reset, gift_reset and gift_reset_until count only the gifts that buy_shop_item(stat_reset) takes: when combat v2 progress is ON for the player (combat_v2_on('progress', player): everyone or a tester) only a v2_ gift (the v2 reset), else no v2_ gift (the v1 gift use) (plan 20.17, combat_v2_progress_freeze_v1.sql).$cm$;
 comment on function public.card_progress_v2_reset(text, bigint, integer) is $cm$[combat] Combat v2 (plan 20.13, 20.17): the v2 reset of one card, written once for reset_card_points_v2 and the Shop (buy_shop_item stat_reset when progress is ON). The 9 point columns to 0; the level, the XP and bonus_points do not change. Free: one reset for each Mountain ISO week for each player (players.stat_reset_week), then one open v2 gift (stat_reset_gift_use_v2). Then: p_price null = reset_used with next; a price = paid (not_enough with balance and price when the Shards are less). Refuses with an answer before any write: no_player, not_owned, no_progress, no_role, nothing_spent. Writes the ledger FIRST (reason reset, one row for each stat above 0, one ref reset:<n>), then card_progress_v2. Answer {ok, used (week, gift or paid), progress, stats}. No flag check: its two callers check combat_v2_on. combat_v2_progress_freeze_v1.sql.$cm$;
 comment on function public.reset_card_points_v2(text, bigint) is $cm$[combat] Combat v2 (plan 2.2, 20.13): a player resets the v2 points of a card to 0; the level, the XP and bonus_points do not change. Free: one reset for each Mountain ISO week for each player (players.stat_reset_week, the v1 marker), then one open v2 gift (stat_reset_gift_use_v2); else reset_used with next. Refuses with an answer before any write: disabled, no_player, not_owned, no_progress, no_role, nothing_spent. Writes the ledger FIRST (reason reset, one row for each stat above 0, d_points = minus the count, one ref reset:<n>), then card_progress_v2. Answer {ok, used (week or gift), progress, stats}. Since M1d the work is card_progress_v2_reset (price null), shared with the Shop: the same answers. combat_v2_progress_spend.sql, combat_v2_progress_freeze_v1.sql.$cm$;
-comment on function public.combat_v2_on(text) is $cm$[combat] The ONE reader of the combat v2 switch (balance combat_v2, plan 14.2): true only when combat_v2.<p_mode> is the JSON boolean true (p_mode = gauntlet, dungeon, hunt or progress). Fails closed: a missing key, another type, a name that is not one of the four capabilities or any error gives false. Its only caller is combat_v2_on(text, text). Since combat_v2_progress_freeze_v1.sql (M1d) three v1 functions read the switch through that form: spend_stat_points and reset_stat_points (they refuse when progress is ON) and buy_shop_item (its stat reset is the v2 reset when progress is ON).$cm$;
-comment on function public.combat_v2_on(text, text) is $cm$[combat] The combat v2 switch for one player (plan 14.2, the go-live steps): true when combat_v2_on(p_mode) is true (the mode is on for everyone), or when p_mode is gauntlet, dungeon, hunt or progress and p_player is in balance combat_v2.testers. The tester part fails closed: a NULL mode or player, an unknown capability, a value that does not match the fixed shape (balance_v2_spec), no row or any error gives false. Its readers: the v2 spend and reset (spend_card_points_v2, reset_card_points_v2) and, since combat_v2_progress_freeze_v1.sql (M1d), the v1 freeze of spend_stat_points and reset_stat_points and the Shop route of buy_shop_item (stat_reset) with progress. combat_v2_testers.sql.$cm$;
+comment on function public.combat_v2_on(text) is $cm$[combat] The ONE reader of the combat v2 switch (balance combat_v2, plan 14.2): true only when combat_v2.<p_mode> is the JSON boolean true (p_mode = gauntlet, dungeon, hunt or progress). Fails closed: a missing key, another type, a name that is not one of the four capabilities or any error gives false. Its only caller is combat_v2_on(text, text). Since combat_v2_progress_freeze_v1.sql (M1d) four v1 functions read the switch through that form: spend_stat_points and reset_stat_points (they refuse when progress is ON), buy_shop_item (its stat reset is the v2 reset when progress is ON) and shop_today (its free reset counts the gifts of that reset).$cm$;
+comment on function public.combat_v2_on(text, text) is $cm$[combat] The combat v2 switch for one player (plan 14.2, the go-live steps): true when combat_v2_on(p_mode) is true (the mode is on for everyone), or when p_mode is gauntlet, dungeon, hunt or progress and p_player is in balance combat_v2.testers. The tester part fails closed: a NULL mode or player, an unknown capability, a value that does not match the fixed shape (balance_v2_spec), no row or any error gives false. Its readers: the v2 spend and reset (spend_card_points_v2, reset_card_points_v2) and, since combat_v2_progress_freeze_v1.sql (M1d), the v1 freeze of spend_stat_points and reset_stat_points, the Shop route of buy_shop_item (stat_reset) with progress, and the free reset of shop_today. combat_v2_testers.sql.$cm$;
 
 notify pgrst, 'reload schema';

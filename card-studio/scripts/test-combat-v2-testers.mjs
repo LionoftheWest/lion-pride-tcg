@@ -248,7 +248,7 @@ begin
   select coalesce(array_agg(p.oid::regprocedure::text order by 1), '{}') into bad from pg_proc p
    where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\s*\(' and p.oid::regprocedure::text <> 'combat_v2_on(text,text)'
      and p.proname <> all (array['spend_card_points_v2', 'reset_card_points_v2'])   -- M1c combat_v2_progress_spend.sql: the v2 spend and reset read the 2-argument form (a tester or everyone)
-     and p.proname <> all (array['spend_stat_points', 'reset_stat_points', 'buy_shop_item']);   -- M1d combat_v2_progress_freeze_v1.sql: the v1 spend and reset refuse, and the Shop reset routes to v2, when progress is ON (2-argument form)
+     and p.proname <> all (array['spend_stat_points', 'reset_stat_points', 'buy_shop_item', 'shop_today']);   -- M1d combat_v2_progress_freeze_v1.sql: the v1 spend and reset refuse, the Shop reset routes to v2 and shop_today shows its free reset, when progress is ON (2-argument form)
   res := res || jsonb_build_object('case', 'no function calls combat_v2_on (either form) except the new reader', 'ok', cardinality(bad) = 0, 'callers', bad);
 
   -- 7. server only
