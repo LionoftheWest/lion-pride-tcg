@@ -389,7 +389,7 @@ F-3: the passive keys of a pool in table order: boss, counter, phase2 or foe (pa
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 (plan 2.2, 20.13): a player resets the v2 points of a card to 0; the level, the XP and bonus_points do not change. Free: one reset for each Mountain ISO week for each player (players.stat_reset_week, the v1 marker), then one open v2 gift (stat_reset_gift_use_v2); else reset_used with next. Refuses with an answer before any write: disabled, no_player, not_owned, no_progress, no_role, nothing_spent. Writes the ledger FIRST (reason reset, one row for each stat above 0, d_points = minus the count, one ref reset:<n>), then card_progress_v2. Answer {ok, used (week or gift), progress, stats}. combat_v2_progress_spend.sql.
+[combat] Combat v2 (plan 2.2, 20.13): a player resets the v2 points of a card to 0; the level, the XP and bonus_points do not change. Free: one reset for each Mountain ISO week for each player (players.stat_reset_week, the v1 marker), then one open v2 gift (stat_reset_gift_use_v2); else reset_used with next. Refuses with an answer before any write: disabled, no_player, not_owned, no_progress, no_role, nothing_spent. Writes the ledger FIRST (reason reset, one row for each stat above 0, d_points = minus the count, one ref reset:<n>), then card_progress_v2. Answer {ok, used (week or gift), progress, stats}. Since M1d the work is card_progress_v2_reset (price null), shared with the Shop: the same answers. combat_v2_progress_spend.sql, combat_v2_progress_freeze_v1.sql.
 
 <a id="fn-set-includes-rules"></a>
 
