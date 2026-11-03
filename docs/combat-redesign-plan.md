@@ -2212,15 +2212,15 @@ Else `reset_used` with `next` (the same rule as v1). A v2 gift is a row of `stat
 - **Go-live order**: after M1b (`combat_v2_progress_math.sql`: this file calls `card_combat_v2` with 8 arguments). `apply-sql.mjs --live`, then
   `check-schema-drift.mjs --live` = 0 differences. The flag stays OFF; nothing calls the functions until U0.
 - **Open for M1d and later**:
-  1. **M1d**: the v1 `stat_reset_gift_use` must skip the `v2_` gifts (today it takes any open gift, the earliest deadline first). No `v2_` gift
+  1. DONE in M1d (20.17). **M1d**: the v1 `stat_reset_gift_use` must skip the `v2_` gifts (today it takes any open gift, the earliest deadline first). No `v2_` gift
      exists before M1h, so nothing is wrong today. M1d also freezes the v1 spend, reset and Shop reset when `combat_v2_on('progress')` is true
      (20.11 trap a). Then the weekly marker serves only v2.
   2. **M1h**: the gift of R3 gets a key that starts with `v2_` (section 11 step 7), so only the v2 reset takes it.
-  3. The Shop has no v2 paid reset (v1 `buy_shop_item('stat_reset')`, Shards). A decision for U0: a paid v2 reset, or none.
+  3. DECIDED and built in M1d (20.17, Nathan 2026-10-23 "Yes A"): with progress ON the Shop reset is the v2 reset. The Shop had no v2 paid reset (v1 `buy_shop_item('stat_reset')`, Shards).
   4. 20.11 open item 6 stays: a tune of `v2_stats.max_per_stat` or `v2_level.points_per_level` below the stored points makes every spend and reset
      of an older row fail in the trigger (fail closed). The reset sets the points to 0, so after a re-level step the reset works again.
   5. A card that has no v2 role cannot be spent on or reset (`no_role`). Before R2 every pullable card needs `subjects.ability_v2` (section 12).
-  6. Review of M1c (PASS, 4 low findings, observed on copy 2). The SQL is correct in each check: 4 parallel cases (two spends, spend and reset,
+  6. The 3 test gaps below: DONE in M1d (20.17), each with its planted fault caught. Review of M1c (PASS, 4 low findings, observed on copy 2). The SQL is correct in each check: 4 parallel cases (two spends, spend and reset,
      reset and spend, two resets of one player in one week) give the right answers with no deadlock; 30 bad `p_add` inputs give an `{ok:false}`
      answer, never a raw exception; the goldens and the allowlists (a planted extra reader fails 3 tests) PASS. The test gaps, for M1d (it
      changes the same paths), each with a planted fault that the test did not catch:
@@ -2402,3 +2402,89 @@ replaced function, and an ability with none of the new parts gives the same pric
   The 3 cards of part (b) are accepted.
 - **Test**: `card-studio/scripts/test-combat-v2-set2-parts.mjs` (rolled back; SQL = the simulator on 500 random abilities and 120 random fights;
   `MUTATE=all` plants each fault in the file and in the simulator). Results are in the PR description.
+
+### 20.17 M1d: the v1 stat paths are frozen when v2 progress is ON (`tcg-bot/supabase/combat_v2_progress_freeze_v1.sql`)
+
+M1d closes the open items 1, 3 and 6 of 20.13 and the trap a of 20.11. Nothing in play changes: `combat_v2.progress` is false and the tester list
+has no player on live, so every v1 answer and every v1 write is the same as before. The file replaces 6 functions and adds 1. Each v1 function
+is the live text with ADDED lines only; each added line has the mark `-- M1d`, and the test proves that the file minus those lines is the old text.
+
+- **The freeze is a refusal**, never `stat_points.enabled = false` (with that, `card_combat` returns the base CP with no points, so the v1 Hunt and
+  Dungeon lose every v1 bonus). When `combat_v2_on('progress', player)` is true (everyone, or the player is a tester):
+  - `spend_stat_points` and `reset_stat_points` answer `{ok: false, error: 'disabled'}` as their first statement, before any lock or write.
+    `disabled` is the answer that the Activity already shows for `stat_points.enabled = false`.
+  - `buy_shop_item('stat_reset')` **routes to the v2 reset** (Nathan 2026-10-23, "Yes A"): the free Mountain week, then one open `v2_` gift, else the
+    Shop price (`not_enough` before any write). Then the `shop_purchases` row, then the Shards only when the price is above 0. The answer is
+    `{ok, kind, free, price, balance}` plus `used`, `progress` and `stats` of the v2 reset. The v1 points (`player_cards.stat_points`) do not
+    change. The kinds `pack` and `card` do not change. The routed reset adds the answers `no_progress` and `no_role` (`src/shop-routes.js` shows an
+    unknown code as the code). No Activity or bot code changes (U0).
+- **One v2 reset, written once.** New `card_progress_v2_reset(player, card, price)` (server only, `[combat]` comment, scope of C1) holds the body of
+  the M1c reset with one parameter. `price` null = the M1c rule (`reset_used` with `next`). A price = the Shop rule (`paid`). `reset_card_points_v2`
+  is now a gate plus one call (`price` null): the same answers and rows as M1c. The test plants a second copy for the Shop (`shop_own_copy`) and
+  fails.
+- **`stat_reset_gift_use` (v1) skips every `v2_` gift** (`starts_with`, not `like`: in `like` the `_` matches any character, so `v2xfoo` would
+  be skipped). A v2 gift is for the v2 reset only. Then the weekly marker `players.stat_reset_week` serves only v2 when the flag is ON.
+- **`shop_today` shows the free reset that the Shop then takes** (round 2, REVIEW-r1 F1). Before, `free_reset`, `gift_reset` and
+  `gift_reset_until` counted any open gift, but the Shop reset takes only a `v2_` gift when progress is ON and never a `v2_` gift when it is
+  OFF. Example: a tester, progress ON, the week used, one open v1 gift: `shop_today` said free, the Shop took 150 Shards. Now the 3 keys count
+  only the gifts of the path that `buy_shop_item('stat_reset')` takes (`starts_with(gift, 'v2_') = combat_v2_on('progress', player)`).
+  The 3 keys come again after the live keys (added lines only: in `jsonb` the last value of a key is kept). Flag OFF with no `v2_` gift
+  (live): the same answer.
+- **GUARD**: each replaced function must have the old md5 (the live text of 2026-10-23 with M1c) or the new md5 (the text of this file).
+  The md5 values of the new text were read from copy 2 after the apply.
+- **The 3 test gaps of 20.13 item 6** (the M1c review), each with its planted fault now caught:
+  - `rev_spend_no_lock`: `test-combat-v2-progress-concurrency.mjs` (new), two real connections: session A spends 3 and holds its transaction
+    1.5 s, session B starts 0.3 s later and spends 3 more (budget 5). B must wait and then answer `not_enough` with `free` 2, never a raw
+    exception. The sample is committed and removed in a `finally` step. The lock is removed from the copy of the function: B fails.
+  - `rev_week_utc`: the reset at 6 fixed instants (a test clock inside the block, session time zone UTC): Sunday 17:59 and 19:00 MDT, Monday 00:00
+    MDT, Sunday 17:30 and 18:30 MST. A week in UTC differs only Sunday 18:00 (17:00 in winter) to 24:00 Mountain time.
+  - `rev_spend_abs_update` and one fault for each of the 9 stats: each stat spent twice (1, then 2) must be 3 (an absolute write gives 2).
+- **Allowlists**: the tests that said "no function but `combat_v2_on` reads the flag" or "no other function names a new function" now name
+  the M1d functions (t1b: `card_progress_v2_reset`; spend: `card_progress_v2_reset`). A v1 function must not name a v2 function in its text:
+  the comment of `stat_reset_gift_use` was reworded for that (the first spend test run failed on it).
+- **Proof** (copy 2, refreshed from live on 2026-10-23; M1a to M1c applied; run 2026-10-30):
+  - `test-combat-v2-progress-freeze.mjs` PASS all 27 (the block puts back the state before the file, so it passes before and after the apply).
+    T0: the v1 functions only get added lines; the guard accepts the old and the new text, and refuses another text. T1: the md5 of the 544 other
+    functions is the same; the flag is the same; the readers of `combat_v2_on` = before + the 3 v1 functions; only `reset_card_points_v2` and
+    `buy_shop_item` call the new function. Flag OFF: 17 v1 calls (spend, reset, Shop reset, pack, card; ok and refused) give the same answers and
+    the same writes before and after the file, for 2 players. Progress ON (everyone, or a tester): spend and reset answer `disabled` with 0
+    rows; the Shop reset is the v2 reset; pack and card still work; a non-tester gets the v1 answers. The routed Shop reset: the week, then a
+    `v2_` gift (never a v1 gift), then the price (Shards once: one ledger row, one purchase row), `not_enough` writes nothing.
+  - MUTATE=all: baseline PASS in the same run, **30 of 30** planted faults caught (`freeze`); `progress-spend` baseline PASS all 32, 47 of 47
+    (it holds the 11 new faults above); `progress-concurrency` baseline PASS all 6, 1 of 1. The first run of the freeze test failed: the md5 of
+    `buy_shop_item` in the guard was stale after a comment edit (T0 "its new md5"); the first spend run failed on the comment above.
+  - The goldens with CANDIDATE = this file, on copy 2 put back to the state before the file (the 5 md5 values = the old ones, checked): Hunt 183
+    fights, Dungeon 240 fights, boss counters 128 fights, **no difference** (flag OFF). The boss-counter `--old` run (a planted change) fails
+    as it must.
+  - The `comment_no_freeze` planted fault used the old comment delimiter after the comments moved to `$cm$` (the golden harness refuses `$c$` in a
+    candidate), so it changed nothing and the first MUTATE=all of the renumbered file reported 1 not caught. The pattern now uses `$cm$`: 30 of 30.
+  - `test-stat-points-r-stars-s1.mjs` applies the old `stat_reset_gift.sql`, whose guard needs the v1 functions of before M1d. The test now puts that
+    text back first (section 3 of this file minus the `-- M1d` lines) inside its rolled-back block: PASS all 35, MUTATE=all all caught.
+    `test-combat-v2-progress-tables.mjs` lists `buy_shop_item` as a named reader of `card_progress_v2` (it names the new reset): PASS all 19, 35 of 35.
+  - **Section number and the merge.** M1d was built as 20.14, then 20.15, because lane 3 (Lab Set 2) and R1 took the numbers first. Main now has
+    20.14 (Lab Set 2), 20.15 (R1 Gauntlet v2) and 20.16 (Set 2 engine parts), so M1d is 20.17. Main was merged into this branch (merge, no force
+    push). Conflicts kept both intents: the allowlists of `test-combat-v2-balance.mjs`, `test-combat-v2-t1.mjs` and `test-combat-v2-t1b.mjs` name the R1a
+    functions and the M1d functions; the generated pages were made again on copy 2 and not merged by hand.
+  - **The earlier copy 2 carried R1a before it was merged**: its 3 functions made 7 older allowlist tests fail with and without M1d (the same
+    messages on copy 2 put back to before M1d). That is gone: R1a and the Set 2 parts are on main, and the allowlists of those tests are on main.
+  - The final run on the merged branch (copy 2: main 5c4cfeca with all its migrations applied, M1a to M1c live, then this file): freeze test PASS all 27,
+    MUTATE=all baseline PASS and 30 of 30 caught; spend 32 (47 of 47), concurrency 6 (1 of 1), tables 19 (35 of 35), r-stars 35 (all caught). The goldens
+    on copy 2 put back to before M1d, with CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128 fights, no difference. The rehearsal applied the
+    file (grants OK); the suite then failed only the two generated-file tests (snapshot, superseded list), as expected. After `db/schema/`, `docs/data/` (the
+    tester id of the local copy masked in memory: live has none) and `SUPERSEDED.md` were made again in this PR: `test-all-local.mjs` **172 of 172 PASS**
+    (2 one-time skipped). The combat checks C1, C2, C3 and `combat-checks.test.mjs` (16) PASS. The first suite run of the unmerged branch had 12
+    failures (7 from R1a on copy 2, 5 from this file: the gift test, the tables test, the docs page, the snapshot, the superseded list), each fixed above.
+  - **Round 2 (REVIEW-r1 F1, `shop_today`), copy 2, 2026-10-30.** The new F1 case of the freeze test (progress ON for a tester and flag OFF, each
+    with one open v1 gift and one open `v2_` gift, the week used: `shop_today` = what `buy_shop_item('stat_reset')` then does) FAILED 2 of 4 on
+    the round 1 file (ON + v1 gift: "free", then 150 Shards paid; OFF + `v2_` gift: the same). With `shop_today` in the file: freeze test PASS
+    all 31 (the flag OFF series now also compares 3 `shop_today` reads before and after the file); MUTATE=all baseline PASS and **34 of 34**
+    caught (4 new: `today_free_any_gift`, `today_gift_any_gift`, `today_v1_rule`, `today_one_arg`). The 8 allowlist tests that list the readers of
+    `combat_v2_on` now name `shop_today`. `test-all-local.mjs` **172 of 172 PASS** (2 one-time skipped); r-stars MUTATE=all all caught. The goldens
+    on copy 2 put back to before M1d (the 6 md5 values = the old ones, checked), CANDIDATE = this file: Hunt 183, Dungeon 240, boss counters 128
+    fights, no difference; the boss-counter `--old` run fails as it must. `db/schema/`, `docs/data/` (tester id masked in memory) and
+    `SUPERSEDED.md` made again. C1, C2, C3 and `combat-checks.test.mjs` (16) PASS.
+- **Open for U0**: the Activity render of the routed Shop reset with progress ON (REVIEW-r1 F2, low). `src/shop-routes.js` passes the routed
+  answer through (`used`, `progress`, `stats`; no v1 `points`). How the Shop screen shows that answer is not traced. U0 owns the Activity
+  work, and the flag stays OFF until then.
+- **Go-live order**: after M1c (live). `rehearse-sql.mjs` on copy 1, then `apply-sql.mjs --live` (grants OK), then `check-schema-drift.mjs --live` = 0
+  differences, then `ops/deploy.sh` is NOT needed (SQL only: no Activity or bot code changes). The flag stays OFF; nothing changes in play until U0.

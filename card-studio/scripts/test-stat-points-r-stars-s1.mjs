@@ -29,6 +29,13 @@ const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${re
 
 const rd = (f) => readFileSync(fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)), 'utf8').replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '');
 let s1 = rd('stat_points_r_stars_s1.sql'), gift = rd('stat_reset_gift.sql');
+// M1d (combat_v2_progress_freeze_v1.sql) replaced 4 of the functions that the gift file checks. The state of the day of the gift file is the live text
+// of main before M1d: the 4 v1 functions of section 3 of that file minus its lines with the mark "-- M1d". The block puts it back first.
+const OLDV1 = (() => {
+  const m = rd('combat_v2_progress_freeze_v1.sql'), i = m.indexOf('CREATE OR REPLACE FUNCTION public.spend_stat_points'), j = m.indexOf('-- ============================================================ 4. server only');
+  if (i < 0 || j < i) throw new Error('section 3 of combat_v2_progress_freeze_v1.sql not found');
+  return m.slice(i, j).split('\n').filter((l) => !l.includes('-- M1d')).join('\n');
+})();
 const IR = '[1,2.6,3.93,5,6.07,7]';
 const MUT = {   // [file, old, new]
   vit_old: ['s1', '"vitality": 0.05', '"vitality": 0.06'],
@@ -72,7 +79,7 @@ if (process.env.MUTATE) {
   gift = gift.replace('if m not in (f.old_md5, f.new_md5) then', 'if false then').split("raise exception 'stat_reset_gift").join("raise notice 'stat_reset_gift");
   s1 = s1.split("raise exception 'stat_points_r_stars_s1").join("raise notice 'stat_points_r_stars_s1");
 }
-if ([s1, gift].some((x) => x.includes('$m$') || x.includes('$t$'))) throw new Error('the migrations must not contain $m$ or $t$');
+if ([s1, gift, OLDV1].some((x) => x.includes('$m$') || x.includes('$t$'))) throw new Error('the migrations must not contain $m$ or $t$');
 
 const body = String.raw`do $t$
 declare res jsonb := '[]'; r jsonb; cmb jsonb; ok boolean; bad text; i int; n int;
@@ -113,6 +120,7 @@ begin
   perform grant_shards('tst_g1', 1000, 'admin', 'test', 'stat gift test');
   update balance set value = value || '{"enabled": true}' where key = 'stat_points';
 
+  execute $m$${OLDV1}$m$;   -- M1d: the v1 functions as they were when the gift file was built
   execute $m$${s1}$m$;
   execute $m$${gift}$m$;
 

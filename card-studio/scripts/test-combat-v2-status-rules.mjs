@@ -310,7 +310,8 @@ begin
      and p.prosrc ~ '(combat_v2_status_(numbers|check|drop|remove|apply|cure|strip)|combat_v2_unit_path|combat_v2_units|combat_v2_up\(|combat_v2_damage|combat_v2_hit_apply|combat_v2_heal|combat_v2_step_end|combat_v2_turn_start|combat_v2_confused_target|combat_v2_next|combat_v2_fall|combat_v2_turn_order)';
   res := res || jsonb_build_object('case', 'no other function calls the new functions or the strip (no v1 caller)', 'ok', o = '[]'::jsonb, 'got', o);
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\(' and p.proname <> 'combat_v2_on'
-    and p.proname <> all (array['spend_card_points_v2', 'reset_card_points_v2']);   -- M1c combat_v2_progress_spend.sql: the v2 spend and reset are gated by the flag (progress)
+    and p.proname <> all (array['spend_card_points_v2', 'reset_card_points_v2'])   -- M1c combat_v2_progress_spend.sql: the v2 spend and reset are gated by the flag (progress)
+    and p.proname <> all (array['spend_stat_points', 'reset_stat_points', 'buy_shop_item', 'shop_today']);   -- M1d combat_v2_progress_freeze_v1.sql: the v1 spend and reset refuse, the Shop reset routes to v2 and shop_today shows its free reset, when progress is ON (2-argument form)
   res := res || jsonb_build_object('case', 'the flag combat_v2 has no reader but combat_v2_on (flag OFF changes nothing)', 'ok', o = '[]'::jsonb, 'got', o);
   select value into o from balance where key = 'combat_v2';
   res := res || jsonb_build_object('case', 'the flag combat_v2 is OFF for every capability', 'ok', (o - 'testers') = '{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}'::jsonb, 'got', o);   -- the tester list (combat_v2_testers.sql) is not a mode

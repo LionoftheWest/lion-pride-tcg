@@ -7,6 +7,7 @@
     "^card_progress_v2_view$",
     "^(spend|reset)_card_points_v2$",
     "^stat_reset_gift_use_v2$",
+    "^card_progress_v2_reset$",
     "^card_power_v2",
     "^card_max_hp$",
     "^fight_",
