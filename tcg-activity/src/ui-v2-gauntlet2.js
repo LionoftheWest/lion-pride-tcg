@@ -370,6 +370,10 @@ export async function wireFight(main, v, host, keep) {
   const key = roomKeyOf(v);
   if (S.key !== key) S = fresh(key);
   upd();
+  // the controls work at once: the listeners come before the 3D stage loads (round 4: under load a Finish Room tap came before them and was lost)
+  F.querySelector('.dg-auto')?.addEventListener('click', (e) => { e.stopPropagation(); H.setAuto(!H.dg.auto); e.currentTarget.classList.toggle('on', H.dg.auto); e.currentTarget.setAttribute('aria-pressed', String(!!H.dg.auto)); H.sfx('click'); autoNext(true); });
+  F.querySelector('.dg-finish')?.addEventListener('click', (e) => { e.stopPropagation(); finishRoom(); });
+  F.addEventListener('click', onTap);
   const canvas = F.querySelector('.dg-canvas');
   if (keep) canvas.replaceWith(keep);
   else {
@@ -389,9 +393,6 @@ export async function wireFight(main, v, host, keep) {
   wideRO?.disconnect(); wideRO = null;
   if (typeof ResizeObserver === 'function') { wideRO = new ResizeObserver(() => layout(F)); wideRO.observe(F); }
   requestAnimationFrame(() => place(main));
-  F.querySelector('.dg-auto')?.addEventListener('click', (e) => { e.stopPropagation(); H.setAuto(!H.dg.auto); e.currentTarget.classList.toggle('on', H.dg.auto); e.currentTarget.setAttribute('aria-pressed', String(!!H.dg.auto)); H.sfx('click'); autoNext(true); });
-  F.querySelector('.dg-finish')?.addEventListener('click', (e) => { e.stopPropagation(); finishRoom(); });
-  F.addEventListener('click', onTap);
   autoNext();
 }
 
