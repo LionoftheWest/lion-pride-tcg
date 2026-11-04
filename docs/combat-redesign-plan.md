@@ -2619,3 +2619,26 @@ writes 20.18.
   `steps_left` of the last step, `hp_changes`), `dungeon_v2_screen`; and `dungeon_v2_room`.
 - **Proof**: `card-studio/scripts/test-combat-v2-dungeon-run.mjs` (cases D1-D12, rolled back, `MUTATE=all`). The REPORT of item R2 has the runs.
   D4b (the unit `tags`) and D5b (the synergy at each fight room) need SYN on the copy: until then they print WAIT.
+
+### 20.19b R2-ON: the Dungeon in combat v2 for every member (`tcg-bot/supabase/combat_v2_on_dungeon.sql`)
+
+R2-ON is the member part of plan row 14.1 phase 7 "R2 Dungeon v2 ON" (pipeline item ON, SPEC v6.1 section 3.3). It is stacked on R2a and
+replaces 8 R2a functions and 4 v1 functions, each with an md5 guard. Nothing in play changes until the switch file sets `combat_v2.dungeon`
+true. The number 20.19b keeps the R2 parts together (20.20 is R3a).
+
+- **The mark** (INV-ON-1): `dungeon_v2_runs.live` = `combat_v2_on('dungeon')` at the start. Every reader reads the mark, never the flag. With
+  the flag off only a tester starts (a tester run: 0 loot, an extra run, as R2a). A live run that is open at a rollback plays to its end and pays.
+- **The loot of a live run** uses the v1 functions and keys: after each won fight room one `dungeon_after_kill` per foe on a v1 shim (the kill
+  Shards and card chance; at the guardian the floor Shards and pend -> bank); a treasure room is the v1 chest (`dungeon_enter`; the gamble rare
+  chest of `door.rare_tier`); the offers are the v1 pool with `shards` and `card`.
+- **The settle** (`dungeon_v2_settle`, once by `settled_at`): every end (fell, cleared, retreat, abandoned at the next start or by
+  `dungeon_settle_stale`). The v1 rule: the bank, and the pend only when cleared. `grant_shards` ref `run_v2` + id, `card_move` ref
+  `dungeon_v2_run` + id; the row gets `shards`, `cards`. A second settle grants nothing.
+- **One run a day across v1 and v2** (INV-ON-3): a live start counts the v1 daily runs and the live v2 runs of today under the player lock.
+  `dungeon_start` refuses `v2_on` while the flag is on, and `already` when a live v2 run of today exists (by row, also after a rollback).
+- **Board, prizes, task**: `dungeon_board` unions the v1 daily runs and the live v2 runs of the day, then keeps one row per player (the best);
+  `dungeon_pay('daily')` reads it. `dailies_tasks` counts a live v2 run of today for the `dungeon` task.
+- **The level** (N-7b): with `combat_v2_on('progress')`, `dungeon_v2_unit` uses the live level `least(v2_level.max_level,
+  v2_convert.level_per_star x the current stars)` and the points and bonus of the `card_progress_v2` row (no row: 0). M1e adds `v2_convert`.
+- **Proof**: `card-studio/scripts/test-combat-v2-on-dungeon.mjs` (cases DO1-DO10, rolled back, `MUTATE=all`). The REPORT of item ON (R2-ON) has
+  the runs. DO9 needs M1e on the copy for the real `v2_convert` key: until then it uses a stand-in key and prints WAIT.

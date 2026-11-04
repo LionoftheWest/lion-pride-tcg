@@ -22,6 +22,7 @@ assertLocal('test-combat-v2-on-dungeon.mjs');
 const read = (p) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'utf8').replace(/\r\n/g, '\n');
 let mig = process.env.MIG ? readFileSync(process.env.MIG, 'utf8').replace(/\r\n/g, '\n') : read('../../tcg-bot/supabase/combat_v2_on_dungeon.sql');
 mig = mig.replace(/notify pgrst[^\n]*\n/g, '');
+const ORIG = mig;   // the unmutated file (DO10 runs it twice: a mutated text is unknown to the guard, so its second run refuses by design)
 const SEEDS = Number(process.env.SEEDS || 30);
 
 // ---------------------------------------------------------------------------------------------------------- the mutations
@@ -73,13 +74,19 @@ const NAMED = `loot_for_testers count_v2_only kill_loot_missing floor_not_banked
   ledger_ref_v1 settle_grants_n_minus_1 start_abandon_no_settle stale_skips_v2 board_daily_only board_has_tester_run board_union_outside_dedup
   task_ignores_v2 task_counts_tester loot_reads_flag gate_reads_flag_only v1_start_ungated unit_ignores_progress unit_bonus_dropped guard_missing
   grant_anon`.split(/\s+/).filter(Boolean);
+// the case that each mutation must make FAIL: a mutation counts as caught only when a case of its own id fails and no block raised
+const EXPECT = { loot_for_testers: 'DO1', count_v2_only: 'DO2', kill_loot_missing: 'DO3', floor_not_banked: 'DO3', chest_literal: 'DO3',
+  offer_pool_tester: 'DO3', pend_kept_on_fell: 'DO4', settle_twice_grants: 'DO4', ledger_ref_v1: 'DO4', settle_grants_n_minus_1: 'DO4',
+  start_abandon_no_settle: 'DO5', stale_skips_v2: 'DO5', board_daily_only: 'DO6', board_has_tester_run: 'DO6', board_union_outside_dedup: 'DO6',
+  task_ignores_v2: 'DO7', task_counts_tester: 'DO7', loot_reads_flag: 'DO8', gate_reads_flag_only: 'DO8b', v1_start_ungated: 'DO8b',
+  unit_ignores_progress: 'DO9', unit_bonus_dropped: 'DO9', guard_missing: 'DO10', grant_anon: 'DO10' };
 // the mutations that only DO9 catches: WAIT while the copy has no M1e (v2_convert)
 const M1E_ONLY = ['unit_ignores_progress', 'unit_bonus_dropped'];
 const pairs = (m) => (Array.isArray(m[0]) ? m : [m]);
 
 if (process.env.MUTATE === 'all') {
   let ok = true;
-  const missing = NAMED.filter((n) => !MUT[n]);
+  const missing = NAMED.filter((n) => !MUT[n] || !EXPECT[n]);
   console.log(`named mutations of the spec 6.2 table: ${NAMED.length}; in MUT: ${NAMED.length - missing.length}; missing: ${missing.length ? missing.join(' ') : 'none'}`);
   if (missing.length) ok = false;
   const runOne = (name) => spawnSync(process.execPath, process.execArgv.concat([fileURLToPath(import.meta.url)]), { env: { ...process.env, MUTATE: name, LOCALDB_QUIET: '1' }, encoding: 'utf8', maxBuffer: 1 << 26 });
@@ -93,9 +100,12 @@ if (process.env.MUTATE === 'all') {
     const t0 = Date.now();
     const r = runOne(name);
     const line = (r.stdout || '').trim().split(/\r?\n/).pop() || '';
-    const caught = r.status !== 0 && /FAILED/.test(line);
-    const why = (r.stdout || '').split(/\r?\n/).find((l) => /^FAIL/.test(l)) || (r.stderr || '').trim().split(/\r?\n/).pop() || '';
-    let tag = caught ? 'caught (test FAILS)' : 'NOT CAUGHT';
+    const lines = (r.stdout || '').split(/\r?\n/);
+    const exp = new RegExp(`^FAIL ${EXPECT[name]} `);
+    const raised = lines.filter((l) => /^FAIL B\d: /.test(l));
+    const caught = r.status !== 0 && /FAILED/.test(line) && lines.some((l) => exp.test(l)) && raised.length === 0;
+    const why = lines.find((l) => exp.test(l)) || raised[0] || lines.find((l) => /^FAIL/.test(l)) || (r.stderr || '').trim().split(/\r?\n/).pop() || '';
+    let tag = caught ? `caught (${EXPECT[name]} FAILS)` : (raised.length ? 'NOT CAUGHT (a block raised)' : 'NOT CAUGHT');
     if (!caught && !m1eOn && M1E_ONLY.includes(name)) { tag = 'WAIT (M1e not on the copy)'; waits.push(name); }
     else if (!caught) ok = false;
     if (caught) ran.push(name);
@@ -236,12 +246,21 @@ begin
   end;
   ${add('DO10 GO7 the guard: a guarded function with an unknown text (dungeon_board changed) makes the file refuse with "changed since this file was built"',
     `msg like '%dungeon_board(date, integer) changed since this file was built%'`, 'to_jsonb(msg)')}
+  -- runs twice: the UNMUTATED file, in a rolled-back sub-block (a mutated text is unknown to the guard, so its second run refuses by design)
+  msg := null;
+  begin
+    execute $m$${ORIG}$m$;
+    select jsonb_object_agg(${SIG}, ${MD5}) into md5_a from pg_proc p where p.pronamespace = 'public'::regnamespace and ${SIG} = any(${arr([...NEWFN, ...REPL, ...V1])});
+    execute $m$${ORIG}$m$;
+    select jsonb_object_agg(${SIG}, ${MD5}) into md5_b from pg_proc p where p.pronamespace = 'public'::regnamespace and ${SIG} = any(${arr([...NEWFN, ...REPL, ...V1])});
+    raise exception 'r2on_twice:%', jsonb_build_object('a', md5_a, 'b', md5_b)::text;
+  exception when others then
+    if sqlerrm like 'r2on_twice:%' then x := substr(sqlerrm, 12)::jsonb; md5_a := x->'a'; md5_b := x->'b'; else msg := sqlerrm; md5_a := null; end if;
+  end;
+  ${add('DO10 the file (unmutated) runs a second time with no error, and every function that it makes or replaces keeps its md5 (14 functions)',
+    `md5_a = md5_b and (select count(*) from jsonb_object_keys(md5_a)) = ${NEWFN.length + REPL.length + V1.length}`, `jsonb_build_object('n', (select count(*) from jsonb_object_keys(md5_a)), 'err', msg)`)}
+  -- the grants and the comments: the (mutated) file, once
   execute $m$${mig}$m$;
-  select jsonb_object_agg(${SIG}, ${MD5}) into md5_a from pg_proc p where p.pronamespace = 'public'::regnamespace and ${SIG} = any(${arr([...NEWFN, ...REPL, ...V1])});
-  execute $m$${mig}$m$;
-  select jsonb_object_agg(${SIG}, ${MD5}) into md5_b from pg_proc p where p.pronamespace = 'public'::regnamespace and ${SIG} = any(${arr([...NEWFN, ...REPL, ...V1])});
-  ${add('DO10 the file runs a second time with no error, and every function that it makes or replaces keeps its md5 (14 functions)',
-    `md5_a = md5_b and (select count(*) from jsonb_object_keys(md5_a)) = ${NEWFN.length + REPL.length + V1.length}`, `jsonb_build_object('n', (select count(*) from jsonb_object_keys(md5_a)))`)}
   select coalesce(jsonb_agg(z), '[]'::jsonb) into o from unnest(${arr([...NEWFN, ...REPL, ...V1])}) z
    where has_function_privilege('anon', z::regprocedure, 'EXECUTE') or has_function_privilege('authenticated', z::regprocedure, 'EXECUTE')
       or not has_function_privilege('service_role', z::regprocedure, 'EXECUTE')
