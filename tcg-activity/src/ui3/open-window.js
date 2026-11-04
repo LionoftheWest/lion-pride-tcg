@@ -1,6 +1,6 @@
 // UI-33 the Open window (lion-pride-tcg-design UI-33/approved, review-3; D-80 to D-90). Only under body.ui-v3
 // (settings.ui_v3): main.js opens it from OPEN when the flag is on, and keeps today's chooser when it is off.
-// - Every pullable set from GET /api/sets: the set picture (a card of the set, D-86), the name, the code chip and
+// - Every pullable set from GET /api/sets: the set picture (the pack art, D-208, else a card of the set, D-86), the name, the code chip and
 //   owned / total. The set the member opened last is selected (D-85: the server's last_set; in this session, the
 //   set of the last open). "New" on the newest set when there are 2 or more sets (D-89: the server's is_new).
 // - The set list pages "1 / N" when the sets do not fit (D-90, D-36). The page size is the one number this module
@@ -47,9 +47,23 @@ export function fitSets({ n, width, height, minTile, tileH, gap, pagerH }) {
 /** The page (1-based) that shows the set at index i. */
 export const pageOf = (i, pageSize) => Math.floor(Math.max(0, i) / Math.max(1, pageSize)) + 1;
 
+/** D-208: the set tile picture = the set's pack art (card_sets.pack_art_url), else a card of the set (D-86), else
+ *  none (the tile shows the code slot). */
+export const setPicture = (s) => s?.pack_art_url || s?.cover_image_url || null;
+
+/** PACK-SET-B INV-B8: the window shows a set list for 60 s at most, so a set that became pullable shows without an
+ *  open or a restart. A list with no time is never fresh. */
+export const SETS_TTL_MS = 60000;
+export const cacheFresh = (at, now) => Number.isFinite(at) && at > 0 && now - at < SETS_TTL_MS;
+
+/** PACK-SET-B INV-B6: what an open error shows. set_required (2 or more sets, the open named none, e.g. a
+ *  notification "Open") opens the v3 window for a ui_v3 member; every other case keeps today's note. */
+export const openErrorAction = (error, uiV3) => (error === 'set_required' && uiV3 === true ? 'window' : 'note');
+
 // ---- The window ----
 let deps = null;           // { api, packs, onPick }
 let cache = null;          // the last GET /api/sets answer
+let cacheAt = null;        // when that answer came (cacheFresh)
 let sessionLast = null;    // the set of the last open in this session
 let state = null;          // { sets, selected, page, fit }
 let opener = null;
@@ -59,17 +73,18 @@ const px = (v) => parseFloat(v) || 0;
 
 /** Fetch the sets now (flag on, start-up), so OPEN shows them at once. */
 export function prefetchSets(api) {
-  return api('/api/sets').then((d) => { if (d && Array.isArray(d.sets)) cache = d; return cache; }).catch(() => cache);
+  return api('/api/sets').then((d) => { if (d && Array.isArray(d.sets)) { cache = d; cacheAt = Date.now(); } return cache; }).catch(() => cache);
 }
 /** The open used this set: select it next time (D-85), and refetch the owned counts. */
-export function noteOpened(setId) { if (setId) sessionLast = setId; cache = null; }
+export function noteOpened(setId) { if (setId) sessionLast = setId; cache = null; cacheAt = null; }
 export const isOpen = () => !!$('u3OpenHost');
 /** The set the member opens next (D-85): this session's last open, else the server's last_set. */
 export const knownLastSet = () => sessionLast || cache?.last_set || null;
 
 function setTile(s, selected) {
-  const cover = s.cover_image_url
-    ? `<img src="${esc(s.cover_image_url)}" alt="" loading="lazy" draggable="false">`
+  const pic = setPicture(s);
+  const cover = pic
+    ? `<img src="${esc(pic)}" alt="" loading="lazy" draggable="false">`
     : `<span class="u3-set__slot">${esc(s.code)}</span>`;
   const isNew = s.is_new ? `<span class="u3-chip u3-chip--sm u3-chip--new"><span aria-hidden="true">✦</span><span>New</span></span>` : '';
   return `<button type="button" class="u3-set${selected ? ' is-on' : ''}" role="radio" aria-checked="${selected}" data-set="${esc(s.id)}">`
@@ -201,9 +216,11 @@ function show(d) {
 function load() {
   const host = $('u3OpenHost');
   if (!host) return;
-  if (cache) { show(cache); return; }
+  if (cache && cacheFresh(cacheAt, Date.now())) { show(cache); return; }   // INV-B8: older than 60 s: fetch again
   host.innerHTML = frame(stateLoading({ count: 2 }));
-  prefetchSets(deps.api).then((d) => { if (isOpen()) show(d); });
+  // A failed fetch never shows the old list (r3 L4): the error state with Try again.
+  const at = cacheAt;
+  prefetchSets(deps.api).then((d) => { if (isOpen()) show(cacheAt !== at ? d : null); });
 }
 
 /** Open the window (OPEN with 1 pack or more). A second tap on OPEN closes it. */

@@ -44,7 +44,7 @@ import { initSettingsWindow, reduceEffects } from './ui3/settings.js';
 import { startAvatarFx } from './ui3/avatarfx.js';
 import { initLeaderboardWindow, openLeaderboardWindow } from './ui3/leaderboard.js';
 import { initEventsWindow } from './ui3/events.js';
-import { openOpenWindow, prefetchSets, knownLastSet } from './ui3/open-window.js';
+import { openOpenWindow, prefetchSets, knownLastSet, openErrorAction } from './ui3/open-window.js';
 import { bestLast, bestIndex, revealOrder, clipUrl, clipSource, clipBlob, packSet, releaseClips, fitCards, rarePacks, newMark, PACK_RATIO, PACK_GAP_MS, STACK_LAYERS, stackTimeline, stackDepth } from './ui3/pack-reveal.js';
 import { counter as u3Counter } from './ui3/components.js';
 import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
@@ -456,7 +456,7 @@ function startV2() {
   // 5+ packs: the chooser (x1 / x5 / x10); fewer: open one, as before.
   el('dockOpen').addEventListener('click', () => {
     // v3 (UI-33): the Open window, from 1 pack (D-87): the set, then the count. It opens the packs from that set.
-    if (uiV3) { if (packsAvailable >= 1) openOpenWindow({ api, packs: () => packsAvailable, onPick: (n, set) => openPacks(n, set) }); return; }
+    if (uiV3) { if (packsAvailable >= 1) openOpenWindow(openWindowDeps); return; }
     if (packsAvailable >= 5) openChooser(openDeps(), packsAvailable, (n) => openPacks(n));
     else openPacks(1);
   });
@@ -750,6 +750,8 @@ const openDeps = () => ({
   el, esc, SFX, RARITY_LABEL, cardBack: () => cardBack, openViewer,
   onClose: () => { if (uiV3) { releaseClips(); multiRun = null; } sendViewStatus(currentView); releaseFeed(); refreshOwned(); refreshPackStatus(); show(currentView); },
 });
+// The Open window deps (UI-33): the dock OPEN and the set_required fallback of openPacks use this one object.
+const openWindowDeps = { api, packs: () => packsAvailable, onPick: (n, set) => openPacks(n, set) };
 async function openPacks(count, set) {
   const n = [1, 5, 10].includes(count) ? count : 1; // a click handler passes an event
   // The set of the v3 Open window (UI-33). The v2 callers pass none: the request stays { instanceId, count }.
@@ -759,7 +761,9 @@ async function openPacks(count, set) {
   try {
     sendStatus('opening');
     const data = await apiPost('/api/open', s ? { instanceId, count: n, set: s } : { instanceId, count: n });
-    if (data.error) note('Could not open right now.');
+    // PACK-SET-B INV-B6: 2 or more sets and no set named (a notification "Open"): a v3 member chooses in the Open window.
+    if (data.error && openErrorAction(data.error, uiV3) === 'window') openOpenWindow(openWindowDeps);
+    else if (data.error) note('Could not open right now.');
     else if (!data.cards || !data.cards.length)
       note('No unopened packs. Post in the server to earn one — 25 messages gets a bonus pack. Resets at midnight MT.');
     else {

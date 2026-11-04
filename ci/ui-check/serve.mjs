@@ -18,6 +18,7 @@
 //                    some Leaderboard rows wear holo:S2 / holo:S1 / holo, and the gallery lists the Origins and Double Team frames (derived below)
 //   ci_data=long     every member name becomes a 32-character name and every count a 9-digit number (12.6)
 //   ci_events=on|four|one|two|five|hunt|system|empty|error   the player Events page (UI-62) and the Home Events slides (UI-05): the flag on, and /api/events answers fixture events (derived below)
+//   ci_open=sets     /api/sets answers 2 pullable sets: S1 and S2 Double Team (new, with its pack art) (PACK-SET-B, UI-33)
 //   ci_report=on     /api/flags answers reports: true (the Feedback window, UI-40); the send stays blocked (403), so a send shows the error state
 //   ci_data=long    every member name becomes a 32-character name and every count a 9-digit number (12.6)
 //   ci_finish=idle|ok|pass|404|off   /api/flags answers finish: true (the Finish Room flag, default OFF in production) for every value but off; the value then picks the answer of   POST /api/dungeon/finish (Finish Room, UI-47, UI-52): ok = 30 rounds, pass = 30 no-action rounds, 404 = the old server (finish_unavailable)
@@ -550,6 +551,11 @@ DERIVED.push({ when: (p, c, body) => p === '/api/flags' && c.ci_report === 'on' 
 // sets (id, name: the "<set name> Set Complete" achievement). The recorded /api/sets says that every card is in the one set S1 (cards = the whole catalog).
 DERIVED.push({ when: (p, c, body) => p === '/api/catalog' && Array.isArray(body?.cards) && !body.sets, make: (body) => ({
   ...body, cards: body.cards.map((x) => ({ set_id: 'S1', ...x })), sets: (FIX.routes['/api/sets']?.body?.sets || []).map((s) => ({ id: s.id, name: s.name, ...(s.id === 'S1' ? { reward: { packs: 5, title: 'Origins Champion', frame: 'holo' } } : {}) })) }) });   // D-191: the server sends each set's reward (balance achievement_rewards)
+// PACK-SET-B (cookie ci_open=sets): the Open window with 2 pullable sets. The recorded /api/sets has S1 only; S2 = Double Team (the
+// pack color of SET_ROWS), "New" (D-89), none of its cards owned, and its pack art (D-208: every /api/img path answers the stub PNG).
+DERIVED.push({ when: (p, c, body) => p === '/api/sets' && c.ci_open === 'sets' && Array.isArray(body?.sets), make: (body) => ({ ...body, sets: [...body.sets, {
+  id: 'S2', name: 'Double Team', code: 'TEAM', season: 2, released_at: '2026-11-06T19:00:00+00:00', is_new: true, cards: 211, owned: 0,
+  cover_card_id: null, cover_image_url: null, pack_color: '#3366cc', pack_art_url: '/api/img/storage/v1/object/public/card-art/sets/S2-pack-art-v1.png?v=1' }] }) });
 const cookies = (req) => Object.fromEntries((req.headers.cookie || '').split(';').map((c) => c.trim().split('=')).filter((x) => x[0]));
 const send = (res, status, body, type = 'application/json') => { res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' }); res.end(body); };
 
