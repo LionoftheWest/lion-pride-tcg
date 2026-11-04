@@ -694,13 +694,18 @@ const B5 = block(String.raw`
 
 // ---------------------------------------------------------------------------------------------------------- B6: D10 (helpers), D12 (view), INV-2
 const B6 = block(String.raw`
-  -- D10 a Hunt fight state (mode hunt, one boss), every card Shielded (so a boss hit can change only the shield)
+  -- D10 a Hunt fight state (mode hunt, one boss), every card Shielded (so a boss hit can change only the shield).
+  -- The seeds come BEFORE the state is built (the start meters, the first step): the state is the same in every run, so the last
+  -- hp_changes condition (a shield-only change) always has its input. Without them, a run whose boss hits all broke the capped shield
+  -- had no shield-only change and failed (1 of 4 runs on 2026-11-04).
+  perform setseed(0.21);
   a := dungeon_v2_start(${T(18)}, sq);
   s := (a->'state'->'fight') || jsonb_build_object('mode', 'hunt', 'clock', 0, 'round', 0, 'ext', '{}'::jsonb,
          'enemies', jsonb_build_array(combat_v2_hunt_boss('Heroic', null, '{}'::jsonb, b) || '{"meter": 0}'::jsonb));
   for t in select jsonb_object_keys(s->'cards') loop
     s := combat_v2_status_apply(s, jsonb_build_object('side', 'card', 'id', t::numeric), 'shielded', '{"value": 99999}'::jsonb, b)->'state';
   end loop;
+  perform setseed(0.22);
   r := combat_v2_step(s, null, b);
   hs := r->'state';
   update balance set value = jsonb_set(value, '{round_cap}', '30') where key = 'v2_dungeon';
