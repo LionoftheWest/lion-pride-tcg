@@ -83,6 +83,8 @@ let tick = null;
 const LAST = 'lp.adventure.tab';
 dg.mode = localStorage.getItem(LAST) === 'gauntlet' ? 'gauntlet' : 'daily';
 const GA = () => dg.mode === 'gauntlet';
+// R3b / ON-UI: the Hunt v2 fight (testers: practice; flag ON: every member) uses the UI-52 fight of this module in the Hunt view.
+const HU = () => dg.mode === 'hunt_v2';
 const API = () => (GA() ? '/api/gauntlet' : '/api/dungeon');
 // Switch the mode (the Dungeon tab or the Gauntlet tab): a new mode loads its own data.
 function setMode(m) {
@@ -158,18 +160,61 @@ async function load() {
 // read a v1-shaped run with no loot; the fight is the v2 view (ui-v2-gauntlet2.js).
 const G2_API = '/api/gauntlet/v2';
 const D2_API = '/api/dungeon/v2';   // R2b: the Dungeon test mode (dungeon-v2-routes.js)
-const V2_BASE = () => (GA() ? G2_API : D2_API);
+const H2_API = '/api/hunt/v2';   // R3b: the Hunt v2 routes (hunt-v2-routes.js)
+const V2_BASE = () => (HU() ? H2_API : GA() ? G2_API : D2_API);
 const V2_GET = () => (GA() ? G2_API : `${D2_API}/view`);
 function v2Take(v) { dg.v2 = v; dg.data = { ...dg.data, run: g2.v1RunOf(v), rooms: v.rooms || dg.data.rooms }; }
 const g2Host = () => ({
-  dg, base: V2_BASE(), stats: GA() ? null : statsHTML, esc, fmt, thumb, elIcon, plateName, cardTile, bolt: I.bolt, trophy: I.trophy, up: I.up, hand: I.hand, timer: I.timer,
-  progressHTML, musicBtnHTML, finishHTML, finishButton, autoDisabled, waitMs, AUTO_ROUNDS, fitFight: fitFightV3, placeArena, openInfo, toast,
+  dg, base: V2_BASE(), stats: HU() ? huntStatsHTML : GA() ? null : statsHTML, esc, fmt, thumb, elIcon, plateName, cardTile, bolt: I.bolt, trophy: I.trophy, up: I.up, hand: I.hand, timer: I.timer,
+  progressHTML: HU() ? huntProgHTML : progressHTML, musicBtnHTML, finishHTML: HU() ? () => '' : finishHTML, finishButton, autoDisabled, waitMs, AUTO_ROUNDS, fitFight: fitFightV3, placeArena, openInfo, toast,
   // the v1 fight effects for the v2 replay (Nathan 2026-11-04: "the old animations we had need to be there"): the card element, the monster voices, the move sounds
   elementOf: (id) => cardElement(mine().get(Number(id))?.tags) || 'physical', voice: (f, kind, peak) => mvoice(f, kind, peak), snd: (k, peak) => snd(k, peak), moveSnd: (k) => MOVE_SND[k] || null,
-  apiPost: (p, b) => ctx().apiPost(p, b), sfx: (k) => ctx().sfx?.(k), currentView: () => ctx().currentView(),
-  setAuto: (on) => { dg.auto = !!on; localStorage.setItem(AUTO, on ? '1' : ''); }, setView: (v) => v2Take(v),
-  reload: async () => { await load(); if (ctx().currentView() === 'dungeon') paint(); },
+  apiPost: (p, b) => ctx().apiPost(p, b), sfx: (k) => ctx().sfx?.(k),
+  // the Hunt fight lives in the Hunt view ('battling'): the fight loop treats that view as its own
+  currentView: () => (HU() ? (ctx().currentView() === 'battling' && dg.mode === 'hunt_v2' ? 'dungeon' : 'other') : ctx().currentView()),
+  setAuto: (on) => { dg.auto = !!on; localStorage.setItem(AUTO, on ? '1' : ''); }, setView: (v) => (HU() ? huntTake(v) : v2Take(v)),
+  reload: async () => { if (HU()) { await huntReload(); return; } await load(); if (ctx().currentView() === 'dungeon') paint(); },
 });
+
+// ---- R3b / ON-UI: the Hunt v2 fight (UI-18 on the approved UI-52 view) -------------------------------------------------------
+// The answer of /api/hunt/v2/* (hunt-v2-routes.js asRun): run.state.fight / info / squad, label, cards, ref; ON-UI (R3-ON, to confirm against
+// the SQL): live (the flag), hunt.live_frac (the shared boss HP left, 0..1), day.credited (the member's credited damage), hunt.name.
+// Test mode (live false): the label "Practice (v2 test): no rewards". Member mode (live true): the shared boss bar and "your damage".
+export const huntLive = (v) => v?.live === true && v?.day?.live !== false;
+function huntTake(v) { dg.v2 = v; dg.data = { ok: true, gate: { ok: true }, rooms: [], run: g2.v1RunOf(v) }; }
+let huntBack = null;
+async function huntReload() {
+  let v = null;
+  try { v = await ctx().api(`${H2_API}/view`); } catch { v = null; }
+  if (v?.ok && v.run) { huntTake(v); if (ctx().currentView() === 'battling') paint(); } else { dg.mode = 'daily'; huntBack?.(); }
+}
+/** main.js: the Hunt v2 answer takes the Hunt view (a practice or a live day of today). back(): the v1 Hunt view again. */
+export function showHuntV2(v, back) {
+  dg.mode = 'hunt_v2'; huntBack = back || null; dg.view = 'main';
+  huntTake(v); paint();
+}
+export const huntV2Active = () => HU();
+export function leaveHuntV2() { if (HU()) { g2.disposeFight(); dg.stage?.dispose(); dg.stage = null; dg.roomKey = ''; dg.mode = 'daily'; } }
+function huntProgHTML() {
+  const v = dg.v2 || {}; const h = v.hunt || {};
+  const name = h.name || v.boss?.name || 'The Hunt';
+  if (!huntLive(v)) return `<div class="dg-prog"><div class="dg-fl"><span>Hunt</span><b>${esc(name)}</b></div></div>`;
+  const pct = Math.max(0, Math.min(100, Math.round(100 * (Number(h.live_frac) || 0))));
+  return `<div class="dg-prog"><div class="dg-fl"><span>Hunt</span><b>${esc(name)}</b></div><div class="u3-hs-hp" role="img" aria-label="Boss ${pct}% HP"><i style="--hp:${pct}%"></i><span>${pct}% HP</span></div></div>`;
+}
+function huntStatsHTML() {
+  const v = dg.v2 || {};
+  if (!huntLive(v)) return `<div class="dg-stats"><span><b>${esc(v.label || 'Practice (v2 test): no rewards')}</b></span></div>`;   // the test label (mark false)
+  return `<div class="dg-stats"><span class="bank">${I.up}<b>${fmt(Number(v.day?.credited) || 0)}</b><i>your damage</i></span></div>`;
+}
+function huntOverHTML() {
+  const v = dg.v2 || {}; const live = huntLive(v);
+  const end = { won: 'The boss is down.', boss_down: 'The boss is down.', hunt_over: 'The Hunt ended.', fell: 'Your squad is down.' }[v.run?.ended_by] || 'Your fight of today is over.';
+  return `<section class="u3-dg-panel u3-dg-over"><span class="u3-label">${icon3('swords')}${live ? 'Hunt' : esc(v.label || 'Practice (v2 test): no rewards')}</span>`
+    + `<h2 class="u3-dg-h">${esc(end)}</h2>`
+    + (live ? `<p class="u3-dg-p">Your damage: <b>${fmt(Number(v.day?.credited) || 0)}</b></p>` : '')
+    + `<p class="u3-dg-p">Come back tomorrow.</p>${btn3({ label: 'Back to the Hunt', variant: 'primary', data: { h2back: '1' } })}</section>`;
+}
 // The member's cards (the Dungeon), or the week's squad (the Gauntlet: the same base cards for everyone).
 const cardsOf = () => dg.data?.mine || (Array.isArray(dg.data?.squad) ? dg.data.squad : []);
 const mine = () => new Map(cardsOf().map((c) => [Number(c.id), c]));
@@ -236,7 +281,8 @@ function paint() {
   if (!fight && dg.stage) { dg.stage.dispose(); dg.stage = null; dg.roomKey = ''; }
   dg.chest?.dispose(); dg.chest = null;   // the chest canvas is rebuilt with the screen
   let body;
-  if (d.closed) body = `<div class="dg-closed"><b>${esc(d.message)}</b></div>`;
+  if (HU()) body = fight ? g2.fightHTML(dg.v2, g2Host()) : huntOverHTML();
+  else if (d.closed) body = `<div class="dg-closed"><b>${esc(d.message)}</b></div>`;
   else if (!d.gate?.ok) body = gateHTML(d.gate || {}, GA() ? 'the Gauntlet' : 'the Dungeon');
   else if (dg.view === 'board') body = boardHTML();
   else if (fight) body = dg.v2 ? g2.fightHTML(dg.v2, g2Host()) : fightHTML();
@@ -248,7 +294,8 @@ function paint() {
   // Item 19: the music follows the room (silent until Nathan picks the tracks: dungeon-music.js).
   setMood(fight ? (['guardian', 'miniboss'].includes(d.run.state.room_type) ? 'boss' : 'fight') : active() ? 'explore' : null);
   main.querySelectorAll('[data-music]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); toggleMute(); paintMusicBtn(b); }));
-  advTabs(GA() ? 'gauntlet' : 'dungeon'); // the Adventure tabs: the same place as on the Hunt view (Nathan item 2)
+  advTabs(HU() ? 'hunt' : GA() ? 'gauntlet' : 'dungeon'); // the Adventure tabs: the same place as on the Hunt view (Nathan item 2)
+  if (HU()) { if (fight) g2.wireFight(main, dg.v2, g2Host(), keep); else main.querySelector('[data-h2back]')?.addEventListener('click', () => { dg.mode = 'daily'; huntBack?.(true); }); return; }
   main.querySelectorAll('.card-info').forEach((b) => b.addEventListener('click', (e) => { if (fight) return; e.stopPropagation(); const id = Number(b.closest('.dg-card')?.dataset.id); if (id) openInfo(id); }));
   wireGate(main);
   if (dg.view === 'board') wireBoard(main);

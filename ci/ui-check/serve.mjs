@@ -268,6 +268,25 @@ function derivedM2(kind) {
   return v;
 }
 DERIVED.push({ when: (p, c) => p === '/api/dungeon/v2/view' && M2_KINDS.includes(c.ci_dungeon), make: (body, c) => derivedM2(c.ci_dungeon) });
+// R3b + ON-UI: GET /api/hunt/v2/view answers 403 not_tester (the recorded default: the v1 Hunt). Cookie ci_hunt = h2-<state> (a tester,
+// the practice: live false) or m2h-<state> (the flag ON, a member who is not a tester: live true). lobby: no day, can_start (the button);
+// fight: an active day (the R1e fight answer of fixtures/g2-fight.json in the asRun shape of hunt-v2-routes.js); over: the day ended.
+// The member fields (ON SPEC 3.4/3.5, to confirm against the R3-ON SQL): hunt.live_frac (0.62), day.credited (1,840), live.
+const H2_KINDS = ['h2-lobby', 'h2-fight', 'h2-over', 'm2h-lobby', 'm2h-fight', 'm2h-over'];
+function derivedH2(kind) {
+  const live = kind.startsWith('m2h'); const st = kind.split('-')[1];
+  const name = FIX.routes['/api/hunt']?.body?.hunt?.name || 'The boss';
+  const base = { ok: true, tester: !live, live, label: 'Practice (v2 test): no rewards', hunt: { name, ...(live ? { live_frac: 0.62 } : {}) } };
+  if (st === 'lobby') return { ...base, can_start: true, day: null };
+  const v = derivedG2(st === 'over' ? 'g2-over' : 'g2-fight');
+  delete v.active_mode; delete v.run.mode;
+  const over = st === 'over';
+  Object.assign(v.run, { status: over ? 'over' : 'active', ended_by: over ? 'fell' : null });
+  v.run.state = { ...v.run.state, engine: 2, phase: over ? 'over' : 'fight' };
+  return { ...v, ...base, can_start: false, mode: 'hunt_v2', fight: v.run.state.fight, status: v.run.status,
+    day: { status: v.run.status, ended_by: v.run.ended_by, squad: v.run.state.squad, ...(live ? { live: true, credited: 1840 } : {}) } };
+}
+DERIVED.push({ when: (p, c) => p === '/api/hunt/v2/view' && H2_KINDS.includes(c.ci_hunt), make: (body, c) => derivedH2(c.ci_hunt) });
 // UI-50: the run over (a fall on floor 3, room 2) with 4 found cards: the names of the approved frames.
 function derivedOver(body) {
   const base = derivedDungeon(body);
