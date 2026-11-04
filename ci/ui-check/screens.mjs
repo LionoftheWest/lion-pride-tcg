@@ -242,6 +242,8 @@ export const SCREENS = {
   'dungeon-m2-lobby': { id: 'UI-46', long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-lobby', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-m2-done': { id: 'UI-46', long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-done', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-m2-fight': { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-fight', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
+  // D-211: 5 attackers and no support (the control row in its own row where the side column is too narrow for the hint).
+  'dungeon-m2-five': { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-five', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
   'dungeon-m2-choose': { id: 'UI-48', long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-choose', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-m2-over': { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-m2-v1': { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-v1', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },

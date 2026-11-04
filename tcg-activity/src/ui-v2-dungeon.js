@@ -31,6 +31,8 @@ const icon3 = (name, size = 'md') => ui3Icon(name, { size });
 const segmented3 = (items, label) => ui3Segmented(items, { label });
 const esc = (s) => ctx().esc(s ?? '');
 const fmt = (n) => Number(n || 0).toLocaleString();
+// G-168: on compact classes a number of 10,000 or more uses the compact form (ON-UI: the live loot chips and the Hunt damage)
+const fmtN = (n) => fmtFor(Number(n || 0), document.body.dataset.size);
 const RL = (r) => ctx().RARITY_LABEL?.[r] || String(r || '').replace(/_/g, ' ');
 const svg = (d, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const I = {
@@ -205,7 +207,7 @@ function huntProgHTML() {
 function huntStatsHTML() {
   const v = dg.v2 || {};
   if (!huntLive(v)) return `<div class="dg-stats"><span><b>${esc(v.label || 'Practice (v2 test): no rewards')}</b></span></div>`;   // the test label (mark false)
-  return `<div class="dg-stats"><span class="bank">${I.up}<b>${fmt(Number(v.day?.credited) || 0)}</b><i>your damage</i></span></div>`;
+  return `<div class="dg-stats"><span class="bank">${I.up}<b>${fmtN(Number(v.day?.credited) || 0)}</b><i>your damage</i></span></div>`;
 }
 // The member's cards (the Dungeon), or the week's squad (the Gauntlet: the same base cards for everyone).
 const cardsOf = () => dg.data?.mine || (Array.isArray(dg.data?.squad) ? dg.data.squad : []);
@@ -797,7 +799,7 @@ function statsHTML() {
   }
   const pend = st.pend || {}, bank = st.bank || {};
   const pc = (pend.cards || []).length, bc = (bank.cards || []).length;
-  return `<div class="dg-stats"><span class="risk" title="This floor's loot: lost if the squad falls. The floor guardian banks it.">${COIN}<b>${fmt(pend.shards)}${pc ? ` +${pc}${I.cards}` : ''}</b><i>at risk</i></span><span class="bank" title="Banked loot: safe. Yours when the run ends.">${I.lock}<b>${fmt(bank.shards)}${bc ? ` +${bc}${I.cards}` : ''}</b><i>banked</i></span><span${dg.v2 ? ' class="g2-empty" aria-hidden="true"' : ''} title="The run damage bonus">${I.up}<b>+${buff}%</b><i>damage</i></span></div>`;   // R2b N3: the v2 damage place stays empty
+  return `<div class="dg-stats"><span class="risk" title="This floor's loot: lost if the squad falls. The floor guardian banks it.">${COIN}<b>${fmtN(pend.shards)}${pc ? ` +${pc}${I.cards}` : ''}</b><i>at risk</i></span><span class="bank" title="Banked loot: safe. Yours when the run ends.">${I.lock}<b>${fmtN(bank.shards)}${bc ? ` +${bc}${I.cards}` : ''}</b><i>banked</i></span><span${dg.v2 ? ' class="g2-empty" aria-hidden="true"' : ''} title="The run damage bonus">${I.up}<b>+${buff}%</b><i>damage</i></span></div>`;   // R2b N3: the v2 damage place stays empty
 }
 // A weakness / resistance as an icon: an element icon, or a short word (melee, beast ...).
 const traitIcon = (v) => {

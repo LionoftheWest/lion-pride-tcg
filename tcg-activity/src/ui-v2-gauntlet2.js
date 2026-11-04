@@ -9,6 +9,7 @@
 import { icon as ui3Icon } from './ui3/icons.js';
 import { TOKENS } from './tokens.js';
 import { fmtFull, fmtCompact } from './ui3/number.js';
+import { breakName } from './ui3/suggest.js';   // a name never breaks mid-word (D-08): break points at camelCase, _ . -
 
 // ---- The static tables (UI-67): status key -> Lucide icon, the family colors, role key -> Lucide icon ----
 export const STATUS_ICON = {
@@ -359,7 +360,7 @@ export function fightHTML(v, H) {
       <span class="g2-hprow"><span class="dg-hp"><i></i></span><span class="g2-pipbox"></span></span><small class="dg-hpn"></small>${roleHTML(c)}</div>`;
   const sup = (c) => `<button class="dg-sup g2-sup" data-sup="${c.id}" type="button">
       ${c.image_url ? `<img src="${H.thumb(c.image_url)}" alt="">` : '<span></span>'}
-      <span class="t"><b>${roleHTML(c, true)}${esc(c.name)}</b><small>${esc(c.activeName)}</small></span>
+      <span class="t"><b>${roleHTML(c, true)}${breakName(c.name)}</b><small>${esc(c.activeName)}</small></span>
       <span class="g2-suprole">${roleHTML(c)}</span><span class="card-info g2-mag" data-info="${c.id}" aria-label="Details">${ic('search')}</span>
       <span class="g2-stline"><em></em><span class="g2-shp"><span class="g2-shpl"></span><span class="dg-hp"><i></i></span><small></small></span></span></button>`;
   return `<div class="dg-fight g2" data-room="${esc(`${m.floor}-${m.room}`)}">
@@ -739,10 +740,26 @@ function place(main = document.getElementById('main')) {
 }
 // D-206: on the wide classes the control row goes beside the cards (Music and the hint at the left, Finish Room and Auto at the right), and
 // its grid row goes to the stage (CSS: .g2-side). D-205: on 375 px phones (is-narrow) the supports join the squad row as small cards.
+// D-211: the side column is too narrow when the hint (or the left part) is wider or taller than its box (G3 pokeOut / spill).
+function ctlTooNarrow(F) {
+  const L = F.querySelector('.dg-ctl .g2-l'), hint = L?.querySelector('.dg-hint');
+  if (!L || !hint) return false;
+  return L.scrollWidth > L.clientWidth + 1 || hint.scrollWidth > hint.clientWidth + 1 || hint.scrollHeight > hint.clientHeight + 1;
+}
+function ctlToRow(F, ctl, units) {
+  const parts = ['.dg-music', '.dg-hint', '.dg-finish', '.dg-auto'].map((q) => F.querySelector(q)).filter((x) => x && (x.closest('.dg-ctl') === ctl));
+  ctl.replaceChildren(...parts);
+  F.insertBefore(ctl, units);
+  F.classList.add('g2-ctl-row'); F.classList.remove('g2-side');
+  F.style.gridTemplateAreas = ''; F.style.gridTemplateRows = '';
+  layout(F);
+}
 function layout(F) {
   if (!F?.isConnected) return;
   const units = F.querySelector('.dg-units'), ctl = F.querySelector('.dg-ctl');
-  const wide = ['medium', 'expanded'].includes(document.body.dataset.size || '') && !F.classList.contains('is-stack');
+  // D-211 (Nathan 2026-11-04): when the column beside the cards is too narrow for the hint (5 attackers and no support at 1280x720), the
+  // control row stays in its own row, as on phones (g2-ctl-row, kept for this fight); otherwise D-206.
+  const wide = ['medium', 'expanded'].includes(document.body.dataset.size || '') && !F.classList.contains('is-stack') && !F.classList.contains('g2-ctl-row');
   F.classList.toggle('g2-side', wide);
   if (wide && ctl && units && ctl.parentNode !== units) {
     const L = document.createElement('div'); L.className = 'g2-l';
@@ -767,6 +784,7 @@ function layout(F) {
     const cards = [...units.querySelectorAll('.dg-unit')].map((x) => x.getBoundingClientRect());
     if (cards.length) F.style.setProperty('--g2-cards', `${Math.max(...cards.map((q) => q.right)) - Math.min(...cards.map((q) => q.left))}px`);
   }
+  if (wide && ctl && units && ctlTooNarrow(F)) { ctlToRow(F, ctl, units); return; }
   // a wide support tile (the text column 200 px or more, review-5): the HP row sits on the state line
   F.querySelectorAll('.dg-sup.g2-sup').forEach((b) => { const t = b.querySelector('.t'); b.classList.toggle('g2-row', !!t && t.getBoundingClientRect().width >= 200); });
   const narrow = F.classList.contains('is-narrow');
