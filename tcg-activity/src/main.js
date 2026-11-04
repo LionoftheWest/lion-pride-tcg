@@ -1381,8 +1381,10 @@ async function loadHuntV2() {
   try { const v = await api('/api/hunt/v2/view'); huntV2 = v?.ok ? v : null; } catch { huntV2 = null; }
   return huntV2;
 }
-let huntV2Closed = false;   // the member closed the over screen of today
-const huntV2Owns = (v) => !!(v?.ok && v.run && (v.run.status === 'active' ? !!v.fight : v.run.status === 'over' && !huntV2Closed));
+const huntV2Owns = (v) => !!(v?.ok && v.run && v.run.status === 'active' && v.fight);
+// The v2 day of today is over: the Hunt view shows the approved "squad down" state (UI-17 ko, the UI-19 hunt-down path) with the v2 squad;
+// the member's damage is in the approved "Your hunt · Damage" tile (live: day.credited, to confirm against the R3-ON SQL).
+const huntV2Over = (v) => !!(v?.ok && (v.run?.status === 'over' || v.day?.status === 'over'));
 const huntV2CanStart = (v) => !!(v?.ok && (v.tester === true || v.live === true) && v.can_start === true);
 async function startHuntV2(btn) {
   if (btn.disabled) return;
@@ -1391,11 +1393,11 @@ async function startHuntV2(btn) {
   let r = null;
   try { r = await apiPost('/api/hunt/v2/start', ids.length ? { cards: ids } : {}); } catch (e) { r = e?.body || null; }
   if (!r?.ok) { btn.disabled = false; btn.removeAttribute('aria-busy'); toast(r?.message || 'The fight did not start.'); return; }
-  SFX?.play?.('reveal'); huntV2 = r; huntV2Closed = false; paintHuntV2();
+  SFX?.play?.('reveal'); huntV2 = r; paintHuntV2();
 }
 function paintHuntV2() {
   disposeBoss();
-  showHuntV2(huntV2, (closed) => { if (closed) huntV2Closed = true; paintHuntView(huntCache); });
+  showHuntV2(huntV2, () => { renderHunt(); });
 }
 
 // Render the whole battle view from a data object (boss + phase + boss canvas + feed).
@@ -1438,7 +1440,9 @@ function paintHuntView(d) {
     return;
   }
   // R3b / ON-UI: a v2 fight of today (practice or live) takes the Hunt view; a repaint of the poll keeps the fight that is on screen
-  if (huntV2Owns(huntV2)) { if (!(huntV2Active() && el('main').querySelector('.dg-fight, .u3-dg-over'))) paintHuntV2(); return; }
+  if (huntV2Owns(huntV2)) { if (!(huntV2Active() && el('main').querySelector('.dg-fight'))) paintHuntV2(); return; }
+  const v2over = huntV2Over(huntV2);
+  if (v2over && huntLive(huntV2)) d = { ...d, myDamage: Number(huntV2.day?.credited) || 0 };
   huntState = d;
   huntDay = utcToday(); // remember the day so the ticker can detect the daily reset
   // The squad locked on the server (hunt_squads.sql) is the truth; this device's copy is the fallback.
@@ -1473,6 +1477,7 @@ function paintHuntView(d) {
     squad.phase = 'select'; squad.ko = false; squad.locked = false; squad.page = 0;
     squad.sel = new Set((d.roster || []).filter((c) => c.used).map((c) => c.id));
   }
+  if (v2over) { squad.phase = 'select'; squad.ko = true; squad.locked = false; squad.page = 0; squad.sel = new Set((huntV2.day?.squad || []).map(Number)); }
   el('main').innerHTML = huntHTML(d); // no "Battling" head — more room for the picker/arena
   wireHunt();
   mountBossFor(d.hunt); // spawn the live creature into the boss canvas (squad box or arena)

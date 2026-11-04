@@ -248,10 +248,10 @@ export const SCREENS = {
   // R3b + ON-UI: the Hunt v2 (UI-18 on the approved UI-52 view): cookie ci_hunt = h2-* (a tester: practice) or m2h-* (flag ON: every member;
   // the shared boss bar hunt.live_frac and "your damage" day.credited; no Practice text). serve.mjs derivedH2.
   'hunt-v2-lobby':  { id: 'UI-17', long: true, notOn: ['tiny'], hunt: 'h2-lobby', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
-  'hunt-v2-fight':  { id: 'UI-18', long: true, safe: true, notOn: ['tiny'], hunt: 'h2-fight', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 12]] },
+  'hunt-v2-fight':  { id: 'UI-18', long: true, safe: true, notOn: ['tiny'], hunt: 'h2-fight', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 25]] },
   'hunt-v2-over':   { id: 'UI-18', long: true, safe: true, notOn: ['tiny'], hunt: 'h2-over', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
   'hunt-m2-lobby':  { id: 'UI-17', long: true, notOn: ['tiny'], hunt: 'm2h-lobby', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
-  'hunt-m2-fight':  { id: 'UI-18', long: true, safe: true, notOn: ['tiny'], hunt: 'm2h-fight', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 12]] },
+  'hunt-m2-fight':  { id: 'UI-18', long: true, safe: true, notOn: ['tiny'], hunt: 'm2h-fight', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 25]] },
   'hunt-m2-over':   { id: 'UI-18', long: true, safe: true, notOn: ['tiny'], hunt: 'm2h-over', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
   'dungeon-v2-over': { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-over':        { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },

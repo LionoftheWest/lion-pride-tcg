@@ -8,21 +8,25 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { createAttackFX } from './attack-fx.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { MODEL_BASE, MODEL_BOSSES } from './boss-models.js';
 
 const BASE = '/dungeon/monsters/';
 const CLIPS = {
-  idle: ['Idle', 'Flying_Idle'],
-  attack: ['Attack', 'Punch', 'Bite_Front', 'Headbutt', 'Weapon'],
-  hit: ['HitReact', 'HitRecieve'],
-  death: ['Death'],
+  idle: ['Idle', 'Flying_Idle', 'idle'],
+  attack: ['Attack', 'Punch', 'Bite_Front', 'Headbutt', 'Weapon', 'strike'],
+  hit: ['HitReact', 'HitRecieve', 'hit'],
+  death: ['Death', 'death'],
 };
 const ELEMENT = { fire: 0xff6a3d, water: 0x3da5ff, lightning: 0xffd23d, earth: 0xb08850, nature: 0x5fd06a, ice: 0x9fe6ff, shadow: 0xa070ff, light: 0xfff2b0 };
 const TARGET = 0xff3b55;
 const cache = new Map();
-const loader = new GLTFLoader();
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);   // the Hunt boss models (*-z2.glb) are meshopt files
 const load = (model) => {
   if (!cache.has(model)) {
-    const p = new Promise((ok, no) => loader.load(BASE + model + '.glb', ok, undefined, no));
+    // R3b / ON-UI: a Hunt boss is "boss:<key>" (boss-models.js, the same file as the Hunt view); a monster is a file name here
+    const url = String(model).startsWith('boss:') ? `${MODEL_BASE}/${MODEL_BOSSES[String(model).slice(5)]?.file}` : BASE + model + '.glb';
+    const p = new Promise((ok, no) => loader.load(url, ok, undefined, no));
     cache.set(model, p);
     p.catch(() => { if (cache.get(model) === p) cache.delete(model); });   // a failed load is tried again on the next use (never kept as a permanent empty slot)
   }

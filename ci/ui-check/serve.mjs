@@ -273,6 +273,20 @@ DERIVED.push({ when: (p, c) => p === '/api/dungeon/v2/view' && M2_KINDS.includes
 // fight: an active day (the R1e fight answer of fixtures/g2-fight.json in the asRun shape of hunt-v2-routes.js); over: the day ended.
 // The member fields (ON SPEC 3.4/3.5, to confirm against the R3-ON SQL): hunt.live_frac (0.62), day.credited (1,840), live.
 const H2_KINDS = ['h2-lobby', 'h2-fight', 'h2-over', 'm2h-lobby', 'm2h-fight', 'm2h-over'];
+// A Hunt fight has ONE target: the live boss (R3 SPEC 3.5). The fixture keeps the recorded squad and turns the 5-monster horde into the
+// boss of the recorded /api/hunt (its name, its model key from boss-models.js: "boss:<key>", the Hunt view's own file).
+const H2_MODEL = { 'the ban-wave demon': 'demon' };
+function oneBoss(v, name) {
+  const F = v.run.state.fight;
+  const e = F.enemies[0];
+  Object.assign(e, { hp: 1284, max: 2070, down: false, status: { exposed: { value: 0.15, until: 8, stacks: 2 } }, mechanics: [], monster: 'boss',
+    show: { name, model: `boss:${H2_MODEL[name.toLowerCase()] || 'demon'}`, element: null, level: 3, kind: 'boss' } });
+  F.enemies = [e];
+  v.targets = [0];
+  v.order = v.order.filter((o) => o.side === 'card' || o.id === 0);
+  for (const k of Object.keys(v.status_lines)) if (/^enemy:[1-9]/.test(k)) delete v.status_lines[k];
+  return v;
+}
 function derivedH2(kind) {
   const live = kind.startsWith('m2h'); const st = kind.split('-')[1];
   const name = FIX.routes['/api/hunt']?.body?.hunt?.name || 'The boss';
@@ -280,11 +294,14 @@ function derivedH2(kind) {
   if (st === 'lobby') return { ...base, can_start: true, day: null };
   const v = derivedG2(st === 'over' ? 'g2-over' : 'g2-fight');
   delete v.active_mode; delete v.run.mode;
+  if (v.run?.state?.fight?.enemies?.length) oneBoss(v, name);
   const over = st === 'over';
   Object.assign(v.run, { status: over ? 'over' : 'active', ended_by: over ? 'fell' : null });
   v.run.state = { ...v.run.state, engine: 2, phase: over ? 'over' : 'fight' };
+  // over: the day's squad = 5 cards of the recorded roster (the member owns them; the bridge rows mark them down, R3-ON)
+  const roster = (FIX.routes['/api/hunt']?.body?.roster || []).slice(0, 5).map((c) => Number(c.id));
   return { ...v, ...base, can_start: false, mode: 'hunt_v2', fight: v.run.state.fight, status: v.run.status,
-    day: { status: v.run.status, ended_by: v.run.ended_by, squad: v.run.state.squad, ...(live ? { live: true, credited: 1840 } : {}) } };
+    day: { status: v.run.status, ended_by: v.run.ended_by, squad: over ? roster : v.run.state.squad, ...(live ? { live: true, credited: 1840 } : {}) } };
 }
 DERIVED.push({ when: (p, c) => p === '/api/hunt/v2/view' && H2_KINDS.includes(c.ci_hunt), make: (body, c) => derivedH2(c.ci_hunt) });
 // UI-50: the run over (a fall on floor 3, room 2) with 4 found cards: the names of the approved frames.
@@ -736,6 +753,10 @@ createServer((req, res) => {
   if (p === '/' || p === '/index.html') return send(res, 200, index, 'text/html');
   if (p === '/ui3.css') return send(res, 200, ui3Css(PUB), 'text/css');   // joined as server.js does (read on each request)
   if (/^\/(main|chunk)\..*\.js$/.test(p)) return send(res, 200, readFileSync(join(BUNDLE, p.slice(1))), 'text/javascript');
+  // The Hunt boss models (boss-models.js MODEL_BASE): served from .out/models/<file> when a builder put the file there (a local preview);
+  // CI has none: 404, and the fight stage keeps the plate without a model (dungeon-stage.js load() allows a failed load).
+  const bm = p.match(/^\/api\/img\/storage\/v1\/object\/public\/card-art\/boss\/models\/([a-z0-9-]+\.glb)$/);
+  if (bm) { const f = join(here, '.out', 'models', bm[1]); if (existsSync(f)) return send(res, 200, readFileSync(f), 'model/gltf-binary'); return send(res, 404, '{}'); }
   if (/^\/(api\/img|cimg|api\/avatar)\//.test(p) || /^\/cdn\//.test(p)) return send(res, 200, PNG, 'image/png');
   // The pull feed stream: open and quiet, as in production with no new pulls (a closed stream makes the client poll).
   if (p === '/api/pulls/stream') { res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' }); res.write(': ui-check\n\n'); const k = cookies(req); if (k.ci_home) res.write(`data: ${JSON.stringify(k.ci_data === 'long' ? longData(derivedPulls()) : derivedPulls())}\n\n`); return undefined; }

@@ -186,7 +186,7 @@ let huntBack = null;
 async function huntReload() {
   let v = null;
   try { v = await ctx().api(`${H2_API}/view`); } catch { v = null; }
-  if (v?.ok && v.run) { huntTake(v); if (ctx().currentView() === 'battling') paint(); } else { dg.mode = 'daily'; huntBack?.(); }
+  if (v?.ok && v.run && v.run.status === 'active') { huntTake(v); if (ctx().currentView() === 'battling') paint(); } else { dg.mode = 'daily'; huntBack?.(); }
 }
 /** main.js: the Hunt v2 answer takes the Hunt view (a practice or a live day of today). back(): the v1 Hunt view again. */
 export function showHuntV2(v, back) {
@@ -206,14 +206,6 @@ function huntStatsHTML() {
   const v = dg.v2 || {};
   if (!huntLive(v)) return `<div class="dg-stats"><span><b>${esc(v.label || 'Practice (v2 test): no rewards')}</b></span></div>`;   // the test label (mark false)
   return `<div class="dg-stats"><span class="bank">${I.up}<b>${fmt(Number(v.day?.credited) || 0)}</b><i>your damage</i></span></div>`;
-}
-function huntOverHTML() {
-  const v = dg.v2 || {}; const live = huntLive(v);
-  const end = { won: 'The boss is down.', boss_down: 'The boss is down.', hunt_over: 'The Hunt ended.', fell: 'Your squad is down.' }[v.run?.ended_by] || 'Your fight of today is over.';
-  return `<section class="u3-dg-panel u3-dg-over"><span class="u3-label">${icon3('swords')}${live ? 'Hunt' : esc(v.label || 'Practice (v2 test): no rewards')}</span>`
-    + `<h2 class="u3-dg-h">${esc(end)}</h2>`
-    + (live ? `<p class="u3-dg-p">Your damage: <b>${fmt(Number(v.day?.credited) || 0)}</b></p>` : '')
-    + `<p class="u3-dg-p">Come back tomorrow.</p>${btn3({ label: 'Back to the Hunt', variant: 'primary', data: { h2back: '1' } })}</section>`;
 }
 // The member's cards (the Dungeon), or the week's squad (the Gauntlet: the same base cards for everyone).
 const cardsOf = () => dg.data?.mine || (Array.isArray(dg.data?.squad) ? dg.data.squad : []);
@@ -281,7 +273,8 @@ function paint() {
   if (!fight && dg.stage) { dg.stage.dispose(); dg.stage = null; dg.roomKey = ''; }
   dg.chest?.dispose(); dg.chest = null;   // the chest canvas is rebuilt with the screen
   let body;
-  if (HU()) body = fight ? g2.fightHTML(dg.v2, g2Host()) : huntOverHTML();
+  if (HU() && !fight) { dg.mode = 'daily'; huntBack?.(); return; }   // the day ended: the Hunt view (approved squad-down state)
+  if (HU()) body = g2.fightHTML(dg.v2, g2Host());
   else if (d.closed) body = `<div class="dg-closed"><b>${esc(d.message)}</b></div>`;
   else if (!d.gate?.ok) body = gateHTML(d.gate || {}, GA() ? 'the Gauntlet' : 'the Dungeon');
   else if (dg.view === 'board') body = boardHTML();
@@ -295,7 +288,7 @@ function paint() {
   setMood(fight ? (['guardian', 'miniboss'].includes(d.run.state.room_type) ? 'boss' : 'fight') : active() ? 'explore' : null);
   main.querySelectorAll('[data-music]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); toggleMute(); paintMusicBtn(b); }));
   advTabs(HU() ? 'hunt' : GA() ? 'gauntlet' : 'dungeon'); // the Adventure tabs: the same place as on the Hunt view (Nathan item 2)
-  if (HU()) { if (fight) g2.wireFight(main, dg.v2, g2Host(), keep); else main.querySelector('[data-h2back]')?.addEventListener('click', () => { dg.mode = 'daily'; huntBack?.(true); }); return; }
+  if (HU()) { g2.wireFight(main, dg.v2, g2Host(), keep); return; }
   main.querySelectorAll('.card-info').forEach((b) => b.addEventListener('click', (e) => { if (fight) return; e.stopPropagation(); const id = Number(b.closest('.dg-card')?.dataset.id); if (id) openInfo(id); }));
   wireGate(main);
   if (dg.view === 'board') wireBoard(main);
