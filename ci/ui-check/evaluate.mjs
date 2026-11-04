@@ -70,6 +70,7 @@ export function defectsOf(r, expanded) {
     if (!Array.isArray(r.walk)) add('not-checked', 'walkthrough', 'the walkthrough check returned nothing');
     for (const [rule, where, value] of r.walk || []) { if (rule === 'missing') add('not-checked', where, value); else add(rule, where, value); }
   }
+  for (const [w, why] of r.see || []) add('missing', w, why);   // UI-43 N-10: a 'see' selector of screens.mjs is absent or outside the view
   for (const [w, why] of r.extra?.iconNoName || []) add('icon-name', w, why);
   for (const [w, ratio, need] of r.extra?.contrast || []) add('contrast', w, `${ratio} < ${need}`);
   if (r.keyboard?.focused && r.keyboard.inputInView === false) add('keyboard', 'focused text box', `keyboard ${r.keyboard.height}px`);

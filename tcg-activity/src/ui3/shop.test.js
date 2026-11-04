@@ -82,3 +82,24 @@ test('D-80 23 / D-29: one Buy control per card (the price pill), no owned badge,
   assert.match(b[2].items[0], /disabled/, 'a bought card cannot be bought again');
   assert.match(b[2].items[0], /Bought/);
 });
+
+test('UI-43 N-10: stat_reset_paused keeps the Stat reset tab selectable, disables the reset button and shows the line, on every layout', async () => {
+  const { shopHTML, resetPanel, RESET_PAUSED } = await import('./shop.js');
+  assert.equal(RESET_PAUSED, 'Stat reset returns with the v2 stats screen.');
+  const d = (paused) => ({ stock: [], pack_price: 250, stat_reset_price: 500, free_reset: true, stat_reset_paused: paused });
+  for (const size of ['compact', 'medium', 'expanded']) {
+    for (const tab of ['stock', 'reset']) {
+      const on = shopHTML({ d: d(true), tab, qty: 1, size, left: '1h', coin: '', day: 'Mon' });
+      const off = shopHTML({ d: d(false), tab, qty: 1, size, left: '1h', coin: '', day: 'Mon' });
+      if (size !== 'expanded') {
+        assert.match(on, /data-tab="reset"(?![^>]*disabled)/, `${size}: the Stat reset tab stays selectable`);
+      }
+      assert.ok(on.includes(RESET_PAUSED), `${size}/${tab}: the line is in the page`);
+      assert.match(on, /data-choose disabled aria-disabled="true"/, `${size}/${tab}: the reset button is disabled`);
+      assert.ok(!off.includes(RESET_PAUSED), `${size}/${tab}: not paused = no line`);
+      assert.doesNotMatch(off, /data-choose disabled/, `${size}/${tab}: not paused = the button works`);
+    }
+  }
+  const panel = resetPanel(d(true), '', 'Mon');
+  assert.ok(panel.indexOf(RESET_PAUSED) < panel.indexOf('data-choose'), 'the line is above the button (visible when the button shows)');
+});

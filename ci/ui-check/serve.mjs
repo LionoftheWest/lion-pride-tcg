@@ -10,6 +10,7 @@
 //   ci_dungeon=rest|path|chest|floor   the room steps and Floor cleared (UI-49)
 //   ci_dungeon=fight|fight2|fight-2s3|fight-1s4   a Dungeon fight with 5 or 2 monsters (UI-47); ci_dungeon=over the run over (UI-50)
 //   ci_fx=hist|day|member   the Boons tab (UI-27): my play history, the day limit used up, a member at the pair cap
+//   ci_shop=paused   /api/shop answers stat_reset_paused true (UI-43 N-10)
 //   ci_trades=few   /api/trades answers 2 incoming and 3 sent offers, /api/trade/partners answers one partner (UI-25: Pending, few partners)
 //   ci_notes=many   /api/notifications answers 45 notes (UI-24, D-144)
 //   ci_home=busy|live   Home (UI-03): pulls from the catalog (/api/pulls) and a presence list (run.mjs sends it on the room socket);
@@ -50,6 +51,8 @@ export const misses = new Set();
 // entry for each state, registered next to its own helper below: { when: (p, c, body) => bool, make: (body, c) => newBody }.
 // p = the path, c = the cookies, body = the recorded body. Every entry whose `when` is true runs, in table order.
 const DERIVED = [];
+// UI-43 N-10: the Shop with the stat reset paused (cookie ci_shop=paused): shop_today.stat_reset_paused true (combat v2 progress ON).
+DERIVED.push({ when: (p, c, body) => p === '/api/shop' && c.ci_shop === 'paused' && body?.ok, make: (body) => ({ ...body, stat_reset_paused: true }) });
 
 // UI-48: a Dungeon run in the "Choose a reward" step. The offers cover the kinds the approved frames show
 // (an Uncommon card, 10 Shards, a Shield). The squad is the first cards of the recorded collection.
