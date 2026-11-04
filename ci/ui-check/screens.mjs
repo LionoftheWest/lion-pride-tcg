@@ -278,6 +278,9 @@ export const SCREENS = {
   // line_unreachable, reset_tab_live). Expanded has no tab row (the reset panel is in the right column): the tap falls back to a wait.
   'shop-reset-paused':   { id: 'UI-43', long: true, safe: true, shop: 'paused', notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-tab="reset"]', [['wait', 0]]], ['wait', 0.5]],
     see: ['.u3-spanel--reset .u3-msg--error', '.u3-spanel--reset [data-choose]:disabled'] },
+  // The same in the v2 Shop file (ui-v2-shop.js, members without ui_v3: cookie ci_v3=off). Portrait has tabs; landscape a side nav; desktop shows all.
+  'shop-reset-paused-v2': { id: 'UI-43', long: true, safe: true, shop: 'paused', v3: 'off', notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-tab="reset"]', [['wait', 0]]], ['wait', 0.5]],
+    see: ['.sh-reset .sh-err', '.sh-reset .sh-choose:disabled'] },
   'shop-confirm':        { id: 'UI-43', safe: true, notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-buy]:not([disabled])']] },
   // Convert extra copies (UI-44): the window over the card detail (UI-08); minus = one copy less; error = the refused write (no fixture for POST).
   'convert':             { id: 'UI-44', under: 'UI-08', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'collection'], ['js', '#main .u3-ctile:not(.is-locked)'], ['wait', 2.5], ['js', '#pConvert'], ['wait', 1]] },

@@ -93,6 +93,7 @@ async function runCell([s, screen, variant], ref = {}) {
         if (spec.ach) cookies.push({ name: 'ci_ach', value: spec.ach, url: BASE });
         if (spec.frames) cookies.push({ name: 'ci_frames', value: spec.frames, url: BASE });   // UI-13 D-191: the set holo frames (sets)
         if (spec.shop) cookies.push({ name: 'ci_shop', value: spec.shop, url: BASE });   // UI-43 N-10: the paused stat reset (serve.mjs)
+        if (spec.v3) cookies.push({ name: 'ci_v3', value: spec.v3, url: BASE });   // UI-43 N-10: off = the v2 screens (serve.mjs)
         if (spec.stats) cookies.push({ name: 'ci_stats', value: spec.stats, url: BASE });
         if (spec.loader) {   // UI-56: the sign-in never answers (loading, timeout) or fails (error); the hint says "v3 member" (the loader cannot read the flag)
           cookies.push({ name: 'ci_loader', value: spec.loader === 'error' ? 'error' : 'wait', url: BASE });
