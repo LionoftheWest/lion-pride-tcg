@@ -148,6 +148,7 @@ const NEW_FNS = ['balance_shape_errors', 'balance_v2_spec', 'balance_check_comba
   'dungeon_v2_unit', 'dungeon_v2_needs_ally', 'dungeon_v2_info', 'dungeon_v2_hp', 'dungeon_v2_play', 'dungeon_v2_amounts', 'dungeon_v2_screen', 'dungeon_v2_fight',
   'dungeon_v2_after', 'dungeon_v2_room', 'dungeon_v2_pick', 'dungeon_v2_rooms', 'dungeon_v2_out', 'dungeon_v2_end', 'dungeon_v2_start', 'dungeon_v2_turns', 'dungeon_v2_act',
   'dungeon_v2_auto', 'dungeon_v2_choose', 'dungeon_v2_retreat', 'dungeon_v2_view',   // R2a combat_v2_dungeon_run.sql: the v2 Dungeon run of testers (combat_v2_on dungeon, the engine keys); no v1 function calls them
+  'dungeon_start', 'dailies_tasks', 'dungeon_v2_settle', 'dungeon_v2_loot',   // R2-ON combat_v2_on_dungeon.sql: dungeon_start refuses v2_on (combat_v2_on dungeon); the dailies_tasks comment names the file; the settle and loot of a live run
   'balance_check'];   // combat_v2_testers.sql: the generic balance trigger names combat_v2 only to let a tester id go (it reads no mode)
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 
