@@ -1,6 +1,6 @@
 import './localdb-guard.mjs';
 /**
- * Acceptance test for tcg-bot/supabase/combat_v2_dungeon_run.sql (combat v2 step R2a: the v2 Dungeon run for testers; plan 20.18 R2,
+ * Acceptance test for tcg-bot/supabase/combat_v2_dungeon_run.sql (combat v2 step R2a: the v2 Dungeon run for testers; plan 20.19 R2,
  * pipeline item R2 SPEC v3, gate G1, cases D1-D12). NO lasting change: every request is one DO block, undone by its final RAISE.
  * Each block first drops the R2 objects (the dungeon_v2_ functions and the table dungeon_v2_runs), then runs the file, so the test passes
  * before and after the file is applied. Nothing is printed about a real member (the test members are made in the block).
@@ -25,6 +25,12 @@ const FIGHTS = Number(process.env.FIGHTS || 20);
 // ---------------------------------------------------------------------------------------------------------- the mutations
 const END13 = '-- ============================================================ 13. server only';
 const SYN_CALL = '  s := combat_v2_synergy(s, b);\n';
+// the player lookup of dungeon_v2_turns, dungeon_v2_choose and dungeon_v2_retreat (the same text 3 times: each mutation adds its next line)
+const LOOK = "  select * into r from dungeon_v2_runs where player_id = p_player and day = dungeon_day() and status = 'active' for update;\n";
+const LOOK_ANY = "  select * into r from dungeon_v2_runs where day = dungeon_day() and status = 'active' for update;\n";
+const NOT_FOUND = "  if not found then return jsonb_build_object('ok', false, 'error', 'no_run'); end if;\n";
+const FIGHT_CHECK = "  if r.state->>'phase' is distinct from 'fight' then return jsonb_build_object('ok', false, 'error', 'not_fighting'); end if;";
+const BETWEEN_CHECK = "  if r.state->>'phase' is distinct from 'floor_done' then return jsonb_build_object('ok', false, 'error', 'not_between_floors'); end if;\n";
 const MUT = {
   // D1
   tester_ignored: ["  if not combat_v2_on('dungeon', p_player) then return jsonb_build_object('ok', false, 'error', 'not_tester'); end if;\n", ''],
@@ -89,6 +95,18 @@ const MUT = {
   can_start_ignores_active: ["'can_start', v_tester and not v_active and v_left > 0)", "'can_start', v_tester and v_left > 0)"],
   act_rechecks_tester: ["  if r.state->>'phase' is distinct from 'fight' then return jsonb_build_object('ok', false, 'error', 'not_fighting'); end if;\n  if p_auto",
     "  if not combat_v2_on('dungeon', p_player) then return jsonb_build_object('ok', false, 'error', 'no_run'); end if;\n  if r.state->>'phase' is distinct from 'fight' then return jsonb_build_object('ok', false, 'error', 'not_fighting'); end if;\n  if p_auto"],
+  // review r1 (round 2): M-1 the player of the call (D13), M-2 one active run and already (D14), L-1 (D15), L-2 (D16), X4 (D4)
+  act_any_player: [LOOK + NOT_FOUND + FIGHT_CHECK, LOOK_ANY + NOT_FOUND + FIGHT_CHECK],
+  choose_any_player: [LOOK + NOT_FOUND + '  st := r.state;', LOOK_ANY + NOT_FOUND + '  st := r.state;'],
+  retreat_any_player: [LOOK + NOT_FOUND + BETWEEN_CHECK, LOOK_ANY + NOT_FOUND + BETWEEN_CHECK],
+  no_active_check: ["  if v_active > 0 or v_runs >= game_var('dungeon_runs_per_day') then return jsonb_build_object('ok', false, 'error', 'already'); end if;",
+    "  if v_runs >= game_var('dungeon_runs_per_day') then return jsonb_build_object('ok', false, 'error', 'already'); end if;"],
+  stale_today: ["status = 'active' and day < v_day;", "status = 'active' and day <= v_day;"],
+  retreat_any_phase: [BETWEEN_CHECK, ''],
+  view_runs_any_day: ['- (select count(*) from dungeon_v2_runs where player_id = p_player and day = v_day)::int);', '- (select count(*) from dungeon_v2_runs where player_id = p_player)::int);'],
+  syn_guard_missing: [/-- GUARD \(review r1 L-3\)[\s\S]*?end \$sg\$;\n/, ''],
+  v1_double_write: ['  insert into dungeon_v2_runs (player_id, day, squad, state, attempt) values (p_player, v_day, p_cards, st, v_last + 1) returning id into v_id;',
+    '  insert into dungeon_v2_runs (player_id, day, squad, state, attempt) values (p_player, v_day, p_cards, st, v_last + 1) returning id into v_id;\n  insert into dungeon_runs (player_id, day, squad, state, attempt) values (p_player, v_day, p_cards, st, v_last + 1);'],
 };
 // every mutation that the spec G1 table names (SPEC v3; review r3 L-1: synergy_twice and synergy_before_carry are replaced by
 // synergy_before_units and synergy_standing_only, which change syn)
@@ -96,7 +114,9 @@ const NAMED = `tester_ignored flag_on v1_touched budget_literal rule_budget_igno
   stars_zero meter_zero run_in_dungeon_runs tags_dropped door_list_gauntlet treasure_loot gamble_always_pass no_synergy synergy_before_units
   synergy_standing_only loot_offer_kept buff_all_cards reset_zero auto_one_less hp_reset charge_reset act_not_caught v2_loot writes_actions
   count_shared play_reads_table hp_changes_one_way steps_from_dungeon_cap grant_authenticated table_grant_anon comment_missing view_counts_daily
-  can_start_ignores_active`.split(/\s+/).filter(Boolean);
+  can_start_ignores_active
+  act_any_player choose_any_player retreat_any_player no_active_check stale_today retreat_any_phase view_runs_any_day v1_double_write syn_guard_missing`.split(/\s+/).filter(Boolean);
+// (the last line: the mutations of review r1, round 2: M-1 X1 X2 + the retreat variant, M-2 X3 X5, L-1 X6, L-2 X10, X4 as the D4 row mutation)
 // the mutations that only the SYN cases can catch (D4b, D5b): WAIT while the copy has no SYN
 const SYN_ONLY = ['tags_dropped', 'no_synergy', 'synergy_before_units', 'synergy_standing_only'];
 const pairs = (m) => (Array.isArray(m[0]) ? m : [m]);
@@ -475,7 +495,8 @@ const B3 = block(String.raw`
     `x->'ans'->'state'->'room_type'`)}
   -- D5b SYN: the synergy of the squad at each fight room start
   if syn_on then
-    ${wait('D5b SYN: syn of every card at the start of 3 fight rooms = combat_v2_synergy of that state (the case is built when SYN is on the copy)')}
+    -- review r1 M-3: fail closed. SYN is on the database but D5b is not written yet (it is written at the SYN rebase): a FAIL, not a WAIT
+    ${add('D5b SYN is on the database, but the D5b case is not written yet (review r1 M-3: the gate fails closed until D5b is built at the SYN rebase)', 'false')}
   else
     ${wait('D5b SYN: syn of every card at the start of 3 fight rooms = combat_v2_synergy of that state')}
   end if;
@@ -790,6 +811,93 @@ const B6 = block(String.raw`
   ${add('D4 INV-2 a tester removed during a run plays it on (auto ok, D4); a new start is refused with not_tester', `(a->>'ok')::boolean and (y->>'ok')::boolean and a2->>'error' = 'not_tester'`, `jsonb_build_object('auto', y->'error', 'start', a2)`)}
 `, 'hs jsonb; sc jsonb; lg jsonb; c1 jsonb; c2 jsonb; r2 jsonb;');
 
+// ---------------------------------------------------------------------------------------------------------- B7: review r1 round 2
+// D13 (M-1) the player of the call, D14 (M-2) one active run and already, D15 (L-1) not_between_floors, D16 (L-2) a run of an earlier day
+const B7 = block(String.raw`
+  -- a call in a rolled-back sub-block: did it change the row of A, and is the row of B byte-identical?
+  create function pg_temp.iso(q text, pa text, pb text) returns jsonb language plpgsql as $x$
+  declare a0 jsonb; b0 jsonb; a1 jsonb; b1 jsonb; ans jsonb; out jsonb;
+  begin
+    begin
+      select to_jsonb(r) into a0 from dungeon_v2_runs r where r.player_id = pa and r.day = dungeon_day();
+      select to_jsonb(r) into b0 from dungeon_v2_runs r where r.player_id = pb and r.day = dungeon_day();
+      execute 'select (' || q || ')::jsonb' into ans;
+      select to_jsonb(r) into a1 from dungeon_v2_runs r where r.player_id = pa and r.day = dungeon_day();
+      select to_jsonb(r) into b1 from dungeon_v2_runs r where r.player_id = pb and r.day = dungeon_day();
+      out := jsonb_build_object('ok', ans->'ok', 'err', ans->'error', 'detail', ans->'detail', 'run', ans->'run', 'a_id', a0->'id',
+        'a_changed', a0 is distinct from a1, 'b_same', b0 = b1 and b0 is not null);
+      raise exception 'r2a_rollback';
+    exception when others then
+      if sqlerrm <> 'r2a_rollback' then out := jsonb_build_object('raised', sqlerrm); end if;
+    end;
+    return out;
+  end $x$;
+  -- D13: B starts FIRST (the lower id: a lookup with no player filter finds B), then A; both are in a fight
+  a2 := dungeon_v2_start(${T(1)}, sq);
+  a := dungeon_v2_start(${T(2)}, sq);
+  ok := (a->>'ok')::boolean and (a2->>'ok')::boolean and (pg_temp.vrow(${T(1)})).state->>'phase' = 'fight' and (pg_temp.vrow(${T(2)})).state->>'phase' = 'fight';
+  x := pg_temp.iso(format('dungeon_v2_act(%L, %L::jsonb)', ${T(2)}, pg_temp.autoc((pg_temp.vrow(${T(2)})).state->'fight')), ${T(2)}, ${T(1)});
+  y := pg_temp.iso(format('dungeon_v2_auto(%L, 3)', ${T(2)}), ${T(2)}, ${T(1)});
+  ${add('D13 M-1 two testers with an active run each: dungeon_v2_act and dungeon_v2_auto for A change A\'s row only (ok, the answer run = A, B\'s row byte-identical)',
+    `ok and (x->>'ok')::boolean and (x->>'a_changed')::boolean and (x->>'b_same')::boolean and x->'run' = x->'a_id'
+     and (y->>'ok')::boolean and (y->>'a_changed')::boolean and (y->>'b_same')::boolean and y->'run' = y->'a_id'`, `jsonb_build_object('act', x, 'auto', y, 'pre', ok)`)}
+  -- between floors: both rows at floor_done (no fight), then choose (the next floor) and retreat for A
+  update dungeon_v2_runs set state = (state - 'fight' - 'turn') || jsonb_build_object('phase', 'floor_done', 'offers', '[]'::jsonb) where player_id in (${T(1)}, ${T(2)});
+  x := pg_temp.iso(format('dungeon_v2_choose(%L, 0)', ${T(2)}), ${T(2)}, ${T(1)});
+  y := pg_temp.iso(format('dungeon_v2_retreat(%L)', ${T(2)}), ${T(2)}, ${T(1)});
+  ${add('D13 M-1 two testers at floor_done: dungeon_v2_choose and dungeon_v2_retreat for A change A\'s row only (B\'s row byte-identical)',
+    `(x->>'ok')::boolean and (x->>'a_changed')::boolean and (x->>'b_same')::boolean and x->'run' = x->'a_id'
+     and (y->>'ok')::boolean and (y->>'a_changed')::boolean and (y->>'b_same')::boolean`, `jsonb_build_object('choose', x, 'retreat', y)`)}
+  -- D14 (M-2): dungeon_runs_per_day 2 (a balance override in the block); one active run at a time, and already
+  update balance set value = '2' where key = 'dungeon_runs_per_day';
+  a := dungeon_v2_start(${T(3)}, sq);
+  rid := (a->>'run')::bigint;
+  a2 := dungeon_v2_start(${T(3)}, sq);
+  ${add('D14 M-2 runs per day 2: a second start while a run of today is active gives already, no new row, and the active run stays active (not abandoned)',
+    `(a->>'ok')::boolean and a2->>'error' = 'already' and (select count(*) from dungeon_v2_runs where player_id = ${T(3)}) = 1
+     and (select status = 'active' and ended_by is null from dungeon_v2_runs where id = rid)`,
+    `jsonb_build_object('first', a->'ok', 'second', a2, 'rows', (select jsonb_agg(jsonb_build_object('id', id, 'status', status, 'ended_by', ended_by)) from dungeon_v2_runs where player_id = ${T(3)}))`)}
+  update dungeon_v2_runs set status = 'over', ended_by = 'fell', ended_at = now() where id = rid;
+  a := dungeon_v2_start(${T(3)}, sq);
+  rw := pg_temp.vrow(${T(3)});
+  update dungeon_v2_runs set status = 'over', ended_by = 'fell', ended_at = now() where id = rw.id;
+  a2 := dungeon_v2_start(${T(3)}, sq);
+  ${add('D14 M-2 runs per day 2: after one over run the next start succeeds (attempt 2); at the limit (2 runs today) a start gives already and no new row',
+    `(a->>'ok')::boolean and rw.attempt = 2 and a2->>'error' = 'already' and (select count(*) from dungeon_v2_runs where player_id = ${T(3)}) = 2`,
+    `jsonb_build_object('third', a->'error', 'attempt', rw.attempt, 'fourth', a2)`)}
+  update balance set value = '1' where key = 'dungeon_runs_per_day';
+  -- D15 (L-1): retreat outside floor_done gives not_between_floors and no write (in a fight, and between rooms)
+  a := dungeon_v2_start(${T(4)}, sq);
+  x := pg_temp.iso(format('dungeon_v2_retreat(%L)', ${T(4)}), ${T(4)}, ${T(1)});
+  update dungeon_v2_runs set state = (state - 'fight' - 'turn') || jsonb_build_object('phase', 'choose', 'offers', jsonb_build_array(jsonb_build_object('kind', 'continue')))
+   where player_id = ${T(4)};
+  y := pg_temp.iso(format('dungeon_v2_retreat(%L)', ${T(4)}), ${T(4)}, ${T(1)});
+  ${add('D15 L-1 retreat in a fight and in phase choose gives not_between_floors and writes nothing (the row is the same)',
+    `(a->>'ok')::boolean and x->>'err' = 'not_between_floors' and not (x->>'a_changed')::boolean and y->>'err' = 'not_between_floors' and not (y->>'a_changed')::boolean`,
+    `jsonb_build_object('fight', x, 'choose', y)`)}
+  -- D16 (L-2): runs of an earlier day (an over row and an active row of yesterday): the view counts today only; the next start ends the stale row
+  insert into dungeon_v2_runs (player_id, day, squad, state, attempt, status, ended_by, ended_at) values (${T(5)}, dungeon_day() - 1, sq, '{"phase": "fell"}'::jsonb, 1, 'over', 'fell', now());
+  insert into dungeon_v2_runs (player_id, day, squad, state, attempt) values (${T(5)}, dungeon_day() - 1, sq, '{"phase": "choose"}'::jsonb, 2) returning id into rid;
+  x := dungeon_v2_view(${T(5)});
+  ${add('D16 L-2 the view with an over and an active v2 run of yesterday: runs_left = the limit (1), run null, last_run null, can_start true',
+    `(x->>'runs_left')::int = 1 and x->'run' = 'null'::jsonb and x->'last_run' = 'null'::jsonb and (x->>'can_start')::boolean`, `x - 'rooms' - 'order' - 'status_lines'`)}
+  a := dungeon_v2_start(${T(5)}, sq);
+  ${add('D16 L-2 the next start succeeds and ends the active run of yesterday as abandoned (the over row of yesterday stays fell)',
+    `(a->>'ok')::boolean and (select status = 'over' and ended_by = 'abandoned' and ended_at is not null from dungeon_v2_runs where id = rid)
+     and (select ended_by = 'fell' from dungeon_v2_runs where player_id = ${T(5)} and attempt = 1 and day = dungeon_day() - 1)`,
+    `jsonb_build_object('start', a->'error', 'stale', (select jsonb_build_object('status', status, 'ended_by', ended_by) from dungeon_v2_runs where id = rid))`)}
+  -- D17 (L-3): with no combat_v2_synergy (SYN) the file refuses (a rolled-back sub-block drops the function: the stand-in or SYN)
+  msg := null;
+  begin
+    drop function public.combat_v2_synergy(jsonb, jsonb);
+    begin execute $m$${mig}$m$; msg := 'no error'; exception when others then msg := sqlerrm; end;
+    raise exception 'r2a_rollback';
+  exception when others then if sqlerrm <> 'r2a_rollback' then msg := 'setup: ' || sqlerrm; end if;
+  end;
+  ${add('D17 L-3 with no combat_v2_synergy the file refuses: "combat_v2_synergy(jsonb, jsonb) does not exist. Apply SYN ... first"',
+    `msg like '%combat_v2_synergy(jsonb, jsonb) does not exist. Apply SYN%'`, 'to_jsonb(msg)')}
+`, 'hs jsonb; sc jsonb; lg jsonb; c1 jsonb; c2 jsonb; r2 jsonb;');
+
 // ---------------------------------------------------------------------------------------------------------- run
 let fail = 0, total = 0, waits = 0, synOn = null;
 const say = (ok, name, extra = '') => { total++; if (!ok) fail++; console.log(`${ok ? 'PASS' : 'FAIL'} ${name}${ok ? '' : ' ' + extra}`); };
@@ -818,6 +926,7 @@ say(f4.length > 0 && bad('bad_choice').length === 0 && bad('bad_max').length ===
 say(f4.length > 0 && bad('bad_state').length === 0 && bad('not_fighting').length === 0, 'D7 R1b G1.6 a saved fight that fails fight_state_check_v2 gives bad_state + detail (act and auto) and no write; outside a fight: not_fighting', JSON.stringify(bad('bad_state').slice(0, 2)).slice(0, 800));
 const r5 = await run('B5', B5); if (r5) show(r5);
 const r6 = await run('B6', B6); if (r6) show(r6);
+const r7 = await run('B7', B7); if (r7) show(r7);
 const waitTxt = waits ? `; ${waits} WAIT for SYN (not a gate result for D4b tags and D5b)` : '';
 console.log(fail ? `${fail} of ${total} FAILED${waitTxt}` : `PASS all ${total}${waitTxt}`);
 process.exitCode = fail ? 1 : 0;

@@ -16,6 +16,15 @@
 -- NO CHANGE IN PLAY: the flag combat_v2 and the tester list do not change; with no tester nothing changes. Idempotent. Server only.
 -- Test: card-studio/scripts/test-combat-v2-dungeon-run.mjs (rolled back; MUTATE=all must catch every mutation).
 
+-- GUARD (review r1 L-3): SYN first. The fight room calls combat_v2_synergy (SYN); plpgsql resolves the name at call time, so without SYN the
+-- file would apply with no error and every tester start would raise at its first fight room. The merge order is R1b -> SYN -> R2a.
+do $sg$
+begin
+  if to_regprocedure('public.combat_v2_synergy(jsonb, jsonb)') is null then
+    raise exception 'combat_v2_dungeon_run.sql: combat_v2_synergy(jsonb, jsonb) does not exist. Apply SYN (combat v2 synergies) first.';
+  end if;
+end $sg$;
+
 -- ============================================================ 1. the table of the v2 Dungeon runs (its own table: no v1 reader sees it)
 create table if not exists public.dungeon_v2_runs (
   id bigint generated always as identity primary key,
