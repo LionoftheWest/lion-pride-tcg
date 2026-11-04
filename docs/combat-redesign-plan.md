@@ -2374,6 +2374,52 @@ driver of the Admin Combat v2 Lab into SQL, so that R1b plays the same fight as 
     were extended) failed only the 7 "no other caller" lists and the 3 generated files. The 7 lists now name the new functions by exact name.
   - Then `db/schema/`, `docs/data/` (the tester id of the local copy masked in memory, as in 20.10 to 20.13) and `SUPERSEDED.md` regenerated.
 
+#### R1b: the tester branch and the v2 run (`tcg-bot/supabase/combat_v2_gauntlet_run.sql`)
+
+Pipeline item R1b (SPEC v6, Spec Reviewer r6 OK). A player on `balance combat_v2.testers` plays the weekly Gauntlet in combat v2 through SQL
+calls only; every other player plays v1, byte for byte. The flag `combat_v2.gauntlet` stays false and the tester list does not change.
+
+- **The run mode.** `dungeon_runs.mode` gets a third value `gauntlet_v2` (the check keeps any later mode, for R2). The board, the prizes,
+  `gauntlet_view` and the 7 v1 action functions filter `mode = 'gauntlet'` (or `p_mode`), so they never see a v2 run (D1). `dungeon_settle`
+  ends a v2 run with 0 Shards and 0 cards (no `bank`, no `pend`).
+- **Replaced functions** (each with the md5 guard of `runs_per_day.sql`):
+  - `gauntlet_start`: after the existing checks and the week, a player with `combat_v2_on('gauntlet', player)` builds `combat_v2_card_unit`
+    for each squad card; SQLSTATE `no_data_found` (a card with no usable `ability_v2`) plays v1 (D2); any other error raises. The count of
+    today's runs and the "one active run" check read both modes (Q5). The branch calls only `combat_v2_on`, `combat_v2_card_unit` and
+    `gauntlet_v2_begin`, and adds no number.
+  - `dailies_tasks`: the Gauntlet daily counts a `gauntlet_v2` run (D1). The Dungeon daily still counts only `daily`.
+  - `combat_v2_step`: the R1a text plus ONE change: each `act` and `clock` log entry has `hp` = the units whose hp, down or shield value
+    changed in that entry (`gauntlet_v2_hp`: side, id, before, after, down, shield_before, shield_after; the shield is `shielded` on a card,
+    `guarded` on an enemy). A fully shielded hit has an entry (hp equal, shield lower); a miss has none.
+- **The run state:** `engine` 2, `mode`, `squad`, `units` and `info` (snapshots of the run start, D4), `carry` {hp, max, down, charge, held}
+  (D5, Q1), `phase`, `room_type`, `fight` (in a fight only), `turn`, `steps_left`, `offers`, `last_pick`, `heal_floor`, the pending
+  `empower` (buff: the higher amount stays, Q4) and `ward`, `last` {event, won}. No top-level `cards`, `foes`, `bank` or `pend`.
+- **The run functions** (server only; the R1c routes): `gauntlet_v2_act(player, choice)` (one card turn; the choice in the engine shape
+  {use, target {side, id}, ally {side, id}}; only a P0001 of the step is `bad_choice`; a saved fight that fails `fight_state_check_v2` is
+  `bad_state`), `gauntlet_v2_auto(player, max)` (Auto v2 for up to `max` card turns: Auto and Finish Room), `gauntlet_v2_choose(player, pick)`
+  (offers, doors, continue, the next floor), `gauntlet_v2_retreat(player)` (at `floor_done`), `gauntlet_v2_view(player)` (tester, run,
+  runs_left and can_start of both modes, last_run and active_mode of either mode; it makes the week first). Every answer has the floor map
+  (`rooms`, `floors`: the `gauntlet_view` mask rule) and the screen fields (`need` from the live `v2_charge`, `squad_hp`, `order`: the card that
+  has the turn then `combat_v2_turn_order` 9, with `ready`; `targets`; `allies`; `status_lines` with the numbers of each status rule).
+  `disabled` (the `gauntlet_start` test) is checked first by all 5.
+- **Rooms:** a fight room = the units + the carry, no status, a meter of 0 to `v2_speed.act_at` (2 decimals), the foes of `gauntlet_v2_foes`
+  with `show.level` and `show.kind`, then the pending buff (Empowered on each standing attacker) and ward (Shielded max HP x the amount),
+  then one step to the first card turn. Rest: the v1 rest numbers on the carry. Choice: the v1 doors (`dungeon_enter` on a shim). After a
+  won room: the v1 offers of the mode (`dungeon_offers` on a shim); after a guardian: `floor_done` or `cleared`; lost or the step cap: `fell`.
+- **Reuse (R2, R3):** the room, fight, play, offer and screen helpers take a run state and a room, not a week read; the door list and the
+  offers follow `state.mode`.
+- **C1:** two allowlist entries: `gauntlet_v2_fight` 2 (the meter decimals) and `gauntlet_v2_screen` 10 (the turn strip, D-203).
+- **Proof** (copy 2, refreshed from live 2026-11-03; the file applied on it): `test-combat-v2-gauntlet-run.mjs` PASS all 102 (the gate G1.1
+  to G1.19 of the spec); MUTATE=all: baseline PASS, 79 of 79 named mutations caught, each by its own case. The goldens with CANDIDATE = this
+  file: Dungeon 240, Hunt 183, boss counters 128 fights, no difference; with the tester branch forced on, all 39 Gauntlet fights differ and
+  the 201 Dungeon fights do not. C1, C2, C3 and `combat-checks.test.mjs` PASS. The full suite (copy 2): main code 169 of 172; the branch
+  before the allowlist edits 156 of 173 (the 10 "no other caller / reader" lists and the 3 generated files fail, as predicted); after the
+  edits and the regenerated files 169 of 173, every remaining FAIL also fails on main code (the Blender preview test fails on both trees by
+  the 300 s request limit under load). Time on copy 2 (30 calls each): `gauntlet_v2_act` mean 41.7 ms (p95 62.5 ms), Finish
+  (`gauntlet_v2_auto` 1000) mean 70.3 ms (p95 93.4 ms).
+- **Go live (Nathan "go" only):** read `gauntlet_runs_per_day` (must be 1) and the flags; remove the owner from the tester list (D7); merge,
+  `apply-sql.mjs --live`, `check-schema-drift.mjs --live`. No deploy (no Activity or bot change). The owner is added again after R1e.
+
 ### 20.16 Set 2 engine parts (b) and (c) (`tcg-bot/supabase/combat_v2_set2_parts.sql`)
 
 Nathan's decision (2026-10-28, Set 2 question Q1 = C): build engine part (b) and part (c) for 5 Set 2 actives. Part (a), an attacker bonus while this

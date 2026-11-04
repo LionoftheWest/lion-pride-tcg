@@ -114,6 +114,8 @@ export const TOKENS = {
   "counter": 20,
   "check-badge": 24,
   "dot": 8,
+  "stack-plate": 14,
+  "turn-bar": 3,
   "icon-xs": 12,
   "icon-sm": 14,
   "icon-md": 16,

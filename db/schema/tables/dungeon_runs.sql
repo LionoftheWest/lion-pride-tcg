@@ -27,7 +27,7 @@ create table public.dungeon_runs (
 -- @constraints
 alter table public.dungeon_runs add constraint dungeon_runs_attempt_check CHECK (((attempt >= 1) AND (attempt <= 100)));
 alter table public.dungeon_runs add constraint dungeon_runs_ended_by_check CHECK ((ended_by = ANY (ARRAY['cleared'::text, 'fell'::text, 'retreat'::text, 'abandoned'::text])));
-alter table public.dungeon_runs add constraint dungeon_runs_mode_check CHECK ((mode = ANY (ARRAY['daily'::text, 'gauntlet'::text])));
+alter table public.dungeon_runs add constraint dungeon_runs_mode_check CHECK ((mode = ANY (ARRAY['daily'::text, 'gauntlet'::text, 'gauntlet_v2'::text])));
 alter table public.dungeon_runs add constraint dungeon_runs_pkey PRIMARY KEY (id);
 alter table public.dungeon_runs add constraint dungeon_runs_player_id_fkey FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE;
 alter table public.dungeon_runs add constraint dungeon_runs_shards_check CHECK ((shards >= 0));

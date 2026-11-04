@@ -327,3 +327,18 @@ test('UI-66 state exceptions (D-124): the 6 state specs on every touch and point
   assert.ok(!list.some((e) => accepts(e, x('leaderboard', 'empty'))), 'the Main tab with rows is not excepted');
   assert.ok(!list.some((e) => accepts(e, x('leaderboard-hunt-empty', 'bleed'))), 'only the empty-space rule is excepted');
 });
+
+test('UI-52 v2 fight exceptions (D-155): 6 specs x the 5 portrait sizes, rule missing; only the pick names the hidden controls', async () => {
+  const { readFileSync } = await import('node:fs');
+  const list = checkExceptions(JSON.parse(readFileSync(new URL('./exceptions.json', import.meta.url), 'utf8')).filter((e) => e.id === 'UI-52' && /^gauntlet-v2-/.test(e.screen)));
+  const screens = ['gauntlet-v2-fight', 'gauntlet-v2-charging', 'gauntlet-v2-tap', 'gauntlet-v2-pick', 'gauntlet-v2-down', 'gauntlet-v2-finishing'];
+  const sizes = ['430x932', '430x822', '412x915', '692x917', '820x1180'];
+  assert.equal(list.length, screens.length * sizes.length);
+  for (const sc of screens) for (const sz of sizes) assert.equal(list.filter((e) => e.screen === sc && e.size === sz).length, 1, `${sc} ${sz}`);
+  assert.ok(list.every((e) => e.decision === 'D-155' && e.rule === 'missing' && /Details magnifier/.test(e.why)));
+  // the hidden Music, Finish Room and Auto are approved only while a support picks (frame 13); the other v2 states hide only the magnifier
+  assert.ok(list.every((e) => (e.screen === 'gauntlet-v2-pick') === /Music, Finish Room and Auto/.test(e.why)));
+  assert.ok(!list.some((e) => ['gauntlet-v2-choose', 'gauntlet-v2-over'].includes(e.screen)), 'the v1 reward and over screens are not excepted');
+  const x = (screen, rule) => ({ owner: 'UI-52', screen, size: '430x932', rule });
+  assert.ok(!list.some((e) => accepts(e, x('gauntlet-v2-fight', 'bleed'))), 'only the missing rule is excepted');
+});

@@ -179,6 +179,18 @@
         "count": 3,
         "reason": "group by 2: the second column of the select list (SQL syntax)."
       }
+    },
+    "gauntlet_v2_fight": {
+      "2": {
+        "count": 2,
+        "reason": "round(random() x act_at, 2): the meter of each card and each foe at a room start has 2 decimals (the Lab rule, plan 20.15 R1b). A number format, not a tuning value."
+      }
+    },
+    "gauntlet_v2_screen": {
+      "10": {
+        "count": 1,
+        "reason": "n_order = 10: the turn strip shows 10 entries (plan 3.2, D-203: the card that has the turn, then combat_v2_turn_order 9). A screen size, not a tuning value."
+      }
     }
   }
 }

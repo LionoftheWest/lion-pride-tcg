@@ -1976,7 +1976,7 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Returns: `boolean`
 - Security definer: no
 
-[combat] The combat v2 switch for one player (plan 14.2, the go-live steps): true when combat_v2_on(p_mode) is true (the mode is on for everyone), or when p_mode is gauntlet, dungeon, hunt or progress and p_player is in balance combat_v2.testers. The tester part fails closed: a NULL mode or player, an unknown capability, a value that does not match the fixed shape (balance_v2_spec), no row or any error gives false. Its readers: the v2 spend and reset (spend_card_points_v2, reset_card_points_v2) and, since combat_v2_progress_freeze_v1.sql (M1d), the v1 freeze of spend_stat_points and reset_stat_points, the Shop route of buy_shop_item (stat_reset) with progress, and the free reset of shop_today. combat_v2_testers.sql.
+[combat] The combat v2 switch for one player (plan 14.2, the go-live steps): true when combat_v2_on(p_mode) is true (the mode is on for everyone), or when p_mode is gauntlet, dungeon, hunt or progress and p_player is in balance combat_v2.testers. The tester part fails closed: a NULL mode or player, an unknown capability, a value that does not match the fixed shape (balance_v2_spec), no row or any error gives false. Its readers: the v2 spend and reset (spend_card_points_v2, reset_card_points_v2) and, since combat_v2_progress_freeze_v1.sql (M1d), the v1 freeze of spend_stat_points and reset_stat_points, the Shop route of buy_shop_item (stat_reset) with progress, and the free reset of shop_today. Since combat_v2_gauntlet_run.sql (R1b), gauntlet_start: its tester branch starts a v2 Gauntlet run (gauntlet_v2) for a tester. combat_v2_testers.sql.
 
 <a id="fn-combat-v2-on-text"></a>
 
@@ -1986,7 +1986,7 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Returns: `boolean`
 - Security definer: no
 
-[combat] The ONE reader of the combat v2 switch (balance combat_v2, plan 14.2): true only when combat_v2.<p_mode> is the JSON boolean true (p_mode = gauntlet, dungeon, hunt or progress). Fails closed: a missing key, another type, a name that is not one of the four capabilities or any error gives false. Its only caller is combat_v2_on(text, text). Since combat_v2_progress_freeze_v1.sql (M1d) four v1 functions read the switch through that form: spend_stat_points and reset_stat_points (they refuse when progress is ON), buy_shop_item (its stat reset is the v2 reset when progress is ON) and shop_today (its free reset counts the gifts of that reset).
+[combat] The ONE reader of the combat v2 switch (balance combat_v2, plan 14.2): true only when combat_v2.<p_mode> is the JSON boolean true (p_mode = gauntlet, dungeon, hunt or progress). Fails closed: a missing key, another type, a name that is not one of the four capabilities or any error gives false. Its only caller is combat_v2_on(text, text). Since combat_v2_progress_freeze_v1.sql (M1d) four v1 functions read the switch through that form: spend_stat_points and reset_stat_points (they refuse when progress is ON), buy_shop_item (its stat reset is the v2 reset when progress is ON) and shop_today (its free reset counts the gifts of that reset). Since combat_v2_gauntlet_run.sql (R1b) a fifth: gauntlet_start (its tester branch starts a gauntlet_v2 run).
 
 <a id="fn-combat-v2-pick-card-jsonb-jsonb-jsonb"></a>
 
@@ -2126,7 +2126,7 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 (plan 3.3, 20.15 R1a): one call of a v2 fight. When a card has the turn (ext.turn), the choice {use, target, ally} plays its action (decision D6: the clock picks the card, the player picks basic or active, the target and the ally); then the clock runs every enemy turn and every skipped turn until the next card turn (event choose, the card in ext.turn), the end (event end, won) or the step cap of the mode (event cap: v2_dungeon.round_cap, v2_hunt.round_cap). The first call of a fight needs choice null. The client never drives an enemy turn. Refuses a state that fight_state_check_v2 refuses. Pure (state in, state out; draws random numbers). combat_v2_gauntlet_builders.sql.
+[combat] Combat v2 (plan 3.3, 20.15 R1a): one call of a v2 fight. When a card has the turn (ext.turn), the choice {use, target, ally} plays its action (decision D6: the clock picks the card, the player picks basic or active, the target and the ally); then the clock runs every enemy turn and every skipped turn until the next card turn (event choose, the card in ext.turn), the end (event end, won) or the step cap of the mode (event cap: v2_dungeon.round_cap, v2_hunt.round_cap). The first call of a fight needs choice null. The client never drives an enemy turn. Refuses a state that fight_state_check_v2 refuses. Since combat_v2_gauntlet_run.sql (R1b) each act and clock log entry has hp (gauntlet_v2_hp: the units whose hp, down or shield changed, with before and after). Pure (state in, state out; draws random numbers). combat_v2_gauntlet_builders.sql.
 
 <a id="fn-combat-v2-step-end-jsonb-jsonb-jsonb"></a>
 

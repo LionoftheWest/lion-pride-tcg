@@ -170,6 +170,53 @@ function derivedGauntletFight(body) {
   return { ...body, squad: sq, best: { floor: 4, room: 1, rank: 1, runs: 1 }, run: { id: 1, status: 'active', floor: 2, room: 4, squad: sq.map((c) => c.id), state: st } };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/gauntlet' && c.ci_dungeon === 'g-fight' && body?.ok, make: (body) => derivedGauntletFight(body) });
+// UI-52 combat v2 (R1e, testers): GET /api/gauntlet/v2 answers 403 not_tester (the recorded default, fixtures/api.json: every member who
+// is not a tester sees the v1 screens). Cookie ci_dungeon = g2-<state> answers a tester's v2 run, derived from fixtures/g2-fight.json
+// (an answer in the R1b 3.4 shape, numbers of the approved review-5 frames): g2-fight (the active is ready), g2-charge (the active is
+// charging), g2-pick (a support with needs_ally acts), g2-down (a card is down, a support was hit), g2-choose (the reward step, a v1
+// screen with v2 data), g2-over (the run is over). The status tap and Finish Room are steps of screens.mjs on g2-fight.
+const G2 = JSON.parse(readFileSync(join(here, 'fixtures', 'g2-fight.json'), 'utf8')).body;
+function derivedG2(kind) {
+  const v = JSON.parse(JSON.stringify(G2));
+  const F = v.run.state.fight;
+  const actor = (id, ready) => { v.order = [{ side: 'card', id, clock: F.clock, ready }, ...v.order.filter((o) => !(o.side === 'card' && o.id === id))].slice(0, 10); F.ext.turn = { side: 'card', id }; };
+  if (kind === 'g2-charge') { F.cards[43].charge = 1; actor(43, false); }
+  if (kind === 'g2-pick') actor(312, true);
+  if (kind === 'g2-down') {
+    Object.assign(F.cards[318], { hp: 0, down: true, charge: 0, status: {} }); v.status_lines['card:318'] = [];
+    Object.assign(F.cards[312], { hp: 31, status: {} }); v.status_lines['card:312'] = [];
+    v.order = v.order.filter((o) => !(o.side === 'card' && o.id === 318)); actor(124, false); v.order.push({ side: 'enemy', id: 3, clock: 10 });
+    v.squad_hp = { hp: 181, max: 392 };
+  }
+  if (kind === 'g2-choose' || kind === 'g2-over') {
+    const st = v.run.state; delete st.fight;
+    for (const k of ['order', 'targets', 'allies']) v[k] = [];
+    v.status_lines = {};
+    if (kind === 'g2-choose') { st.phase = 'choose'; st.offers = [{ kind: 'heal', tier: 3, amount: 0.4 }, { kind: 'buff', tier: 4, amount: 0.1 }, { kind: 'ward', tier: 2, amount: 0.2 }]; }
+    else { st.phase = 'over'; Object.assign(v.run, { status: 'over', ended_by: 'fell', floor: 4, room: 1, turns: 62 }); Object.assign(v, { active_mode: null, can_start: false, runs_left: 0 }); }
+  }
+  return v;
+}
+DERIVED.push({ when: (p, c) => p === '/api/gauntlet/v2' && ['g2-fight', 'g2-charge', 'g2-pick', 'g2-down', 'g2-choose', 'g2-over'].includes(c.ci_dungeon), make: (body, c) => derivedG2(c.ci_dungeon) });
+// The answer of POST /api/gauntlet/v2/finish (cookie ci_finish=ok): 80 card turns on monster 0 and an enemy strike each, in the R1a log shape,
+// so the replay at 3x lasts longer than a G3 cell (the cell reads the page in the middle of it). Nothing is written.
+function g2Finish() {
+  const v = derivedG2('g2-fight');
+  const log = [];
+  let hp = 50;
+  for (let k = 0; k < 80; k += 1) {
+    const clock = 7 + k;
+    const next = Math.max(1, hp - 0.5);
+    log.push({ k: 'clock', clock, event: 'act', actor: { side: 'card', id: 318 }, skip: false, reason: null, ticks: [], ended: [], hp: [] });
+    log.push({ k: 'act', actor: { side: 'card', id: 318 }, action: 'basic', target: { side: 'enemy', id: 0 }, hits: [{ target: { side: 'enemy', id: 0 }, dmg: hp - next, crit: false, miss: false }],
+      hp: [{ side: 'enemy', id: 0, before: hp, after: next, down: false, shield_before: 0, shield_after: 0 }] });
+    log.push({ k: 'act', actor: { side: 'enemy', id: 2 }, move: 'strike' });
+    hp = next;
+  }
+  v.run.state.fight.enemies[0].hp = hp;
+  return { ok: true, run: 1, event: 'choose', won: null, actor: { side: 'card', id: 318 }, steps_left: 10, played: 80, log, state: v.run.state, status: 'active', ended_by: null,
+    floor: 2, room: 4, need: v.need, squad_hp: v.squad_hp, order: v.order, targets: v.targets, allies: v.allies, status_lines: v.status_lines, rooms: v.rooms, floors: v.floors, cards: v.cards, auto: [] };
+}
 // UI-50: the run over (a fall on floor 3, room 2) with 4 found cards: the names of the approved frames.
 function derivedOver(body) {
   const base = derivedDungeon(body);
@@ -604,6 +651,8 @@ createServer((req, res) => {
       send(res, 200, JSON.stringify(finishFixture(m === 'gauntlet', kind))); });
     return undefined;
   }
+  // UI-52 combat v2 (R1e): Finish Room of a v2 run (cookie ci_finish=ok) answers g2Finish; nothing is written. Without the cookie: 403 below.
+  if (req.method === 'POST' && p === '/api/gauntlet/v2/finish' && cookies(req).ci_finish === 'ok') { req.resume(); return send(res, 200, JSON.stringify(g2Finish())); }
   // UI-32: withdrawing a bid answers ok (nothing is written) so the screen shows "Bid withdrawn." with Undo; start, bid, accept, close and confirm stay refused (the error states).
   if (req.method === 'POST' && p === '/api/auction/withdraw') return send(res, 200, '{"ok":true}');
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 403, '{"error":"ui-check: writes are blocked"}');
