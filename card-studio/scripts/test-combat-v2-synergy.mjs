@@ -34,7 +34,8 @@ const REPLACED = ['balance_v2_spec(text)', 'balance_check_combat_v2()', 'combat_
   'combat_effect_v2_active(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb)'];
 const NEW = ['combat_v2_card_tags(bigint)', 'combat_v2_synergy(jsonb,jsonb)'];
 
-// Each mutation: [the file ('mig' or 'lab'), [text, replacement] pairs, the case prefix that must FAIL]
+// Each mutation: [the file ('mig' or 'lab'), [text, replacement] pairs, the case prefix that must FAIL, optional: the error text that counts as
+// caught when the mutated SQL raises and stops the block (the file does not apply, or a fight function raises)]
 const MUT = {
   // C1
   M1b_other_function: ['mig', [['-- ============================================================ 6. server only',
@@ -67,7 +68,8 @@ const MUT = {
   M3k_top_no_head: ['mig', [["and p_state->>'mode' = 'hunt' and head then", "and p_state->>'mode' = 'hunt' then"]], 'C3e'],
   M3l_top_outside_hunt: ['mig', [["and p_state->>'mode' = 'hunt' and head then", "and head then"]], 'C3e'],
   // C3f
-  M3m_no_spec_branch: ['mig', [[/  when 'v2_synergy' then '\{\n[\s\S]*?"enum ottozone-s-head"\}\}\}'::jsonb\n/, '']], 'C3f'],
+  M3m_no_spec_branch: ['mig', [[/  when 'v2_synergy' then '\{\n[\s\S]*?"enum ottozone-s-head"\}\}\}'::jsonb\n/, '']], 'C3f', 'v2_synergy: a combat v2 key needs a shape in balance_v2_spec'],
+  M3m_loose_step: ['mig', [['"affinity": {"step": "num 0 0.3", "cap": "num 0 1"},', '"affinity": {"step": "num 0 1", "cap": "num 0 1"},']], 'C3f'],
   // C3g
   M3n_lab_no_beats: ['lab', [["'tags', combat_v2_card_tags((x->>'card_id')::bigint)", "'tags', combat_v2_card_tags((x->>'card_id')::bigint) - 'beats'"]], 'C3g'],
   // C3h
@@ -83,7 +85,7 @@ const MUT = {
   shield_no_set_x: ['mig', [["amt := (am->>'v')::numeric * sf;", "amt := (am->>'v')::numeric * sa;"]], 'C3i'],
   // C3k
   notags_raise: ['mig', [["      -- a unit with no tags (a snapshot made before SYN): it counts for no tag, and every factor is 1\n",
-    "      raise exception 'combat_v2_synergy: card % has no tags', c.key;\n"]], 'C3k'],
+    "      raise exception 'combat_v2_synergy: card % has no tags', c.key;\n"]], 'C3k', 'combat_v2_synergy: card 3 has no tags'],
   notags_counts: ['mig', [["select count(*)::int into en from jsonb_each(cards) q where el is not null and q.value->'tags'->>'element' = el;",
     "select count(*)::int into en from jsonb_each(cards) q where el is not null and (q.value->'tags'->>'element' = el or jsonb_typeof(q.value->'tags') is distinct from 'object');"]], 'C3k'],
   // M2a (C2 bench; here: the synergy draws a random number = the C3f purity case)
@@ -103,10 +105,11 @@ if (process.env.MUTATE === 'all') {
     const r = runOne(name);
     const out = r.stdout || '';
     const fails = out.split(/\r?\n/).filter((l) => /^FAIL /.test(l));
-    const hit = fails.some((l) => l.startsWith(`FAIL ${m[2]} `));
+    const errTxt = (r.stderr || '').split(/\r?\n/).find((l) => /^Error: NO RESULT/.test(l)) || '';
+    const hit = fails.some((l) => l.startsWith(`FAIL ${m[2]} `)) || (!!m[3] && errTxt.includes(m[3]));
     const caught = r.status !== 0 && hit;
     if (!caught) ok = false;
-    console.log(`FAIL ${name.padEnd(36)} ${caught ? `caught: ${m[2]} FAILS` : `NOT CAUGHT (exit ${r.status})`}  ${(fails.find((l) => l.startsWith(`FAIL ${m[2]} `)) || fails[0] || (r.stderr || '').split(/\r?\n/).find((l) => /Error/.test(l)) || '').slice(0, 170)}`);
+    console.log(`FAIL ${name.padEnd(36)} ${caught ? (fails.length ? `caught: ${m[2]} FAILS` : 'caught: the SQL raises') : `NOT CAUGHT (exit ${r.status})`}  ${(fails.find((l) => l.startsWith(`FAIL ${m[2]} `)) || fails[0] || errTxt.replace(/^.*?ERROR: +/, 'ERROR ') || '').slice(0, 170)}`);
   }
   console.log(ok ? `mutations: baseline PASS, all ${Object.keys(MUT).length} caught (each FAILS its own case)` : 'mutations: FAILED (a red baseline or a mutation not caught)');
   process.exit(ok ? 0 : 1);
@@ -134,7 +137,7 @@ const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 const arr = (xs) => `array[${xs.map(lit).join(', ')}]::text[]`;
 const MD5 = `md5(replace(pg_get_functiondef(p.oid), chr(13), ''))`;
 const SIG = `replace(p.oid::regprocedure::text, ', ', ',')`;
-const OK_V2 = `jsonb_typeof(s.ability_v2) = 'object' and jsonb_typeof(s.ability_v2->'blocks') = 'array' and exists (select 1 from public.roles ro where ro.key = s.ability_v2->>'role')`;
+const OK_V2 = `jsonb_typeof(s3.ability_v2) = 'object' and jsonb_typeof(s3.ability_v2->'blocks') = 'array' and exists (select 1 from public.roles ro where ro.key = s3.ability_v2->>'role')`;
 
 const HELPERS = String.raw`
   -- a unit of a card side (the fields of combat_v2_card_unit) with the given class, role and extra keys
@@ -171,11 +174,15 @@ begin
       with recursive w(path, va, vb) as (
         select array[k], a->'state'->k, b2->'state'->k from jsonb_object_keys(a->'state') k
         union all
-        select w.path || e.key, w.va->e.key, w.vb->e.key from w, jsonb_object_keys(case when jsonb_typeof(w.va) = 'object' then w.va else '{}'::jsonb end) e(key)
-      ) select * from w where jsonb_typeof(va) is distinct from 'object' and not ('syn' = any(path))) z loop
+        select w.path || e.key, w.va #> array[e.key], w.vb #> array[e.key] from w,
+          lateral (select jsonb_object_keys(w.va) where jsonb_typeof(w.va) = 'object' and jsonb_typeof(w.vb) = 'object'
+                   union all select g::text from generate_series(0, jsonb_array_length(w.va) - 1) g
+                    where jsonb_typeof(w.va) = 'array' and jsonb_typeof(w.vb) = 'array' and jsonb_array_length(w.va) = jsonb_array_length(w.vb)) e(key)
+      ) select * from w where (coalesce(jsonb_typeof(va), '') not in ('object', 'array') or jsonb_typeof(va) is distinct from jsonb_typeof(vb)
+          or (jsonb_typeof(va) = 'array' and jsonb_array_length(va) <> jsonb_array_length(vb))) and not ('syn' = any(path))) z loop
     continue when p.va is not distinct from p.vb;
     last := p.path[array_length(p.path, 1)];
-    if jsonb_typeof(p.va) = 'number' and jsonb_typeof(p.vb) = 'number' and last in ('value', 'crd', 'hp', 'last_smite') then
+    if jsonb_typeof(p.va) = 'number' and jsonb_typeof(p.vb) = 'number' and last in ('value', 'v', 'crd', 'hp', 'last_smite') then
       v0 := case when jsonb_typeof(s0 #> p.path) = 'number' then (s0 #>> p.path)::numeric when p.path[array_length(p.path, 1) - 1] = 'quickened' then 1 else 0 end;
       ra := ((p.vb)::text::numeric - v0) / nullif((p.va)::text::numeric - v0, 0);
       rs := rs || ra; out := out || jsonb_build_object('path', array_to_string(p.path, '.'), 'r', ra);
@@ -188,7 +195,7 @@ begin
     ra := (q.hb->>'dmg')::numeric / (q.ha->>'dmg')::numeric; rs := rs || ra; out := out || jsonb_build_object('hit', q.o, 'r', ra);
   end loop;
   if jsonb_array_length(a->'hits') <> jsonb_array_length(b2->'hits') then bad := bad || to_jsonb('hit count'::text); end if;
-  return jsonb_build_object('ok', bad = '[]'::jsonb and cardinality(rs) > 0 and (select count(distinct v) from unnest(rs) v) = 1 and not (null = any(rs)) and rs[1] <> 1,
+  return jsonb_build_object('ok', bad = '[]'::jsonb and cardinality(rs) > 0 and (select count(distinct v) from unnest(rs) v) = 1 and array_position(rs, null) is null and rs[1] <> 1,
     'ratios', out, 'bad', bad);
 end $x$;`;
 
@@ -368,7 +375,23 @@ begin
     got := pg_temp.syn_ratios(s, r, r2);
     o := o || jsonb_build_object('blocks', blk, 'ok', (got->>'ok')::boolean and not exists (select 1 from jsonb_array_elements(got->'ratios') q where (q->>'r')::numeric <> 1.30), 'got', got);
   end loop;
-  res := res || jsonb_build_object('case', 'C3d every support amount block (shield, shield_all, heal, heal_all, empower, rally, focus value and crd, quicken, smite, area, apply exposed, random_apply value) x aff_x 1.30 exactly; stacks, chances, durations and the draw list the same',
+  -- the chance is not scaled (M3i): every draw 0.6 (0.5 <= 0.6 < 0.5 x 1.30), so the status lands in neither run
+  for blk in select v from jsonb_array_elements(${lit(JSON.stringify([
+    [{ k: 'apply', status: 'exposed', chance: 0.5, value: 0.2 }], [{ k: 'random_apply', chance: 0.5, options: [{ status: 'exposed', value: 0.2 }, { status: 'weakened', value: 0.1 }] }],
+  ]))}::jsonb) v loop
+    cards := jsonb_build_object('1', pg_temp.su('support', 'herald', jsonb_build_object('active', jsonb_build_object('blocks', blk))),
+      '2', pg_temp.su('attacker', 'breaker', jsonb_build_object('hp', 300)), '3', pg_temp.su('attacker', 'striker', jsonb_build_object('hp', 300)));
+    s := pg_temp.st(cards, 'dungeon', jsonb_build_array(foe, foe));
+    dr := (select jsonb_agg(0.6) from generate_series(1, 40));
+    r := combat_v2_card_act(s, '{"side": "card", "id": 1}'::jsonb, jsonb_build_object('use', true, 'target', jsonb_build_object('side', 'enemy', 'id', 0),
+      'ally', jsonb_build_object('side', 'card', 'id', 2), 'draws', dr), b);
+    r2 := combat_v2_card_act(jsonb_set(s, '{cards,1,syn}', '{"aff_x": 1.30, "set_x": 1}'::jsonb), '{"side": "card", "id": 1}'::jsonb,
+      jsonb_build_object('use', true, 'target', jsonb_build_object('side', 'enemy', 'id', 0), 'ally', jsonb_build_object('side', 'card', 'id', 2), 'draws', dr), b);
+    got := pg_temp.syn_ratios(s, r, r2);
+    o := o || jsonb_build_object('blocks', blk, 'draw', 0.6, 'ok', got->'bad' = '[]'::jsonb and got->'ratios' = '[]'::jsonb
+      and r->'state'->'enemies'->0->'status' is not distinct from foe->'status', 'got', got);
+  end loop;
+  res := res || jsonb_build_object('case', 'C3d every support amount block (shield, shield_all, heal, heal_all, empower, rally, focus value and crd, quicken, smite, area, apply exposed, random_apply value) x aff_x 1.30 exactly; stacks, chances, durations and the draw list the same; a draw of 0.6 lands no status (chance 0.5) with aff_x 1.30',
     'ok', not exists (select 1 from jsonb_array_elements(o) q where not (q->>'ok')::boolean), 'cases', o);
 
   -- ========== C3e: the set synergy on synthetic subjects (set values 1.05 / 1.10 / 1.15 in this block)
@@ -376,9 +399,10 @@ begin
    where key = 'v2_synergy';
   b := combat_v2_action_numbers();
   for i in 1..8 loop
-    insert into public.subjects (key, name, type, tag_slugs)
-      values (case when i = 8 then 'ottozone-s-head' else 'syn-test-piece-' || i end, 'SYN test piece ' || i, 'Item', array['trait:forbidden-pride', 'origin:community'])
-      on conflict (key) do update set tag_slugs = array['trait:forbidden-pride', 'origin:community'] returning id into v_subj;
+    -- the trigger subjects_flatten_tags rebuilds tag_slugs from tags on insert and on an update of tags: plant tags
+    insert into public.subjects (key, name, type, tags)
+      values (case when i = 8 then 'ottozone-s-head' else 'syn-test-piece-' || i end, 'SYN test piece ' || i, 'Item', '{"traits": ["forbidden-pride"], "origin": "community"}'::jsonb)
+      on conflict (key) do update set tags = excluded.tags returning id into v_subj;
     insert into public.cards (subject_id, name, rarity, set_id, set_number) values (v_subj, 'SYN test ' || i, 'normal', (select min(c5.set_id) from public.cards c5), 90000 + i) returning id into v_card;
     pieces := pieces || v_card;
   end loop;

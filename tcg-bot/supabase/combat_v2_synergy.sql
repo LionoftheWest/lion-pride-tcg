@@ -30,14 +30,14 @@ do $g$
 declare m text; f record;
 begin
   for f in select * from (values
-    ('public.balance_v2_spec(text)', '59f02d5aab9be2f8aa9d7d33cecf2c65', '00000000000000000000000000000000'),
-    ('public.balance_check_combat_v2()', '04bc3a5bd5e15adf485e5e0c42398a67', '00000000000000000000000000000000'),
-    ('public.combat_v2_status_numbers()', '90b928e2b93b0349e88d30934d744867', '00000000000000000000000000000000'),
-    ('public.combat_v2_card_unit(bigint, jsonb)', '68287c1546cdf795309d4d41c940efaa', '00000000000000000000000000000000'),
-    ('public.gauntlet_v2_foes(jsonb, integer, integer, jsonb)', 'f3df73d2b8fedc4686927303ffc24ee5', '00000000000000000000000000000000'),
-    ('public.combat_v2_hit(jsonb, jsonb, jsonb)', '0ccf26061888c009b397d52b300e256b', '00000000000000000000000000000000'),
-    ('public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)', 'f4dfcc7c6d771a6bda7be9cb84d82001', '00000000000000000000000000000000'),
-    ('public.combat_effect_v2_active(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb)', '1fae6f148a7ad6dc2e935081188fc718', '00000000000000000000000000000000')
+    ('public.balance_v2_spec(text)', '59f02d5aab9be2f8aa9d7d33cecf2c65', '0fc2fa612879bcdfea7277518498302a'),
+    ('public.balance_check_combat_v2()', '04bc3a5bd5e15adf485e5e0c42398a67', 'b8cbfbaee3f3d1e4ed3874fec3323407'),
+    ('public.combat_v2_status_numbers()', '90b928e2b93b0349e88d30934d744867', 'a4a0d0a5ec4520ac61e6593016dc4f8e'),
+    ('public.combat_v2_card_unit(bigint, jsonb)', '68287c1546cdf795309d4d41c940efaa', 'fbef49e3424cf4f28f311a6e05d2471f'),
+    ('public.gauntlet_v2_foes(jsonb, integer, integer, jsonb)', 'f3df73d2b8fedc4686927303ffc24ee5', '92e77458e8c9c109f60d8014e3fd654e'),
+    ('public.combat_v2_hit(jsonb, jsonb, jsonb)', '0ccf26061888c009b397d52b300e256b', 'a675185d72b57ba39deb7c9ceceffeca'),
+    ('public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)', 'f4dfcc7c6d771a6bda7be9cb84d82001', '5ff0fc58cf3f0336991931a6f7c5023f'),
+    ('public.combat_effect_v2_active(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb)', '1fae6f148a7ad6dc2e935081188fc718', '0500874f57df3898a2efa5fb8b840618')
   ) x(fn, old_md5, new_md5) loop
     select md5(replace(pg_get_functiondef(f.fn::regprocedure), chr(13), '')) into strict m;
     if m not in (f.old_md5, f.new_md5) then
