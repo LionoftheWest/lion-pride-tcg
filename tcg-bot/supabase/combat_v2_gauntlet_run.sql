@@ -26,9 +26,9 @@ do $g$
 declare m text; f record;
 begin
   for f in select * from (values
-    ('public.gauntlet_start(text)', 'a9223065ba351464603e3a656e18029f', 'NEW_GAUNTLET_START'),
-    ('public.dailies_tasks(text)', '4fe738d217b6a115b373e6f4dca111c1', 'NEW_DAILIES_TASKS'),
-    ('public.combat_v2_step(jsonb, jsonb, jsonb)', 'f5d524aae116f633820abffc89d957c6', 'NEW_COMBAT_V2_STEP')
+    ('public.gauntlet_start(text)', 'a9223065ba351464603e3a656e18029f', 'fb79b65d166f5a0cf9a91e77db969045'),
+    ('public.dailies_tasks(text)', '4fe738d217b6a115b373e6f4dca111c1', 'd8ec8b9f34bfae2432bd15cadab8a8d6'),
+    ('public.combat_v2_step(jsonb, jsonb, jsonb)', 'f5d524aae116f633820abffc89d957c6', 'c2f3a4445cb95e53b06223b9cf0fed73')
   ) x(fn, old_md5, new_md5) loop
     select md5(replace(pg_get_functiondef(f.fn::regprocedure), chr(13), '')) into strict m;
     if m not in (f.old_md5, f.new_md5) then
