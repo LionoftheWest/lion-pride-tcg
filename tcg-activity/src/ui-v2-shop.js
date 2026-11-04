@@ -185,7 +185,7 @@ function resetHTML() {
   const d = shop.data;
   return `<section class="sh-panel sh-reset">
       <div class="sh-ph"><span class="sh-ico prank">${ICON.reset}</span><b>Stat reset</b><span class="grow"></span>${price(d.stat_reset_price, 'sm')}</div>
-      <div class="sh-free${d.free_reset ? ' ok' : ''}">${ICON.cal}<b>Free weekly reset</b><span class="grow"></span><span>${d.free_reset ? 'Available' : `Used · back ${esc(nextDay(d.free_reset_next))}`}</span></div>
+      <div class="sh-free${d.free_reset && !d.stat_reset_paused ? ' ok' : ''}">${ICON.cal}<b>Free weekly reset</b><span class="grow"></span><span>${d.stat_reset_paused ? 'Paused' : d.free_reset ? 'Available' : `Used · back ${esc(nextDay(d.free_reset_next))}`}</span></div>
       ${d.stat_reset_paused ? `<div class="sh-err">${esc(RESET_PAUSED)}</div>` : ''}
       <span class="grow"></span>
       <button class="v2-btn sh-choose"${d.stat_reset_paused ? ' disabled aria-disabled="true"' : ''}>Choose a card ${ICON.arrow}</button>

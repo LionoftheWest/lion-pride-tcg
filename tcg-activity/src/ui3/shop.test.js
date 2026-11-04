@@ -96,6 +96,9 @@ test('UI-43 N-10: stat_reset_paused keeps the Stat reset tab selectable, disable
       }
       assert.ok(on.includes(RESET_PAUSED), `${size}/${tab}: the line is in the page`);
       assert.match(on, /data-choose disabled aria-disabled="true"/, `${size}/${tab}: the reset button is disabled`);
+      assert.match(on, /Free weekly reset<\/b><span>Paused<\/span>/, `${size}/${tab}: N-10 the status reads Paused`);
+      assert.doesNotMatch(on, /u3-sfree is-ok/, `${size}/${tab}: N-10 the status is not green while paused`);
+      assert.match(off, /Free weekly reset<\/b><span>Available<\/span>/, `${size}/${tab}: not paused = Available`);
       assert.ok(!off.includes(RESET_PAUSED), `${size}/${tab}: not paused = no line`);
       assert.doesNotMatch(off, /data-choose disabled/, `${size}/${tab}: not paused = the button works`);
     }
