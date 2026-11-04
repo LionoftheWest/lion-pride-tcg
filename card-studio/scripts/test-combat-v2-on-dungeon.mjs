@@ -4,8 +4,8 @@ import './localdb-guard.mjs';
  * pipeline item ON SPEC v6.1 section 3.3, gate 6.2, cases DO1-DO10). NO lasting change: every request is one DO block, undone by its final
  * RAISE. Each block runs the file first (its guard accepts the R2a text and its own text), so the test passes before and after the apply.
  * The copy must have R2a (combat_v2_dungeon_run.sql) and R1b (combat_v2_gauntlet_run.sql: the dailies_tasks text of the guard).
- * SYN: the v2 room calls combat_v2_synergy. When the copy has no SYN, each block makes a stand-in that returns the state unchanged (no case
- * here reads syn). M1e: the live level reads balance v2_convert.level_per_star. When the copy has no v2_convert key, DO9 plants a stand-in
+ * SYN (main b86dd7e2) must be on the copy: the v2 room calls combat_v2_synergy; a copy with no SYN makes every block raise (fail closed,
+ * as the R2a gate). M1e: the live level reads balance v2_convert.level_per_star. When the copy has no v2_convert key, DO9 plants a stand-in
  * key { level_per_star: 3 } (the SPEC 3.7 value) with the balance triggers off in its block, and prints WAIT: DO9 is then NOT a gate result.
  * Nothing is printed about a real member (the test members are made in the block).
  *   LOCALDB=1 LOCALDB_ENV=... LOCALDB_LOCK_DIR=... node --import ./scripts/localdb-preload.mjs scripts/test-combat-v2-on-dungeon.mjs   must PASS
@@ -147,13 +147,13 @@ const OTHERS = Array.from({ length: 16 }, (_, i) => id('052', i + 1));
 const T = (i) => lit(TESTERS[i - 1]);
 const O = (i) => lit(OTHERS[i - 1]);
 
-// the state before the tests: the R2a and R1b prerequisites, a stand-in for SYN when the copy has none
+// the state before the tests: the R2a, R1b and SYN prerequisites (no stand-in)
 const PRE = String.raw`
   if to_regclass('public.dungeon_v2_runs') is null or to_regprocedure('public.dungeon_v2_start(text, bigint[])') is null then
     raise exception 'RESULT:%', jsonb_build_object('pre', 'the copy has no R2a (combat_v2_dungeon_run.sql): apply it first')::text;
   end if;
   if to_regprocedure('public.combat_v2_synergy(jsonb, jsonb)') is null then
-    execute 'create function public.combat_v2_synergy(p_state jsonb, p_b jsonb) returns jsonb language sql immutable as ''select p_state''';
+    raise exception 'the copy has no SYN (combat_v2_synergy.sql): apply it first';
   end if;`;
 const WORLD = String.raw`
   perform set_config('tcg.skip_welcome', 'on', true);
