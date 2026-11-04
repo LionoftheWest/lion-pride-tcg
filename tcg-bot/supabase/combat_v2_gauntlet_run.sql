@@ -39,14 +39,14 @@ end $g$;
 -- GUARD-END
 
 -- ============================================================ 1. the run mode gauntlet_v2 (a later file may add more modes: keep them)
-do $c$
+do $mc$
 begin
   if not exists (select 1 from pg_constraint where conname = 'dungeon_runs_mode_check' and conrelid = 'public.dungeon_runs'::regclass
                    and pg_get_constraintdef(oid) like '%gauntlet_v2%') then
     alter table public.dungeon_runs drop constraint if exists dungeon_runs_mode_check;
     alter table public.dungeon_runs add constraint dungeon_runs_mode_check check (mode in ('daily', 'gauntlet', 'gauntlet_v2'));
   end if;
-end $c$;
+end $mc$;
 
 -- ============================================================ 2. the HP changes of one log entry (combat_v2_step)
 create or replace function public.gauntlet_v2_hp(p_before jsonb, p_after jsonb) returns jsonb
