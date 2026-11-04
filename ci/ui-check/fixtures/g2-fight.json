@@ -1,5 +1,5 @@
 {
- "_about": "A GET /api/gauntlet/v2 answer in a fight (R1b SPEC 3.4, 3.6; R1c SPEC 3.1 item 5). Stub of the R1b shapes, numbers of the UI-52 review-5 frames. Re-record from a real R1b answer (R1e SPEC 4).",
+ "_about": "A GET /api/gauntlet/v2 answer in a fight (R1b SPEC 3.4, 3.6; R1c SPEC 3.1 item 5). Stub of the R1b shapes, numbers of the UI-52 review-5 frames; the card art URLs are the catalog URLs of the recorded fixtures (api.json /api/gauntlet squad), the models and monster keys are dungeon_monsters rows. Re-record from a real R1b answer (R1e SPEC 4).",
  "body": {
   "ok": true,
   "tester": true,
@@ -271,7 +271,7 @@
          "w": 3
         }
        ],
-       "monster": "squidle",
+       "monster": "squid",
        "show": {
         "name": "Earth Squid",
         "model": "squidle",
@@ -306,7 +306,7 @@
          "w": 3
         }
        ],
-       "monster": "goleling",
+       "monster": "golem",
        "show": {
         "name": "Water Golem",
         "model": "goleling",
@@ -341,7 +341,7 @@
          "w": 3
         }
        ],
-       "monster": "dino",
+       "monster": "raptor",
        "show": {
         "name": "Lightning Raptor",
         "model": "dino",
@@ -384,7 +384,7 @@
          "w": 3
         }
        ],
-       "monster": "blue_demon",
+       "monster": "demon",
        "show": {
         "name": "Ice Demon",
         "model": "blue_demon",
@@ -926,35 +926,35 @@
     "id": 43,
     "name": "Ottozone's Rob",
     "rarity": "gold",
-    "image_url": "/cdn/cards/43.webp",
+    "image_url": "/api/img/storage/v1/object/public/card-art/cards/ottozone-s-rob-gold.webp?v=1789073899283",
     "type": "Character"
    },
    "124": {
     "id": 124,
     "name": "Geno's Megaman",
     "rarity": "illustrated_rare",
-    "image_url": "/cdn/cards/124.webp",
+    "image_url": "/api/img/storage/v1/object/public/card-art/cards/geno-s-megaman-illustrated_rare.png?v=1789605264385",
     "type": "Character"
    },
    "145": {
     "id": 145,
     "name": "Zeoic's Redstone Machine",
     "rarity": "secret_rare",
-    "image_url": "/cdn/cards/145.webp",
+    "image_url": "/api/img/storage/v1/object/public/card-art/cards/alydoor-s-cafe-secret_rare.webp?v=1789681987950",
     "type": "Place"
    },
    "312": {
     "id": 312,
     "name": "I'll get it back, don't worry",
     "rarity": "normal",
-    "image_url": "/cdn/cards/312.webp",
+    "image_url": "/api/img/storage/v1/object/public/card-art/cards/smash-server-hamster-wheel-normal.png?v=1790279923556",
     "type": "Moment"
    },
    "318": {
     "id": 318,
     "name": "Kroc Bot",
     "rarity": "normal",
-    "image_url": "/cdn/cards/318.webp",
+    "image_url": "/api/img/storage/v1/object/public/card-art/cards/kroc-bot-normal.png?v=1790281824808",
     "type": "Character"
    }
   }

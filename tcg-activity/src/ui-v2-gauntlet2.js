@@ -7,6 +7,7 @@
 // The top half of this file is pure (the mappers: answer -> view model, tested in ui-v2-gauntlet2.test.js). The bottom half draws and wires
 // the view with the helpers of its host (ui-v2-dungeon.js passes them), so this file imports no DOM module.
 import { icon as ui3Icon } from './ui3/icons.js';
+import { TOKENS } from './tokens.js';
 
 // ---- The static tables (UI-67): status key -> Lucide icon, the family colors, role key -> Lucide icon ----
 export const STATUS_ICON = {
@@ -103,7 +104,7 @@ export function squadOf(v) {
 export function foesOf(v) {
   const F = fightOf(v) || {};
   const rt = stateOf(v)?.room_type;
-  return (F.enemies || []).map((e, i) => ({ i, name: e.show?.name || '', key: e.show?.model || e.monster || '', element: e.show?.element || '', level: e.show?.level ?? null,
+  return (F.enemies || []).map((e, i) => ({ i, name: e.show?.name || '', model: e.show?.model || '', key: e.monster || e.show?.model || '', element: e.show?.element || '', level: e.show?.level ?? null,
     kind: e.show?.kind || '', boss: e.show?.kind === 'boss' || rt === 'guardian', elite: e.show?.kind === 'elite' || rt === 'elite',
     hp: e.down ? 0 : num(e.hp), max: num(e.max), down: !!e.down, charging: !!e.charging, guard: num(e.status?.guarded?.value), badges: badgesOf(v, 'enemy', i), passives: [] }));
 }
@@ -211,7 +212,10 @@ function foeStatusHTML(f, md) {
 }
 function stripHTML(m, H) {
   return m.strip.map((s) => {
-    const art = s.side === 'card' ? (s.image ? `<img src="${H.thumb(s.image)}" alt="">` : '') : `<span class="g2-foeface">${H.elIcon(fightFoe(m, s.id)?.element) || ''}</span>`;
+    const pk = s.model ? portraitKey(s.model, fightFoe(m, s.id)?.element) : '';
+    const pic = pk ? portraitNow(pk) : '';
+    const art = s.side === 'card' ? (s.image ? `<img src="${H.thumb(s.image)}" alt="">` : '')
+      : `<span class="g2-foeface">${H.elIcon(fightFoe(m, s.id)?.element) || ''}</span><img class="g2-port${pic ? ' is-on' : ''}" alt="" data-model="${H.esc(pk)}"${pic ? ` src="${pic}"` : ''}>`;
     return `<span class="g2-chip ${s.side === 'card' ? (s.cls === 'support' ? 'is-sup' : 'is-att') : 'is-foe'}${s.next ? ' is-next' : ''}${s.skip ? ' is-skip' : ''}" title="${H.esc(s.name)}"><span class="g2-a">${art}</span>${s.side === 'enemy' ? '<span class="g2-bar"></span>' : ''}${s.ready ? '<span class="g2-rp"></span>' : ''}</span>`;
   }).join('');
 }
@@ -370,6 +374,7 @@ export async function wireFight(main, v, host, keep) {
       if (!main.contains(canvas)) return;
       H.dg.stage = mountStage(canvas, { onPick: (i) => target(i), onLayout: () => place(main) });
       H.dg.stage.canvas = canvas; H.dg.roomKey = key;
+      portraits(foesOf(V));   // the strip portraits: the same models (not awaited)
       await H.dg.stage.setFoes(foesOf(V));
       if (alive()) upd();
     } catch (e) { console.warn('v2 stage', e); }
@@ -593,4 +598,54 @@ function layout(F) {
   const narrow = F.classList.contains('is-narrow');
   F.querySelectorAll('.dg-sup.g2-sup').forEach((b) => { const home = narrow ? units : F.querySelector('.dg-sups'); if (home && b.parentNode !== home) home.appendChild(b); b.classList.toggle('g2-plate', narrow); });
   place(F.closest('#main') || undefined);
+}
+
+// ---- The monster portraits of the strip (the same models as the stage: public/dungeon/monsters/<model>.glb) ----
+const PORT = new Map();    // model -> data URL (done)
+const PORT_Q = new Map();  // model -> Promise (loading)
+export const portraitNow = (key) => PORT.get(key) || '';
+/** The cache key of a portrait: the model and the element (the stage tints a model by the element). */
+export const portraitKey = (model, element) => `${model}|${element || ''}`;
+const MODELS = '/dungeon/monsters/';
+/** Render the portrait of each model once (a 96 px square, the head and body framed), then fill the strip images of that model. */
+export async function portraits(foes) {
+  const want = [...new Set(foes.filter((f) => f.model).map((f) => portraitKey(f.model, f.element)))].filter((k) => !PORT.has(k) && !PORT_Q.has(k));
+  if (!want.length) return;
+  let THREE, GLTFLoader;
+  try { THREE = await import('three'); ({ GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js')); } catch { return; }
+  const size = 96;
+  const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size;
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true }); } catch { return; }
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.setSize(size, size, false);
+  const loader = new GLTFLoader();
+  for (const m of want) {
+    const [model0, el] = m.split('|');
+    const job = new Promise((ok) => loader.load(MODELS + model0 + '.glb', ok, undefined, () => ok(null)));
+    PORT_Q.set(m, job);
+    const g = await job;
+    PORT_Q.delete(m);
+    if (!g) continue;
+    const scene = new THREE.Scene();
+    scene.add(new THREE.HemisphereLight(TOKENS['text-on-color'], TOKENS['border-strong'], 2.2));
+    const sun = new THREE.DirectionalLight(TOKENS['text-on-color'], 1.6); sun.position.set(1, 2, 3); scene.add(sun);
+    const model = g.scene;
+    const col = TOKENS[`element-${el}`] ? new THREE.Color(TOKENS[`element-${el}`]) : null;
+    model.traverse((o) => { if (o.isMesh && o.material && col) { o.material = o.material.clone(); o.material.color?.lerp(col, 0.45); } });
+    model.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(model, true);
+    const c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
+    const top = box.max.y, h = Math.max(sz.y * 0.62, sz.x * 0.62, 0.001);   // the upper part of the body: the head reads at 24 px
+    const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 1000);
+    const dist = h / (2 * Math.tan((30 * Math.PI) / 360)) * 1.15;
+    cam.position.set(c.x, top - h / 2, c.z + sz.z / 2 + dist);
+    cam.lookAt(c.x, top - h / 2, c.z);
+    scene.add(model);
+    renderer.render(scene, cam);
+    const url = canvas.toDataURL('image/png');
+    PORT.set(m, url);
+    document.querySelectorAll(`.g2-strip img.g2-port[data-model="${m}"]`).forEach((img) => { img.src = url; img.classList.add('is-on'); });
+  }
+  renderer.dispose(); renderer.forceContextLoss?.();
 }

@@ -165,3 +165,7 @@ body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit .dg-state { font-size: var(--
 /* wide classes, the ally pick (D-70): the prompt and Cancel sit over the bottom of the dimmed stage, at full width (review-5 frame 14) */
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-arena > .dg-hint.g2-pickbar { position: absolute; left: 50%; bottom: var(--sp-2); transform: translateX(-50%); width: calc(100% - var(--sp-5));
   max-width: calc(var(--dialog-w) * 1.6); height: auto; min-height: var(--hit); margin: var(--u3-none); opacity: 1; filter: none; }
+/* the foe chips of the strip: the monster model portrait (the stage model); the element icon only until it renders */
+body.ui-v2.ui-v3 .v2-dungeon .g2-chip .g2-a img.g2-port { display: none; object-fit: cover; object-position: center top; }
+body.ui-v2.ui-v3 .v2-dungeon .g2-chip .g2-a img.g2-port.is-on { display: block; }
+body.ui-v2.ui-v3 .v2-dungeon .g2-chip .g2-a:has(img.g2-port.is-on) .g2-foeface { display: none; }

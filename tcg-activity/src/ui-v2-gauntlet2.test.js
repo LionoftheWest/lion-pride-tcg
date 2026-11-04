@@ -2,10 +2,10 @@
 // Each test fails when the view computes a server field itself (C3): the strip, the ready pip, the tap line, the allies, the targets, Squad HP.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, cardStatusHTML, squadOf, STRIP_N } from './ui-v2-gauntlet2.js';
+import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, cardStatusHTML, squadOf, foesOf, portraitKey, STRIP_N } from './ui-v2-gauntlet2.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIX = JSON.parse(readFileSync(join(here, '..', '..', 'ci', 'ui-check', 'fixtures', 'g2-fight.json'), 'utf8')).body;
@@ -164,4 +164,40 @@ test('the Shielded place stays when a card has no shield (nothing moves, INV-E3)
   v.status_lines['card:124'] = v.status_lines['card:124'].filter((l) => l.key !== 'shielded');   // the shield is gone
   assert.equal(places(124), 2);   // the empty place + Empowered: Empowered does not move left
   assert.equal(first(124), 'is-empty');
+});
+
+// R1e round 2 (Nathan 2026-11-03: the built frames had no monsters and no card art): the pictures of the fight come from the server fields.
+const MODELS = join(here, '..', 'public', 'dungeon', 'monsters');
+test('every foe has its 3D model (show.model) and the model file exists', () => {
+  const v = fresh();
+  const foes = foesOf(v);
+  assert.equal(foes.length, 5);
+  for (const f of foes) {
+    assert.ok(f.model, `foe ${f.i} has no model`);
+    assert.equal(f.model, v.run.state.fight.enemies[f.i].show.model);
+    assert.ok(existsSync(join(MODELS, `${f.model}.glb`)), `no file public/dungeon/monsters/${f.model}.glb`);
+  }
+  v.run.state.fight.enemies[2].show.model = 'yeti';
+  assert.equal(foesOf(v)[2].model, 'yeti');
+});
+
+test('the foe chips of the strip carry the model of their foe (the portrait)', () => {
+  const v = fresh();
+  const chips = stripOf(v).filter((c) => c.side === 'enemy');
+  assert.ok(chips.length > 0);
+  for (const c of chips) {
+    assert.ok(c.model, `enemy chip ${c.id} has no model`);
+    assert.equal(c.model, v.run.state.fight.enemies[c.id].show.model);
+  }
+  assert.equal(portraitKey('skeleton', 'water'), 'skeleton|water');
+});
+
+test('every squad card and every card chip has its art URL (cards[id].image_url)', () => {
+  const v = fresh();
+  for (const c of squadOf(v)) {
+    assert.ok(c.image_url, `card ${c.id} has no art`);
+    assert.equal(c.image_url, v.cards[c.id].image_url);
+    assert.match(c.image_url, /\/card-art\/cards\//);
+  }
+  for (const c of stripOf(v).filter((x) => x.side === 'card')) assert.equal(c.image, v.cards[c.id].image_url);
 });
