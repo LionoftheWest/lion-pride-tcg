@@ -543,9 +543,14 @@ const B5 = block(String.raw`
   perform pg_temp.flag('dungeon', false);
   h := pg_temp.play(${O(16)});
   rw := pg_temp.vrow(${O(16)});
-  ${add('DO8 flag OFF during a live run: it plays to its end (status over, settled) and its won rooms still add the v1 loot (pend or bank grows after the flag went off); the row keeps live true',
-    `rw.live and rw.status = 'over' and rw.settled_at is not null
-     and exists (select 1 from jsonb_array_elements(h) z where coalesce((z->'pend'->>'shards')::int, 0) + coalesce((z->'bank'->>'shards')::int, 0) > 0)
+  -- the loot of a won FIGHT step after the flag went off (the answer of the fight end has event end and won true; a chest step has no event)
+  n := (select count(*) from (select z, lag(z) over (order by q) as zp from jsonb_array_elements(h) with ordinality w(z, q)) y2
+         where y2.z->>'event' = 'end' and (y2.z->>'won')::boolean
+           and coalesce((y2.z->'pend'->>'shards')::int, 0) + coalesce((y2.z->'bank'->>'shards')::int, 0)
+             > coalesce((y2.zp->'pend'->>'shards')::int, 0) + coalesce((y2.zp->'bank'->>'shards')::int, 0));
+  ${add('DO8 flag OFF during a live run: it plays to its end (status over, settled) and each won fight room after the flag went off still adds the v1 kill loot (pend + bank grows at a won fight end); the row keeps live true',
+    `rw.live and rw.status = 'over' and rw.settled_at is not null and n >= 1
+     and n = (select count(*) from jsonb_array_elements(h) z where z->>'event' = 'end' and (z->>'won')::boolean)
      and rw.shards = coalesce((rw.state->'bank'->>'shards')::int, 0) + case when rw.ended_by = 'cleared' then coalesce((rw.state->'pend'->>'shards')::int, 0) else 0 end`,
     `jsonb_build_object('status', rw.status, 'ended_by', rw.ended_by, 'shards', rw.shards, 'steps', jsonb_array_length(h), 'bank', rw.state->'bank')`)}
   -- DO8b after the rollback: a live v2 run of today makes the v1 start refuse already (by row, the flag is off)
