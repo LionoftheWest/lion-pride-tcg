@@ -625,6 +625,31 @@ for (const [name, sql] of [['B1', B1], ['B2', B2], ['B3', B3], ['B4', B4], ['B5'
     else { fails += 1; console.log(`FAIL ${row.case} ${JSON.stringify(row.got).slice(0, 1500)}`); }
   }
 }
+// DO1 "R2 G1 PASS": the R2a gate with MIG = the R2a file + this file (the R2-ON stack in each R2a block), with every flag off. Every R2a case
+// must PASS except the 2 cases that check the identity of the R2a file alone (they must FAIL for that reason): D1 "the file adds exactly the 21
+// dungeon_v2_ functions" (R2-ON adds dungeon_v2_settle and dungeon_v2_loot) and D11 "a [combat] comment that names the file" (the R2-ON
+// functions name combat_v2_on_dungeon.sql). Not run for a mutation (about 70 s); the R2-ON DO1 cases above cover the mutation.
+if (!process.env.MUTATE) {
+  const { writeFileSync, mkdtempSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const { tmpdir } = await import('node:os');
+  const dir = mkdtempSync(join(tmpdir(), 'r2on-'));
+  const stacked = join(dir, 'r2a-plus-r2on.sql');
+  writeFileSync(stacked, read('../../tcg-bot/supabase/combat_v2_dungeon_run.sql') + '\n' + ORIG);
+  const ch = spawnSync(process.execPath, process.execArgv.concat([fileURLToPath(new URL('./test-combat-v2-dungeon-run.mjs', import.meta.url))]),
+    { env: { ...process.env, MIG: stacked, MUTATE: '', LOCALDB_QUIET: '1' }, encoding: 'utf8', maxBuffer: 1 << 26 });
+  const rl = (ch.stdout || '').split(/\r?\n/);
+  const ID = [/^FAIL D1 INV-1 every public function that existed keeps its md5 \(none is gone\); the file adds exactly the 21 dungeon_v2_ functions /,
+    /^FAIL D11 INV-5 every new function: no EXECUTE for PUBLIC, anon or authenticated; EXECUTE for service_role; search_path = public; a \[combat\] comment that names the file /];
+  const fl = rl.filter((l) => /^FAIL/.test(l));
+  const other = fl.filter((l) => !ID.some((re) => re.test(l)));
+  const passN = rl.filter((l) => /^PASS D/.test(l)).length;
+  const idOk = ID.every((re) => fl.some((l) => re.test(l)));
+  const ok = other.length === 0 && idOk && passN >= 60;
+  const nm = `DO1 R2 G1 with R2-ON stacked (MIG = R2a + this file, flags off): every R2a case PASS (${passN}) except the 2 identity cases of the R2a file alone (D1 "exactly the 21 dungeon_v2_ functions", D11 "a comment that names the file"), which FAIL for that reason`;
+  if (ok) console.log(`PASS ${nm}`); else { fails += 1; console.log(`FAIL ${nm} ${JSON.stringify({ other: other.map((l) => l.slice(0, 300)), idOk, passN, tail: rl.slice(-3), err: (ch.stderr || '').slice(-500) })}`); }
+  out.push({ case: nm, ok });
+}
 console.log(`M1e on the copy: ${m1eOn ? 'yes' : 'no'}; SEEDS ${SEEDS}`);
 if (fails) { console.log(`${fails} of ${out.length + fails - out.filter((r) => !r.ok).length} FAILED${waits ? `; ${waits} WAIT for M1e` : ''}`); process.exit(1); }
 console.log(`PASS all ${out.length}${waits ? `; ${waits} WAIT for M1e (not a gate result for DO9 with the real v2_convert key)` : ''}`);
