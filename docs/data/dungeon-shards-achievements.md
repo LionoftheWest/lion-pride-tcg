@@ -1161,7 +1161,7 @@ POST /api/gauntlet/start: starts a Gauntlet run with the week's squad. Checks bo
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Gauntlet (20.15 R1a): the v2 foes of one room of a Gauntlet week: each week foe (dungeon_make_foe) becomes combat_v2_dungeon_foe(key, floor, room, kind) with no extra mechanic, plus show {name, model, element} for the screen only. No v1 number or rule (hp, atk, weak, resist, passives, tags, the element bonus) enters the v2 unit. Refuses an empty list and a foe with no key or kind. Reads only. combat_v2_gauntlet_builders.sql.
+[combat] Combat v2 Gauntlet (20.15 R1a, SYN): the v2 foes of one room of a Gauntlet week: each week foe (dungeon_make_foe) becomes combat_v2_dungeon_foe(key, floor, room, kind) with no extra mechanic, plus its element (a rule tag: the element chart, plan 7.3) and show {name, model, element} for the screen. No v1 number or rule (hp, atk, weak, resist, passives) enters the v2 unit. Refuses an empty list and a foe with no key or kind. Reads only. combat_v2_gauntlet_builders.sql, combat_v2_synergy.sql.
 
 <a id="fn-gauntlet-v2-hp-jsonb-jsonb"></a>
 

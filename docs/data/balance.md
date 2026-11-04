@@ -30,7 +30,7 @@ The triggers on `balance` check each change:
 
 ## Keys
 
-[ability_v2](#key-ability-v2), [achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [auto_v2](#key-auto-v2), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [card_level](#key-card-level), [combat](#key-combat), [combat_v2](#key-combat-v2), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [enemy_v2](#key-enemy-v2), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_labels](#key-stat-labels), [stat_points](#key-stat-points), [support](#key-support), [v2_asc](#key-v2-asc), [v2_card_hp](#key-v2-card-hp), [v2_charge](#key-v2-charge), [v2_control](#key-v2-control), [v2_dungeon](#key-v2-dungeon), [v2_enemy](#key-v2-enemy), [v2_hit](#key-v2-hit), [v2_hunt](#key-v2-hunt), [v2_level](#key-v2-level), [v2_power](#key-v2-power), [v2_pp](#key-v2-pp), [v2_roles](#key-v2-roles), [v2_speed](#key-v2-speed), [v2_stats](#key-v2-stats), [v2_status](#key-v2-status), [v2_support](#key-v2-support), [welcome_packs](#key-welcome-packs)
+[ability_v2](#key-ability-v2), [achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [auto_v2](#key-auto-v2), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [card_level](#key-card-level), [combat](#key-combat), [combat_v2](#key-combat-v2), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [enemy_v2](#key-enemy-v2), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_labels](#key-stat-labels), [stat_points](#key-stat-points), [support](#key-support), [v2_asc](#key-v2-asc), [v2_card_hp](#key-v2-card-hp), [v2_charge](#key-v2-charge), [v2_control](#key-v2-control), [v2_dungeon](#key-v2-dungeon), [v2_enemy](#key-v2-enemy), [v2_hit](#key-v2-hit), [v2_hunt](#key-v2-hunt), [v2_level](#key-v2-level), [v2_power](#key-v2-power), [v2_pp](#key-v2-pp), [v2_roles](#key-v2-roles), [v2_speed](#key-v2-speed), [v2_stats](#key-v2-stats), [v2_status](#key-v2-status), [v2_support](#key-v2-support), [v2_synergy](#key-v2-synergy), [welcome_packs](#key-welcome-packs)
 
 <a id="key-ability-v2"></a>
 
@@ -3398,6 +3398,43 @@ Shape: `object { area_one_foe_x: number, basic_x: number, enabler_extra_stack: a
     "event",
     "gold"
   ]
+}
+```
+
+<a id="key-v2-synergy"></a>
+
+### v2_synergy
+
+Combat v2 synergy (item SYN, plan 7.1 to 7.5; combat_v2_synergy.sql; Nathan 2026-11-03: the 9 recommendations). element: an ATTACKER with small_at or more squad cards of its element (itself and the supports included) deals x small, with big_at or more x big (v1 values 1.12 and 1.20). chart: a card hit on a foe whose element the card's element beats (element_counters, no proposal) x bonus (v1 1.25; no enemy-side penalty). affinity: a SUPPORT gets 1 + min(cap, step x n) on its amounts, its smite and area and its status values (not stacks, chances or durations), n = the OTHER squad cards of its element or its family (the one with more; a tie: the element). sets.<set>: the distinct pieces (subjects with the trait slug trait:<set with - for _>) in the squad: small_at -> small, big_at -> big, top_at -> top only in the Hunt and with the head subject in the squad; the factor goes to every squad card (Q7 = B). The set values stay 1 until the Lab measures them (Q8). Neutral (= the v2 engine before SYN): small, big, bonus, every set value 1 and step 0. Shape: balance_v2_spec (trigger balance_check_combat_v2).
+
+Shape: `object { affinity: object { cap: number, step: number }, chart: object { bonus: number }, element: object { big: number, big_at: number, small: number, small_at: number }, sets: object { forbidden_pride: object { big: number, big_at: number, head: string, small: number, small_at: number, top: number, top_at: number } } }`
+
+```json
+{
+  "sets": {
+    "forbidden_pride": {
+      "big": 1,
+      "top": 1,
+      "head": "ottozone-s-head",
+      "small": 1,
+      "big_at": 5,
+      "top_at": 7,
+      "small_at": 3
+    }
+  },
+  "chart": {
+    "bonus": 1.25
+  },
+  "element": {
+    "big": 1.2,
+    "small": 1.12,
+    "big_at": 5,
+    "small_at": 3
+  },
+  "affinity": {
+    "cap": 0.3,
+    "step": 0.1
+  }
 }
 ```
 

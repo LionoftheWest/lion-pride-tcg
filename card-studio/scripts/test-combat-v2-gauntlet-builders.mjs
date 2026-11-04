@@ -41,7 +41,10 @@ if (!DRIVER || !/pg_temp\.v2lab_fight/.test(DRIVER)) throw new Error('the Lab dr
 // the Lab card unit: the real text of fightSql (the card_combat_v2 call and the unit of the squad), not a copy; the meter is 0 here (the Lab draws it)
 const LAB_SRC = read('../src/combat-lab-routes.js');
 const LAB_CC = (LAB_SRC.match(/cc := (card_combat_v2\(x->>'rarity'[^;]*\));/) || [])[1];
-const LAB_UNIT0 = (LAB_SRC.match(/cards := cards \|\| jsonb_build_object\(i::text, (jsonb_build_object\('role'[\s\S]*?'active', jsonb_build_object\('blocks', x->'blocks'\)\))\);/) || [])[1];
+// SYN: the Lab unit also has the rule tags ('tags', combat_v2_card_tags(card_id)). This test re-applies the R1a file (a unit with no tags), so it
+// compares the unit with no tags; test-combat-v2-synergy.mjs (C3g) compares the unit WITH tags (combat_v2_synergy.sql) with the Lab unit.
+const LAB_TAGS = ", 'tags', combat_v2_card_tags((x->>'card_id')::bigint)";
+const LAB_UNIT0 = ((LAB_SRC.match(/cards := cards \|\| jsonb_build_object\(i::text, (jsonb_build_object\('role'[\s\S]*?'active', jsonb_build_object\('blocks', x->'blocks'\)(?:, 'tags', combat_v2_card_tags\(\(x->>'card_id'\)::bigint\))?\))\);/) || [])[1] || '').replace(LAB_TAGS, '') || undefined;
 if (!LAB_CC || !LAB_UNIT0 || LAB_UNIT0.split("round((random() * 100)::numeric, 2)").length !== 2) throw new Error('the Lab card unit (fightSql) was not found in card-studio/src/combat-lab-routes.js');
 const LAB_UNIT = LAB_UNIT0.replace("round((random() * 100)::numeric, 2)", '0');
 const FIGHTS = Number(process.env.FIGHTS || 120);
