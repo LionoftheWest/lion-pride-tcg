@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, cardStatusHTML, squadOf, foesOf, portraitKey, fmtPower, wireFight, STRIP_N } from './ui-v2-gauntlet2.js';
+import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, cardStatusHTML, squadOf, foesOf, portraitKey, fmtPower, wireFight, infoIdOf, v2InfoOf, ROLE_PURPOSE, hpShown, maxShown, shownDrop, dmgText, supStateHTML, calloutOf, gainsOf, newStatusesOf, STRIP_N } from './ui-v2-gauntlet2.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIX = JSON.parse(readFileSync(join(here, '..', '..', 'ci', 'ui-check', 'fixtures', 'g2-fight.json'), 'utf8')).body;
@@ -215,8 +215,8 @@ test('the power chip: the full form, the compact form from 10,000 (a 9-digit pow
 // any other element: a stub that takes every property and call (fightUpdate writes text, widths and classes into many parts)
 const anyEl = () => new Proxy(function stub() {}, { get: (o, k) => (k === 'then' ? undefined : k === Symbol.toPrimitive ? () => '' : anyEl()), set: () => true, apply: () => anyEl() });
 function stubFight() {
-  const listeners = [];
-  const el = (name) => ({ name, addEventListener: (type) => listeners.push(`${name}:${type}`), classList: { toggle() {}, contains: () => false, add() {}, remove() {} }, setAttribute() {}, dataset: {}, closest: () => null });
+  const listeners = []; const handlers = [];
+  const el = (name) => ({ name, addEventListener: (type, fn) => { listeners.push(`${name}:${type}`); handlers.push({ name, type, fn }); }, classList: { toggle() {}, contains: () => false, add() {}, remove() {} }, setAttribute() {}, dataset: {}, closest: () => null });
   const auto = el('auto'), finish = el('finish');
   const canvas = { ...el('canvas'), replaceWith() {}, closest: () => null, getBoundingClientRect: () => ({ top: 0 }) };
   const F = { ...el('fight'), isConnected: true, style: { setProperty() {} }, querySelectorAll: () => [],
@@ -224,7 +224,7 @@ function stubFight() {
   const main = { querySelector: (s) => (s === '.dg-fight.g2' ? F : null), contains: () => true };
   const calls = { fitFight: 0 };
   const host = { dg: { auto: false, stage: null }, fitFight: () => { calls.fitFight += 1; }, placeArena() {}, currentView: () => 'dungeon', sfx() {}, setAuto() {}, setView() {}, toast() {}, fmt: String, esc: String, thumb: String, elIcon: () => '', hand: '', timer: '', finishButton: () => ({}), autoDisabled: () => false };
-  return { listeners, F, main, host, calls };
+  return { listeners, handlers, F, main, host, calls };
 }
 function withDocument(fightEl, fn) {
   const saved = { document: globalThis.document, raf: globalThis.requestAnimationFrame, gcs: globalThis.getComputedStyle, warn: console.warn };
@@ -256,4 +256,106 @@ test('L-4: when another fight opened while the stage loaded, the old wireFight s
   const t = stubFight();   // the same fight stays open: the layout runs
   await withDocument(() => t.F, () => wireFight(t.main, fresh(), t.host));
   assert.equal(t.calls.fitFight, 1);
+});
+
+// ---- Nathan's live test 2026-11-04 (the shared v2 fight of the Gauntlet, the Dungeon and the Hunt) ----
+test('item 1: the attacker magnifier opens its own card (the v1 tile marks its magnifier data-info="1"); the support magnifier its card', () => {
+  const card = { dataset: { id: '318' } };
+  const attackerMag = { dataset: { info: '1' }, closest: (s) => (s === '.dg-card' ? card : null) };
+  const supportMag = { dataset: { info: '312' }, closest: () => null };
+  assert.equal(infoIdOf(attackerMag), 318);
+  assert.equal(infoIdOf(supportMag), 312);
+});
+
+test('item 1, D-212b: the card info of a v2 card: the role (name, what it does) and the v2 active (name, charge)', () => {
+  const v = fresh();
+  const a = v2InfoOf(v, 124);
+  assert.equal(a.roleLabel, 'Finisher');
+  assert.equal(a.purpose, 'End a fight before the enemy grows.');
+  assert.equal(a.ability.name, 'Doubles Clutch');
+  assert.equal(a.ability.effect, 'Charge 1 of 2');
+  assert.match(a.ability.kind, /Finisher · Attacker active/);
+  assert.match(a.roleIcon, /<svg/);
+  assert.equal(v2InfoOf(v, 312).ability.effect, 'Ready');
+  assert.equal(v2InfoOf(v, 312).purpose, 'Undo damage and clear statuses.');
+  v.run.state.info[124].text = { text: 'Hit the target for 140%.' };   // when the server sends the text (request to R1b, REPORT-fix)
+  assert.equal(v2InfoOf(v, 124).ability.desc, 'Hit the target for 140%.');
+  for (const r of v.ref.roles) assert.ok(ROLE_PURPOSE[r.key], `a purpose line for ${r.key}`);
+});
+
+test('item 1: a tap on the attacker magnifier opens the info and sends no action; a tap on the card body attacks', async () => {
+  const s = stubFight();
+  const posts = []; const infos = [];
+  s.host.apiPost = async (p, b) => { posts.push([p, b]); return { ok: false }; };
+  s.host.base = '/api/gauntlet/v2';
+  s.host.openInfo = (id, v2) => infos.push([id, v2?.roleLabel]);
+  await withDocument(() => null, async () => {
+    await wireFight(s.main, fresh(), s.host);
+    const tap = s.handlers.find((h) => h.name === 'fight').fn;
+    const card = { dataset: { id: '318' } };
+    const mag = { dataset: { info: '1' }, closest: (q) => (q === '.card-info' ? mag : q === '.dg-card' ? card : null) };
+    tap({ target: mag });
+    assert.deepEqual(infos, [[318, 'Striker']]);
+    assert.equal(posts.length, 0, 'the magnifier never attacks');
+    const unit = { dataset: { card: '318' } };
+    const body = { closest: (q) => (q === '.dg-unit, .dg-sup' ? unit : null) };
+    await tap({ target: body });
+    assert.equal(posts.length, 1);
+    assert.equal(posts[0][0], '/api/gauntlet/v2/act');
+    assert.equal(posts[0][1].use, 'basic');
+  });
+});
+
+test('item 2: whole-number HP: a living unit shows its HP rounded up (never 0), a down unit 0, the max rounded up', () => {
+  assert.equal(hpShown(243.293), 244);
+  assert.equal(hpShown(0.2), 1);
+  assert.equal(hpShown(0.2, true), 0);
+  assert.equal(hpShown(0), 0);
+  assert.equal(hpShown(117.647), 118);
+  assert.equal(maxShown(647.5), 648);
+  assert.equal(maxShown(200), 200);
+});
+
+test('item 9: no "-0": a damage number is the drop of the shown HP; a 0 drop or a 0 tick shows nothing', () => {
+  const v = fresh();
+  assert.equal(shownDrop({ before: 81.992, after: 81.6 }), 0);
+  assert.equal(shownDrop({ before: 12, after: 0, down: true }), 12);
+  assert.equal(dmgText(0.3), '');
+  assert.equal(dmgText(42.4), '-42');
+  const log = [
+    { k: 'act', actor: { side: 'enemy', id: 0 }, move: 'strike', hp: [{ side: 'card', id: 312, before: 0, after: 0, down: true, shield_before: 0, shield_after: 0 }] },
+    { k: 'clock', clock: 7, ticks: [{ side: 'card', id: 312, status: 'poison', dmg: 0 }], hp: [] },
+  ];
+  const lines = logLines(v, log);
+  assert.ok(lines.every((l) => l.txt !== '-0'), JSON.stringify(lines));
+  assert.equal(lines.filter((l) => l.who === 'Poison').length, 0);
+});
+
+test('items 7, 8: the support state: Down in the down colour; READY (data-active) when charged; else the charge', () => {
+  const H = { fmt: String };
+  const down = supStateHTML({ down: true, ready: true, charge: 1, need: 1, id: 312 }, H);
+  assert.match(down, /class="g2-down">Down</);
+  assert.doesNotMatch(down, /Ready/);
+  const ready = supStateHTML({ down: false, ready: true, actor: true, charge: 1, need: 1, id: 312 }, H);
+  assert.match(ready, /class="g2-ready is-now" data-active="312"/);
+  assert.doesNotMatch(supStateHTML({ down: false, ready: true, actor: false, id: 145 }, H), /is-now/);
+  assert.match(supStateHTML({ down: false, ready: false, charge: 0, need: 1, id: 145 }, H), /0 of 1/);
+});
+
+test('D-215: an active shows a callout with its name; a basic attack shows none; a foe move shows its name', () => {
+  const v = fresh();
+  assert.deepEqual(calloutOf(v, { k: 'act', actor: { side: 'card', id: 318 }, action: 'active' }), { side: 'card', id: 318, text: 'Peaches Beam' });
+  assert.equal(calloutOf(v, { k: 'act', actor: { side: 'card', id: 318 }, action: 'basic' }), null);
+  assert.deepEqual(calloutOf(v, { k: 'act', actor: { side: 'enemy', id: 2 }, move: 'heavy_hit' }), { side: 'enemy', id: 2, text: 'Heavy hit' });
+  assert.equal(calloutOf(v, { k: 'clock', clock: 3 }), null);
+});
+
+test('item 3: the v1 gain pops (+n heal, +n shield / guard) and the status glyphs come from the step data', () => {
+  assert.deepEqual(gainsOf({ hp: [{ side: 'card', id: 124, before: 40.2, after: 52.7, shield_before: 0, shield_after: 12.5 }] }),
+    [{ side: 'card', id: 124, text: '+12' }, { side: 'card', id: 124, text: '+13 shield' }]);
+  assert.deepEqual(gainsOf({ hp: [{ side: 'enemy', id: 0, before: 50, after: 50, shield_before: 0, shield_after: 10 }] }), [{ side: 'enemy', id: 0, text: '+10 guard' }]);
+  const v = fresh(); const w = fresh();
+  w.status_lines['card:43'].push({ key: 'stunned', stacks: null, left: 1, amounts: [] });
+  assert.deepEqual(newStatusesOf(v, w), [{ side: 'card', id: 43, key: 'stunned', label: 'Stunned' }]);
+  assert.deepEqual(newStatusesOf(v, fresh()), []);
 });

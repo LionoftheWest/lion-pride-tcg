@@ -3293,6 +3293,7 @@ function openViewer(card, opts = {}) {
   fillViewerAbility(card.ability);
   fillViewerTags(card.tags);
   fillViewerEffect(card);
+  if (opts.v2) fillViewerV2(opts.v2);   // combat v2 (UI-08, D-212b): the role and the active of a v2 fight card
   el('card3d').classList.toggle('locked', locked);
   el('card3d').classList.toggle('holo-on', !locked && card.rarity !== 'normal'); // normal = no foil; locked = hidden
   renderAscension(card);
@@ -3347,6 +3348,17 @@ function fillRaidInfo(c) {
     ${max ? `<i class="vr-hpbar"><i style="width:${Math.max(0, Math.round((100 * hp) / max))}%"></i></i>` : ''}
     ${c.shield > 0 ? `<div class="vr-note">🛡 Shield ${c.shield}</div>` : ''}
     ${cd ? `<div class="vr-note">⏳ Ready in ${cd} round${cd === 1 ? '' : 's'}</div>` : ''}`;
+  box.classList.remove('hidden');
+}
+
+// UI-08 combat v2 (D-212b, Nathan 2026-11-04): the card info of a v2 fight card shows its role (icon, name, what it does) and its v2 active
+// (name, charge, the text when the server sends it) in place of the v1 ability. v2 = ui-v2-gauntlet2.js v2InfoOf.
+function fillViewerV2(v2) {
+  fillViewerAbility(v2.ability);
+  const box = el('v-raid');
+  if (!box) return;
+  box.querySelector('.g2-vrole')?.remove();
+  if (v2.roleLabel) box.insertAdjacentHTML('afterbegin', `<div class="g2-vrole"><span class="g2-role ${v2.cls === 'support' ? 'is-sup' : 'is-att'}">${v2.roleIcon || ''}</span><span><b>${esc(v2.roleLabel)}</b><small>${esc(v2.purpose || '')}</small></span></div>`);
   box.classList.remove('hidden');
 }
 
