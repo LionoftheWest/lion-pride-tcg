@@ -4,6 +4,7 @@
 //   S2 the tester's ACTIVE v2 run takes the screen, also next to a v1 run of the same day.
 //   S3 a v2 run that is OVER takes the screen only when the v1 run is not active (QD2: the v1 run of the day keeps its screens).
 //   S4 "Play v2 (test)" only when the server says tester AND can_start (the client never decides it).
+//   S5 (review L-3) HP on the screen: a living unit never shows 0 (rounded up), 0 only when down; max rounded up; whole numbers unchanged.
 // A mutation is a copy of the real file with ONE text change, loaded by this same test.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,6 +21,9 @@ export const MUTATIONS = {
   no_ok_check: ['export const v2OwnsDungeon = (v, v1) => !!(v?.ok && v.run &&', 'export const v2OwnsDungeon = (v, v1) => !!(v?.run &&'],
   start_without_tester: ['!!(v?.ok && v.tester === true && v.can_start === true)', '!!(v?.ok && v.can_start === true)'],
   start_from_client: ['!!(v?.ok && v.tester === true && v.can_start === true)', '!!(v?.ok && v.tester === true && !v.run)'],
+  hp_round: ['(down || !(num(hp) > 0) ? 0 : Math.ceil(num(hp)))', '(down || !(num(hp) > 0) ? 0 : Math.round(num(hp)))'],
+  hp_down_ignored: ['(down || !(num(hp) > 0) ? 0 :', '(!(num(hp) > 0) ? 0 :'],
+  max_round: ['export const maxShown = (max) => Math.ceil(num(max));', 'export const maxShown = (max) => Math.round(num(max));'],
 };
 
 if (process.env.MUTATE === 'all') {
@@ -59,7 +63,7 @@ async function loadModule() {
 }
 
 async function suite() {
-  const { v2OwnsDungeon, v2CanStart } = await loadModule();
+  const { v2OwnsDungeon, v2CanStart, hpShown, maxShown } = await loadModule();
   const NOT_TESTER = { ok: false, error: 'not_tester', message: 'Combat v2 is for testers only.' };
   const view = (run, extra = {}) => ({ ok: true, tester: true, runs_left: run ? 0 : 1, can_start: !run, run, ...extra });
   const v1 = (status) => ({ ok: true, run: status ? { id: 7, status } : null });
@@ -85,5 +89,17 @@ async function suite() {
     assert.equal(v2CanStart(view(null, { can_start: false })), false, 'no run left today');
     assert.equal(v2CanStart(view(null, { tester: false, can_start: true })), false, 'a removed tester');
     assert.equal(v2CanStart(view({ id: 1, status: 'over' }, { can_start: false })), false, 'the run of today is used');
+  });
+  test('S5 (L-3) HP on the screen: a living unit never shows 0; 0 only when down; the max rounded up; whole numbers unchanged', () => {
+    assert.equal(hpShown(0.4), 1, 'a living unit with 0.4 HP shows 1, not 0');
+    assert.equal(hpShown(0.4, true), 0, 'a down unit shows 0');
+    assert.equal(hpShown(0), 0);
+    assert.equal(hpShown(-3), 0);
+    assert.equal(hpShown(86.375), 87);
+    assert.equal(maxShown(86.375), 87, 'a full unit shows hp = max (87/87)');
+    assert.equal(hpShown(86.375), maxShown(86.375));
+    assert.equal(hpShown(48), 48, 'a whole number (the Gauntlet) is unchanged');
+    assert.equal(maxShown(72), 72);
+    assert.equal(hpShown(48.0001), 49);
   });
 }

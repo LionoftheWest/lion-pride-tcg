@@ -8,6 +8,8 @@
 //   G6e the bodies: the start cards (the v1 rule), the choice (only use, target, ally), max, Finish = FINISH_MAX, pick.
 //   G6f every R2a error code: 400 with its message and every key kept (detail, cards, need, cost, budget); transport error 500.
 //   G6g ref (3 lists, ord order, one read for 2 GETs) and cards for every state.squad id.
+//   G6h (review L-4) the tester bit expires after 60 s; every write route is rate limited (429, no call); a member removed from the list
+//       with an active run plays on through D4 but is never cached as a tester again (each call reads the view; the start is refused).
 // A mutation is a copy of the real file with ONE text change (each text must match exactly once), loaded by this same test.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -36,6 +38,10 @@ export const MUTATIONS = {
   keys_dropped: ['res.status(400).json({ ...data, ok: false,', 'res.status(400).json({ error: data?.error, ok: false,'],
   ref_uncached: ["data.ref = await refs.get('ref', loadRef);", 'data.ref = await loadRef();'],
   cards_missing: ['if (!Array.isArray(squad)) return data;', 'return data;'],
+  cache_forever: ['return !!t && Date.now() - t < 60000;', 'return !!t;'],
+  no_rate_act: ["app.post('/api/dungeon/v2/act', async (req, res) => {", "app.post('/api/dungeon/v2/act', async (req, res) => { { const g = await gate(req, res); if (!g) return; await rpc(res, 'dungeon_v2_act', { p_player: g.player, p_choice: choiceOf(req.body) }, withCards); return; }"],
+  no_rate_retreat: ["app.post('/api/dungeon/v2/retreat', async (req, res) => {", "app.post('/api/dungeon/v2/retreat', async (req, res) => { { const g = await gate(req, res); if (!g) return; await rpc(res, 'dungeon_v2_retreat', { p_player: g.player }); return; }"],
+  tester_cached_on_active: ["if (!start && data.run?.status === 'active') return { player, view: data };", "if (!start && data.run?.status === 'active') { testers.set(player, Date.now()); return { player, view: data }; }"],
 };
 
 // MUTATE=all: run this file once for each mutation, after the baseline, in the same run; each must FAIL.
@@ -333,5 +339,37 @@ test('G6g cards: the catalog fields for each state.squad id (write answers and t
   assert.deepEqual(v.json.cards, want, 'the view: run.state.squad');
   const rt = await harness({ rpc: baseRpc({ tester: true }) }).post('/api/dungeon/v2/retreat', {});
   assert.equal(rt.json.cards, undefined);
+});
+
+// ------------------------------------------------------------------ G6h (review L-4)
+const atTime = async (t, fn) => { const real = Date.now; Date.now = () => t; try { return await fn(); } finally { Date.now = real; } };
+test('G6h the tester bit expires after 60 s: a call after 60 s reads the view again', async () => {
+  const h = harness({ rpc: baseRpc({ tester: true }) });
+  const T = 1_800_000_000_000;
+  await atTime(T, () => h.post('/api/dungeon/v2/act', { use: 'basic', target: 0 }));
+  await atTime(T + 59_000, () => h.post('/api/dungeon/v2/act', { use: 'basic', target: 0 }));
+  assert.deepEqual(rpcNames(h), ['dungeon_v2_view', 'dungeon_v2_act', 'dungeon_v2_act'], 'cached inside 60 s');
+  await atTime(T + 60_001, () => h.post('/api/dungeon/v2/act', { use: 'basic', target: 0 }));
+  assert.deepEqual(rpcNames(h).slice(3), ['dungeon_v2_view', 'dungeon_v2_act'], 'read again after 60 s');
+});
+test('G6h every write route is rate limited: 429 and no RPC call', async () => {
+  for (const r of V2_ROUTES.filter((x) => x[0] === 'POST')) {
+    const h = harness({ rpc: baseRpc({ tester: true }), rateOk: false });
+    const out = await call(h, r, { use: 'basic', target: 0, cards: [11, 12, 13] });
+    assert.equal(out.status, 429, r[1]); assert.equal(h.calls.length, 0, r[1]);
+  }
+});
+test('G6h a tester removed during an active run: plays on through D4 after the cache ends, never cached again; the start is refused', async () => {
+  let on = true;
+  const h = harness({ rpc: (n, a) => baseRpc({ tester: on, active: true })(n, a) });
+  const T = 1_800_000_000_000;
+  await atTime(T, () => h.post('/api/dungeon/v2/act', { use: 'basic', target: 0 }));   // cached as a tester
+  on = false;   // removed from combat_v2.testers
+  const a = await atTime(T + 60_001, () => h.post('/api/dungeon/v2/act', { use: 'basic', target: 0 }));
+  const b = await atTime(T + 60_002, () => h.post('/api/dungeon/v2/act', { use: 'basic', target: 0 }));
+  assert.equal(a.status, 200); assert.equal(b.status, 200);
+  assert.deepEqual(rpcNames(h), ['dungeon_v2_view', 'dungeon_v2_act', 'dungeon_v2_view', 'dungeon_v2_act', 'dungeon_v2_view', 'dungeon_v2_act'], 'each D4 call reads the view');
+  const st = await atTime(T + 60_003, () => h.post('/api/dungeon/v2/start', { cards: [11, 12, 13] }));
+  assert.equal(st.status, 403); assert.equal(st.json.error, 'not_tester');
 });
 }
