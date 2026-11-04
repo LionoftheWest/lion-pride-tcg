@@ -85,7 +85,10 @@ export function parseFight(body, { hunt = 8, dungeon = 5 } = {}) {
   } else {
     if (!KEY.test(String(b.monster || ''))) throw new BadRequest('monster must be a monster key');
     if (!KEY.test(String(b.kind || ''))) throw new BadRequest('kind must be a room kind');
-    Object.assign(out, { monster: b.monster, kind: b.kind, floor: intIn(b.floor, 'floor', 1, 50, 1), room: intIn(b.room, 'room', 1, 10, 1), foes: intIn(b.foes, 'foes', 1, 4, 1) });
+    // SYN: the foe element (a key of the elements table; default none). The fight refuses an unknown element.
+    if (b.element != null && b.element !== '' && !KEY.test(String(b.element))) throw new BadRequest('element must be an element key');
+    Object.assign(out, { monster: b.monster, kind: b.kind, floor: intIn(b.floor, 'floor', 1, 50, 1), room: intIn(b.room, 'room', 1, 10, 1), foes: intIn(b.foes, 'foes', 1, 4, 1),
+      element: b.element || null });
   }
   return out;
 }
@@ -162,8 +165,9 @@ export function fightSql(f, squad, { maxActions = MAX_ACTIONS } = {}) {
   const enemies = f.mode === 'hunt'
     ? `en := jsonb_build_array(combat_v2_hunt_boss(${lit(f.tier)}, ${f.boss ? lit(f.boss) : 'null'}, jsonb_build_object('start_frac', ${Number(f.start_hp)}, 'meter', round((random() * 100)::numeric, 2)), b));
        ${f.boss ? `card := hunt_boss_v2_card(${lit(f.boss)}, ${lit(f.tier)});` : ''}`
-    : `for i in 1..${Number(f.foes)} loop
-         en := en || jsonb_build_array(combat_v2_dungeon_foe(${lit(f.monster)}, ${Number(f.floor)}, ${Number(f.room)}, ${lit(f.kind)}, null, b) || jsonb_build_object('meter', round((random() * 100)::numeric, 2)));
+    : `${f.element ? `if not exists (select 1 from public.elements e where e.key = ${lit(f.element)}) then raise exception 'unknown element %', ${lit(f.element)}; end if;` : ''}
+       for i in 1..${Number(f.foes)} loop
+         en := en || jsonb_build_array(combat_v2_dungeon_foe(${lit(f.monster)}, ${Number(f.floor)}, ${Number(f.room)}, ${lit(f.kind)}, null, b) || jsonb_build_object('meter', round((random() * 100)::numeric, 2))${f.element ? ` || jsonb_build_object('element', ${lit(f.element)})` : ''});
        end loop;`;
   return `set statement_timeout = 120000;
 do $t$
@@ -185,7 +189,7 @@ begin
       'def', cc->'stats'->'def', 'ddg', cc->'stats'->'ddg', 'max', cc->'stats'->'hp', 'hp', cc->'stats'->'hp', 'down', false,
       'speed', b->'v2_speed'->'role_base'->(cc->>'role'), 'spd', coalesce(cc->'points'->'spd', '0'::jsonb), 'power', cc->'power', 'extra_stack', cc->'extra_stack',
       'meter', round((random() * 100)::numeric, 2), 'charge', (b->'v2_charge'->>'start')::int, 'held', 0, 'status', '{}'::jsonb,
-      'active', jsonb_build_object('blocks', x->'blocks')));
+      'active', jsonb_build_object('blocks', x->'blocks'), 'tags', combat_v2_card_tags((x->>'card_id')::bigint)));
     info := info || jsonb_build_array(jsonb_build_object('slot', i, 'card_id', x->'card_id', 'v2', cc, 'text', txt->'text', 'text_error', txt->'error',
       'charge_need', (b->'v2_charge'->>(cc->>'class'))::int, 'power', pw));
   end loop;
@@ -193,6 +197,9 @@ begin
   ${enemies}
   s := jsonb_build_object('v', 2, 'mode', ${lit(f.mode)}, 'round', 0, 'clock', 0, 'squad', (select jsonb_agg(g) from generate_series(1, jsonb_array_length(info)) g),
     'cards', cards, 'enemies', en, 'marks', '{}'::jsonb, 'facts', jsonb_build_object('passives', '[]'::jsonb, 'cards', '{}'::jsonb), 'ext', '{}'::jsonb);
+  -- SYN: the squad factors (element, affinity, set; combat_v2_synergy draws no random number), once, before the first step; syn goes to the squad answer
+  s := combat_v2_synergy(s, b);
+  select coalesce(jsonb_agg(e || jsonb_build_object('syn', s->'cards'->(e->>'slot')->'syn') order by o), '[]'::jsonb) into info from jsonb_array_elements(info) with ordinality q(e, o);
   select coalesce(jsonb_object_agg(m.key, jsonb_build_object('label', m.label, 'text', m.text, 'kind', m.kind, 'numbers', balance_path(m.numbers))), '{}'::jsonb) into mech
     from public.enemy_mechanics m where exists (select 1 from jsonb_array_elements(en) e where e->'mechanics' ? m.key);
   res := jsonb_build_object('squad', info, 'squad_value', sv, 'enemies', en, 'boss_card', card, 'mechanics', mech,
@@ -485,7 +492,7 @@ end $t$;`)).r || [];
   const runFight = async (f, pick) => {
     const raw = await block(fightSql(f, pick.map((c) => ({ card_id: c.card_id, rarity: c.rarity, stars: c.stars, cp_mod: c.cp_mod, level: f.level, points: c.points, role: c.role, blocks: c.blocks }))));
     const shaped = shapeFight(raw);
-    const squad = raw.squad.map((s) => { const c = pick[s.slot - 1]; return { slot: s.slot, unit: `card:${s.slot}`, card_id: c.card_id, name: c.name, rarity: c.rarity, stars: c.stars,
+    const squad = raw.squad.map((s) => { const c = pick[s.slot - 1]; return { slot: s.slot, unit: `card:${s.slot}`, syn: s.syn || null, card_id: c.card_id, name: c.name, rarity: c.rarity, stars: c.stars,
       role: c.role, active: { ...c.active, text: s.text ?? c.active.text, error: s.text_error || null }, charge_need: s.charge_need, v2: s.v2, pick: c.pick || null, power: s.power || null,
       passive_text: fillMech(s.v2?.passive?.text, s.v2?.passive?.numbers),
       dealt: shaped.totals.by_card[`card:${s.slot}`] || 0 }; });

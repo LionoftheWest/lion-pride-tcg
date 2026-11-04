@@ -380,7 +380,7 @@ Two enemy states are also shown with an icon:
 
 ### 7.2 One visible affinity rule [D]
 
-- One rule for every support: **"+X% for each squad card of this card's element or family"**, shown as "Fire 3: +45%" [D rule, P numbers].
+- One rule for every support: **"+X% for each squad card of this card's element or family"**, shown as "Fire 3: +45%" [D rule; numbers D 2026-11-03: +10% for each OTHER squad card, at most +30%; built in SYN, 20.18].
 - The `matched_x` rule (x1.8 on a matched target) goes away. Keys `support.affinity_step` and `support.affinity_cap` stay [P].
 - The affinity tag must be a rule tag. A tag with no attacker that carries it (today: ice) cannot be an affinity [L defect].
 
@@ -388,7 +388,7 @@ Two enemy states are also shown with an icon:
 
 - One source: `element_counters` (19 pairs) [L]. Today the foe weak tag and the chart double count in the Dungeon (x1.5 and x1.25) [L].
 - Plan [P]: the chart gives the element bonus. A foe's weak tags come from the other rule tags, not from its counter element.
-- Element synergy (3 / 5 cards of one element) stays and shows its % in the squad picker.
+- Element synergy (3 / 5 cards of one element) stays and shows its % in the squad picker. [D 2026-11-03: x1.12 at 3, x1.20 at 5, chart x1.25, no penalty; built in SYN, 20.18. The squad picker display is a UI item.]
 - Element riders: fire attackers lean Burn, water and ice lean Chill, lightning leans Paralyzed, toxic leans Poison [P design guide, not a rule].
 - The simulator has no element chart. The Lab must measure it (section 10).
 
@@ -417,6 +417,8 @@ archetype (x0.63 to x0.93) [T].
 - A `slot = 'squad'` row (F-3 section 4): it counts distinct pieces of `trait:forbidden-pride` at 3 / 5 / 7. The top step is Hunt only
   (7 pieces fit only in an 8-card squad).
 - The bonus goes to every squad attacker, as a separate factor (F-3 decisions 1 to 3, recommended). Values stay 1 until the Lab report.
+  [D 2026-11-03 (SYN Q7 = B): the factor goes to every squad CARD (attacker hits and support amounts), because all 7 pieces are supports.
+  The 7 step also needs the head subject `ottozone-s-head` (D-202). Built in SYN with all values 1, 20.18.]
 - Every piece also gets a normal role and its own active (section 12). The set synergy is the set's reward, not a role.
 - The set trait leaves the trait synergy (no double count).
 
@@ -714,6 +716,7 @@ Each PR: a worktree from the latest `origin/main`, rehearsed on the local copy, 
 | 4 | E7c | The second E7 follow-up (20.3): `weak_role_x` 0.5, the Warlord's own Ironhide | SQL = the simulator. a planted fault for each change | Low |
 | 4 | E8 | Auto v2: Dungeon Auto plays each ready card. Hunt auto-pick with role answers and the pair score | Auto reaches 85% or more of a scripted best play | Medium |
 | 4 | E9 | Power number `card_power_v2` and squad value in SQL. client shows it only | rank correlation report. C3 passes | Low |
+| 4 | SYN | Synergies (7.1 to 7.5, 20.18): rule tags on the v2 unit, element chart, element synergy, support affinity, Forbidden Pride set count (values 1) | neutral values = the v2 engine before. Lab before / after. a planted fault for each rule | Medium |
 | 5 | B1-B10 | Card batches (section 12), data only, pushed after each approval | validator passes every row. `targets` per batch | Low |
 | 5 | M1 | Progress: levels, XP, migration script, refunds, reset gifts (dry run first) | before / after table: 0 rows lose value without a refund | High (live progress) |
 | 6 | U0 | Visual language design, then each screen PR (section 13) | gates G1 to G7, approved-vs-built images | Medium |
