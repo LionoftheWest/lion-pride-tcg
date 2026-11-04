@@ -8,6 +8,8 @@ import {
   Hexagon, Zap, HandFist, CalendarCheck, CircleHelp, Wrench, ScrollText, ListFilter, Circle, Ban, ArrowRight,
   Flame, MessageCircle, Headphones, ShieldCheck, TrendingUp, Heart, Eye, DoorOpen, Gem, BellOff, ChevronUp, Tag, Gavel, ArrowLeft, Sparkles, Drama, Bug, MessageSquare, Lightbulb, Monitor, GitCommitHorizontal, Clock, Send, Shield, Hourglass, User, CircleMinus, Image as ImageIcon, Rainbow, Puzzle, Dumbbell, HandHeart, Handshake, Target, Hammer, ShoppingCart, Recycle, Sun, Mic, Pickaxe, Laugh, PawPrint, Backpack, Map as MapIcon,
   FastForward, SkipForward, Camera, ImageUp, Smartphone, Tablet, Laptop,
+  // UI-67 (approved 2026-10-19): the combat v2 status and role icons (UI-52 combat v2, R1e)
+  FlaskConical, FlameKindling, Orbit, Cuboid, Bed, Activity, EyeOff, Shuffle, Snail, ThermometerSnowflake, HeartCrack, ArrowBigDownDash, ArrowBigUpDash, Focus, Rabbit, ChevronsUp, ShieldPlus, Drill, Sword, Repeat2, Axe, HeartPulse, Slice, BrickWall, Cross, Anchor, Binoculars, Megaphone, Rocket,
 } from 'lucide';
 
 // name -> Lucide node. The names are the Lucide names (kebab-case), as design.md writes them.
@@ -49,6 +51,8 @@ export const ICONS = {
   'image': ImageIcon, 'rainbow': Rainbow, 'puzzle': Puzzle, 'dumbbell': Dumbbell, 'hand-heart': HandHeart, 'handshake': Handshake, 'target': Target, 'hammer': Hammer, 'shopping-cart': ShoppingCart, 'recycle': Recycle, 'sun': Sun, 'mic': Mic, 'pickaxe': Pickaxe, 'laugh': Laugh, 'paw-print': PawPrint, 'backpack': Backpack, 'map': MapIcon,
   // UI-40 review-2: the screenshot buttons and the device chip (smartphone, tablet, laptop: monitor already means the screen chip, D-50)
   'camera': Camera, 'image-up': ImageUp, 'smartphone': Smartphone, 'tablet': Tablet, 'laptop': Laptop,
+  // UI-67: the status icons (combat v2, one meaning each: the status) and the role icons (attackers, supports)
+  'flask-conical': FlaskConical, 'flame-kindling': FlameKindling, 'orbit': Orbit, 'cuboid': Cuboid, 'bed': Bed, 'activity': Activity, 'eye-off': EyeOff, 'shuffle': Shuffle, 'snail': Snail, 'thermometer-snowflake': ThermometerSnowflake, 'heart-crack': HeartCrack, 'arrow-big-down-dash': ArrowBigDownDash, 'arrow-big-up-dash': ArrowBigUpDash, 'focus': Focus, 'rabbit': Rabbit, 'chevrons-up': ChevronsUp, 'shield-plus': ShieldPlus, 'drill': Drill, 'sword': Sword, 'repeat-2': Repeat2, 'axe': Axe, 'heart-pulse': HeartPulse, 'slice': Slice, 'brick-wall': BrickWall, 'cross': Cross, 'anchor': Anchor, 'binoculars': Binoculars, 'megaphone': Megaphone, 'rocket': Rocket,
 };
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

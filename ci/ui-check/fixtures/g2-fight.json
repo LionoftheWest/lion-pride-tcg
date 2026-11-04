@@ -1,0 +1,962 @@
+{
+ "_about": "A GET /api/gauntlet/v2 answer in a fight (R1b SPEC 3.4, 3.6; R1c SPEC 3.1 item 5). Stub of the R1b shapes, numbers of the UI-52 review-5 frames. Re-record from a real R1b answer (R1e SPEC 4).",
+ "body": {
+  "ok": true,
+  "tester": true,
+  "runs_left": 0,
+  "last_run": null,
+  "active_mode": "gauntlet_v2",
+  "can_start": false,
+  "run": {
+   "id": 1,
+   "mode": "gauntlet_v2",
+   "status": "active",
+   "floor": 2,
+   "room": 4,
+   "turns": 12,
+   "ended_by": null,
+   "state": {
+    "engine": 2,
+    "mode": "gauntlet",
+    "squad": [
+     124,
+     318,
+     43,
+     312,
+     145
+    ],
+    "units": {
+     "43": {
+      "power": 148
+     },
+     "124": {
+      "power": 20
+     },
+     "145": {
+      "power": 40
+     },
+     "312": {
+      "power": 10
+     },
+     "318": {
+      "power": 10
+     }
+    },
+    "info": {
+     "43": {
+      "name": "Lock On",
+      "role": "striker",
+      "class": "attacker",
+      "needs_ally": false
+     },
+     "124": {
+      "name": "Doubles Clutch",
+      "role": "finisher",
+      "class": "attacker",
+      "needs_ally": false
+     },
+     "145": {
+      "name": "Automation",
+      "role": "medic",
+      "class": "support",
+      "needs_ally": true
+     },
+     "312": {
+      "name": "Comeback",
+      "role": "medic",
+      "class": "support",
+      "needs_ally": true
+     },
+     "318": {
+      "name": "Peaches Beam",
+      "role": "striker",
+      "class": "attacker",
+      "needs_ally": false
+     }
+    },
+    "carry": {
+     "43": {
+      "hp": 52,
+      "max": 72,
+      "down": false,
+      "charge": 0,
+      "held": 0
+     },
+     "124": {
+      "hp": 48,
+      "max": 72,
+      "down": false,
+      "charge": 1,
+      "held": 0
+     },
+     "145": {
+      "hp": 50,
+      "max": 60,
+      "down": false,
+      "charge": 0,
+      "held": 0
+     },
+     "312": {
+      "hp": 51,
+      "max": 60,
+      "down": false,
+      "charge": 1,
+      "held": 0
+     },
+     "318": {
+      "hp": 119,
+      "max": 128,
+      "down": false,
+      "charge": 2,
+      "held": 0
+     }
+    },
+    "phase": "fight",
+    "room_type": "horde",
+    "fight": {
+     "v": 2,
+     "mode": "gauntlet",
+     "round": 0,
+     "clock": 6,
+     "squad": [
+      124,
+      318,
+      43,
+      312,
+      145
+     ],
+     "cards": {
+      "43": {
+       "role": "striker",
+       "class": "attacker",
+       "max": 72,
+       "hp": 52,
+       "down": false,
+       "speed": 17,
+       "meter": 40,
+       "charge": 0,
+       "held": 0,
+       "status": {
+        "shielded": {
+         "value": 14
+        },
+        "poison": {
+         "stacks": 2,
+         "until": 9
+        }
+       },
+       "power": 0
+      },
+      "124": {
+       "role": "finisher",
+       "class": "attacker",
+       "max": 72,
+       "hp": 48,
+       "down": false,
+       "speed": 17,
+       "meter": 40,
+       "charge": 1,
+       "held": 0,
+       "status": {
+        "shielded": {
+         "value": 14
+        },
+        "empowered": {
+         "value": 0.2
+        }
+       },
+       "power": 0
+      },
+      "145": {
+       "role": "medic",
+       "class": "support",
+       "max": 60,
+       "hp": 50,
+       "down": false,
+       "speed": 24,
+       "meter": 40,
+       "charge": 0,
+       "held": 0,
+       "status": {
+        "shielded": {
+         "value": 12
+        }
+       },
+       "power": 0
+      },
+      "312": {
+       "role": "medic",
+       "class": "support",
+       "max": 60,
+       "hp": 51,
+       "down": false,
+       "speed": 24,
+       "meter": 40,
+       "charge": 1,
+       "held": 0,
+       "status": {
+        "shielded": {
+         "value": 12
+        }
+       },
+       "power": 0
+      },
+      "318": {
+       "role": "striker",
+       "class": "attacker",
+       "max": 128,
+       "hp": 119,
+       "down": false,
+       "speed": 17,
+       "meter": 40,
+       "charge": 2,
+       "held": 0,
+       "status": {
+        "shielded": {
+         "value": 1
+        }
+       },
+       "power": 0
+      }
+     },
+     "enemies": [
+      {
+       "hp": 50,
+       "max": 50,
+       "down": false,
+       "speed": 55,
+       "meter": 30,
+       "charge": 0,
+       "status": {
+        "exposed": {
+         "value": 0.15,
+         "until": 8,
+         "stacks": 2
+        },
+        "chill": {
+         "stacks": 2,
+         "until": 9
+        }
+       },
+       "turn": 2,
+       "mechanics": [],
+       "moves": [
+        {
+         "k": "strike",
+         "w": 3
+        }
+       ],
+       "monster": "skeleton",
+       "show": {
+        "name": "Water Skeleton",
+        "model": "skeleton",
+        "element": "water",
+        "level": 2,
+        "kind": "foe"
+       }
+      },
+      {
+       "hp": 0,
+       "max": 45,
+       "down": true,
+       "speed": 55,
+       "meter": 30,
+       "charge": 0,
+       "status": {},
+       "turn": 2,
+       "mechanics": [],
+       "moves": [
+        {
+         "k": "strike",
+         "w": 3
+        }
+       ],
+       "monster": "squidle",
+       "show": {
+        "name": "Earth Squid",
+        "model": "squidle",
+        "element": "earth",
+        "level": 2,
+        "kind": "foe"
+       }
+      },
+      {
+       "hp": 85,
+       "max": 85,
+       "down": false,
+       "speed": 55,
+       "meter": 30,
+       "charge": 0,
+       "status": {
+        "poison": {
+         "stacks": 3,
+         "until": 10
+        },
+        "exposed": {
+         "value": 0.1,
+         "until": 9,
+         "stacks": 2
+        }
+       },
+       "turn": 2,
+       "mechanics": [],
+       "moves": [
+        {
+         "k": "strike",
+         "w": 3
+        }
+       ],
+       "monster": "goleling",
+       "show": {
+        "name": "Water Golem",
+        "model": "goleling",
+        "element": "water",
+        "level": 2,
+        "kind": "foe"
+       }
+      },
+      {
+       "hp": 50,
+       "max": 50,
+       "down": false,
+       "speed": 55,
+       "meter": 30,
+       "charge": 0,
+       "status": {
+        "enraged": {
+         "until": 10
+        },
+        "guarded": {
+         "value": 10
+        },
+        "slowed": {
+         "until": 9
+        }
+       },
+       "turn": 2,
+       "mechanics": [],
+       "moves": [
+        {
+         "k": "strike",
+         "w": 3
+        }
+       ],
+       "monster": "dino",
+       "show": {
+        "name": "Lightning Raptor",
+        "model": "dino",
+        "element": "lightning",
+        "level": 2,
+        "kind": "foe"
+       }
+      },
+      {
+       "hp": 55,
+       "max": 55,
+       "down": false,
+       "speed": 55,
+       "meter": 30,
+       "charge": 0,
+       "status": {
+        "stunned": {
+         "until": 7,
+         "locked": true
+        },
+        "weakened": {
+         "value": 0.12,
+         "until": 9,
+         "stacks": 2
+        },
+        "chill": {
+         "stacks": 1,
+         "until": 9
+        },
+        "blinded": {
+         "until": 9
+        },
+        "mark": {}
+       },
+       "turn": 2,
+       "mechanics": [],
+       "moves": [
+        {
+         "k": "strike",
+         "w": 3
+        }
+       ],
+       "monster": "blue_demon",
+       "show": {
+        "name": "Ice Demon",
+        "model": "blue_demon",
+        "element": "ice",
+        "level": 2,
+        "kind": "foe"
+       }
+      }
+     ],
+     "marks": {},
+     "facts": {
+      "passives": [],
+      "cards": {}
+     },
+     "ext": {
+      "turn": {
+       "side": "card",
+       "id": 318
+      }
+     }
+    },
+    "turn": 12,
+    "steps_left": 40,
+    "offers": [],
+    "last": {
+     "event": "choose",
+     "won": null
+    }
+   }
+  },
+  "rooms": [
+   {
+    "type": "fight"
+   },
+   {
+    "type": "fight"
+   },
+   {
+    "type": "elite"
+   },
+   {
+    "type": "horde"
+   },
+   {
+    "type": "guardian",
+    "name": "Fire Raptor Guardian"
+   }
+  ],
+  "floors": 5,
+  "need": {
+   "43": 2,
+   "124": 2,
+   "145": 1,
+   "312": 1,
+   "318": 2
+  },
+  "squad_hp": {
+   "hp": 320,
+   "max": 392
+  },
+  "order": [
+   {
+    "side": "card",
+    "id": 318,
+    "clock": 6,
+    "ready": true
+   },
+   {
+    "side": "enemy",
+    "id": 0,
+    "clock": 6
+   },
+   {
+    "side": "enemy",
+    "id": 2,
+    "clock": 7
+   },
+   {
+    "side": "enemy",
+    "id": 3,
+    "clock": 7
+   },
+   {
+    "side": "card",
+    "id": 312,
+    "clock": 7,
+    "ready": true
+   },
+   {
+    "side": "enemy",
+    "id": 4,
+    "clock": 8,
+    "skip": "stunned"
+   },
+   {
+    "side": "enemy",
+    "id": 0,
+    "clock": 8
+   },
+   {
+    "side": "card",
+    "id": 124,
+    "clock": 8,
+    "ready": false
+   },
+   {
+    "side": "card",
+    "id": 43,
+    "clock": 9,
+    "ready": false
+   },
+   {
+    "side": "enemy",
+    "id": 2,
+    "clock": 9
+   }
+  ],
+  "targets": [
+   0,
+   2,
+   3,
+   4
+  ],
+  "allies": [
+   124,
+   318,
+   43,
+   312,
+   145
+  ],
+  "status_lines": {
+   "card:124": [
+    {
+     "key": "shielded",
+     "stacks": null,
+     "left": null,
+     "amounts": [
+      0.5,
+      14
+     ]
+    },
+    {
+     "key": "empowered",
+     "stacks": null,
+     "left": null,
+     "amounts": [
+      0.5,
+      0.2
+     ]
+    }
+   ],
+   "card:318": [
+    {
+     "key": "shielded",
+     "stacks": null,
+     "left": null,
+     "amounts": [
+      0.5,
+      1
+     ]
+    }
+   ],
+   "card:43": [
+    {
+     "key": "shielded",
+     "stacks": null,
+     "left": null,
+     "amounts": [
+      0.5,
+      14
+     ]
+    },
+    {
+     "key": "poison",
+     "stacks": 2,
+     "left": 3,
+     "amounts": [
+      0.04,
+      4,
+      0.1
+     ]
+    }
+   ],
+   "card:312": [
+    {
+     "key": "shielded",
+     "stacks": null,
+     "left": null,
+     "amounts": [
+      0.5,
+      12
+     ]
+    }
+   ],
+   "card:145": [
+    {
+     "key": "shielded",
+     "stacks": null,
+     "left": null,
+     "amounts": [
+      0.5,
+      12
+     ]
+    }
+   ],
+   "enemy:0": [
+    {
+     "key": "exposed",
+     "stacks": 2,
+     "left": 2,
+     "amounts": [
+      0.5,
+      0.15
+     ]
+    },
+    {
+     "key": "chill",
+     "stacks": 2,
+     "left": 3,
+     "amounts": [
+      0.16,
+      0.16,
+      3
+     ]
+    }
+   ],
+   "enemy:1": [],
+   "enemy:2": [
+    {
+     "key": "poison",
+     "stacks": 3,
+     "left": 4,
+     "amounts": [
+      0.06,
+      4,
+      0.1
+     ]
+    },
+    {
+     "key": "exposed",
+     "stacks": 2,
+     "left": 3,
+     "amounts": [
+      0.5,
+      0.1
+     ]
+    }
+   ],
+   "enemy:3": [
+    {
+     "key": "enraged",
+     "stacks": null,
+     "left": 4,
+     "amounts": [
+      1.3,
+      3
+     ]
+    },
+    {
+     "key": "guarded",
+     "stacks": null,
+     "left": null,
+     "amounts": [
+      10
+     ]
+    },
+    {
+     "key": "slowed",
+     "stacks": null,
+     "left": 3,
+     "amounts": [
+      0.7
+     ]
+    }
+   ],
+   "enemy:4": [
+    {
+     "key": "stunned",
+     "stacks": null,
+     "left": 1,
+     "amounts": []
+    },
+    {
+     "key": "weakened",
+     "stacks": 2,
+     "left": 3,
+     "amounts": [
+      0.5,
+      0.12
+     ]
+    },
+    {
+     "key": "chill",
+     "stacks": 1,
+     "left": 3,
+     "amounts": [
+      0.08,
+      0.08,
+      3
+     ]
+    },
+    {
+     "key": "blinded",
+     "stacks": null,
+     "left": 3,
+     "amounts": [
+      0.2
+     ]
+    },
+    {
+     "key": "mark",
+     "stacks": null,
+     "left": null,
+     "amounts": []
+    }
+   ]
+  },
+  "ref": {
+   "statuses": [
+    {
+     "key": "poison",
+     "label": "Poison",
+     "icon": "skull_drop",
+     "family": "dot",
+     "negative": true,
+     "rule": "Each stack ticks {tick} of ref HP at step end. Stack {burst_at} bursts for {burst} of ref HP, then Poison resets. Ignores shields."
+    },
+    {
+     "key": "burn",
+     "label": "Burn",
+     "icon": "flame",
+     "family": "dot",
+     "negative": true,
+     "rule": "Each stack ticks {tick_x} x the Poison tick, then loses {decay} stack. A Burning unit heals x{heal_x}. x{vs_healer_x} vs a healer. Ignores shields."
+    },
+    {
+     "key": "stunned",
+     "label": "Stunned",
+     "icon": "spiral",
+     "family": "control",
+     "negative": true,
+     "rule": "Skips its next action."
+    },
+    {
+     "key": "chill",
+     "label": "Chill",
+     "icon": "snowflake",
+     "family": "tempo",
+     "negative": true,
+     "rule": "Each stack: -{dmg} damage and -{spd} speed. At {freeze_at} stacks: Frozen (skips its next action), then Chill clears."
+    },
+    {
+     "key": "frozen",
+     "label": "Frozen",
+     "icon": "ice_block",
+     "family": "control",
+     "negative": true,
+     "rule": "Skips its next action."
+    },
+    {
+     "key": "sleep",
+     "label": "Sleep",
+     "icon": "moon",
+     "family": "control",
+     "negative": true,
+     "rule": "Skips actions until it takes damage."
+    },
+    {
+     "key": "paralyzed",
+     "label": "Paralyzed",
+     "icon": "bolt",
+     "family": "control",
+     "negative": true,
+     "rule": "Each action fails with chance {fail}."
+    },
+    {
+     "key": "blinded",
+     "label": "Blinded",
+     "icon": "closed_eye",
+     "family": "accuracy",
+     "negative": true,
+     "rule": "+{miss} miss chance."
+    },
+    {
+     "key": "confused",
+     "label": "Confused",
+     "icon": "swirl",
+     "family": "accuracy",
+     "negative": true,
+     "rule": "A share of {chance} of its single attacks hit a wrong target."
+    },
+    {
+     "key": "slowed",
+     "label": "Slowed",
+     "icon": "snail",
+     "family": "tempo",
+     "negative": true,
+     "rule": "Speed x{x}."
+    },
+    {
+     "key": "quickened",
+     "label": "Quickened",
+     "icon": "rabbit",
+     "family": "boon",
+     "negative": false,
+     "rule": "Speed x{x}."
+    },
+    {
+     "key": "exposed",
+     "label": "Exposed",
+     "icon": "cracked_eye",
+     "family": "vuln",
+     "negative": true,
+     "rule": "Takes more damage from every source, ticks included, up to +{cap}."
+    },
+    {
+     "key": "weakened",
+     "label": "Weakened",
+     "icon": "down_arrow",
+     "family": "vuln",
+     "negative": true,
+     "rule": "Deals less damage, up to -{cap}. Replaces the card Curse."
+    },
+    {
+     "key": "mark",
+     "label": "Mark",
+     "icon": "target",
+     "family": "vuln",
+     "negative": true,
+     "rule": "The next attack on it deals more, cannot miss and can crit an Ironhide enemy. Then it ends."
+    },
+    {
+     "key": "shielded",
+     "label": "Shielded",
+     "icon": "shield",
+     "family": "boon",
+     "negative": false,
+     "rule": "Absorbs damage before HP, up to {cap_maxhp} x max HP."
+    },
+    {
+     "key": "empowered",
+     "label": "Empowered",
+     "icon": "up_arrow",
+     "family": "boon",
+     "negative": false,
+     "rule": "The next attack deals more, up to +{cap}."
+    },
+    {
+     "key": "focused",
+     "label": "Focused",
+     "icon": "crosshair",
+     "family": "boon",
+     "negative": false,
+     "rule": "More crit chance for {dur} steps."
+    },
+    {
+     "key": "enraged",
+     "label": "Enraged",
+     "icon": "enraged",
+     "family": "boon",
+     "negative": false,
+     "rule": "Deals x{x} damage for {dur} steps."
+    },
+    {
+     "key": "guarded",
+     "label": "Guarded",
+     "icon": "guarded",
+     "family": "boon",
+     "negative": false,
+     "rule": "A foe shield: absorbs damage before HP."
+    }
+   ],
+   "roles": [
+    {
+     "key": "breaker",
+     "class": "attacker",
+     "label": "Breaker"
+    },
+    {
+     "key": "striker",
+     "class": "attacker",
+     "label": "Striker"
+    },
+    {
+     "key": "flurry",
+     "class": "attacker",
+     "label": "Flurry"
+    },
+    {
+     "key": "finisher",
+     "class": "attacker",
+     "label": "Finisher"
+    },
+    {
+     "key": "survivor",
+     "class": "attacker",
+     "label": "Survivor"
+    },
+    {
+     "key": "cleaver",
+     "class": "attacker",
+     "label": "Cleaver"
+    },
+    {
+     "key": "warden",
+     "class": "support",
+     "label": "Warden"
+    },
+    {
+     "key": "medic",
+     "class": "support",
+     "label": "Medic"
+    },
+    {
+     "key": "controller",
+     "class": "support",
+     "label": "Controller"
+    },
+    {
+     "key": "spotter",
+     "class": "support",
+     "label": "Spotter"
+    },
+    {
+     "key": "herald",
+     "class": "support",
+     "label": "Herald"
+    },
+    {
+     "key": "artillery",
+     "class": "support",
+     "label": "Artillery"
+    }
+   ],
+   "mechanics": []
+  },
+  "cards": {
+   "43": {
+    "id": 43,
+    "name": "Ottozone's Rob",
+    "rarity": "gold",
+    "image_url": "/cdn/cards/43.webp",
+    "type": "Character"
+   },
+   "124": {
+    "id": 124,
+    "name": "Geno's Megaman",
+    "rarity": "illustrated_rare",
+    "image_url": "/cdn/cards/124.webp",
+    "type": "Character"
+   },
+   "145": {
+    "id": 145,
+    "name": "Zeoic's Redstone Machine",
+    "rarity": "secret_rare",
+    "image_url": "/cdn/cards/145.webp",
+    "type": "Place"
+   },
+   "312": {
+    "id": 312,
+    "name": "I'll get it back, don't worry",
+    "rarity": "normal",
+    "image_url": "/cdn/cards/312.webp",
+    "type": "Moment"
+   },
+   "318": {
+    "id": 318,
+    "name": "Kroc Bot",
+    "rarity": "normal",
+    "image_url": "/cdn/cards/318.webp",
+    "type": "Character"
+   }
+  }
+ }
+}

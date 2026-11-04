@@ -1,0 +1,157 @@
+/* UI-52 combat v2: the Gauntlet v2 fight for testers (R1e). Approved: UI-52 review-5 (2026-10-23, option A, D-203 to D-207) and the UI-67
+   parts (2026-10-19). The view is the built v1 fight (.dg-fight: ui-v2-dungeon.css, 90-ui-47.css, 90-ui-52.css) with the v2 parts; this file
+   holds only the v2 parts (.g2). Only UI-00 tokens (with the two UI-67 tokens --stack-plate and --turn-bar). No z-index: the parts paint in
+   DOM order. Nothing moves when a status changes: fixed status places, the Shielded place stays empty with no shield. */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-ico { display: block; flex: none; }
+
+/* ---- status badges (UI-67 01): harm = rounded square, boon = circle, the family color on surface-2; a stack plate from 2 ---- */
+body.ui-v2.ui-v3 .v2-dungeon .g2-b { --fc: var(--effect-prank); position: relative; flex: none; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+  width: var(--counter); height: var(--counter); background: var(--surface-2); border: var(--bw-1) solid var(--fc); color: var(--fc); border-radius: var(--rad-sm); cursor: pointer; }
+body.ui-v2.ui-v3 .v2-dungeon .g2-b.f-dot { --fc: var(--danger); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-b.f-control { --fc: var(--effect-prank); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-b.f-accuracy { --fc: var(--element-light); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-b.f-tempo { --fc: var(--element-ice); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-b.f-vuln { --fc: var(--warning); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-b.f-boon { --fc: var(--effect-boon); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-b.is-boon { border-radius: var(--rad-round); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-b.is-filled { border: none; border-radius: var(--rad-sm); background: var(--fc); color: var(--bg-base); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-b.is-filled[data-st="enraged"] { --fc: var(--danger); color: var(--text-on-color); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-b.is-filled[data-st="guarded"] { --fc: var(--effect-shield); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-b.is-md { width: var(--check-badge); height: var(--check-badge); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-b .g2-ico { width: var(--icon-sm); height: var(--icon-sm); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-b.is-md .g2-ico { width: var(--icon-md); height: var(--icon-md); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-b .g2-n { position: absolute; right: calc(-1 * var(--sp-1)); bottom: calc(-1 * var(--sp-1)); width: var(--stack-plate); height: var(--stack-plate); box-sizing: border-box;
+  border-radius: var(--rad-round); background: var(--bg-base); border: var(--bw-1) solid var(--fc); color: var(--text-primary); font: var(--fw-label) var(--fs-label)/1 var(--font-num);
+  display: flex; align-items: center; justify-content: center; }
+body.ui-v2.ui-v3 .v2-dungeon .g2-b.is-more { --fc: var(--border-strong); color: var(--text-primary); font: var(--fw-label) var(--fs-label)/1 var(--font-num); cursor: default; }
+body.ui-v2.ui-v3 .v2-dungeon .g2-b.is-empty { border-color: transparent; background: none; cursor: default; }
+body.ui-v2.ui-v3 .v2-dungeon .g2-b[data-unit]:focus-visible { box-shadow: var(--glow-focus); }
+
+/* ---- role badges (UI-67 02): attacker = diamond (role-attack), support = circle (role-support), glyph bg-base ---- */
+body.ui-v2.ui-v3 .v2-dungeon .g2-role { width: var(--chip-md); height: var(--chip-md); display: flex; align-items: center; justify-content: center; color: var(--bg-base); flex: none; }
+body.ui-v2.ui-v3 .v2-dungeon .g2-role.is-att { background: var(--role-attack); clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-role.is-sup { background: var(--role-support); border-radius: var(--rad-round); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-role .g2-ico { width: var(--icon-md); height: var(--icon-md); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-role.is-sm { display: inline-flex; vertical-align: middle; width: var(--counter); height: var(--counter); margin: calc(-1 * var(--sp-1)) var(--sp-1-5) calc(-1 * var(--sp-1)) var(--u3-none); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-role.is-sm .g2-ico { width: var(--icon-xs); height: var(--icon-xs); }
+/* the attacker diamond on the top-right corner of the card (UI-67 05), outside the Power chip */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit { position: relative; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit > .g2-role { position: absolute; top: calc(-1 * var(--sp-2)); right: calc(-1 * var(--sp-2)); }
+
+/* ---- charge pips (UI-67 04): gold = charged, ring = not yet; a glow when ready ---- */
+body.ui-v2.ui-v3 .v2-dungeon .g2-pips { display: inline-flex; align-items: center; gap: var(--sp-1); flex: none; }
+body.ui-v2.ui-v3 .v2-dungeon .g2-pips i { width: var(--dot); height: var(--dot); border-radius: var(--rad-round); box-sizing: border-box; border: var(--bw-1) solid var(--border-strong); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-pips i.is-on { background: var(--gold); border-color: var(--gold); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-pips.is-ready { filter: drop-shadow(0 0 var(--sp-1) var(--gold-a50)); }
+
+/* ---- the turn-order strip (UI-67 05-08, D-203): the next 10 turns in the place of the v1 round row ---- */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-meter.g2-meter { display: block; justify-self: stretch; padding: var(--u3-none) var(--sp-2); background: none; border: none; overflow: visible; }
+body.ui-v2.ui-v3 .v2-dungeon .g2-strip { display: flex; justify-content: space-between; align-items: center; width: 100%; box-sizing: border-box; padding: var(--u3-none); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2-side .g2-strip { justify-content: center; gap: var(--sp-2); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-chip { --rc: var(--role-attack); display: block; position: relative; flex: none; width: var(--check-badge); height: var(--check-badge); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-chip.is-sup { --rc: var(--role-support); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-chip.is-foe { --rc: var(--danger); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-chip.is-next { --rc: var(--gold); width: var(--chip-md); height: var(--chip-md); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-chip .g2-a { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; box-sizing: border-box; border-radius: var(--rad-sm);
+  border: var(--bw-2) solid var(--rc); overflow: hidden; background: var(--surface-2); color: var(--rc); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-chip .g2-a img { width: 100%; height: 100%; object-fit: cover; display: block; }
+body.ui-v2.ui-v3 .v2-dungeon .g2-chip .g2-foeface svg { width: var(--icon-sm); height: var(--icon-sm); display: block; }
+body.ui-v2.ui-v3 .v2-dungeon .g2-chip.is-skip { opacity: calc(1 - var(--item-disabled)); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-chip .g2-bar { display: block; position: absolute; left: var(--sp-1); right: var(--sp-1); bottom: calc(-1 * var(--sp-1)); height: var(--turn-bar); border-radius: var(--rad-pill); background: var(--danger); }
+body.ui-v2.ui-v3 .v2-dungeon .g2-chip .g2-rp { display: block; position: absolute; top: calc(-1 * var(--sp-1)); right: calc(-1 * var(--sp-1)); width: var(--dot); height: var(--dot); box-sizing: border-box;
+  border-radius: var(--rad-round); background: var(--gold); border: var(--bw-2) solid var(--bg-base); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2-side .g2-chip { width: var(--chip-md); height: var(--chip-md); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2-side .g2-chip.is-next { width: var(--ctl-sm); height: var(--ctl-sm); }
+
+/* ---- foe plates: the status row under the plate (3 places, then +N); N1: no weakness line in v2 ---- */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-plate { overflow: visible; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-plate .g2-fst { position: absolute; left: var(--u3-none); top: calc(100% + var(--sp-1)); display: flex; align-items: center; gap: var(--sp-half); min-height: var(--counter); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-wide .dg-plate .g2-fst { gap: var(--sp-1); min-height: var(--check-badge); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-plate.dead .g2-fst { visibility: hidden; }
+
+/* ---- the card plates: the status line (the Shielded place first), the charge pips beside the HP bar ---- */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit .dg-fx.g2-st { display: flex; justify-content: flex-start; align-items: center; gap: var(--sp-half); min-height: var(--counter); overflow: visible; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-hprow { display: flex; align-items: center; gap: var(--sp-1); min-width: 0; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-hprow > .dg-hp { flex: 1 1 auto; min-width: 0; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pipbox { display: flex; flex: none; }
+/* D-204 option A: the acting card has the gold ring and the active pill; the other cards are dimmed a little */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit.g2-actor .dg-card { box-shadow: var(--glow-focus), var(--glow-action); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit.g2-wait, body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup.g2-wait { opacity: calc(1 - var(--item-disabled) / 2); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup.g2-actor { box-shadow: var(--glow-focus), var(--glow-action); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pillbox { display: contents; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pill { position: absolute; left: var(--sp-1); right: var(--sp-1); bottom: var(--sp-1); display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+  gap: var(--sp-half) var(--sp-1); min-height: var(--u3-none); margin: var(--u3-none); padding: var(--sp-1) var(--sp-1-5); border-radius: var(--rad-md); background: var(--overlay);
+  border: var(--bw-2) solid var(--gold); box-shadow: var(--glow-action); font: var(--fw-label) var(--fs-label)/var(--lh-label) var(--font-ui); color: var(--text-primary); text-align: center; cursor: pointer; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pill b { font-weight: var(--fw-heading); text-transform: none; letter-spacing: normal; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pill.is-wait { border: var(--bw-1) solid var(--border-strong); box-shadow: none; color: var(--text-secondary); cursor: default; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pill .g2-pips i { width: var(--sp-1-5); height: var(--sp-1-5); }
+/* D-155: the magnifier top-left on the card (the v1 rule puts it bottom right) */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit .dg-card > .card-info { top: var(--sp-1) !important; left: var(--sp-1) !important; right: auto !important; bottom: auto !important; }
+
+/* ---- supports: the role circle before the name, the charge state, HP with the Shielded place (D-207) ---- */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup { position: relative; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-stline { grid-column: 2; display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-1); min-width: 0; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-stline em { display: flex; align-items: center; gap: var(--sp-1); font-style: normal; color: var(--success); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-stline .g2-waitc { display: inline-flex; align-items: center; gap: var(--sp-1); color: var(--text-muted); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-shp { display: flex; align-items: center; gap: var(--sp-1-5); min-width: 0; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-shp .dg-hp { flex: 1 1 auto; display: block; min-width: 0; height: var(--sp-1-5); border-radius: var(--rad-pill); background: var(--surface-3); overflow: hidden; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-shp .dg-hp i { display: block; height: 100%; background: var(--success); border-radius: var(--rad-pill); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-shp small { flex: none; font: var(--fw-stat) var(--fs-caption)/1 var(--font-num); color: var(--text-secondary); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-shp small em { font-style: normal; color: var(--info); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup .g2-suprole { display: none; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup .g2-mag { display: none; }
+body[data-size="expanded"].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup .g2-mag, body[data-size="medium"].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup .g2-mag {
+  display: flex; position: absolute; left: var(--sp-1); top: var(--sp-1); width: var(--chip-sm); height: var(--chip-sm); border-radius: var(--rad-round); background: var(--scrim); color: var(--text-primary); align-items: center; justify-content: center; }
+/* the ally pick (D-70): the lit cards are the server's allies; the others are dimmed */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-lit .dg-card, body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup.g2-lit { box-shadow: var(--glow-focus); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-unlit { opacity: calc(1 - var(--item-disabled)); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-hint.g2-pickbar button { min-height: var(--u3-none); height: auto; align-self: stretch; margin: var(--u3-none); padding-block: var(--u3-none); }
+
+/* ---- the status tap line in the hint place (approved Q7) ---- */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-tap { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; text-align: left; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-tap > span:last-child { min-width: 0; font-size: var(--fs-small); line-height: var(--lh-small); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-tap b { font-weight: var(--fw-heading); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-tap small { color: var(--text-muted); font-size: var(--fs-caption); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-hint .g2-b svg.g2-ico { display: block; width: var(--icon-sm); height: var(--icon-sm); margin: var(--u3-none); color: inherit; }
+
+/* ---- N3: the "+n% damage" place stays, empty (a v2 run has no run-wide bonus) ---- */
+body.ui-v2.ui-v3 .v2-dungeon .g2-empty { visibility: hidden; }
+
+/* ---- D-206: the wide classes put the control row beside the cards (Music and the hint left, Finish Room and Auto right) ---- */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2-side .dg-units { position: relative; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2-side .dg-units > .dg-ctl { position: absolute; left: var(--u3-none); right: var(--u3-none); top: 50%; transform: translateY(-50%); display: grid;
+  grid-template-columns: minmax(0, 1fr) calc(var(--g2-cards) + var(--sp-5)) minmax(0, 1fr); align-items: center; background: none; border: none; padding: var(--u3-none); pointer-events: none; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2-side .dg-ctl .g2-l { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; pointer-events: auto; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2-side .dg-ctl .g2-r { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: var(--sp-2); min-width: 0; pointer-events: auto; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2-side .dg-ctl .dg-hint { flex: 1 1 auto; min-width: 0; height: auto; min-height: var(--hit); }
+
+/* ---- D-205: 375 px phones (is-narrow): the supports join the squad row as small cards; statuses and pips on the card art ---- */
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-units { gap: var(--sp-1); justify-content: space-between; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-units > .dg-unit, body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-units > .dg-sup.g2-plate { flex: 1 1 0; min-width: 0; max-width: none; width: auto; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-unit > .dg-card { width: 100%; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-unit .g2-hprow { display: none; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-unit .dg-hpn { grid-column: 1 / -1; text-align: center; white-space: normal; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-sup.g2-plate { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-1); padding: var(--sp-1); border-radius: var(--rad-md); }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-sup.g2-plate img { width: 100%; height: auto; aspect-ratio: 1 / var(--card-ratio); object-fit: cover; border-radius: var(--rad-sm); }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-sup.g2-plate .t { display: none; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-sup.g2-plate .g2-suprole { display: block; position: absolute; top: calc(-1 * var(--sp-2)); right: calc(-1 * var(--sp-2)); }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-sup.g2-plate .g2-stline em { justify-content: center; font-size: var(--fs-caption); }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-sup.g2-plate .g2-shp small { display: none; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-sups { display: none; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-right { grid-template-columns: minmax(0, 1fr); }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-shp { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--sp-3); }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-shp > b { display: inline; margin: var(--u3-none); font-size: var(--fs-stat); white-space: nowrap; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-shp .dg-hp { flex: 1 1 auto; margin: var(--u3-none); }
+
+/* ---- short phones (is-stack + is-short): Squad HP on one line; the support HP is a bar on the state line, no numbers (review-5 Q4) ---- */
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-stack.is-short .dg-shp { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--sp-3); }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-stack.is-short .dg-shp > b { display: inline; margin: var(--u3-none); white-space: nowrap; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-stack.is-short .dg-shp .dg-hp { flex: 1 1 auto; margin: var(--u3-none); }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-stack.is-short .g2-stline { flex-direction: row; align-items: center; gap: var(--sp-3); }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-stack.is-short .g2-stline em { flex: none; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-stack.is-short .g2-shp { flex: 1 1 auto; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-stack.is-short .g2-shp .g2-shpl, body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-stack.is-short .g2-shp small { display: none; }
+/* the pips in the pill and the support HP numbers keep their own look inside the v1 card and tile rules */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pips i { display: block; flex: none; background: none; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pips i.is-on { background: var(--gold); border-color: var(--gold); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-shp small { white-space: nowrap; }

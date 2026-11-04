@@ -112,6 +112,8 @@
   --counter: 20px; /* Counter (count badge) */
   --check-badge: 24px; /* SelectedMark check badge */
   --dot: 8px; /* Dot, the rarity mark in a filter chip */
+  --stack-plate: 14px; /* UI-67: the stack count plate on a status badge (UI-67 review-1 Tokens 2, approved 2026-10-19 decision 5) */
+  --turn-bar: 3px; /* UI-67: the enemy-turn bar under a turn-order chip (UI-67 approved 04 and 05-08; UI-52 review-5) */
   --icon-xs: 12px; /* Spinner in a chip or a switch knob */
   --icon-sm: 14px; /* Check in a badge, the Shards coin */
   --icon-md: 16px; /* Icon in a button, tab, chip, toast, pager */
