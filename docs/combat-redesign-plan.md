@@ -2581,6 +2581,10 @@ changes: `combat_v2` is OFF, and no v1 function changes. Nathan's 9 answers of 2
   - **C4b open (a measurement defect for the Planner).** The chart-on / chart-off card damage of the whole week is 1.0186 (seed 0.42) and
     0.9920 (seed 0.77): the second is below the limit 1.00. In the rooms where a foe is beaten, the damage per card action is x1.053 and
     x1.114. In the rooms where the chart cannot act, it is x0.963 and x0.971: one random stream runs through the whole week, so any change
-    moves every later draw. The week sum measures that noise too, and cannot hold the limit. SPEC v4 must name another measure.
+    moves every later draw. The week sum measures that noise too, and cannot hold the limit.
+  - **C4b, new measure** (Orchestrator decision 2026-11-04): the damage per card action in the rooms with at least one eligible foe, chart ON
+    vs OFF: x1.0534 (seed 0.42) and x1.1139 (seed 0.77), above 1.00 on both seeds: PASS. In the same run, M4c (the chart never applied)
+    gives 1.0000 and 1.0000: FAIL as required. M4a (the chart x3.0) gives 1.3622 and 1.2906: the rule "above 1.00" alone does NOT catch it;
+    the upper limit 1.15 of SPEC v3 catches it. Open for the Orchestrator: keep the 1.15 limit in the new rule.
 - **Go-live order**: after R1a and R1b (the file replaces R1a and R1b functions). `rehearse-sql.mjs` on copy 1, `apply-sql.mjs --live` (grants OK),
   `check-schema-drift.mjs --live` = 0 differences. The Lab is the local card studio (no deploy). No Activity or bot change. The flag stays OFF.
