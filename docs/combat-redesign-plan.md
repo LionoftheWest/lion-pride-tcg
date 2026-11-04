@@ -380,7 +380,7 @@ Two enemy states are also shown with an icon:
 
 ### 7.2 One visible affinity rule [D]
 
-- One rule for every support: **"+X% for each squad card of this card's element or family"**, shown as "Fire 3: +45%" [D rule, P numbers].
+- One rule for every support: **"+X% for each squad card of this card's element or family"**, shown as "Fire 3: +45%" [D rule; numbers D 2026-11-03: +10% for each OTHER squad card, at most +30%; built in SYN, 20.18].
 - The `matched_x` rule (x1.8 on a matched target) goes away. Keys `support.affinity_step` and `support.affinity_cap` stay [P].
 - The affinity tag must be a rule tag. A tag with no attacker that carries it (today: ice) cannot be an affinity [L defect].
 
@@ -388,7 +388,7 @@ Two enemy states are also shown with an icon:
 
 - One source: `element_counters` (19 pairs) [L]. Today the foe weak tag and the chart double count in the Dungeon (x1.5 and x1.25) [L].
 - Plan [P]: the chart gives the element bonus. A foe's weak tags come from the other rule tags, not from its counter element.
-- Element synergy (3 / 5 cards of one element) stays and shows its % in the squad picker.
+- Element synergy (3 / 5 cards of one element) stays and shows its % in the squad picker. [D 2026-11-03: x1.12 at 3, x1.20 at 5, chart x1.25, no penalty; built in SYN, 20.18. The squad picker display is a UI item.]
 - Element riders: fire attackers lean Burn, water and ice lean Chill, lightning leans Paralyzed, toxic leans Poison [P design guide, not a rule].
 - The simulator has no element chart. The Lab must measure it (section 10).
 
@@ -417,6 +417,8 @@ archetype (x0.63 to x0.93) [T].
 - A `slot = 'squad'` row (F-3 section 4): it counts distinct pieces of `trait:forbidden-pride` at 3 / 5 / 7. The top step is Hunt only
   (7 pieces fit only in an 8-card squad).
 - The bonus goes to every squad attacker, as a separate factor (F-3 decisions 1 to 3, recommended). Values stay 1 until the Lab report.
+  [D 2026-11-03 (SYN Q7 = B): the factor goes to every squad CARD (attacker hits and support amounts), because all 7 pieces are supports.
+  The 7 step also needs the head subject `ottozone-s-head` (D-202). Built in SYN with all values 1, 20.18.]
 - Every piece also gets a normal role and its own active (section 12). The set synergy is the set's reward, not a role.
 - The set trait leaves the trait synergy (no double count).
 
@@ -714,6 +716,7 @@ Each PR: a worktree from the latest `origin/main`, rehearsed on the local copy, 
 | 4 | E7c | The second E7 follow-up (20.3): `weak_role_x` 0.5, the Warlord's own Ironhide | SQL = the simulator. a planted fault for each change | Low |
 | 4 | E8 | Auto v2: Dungeon Auto plays each ready card. Hunt auto-pick with role answers and the pair score | Auto reaches 85% or more of a scripted best play | Medium |
 | 4 | E9 | Power number `card_power_v2` and squad value in SQL. client shows it only | rank correlation report. C3 passes | Low |
+| 4 | SYN | Synergies (7.1 to 7.5, 20.18): rule tags on the v2 unit, element chart, element synergy, support affinity, Forbidden Pride set count (values 1) | neutral values = the v2 engine before. Lab before / after. a planted fault for each rule | Medium |
 | 5 | B1-B10 | Card batches (section 12), data only, pushed after each approval | validator passes every row. `targets` per batch | Low |
 | 5 | M1 | Progress: levels, XP, migration script, refunds, reset gifts (dry run first) | before / after table: 0 rows lose value without a refund | High (live progress) |
 | 6 | U0 | Visual language design, then each screen PR (section 13) | gates G1 to G7, approved-vs-built images | Medium |
@@ -2534,3 +2537,59 @@ is the live text with ADDED lines only; each added line has the mark `-- M1d`, a
   work, and the flag stays OFF until then.
 - **Go-live order**: after M1c (live). `rehearse-sql.mjs` on copy 1, then `apply-sql.mjs --live` (grants OK), then `check-schema-drift.mjs --live` = 0
   differences, then `ops/deploy.sh` is NOT needed (SQL only: no Activity or bot code changes). The flag stays OFF; nothing changes in play until U0.
+
+### 20.18 SYN: element, affinity and set synergy (`tcg-bot/supabase/combat_v2_synergy.sql`)
+
+SYN puts the rule tags of a card on the v2 unit and adds the four synergy rules of 7.2, 7.3 and 7.5 to the v2 engine. Nothing in play
+changes: `combat_v2` is OFF, and no v1 function changes. Nathan's 9 answers of 2026-11-03 (SPEC SYN v3 section 9) are the values.
+
+- **The balance key `v2_synergy`** (a note, a fixed shape in `balance_v2_spec`, the step order in `balance_check_combat_v2`):
+  `element {small_at 3, big_at 5, small 1.12, big 1.20}`, `chart {bonus 1.25}`, `affinity {step 0.10, cap 0.30}`,
+  `sets.forbidden_pride {small_at 3, big_at 5, top_at 7, small 1, big 1, top 1, head ottozone-s-head}`. The set values stay 1 until the Lab
+  measures them on a copy with the Set 2 rows (Q8).
+- **The tags** (`combat_v2_card_tags`, NEW, STABLE): `element` = `card_element(tag_slugs)`, `family` = the first `origin:` slug,
+  `piece` = the subject key when the subject has the trait slug of a set, `beats` = the `element_counters` targets (no proposal row).
+  `combat_v2_card_unit` and the Lab unit carry `tags`. `gauntlet_v2_foes` and the Lab Dungeon foe carry `element`. The Hunt boss has none.
+- **The squad factors** (`combat_v2_synergy`, NEW, PURE, IMMUTABLE): `syn {elem_n, elem_x, aff_tag, aff_n, aff_x, set_n, set_x}` on each
+  card, once, when the fight state is built. It draws no random number. A card with no `tags` counts for no tag and has every factor 1.
+- **One place for each factor.** The hit core (card side only) applies `elem_x`, `set_x` and the chart. The support active applies `aff_x`
+  to its amounts, its `focus` `crd`, its smite, its area and its status values, and `set_x` to its non-hit amounts. Stacks, chances, picks,
+  durations and draws do not change. The enemy side, the ticks and the log entries do not change. The hit answer adds `chart`.
+- **The callers.** The Admin Lab calls `combat_v2_synergy` when it builds a fight. The R1b room start `gauntlet_v2_fight` calls it once,
+  before `return s;` (section 5b of the file: the live R1b text + one line with the mark `-- SYN`). R2 and R3 call it in their own room builders.
+  `combat_v2_gauntlet_run.sql` is now in `SUPERSEDED.md` (a re-run would put back the R1b `gauntlet_v2_fight`).
+- **Deviation from SPEC v3.** The file also replaces `balance_check_combat_v2`: the step order (`small_at <= big_at <= top_at`) needs a
+  branch there. The spec list of replaced functions did not name it.
+- **GUARD**: each of the 9 replaced functions must have the old md5 (db/schema at 7d156b3e, R1b merged) or the new md5 (read on copy 6 after
+  the apply).
+- **Proof** (copy 6, refreshed from live on 2026-11-04 after the R1b merge; branch merged with main 7d156b3e; the round 1 numbers before the
+  merge were the same):
+  - `test-combat-v2-synergy.mjs` PASS all 22 cases (C1 md5 of the other functions, C3a to C3k, server only, idempotent; round 2).
+    C3j: 3 fight rooms of the week 2026-10-25, each read at its first card turn: each card `syn` = `combat_v2_synergy` of the room state; the
+    room state and the first step without `syn` = the R1b text with the same seed; the live text minus its one `-- SYN` line has the R1b md5.
+    MUTATE=all: baseline PASS in the same run, **40 of 40** caught (round 4; 4 for C3j: `room_no_synergy`, `synergy_room_1_only`, `synergy_draws`,
+    `r1b_extra_change`). `M3m_no_spec_branch` and `notags_raise` stop the block (the file does not
+    apply; the synergy raises); the harness counts them only with their exact error text. The first DB run failed 3 cases, each a test
+    defect: the `subjects_flatten_tags` trigger rebuilds `tag_slugs` from `tags` (C3e), the ratio helper did not walk arrays (C3i), and a
+    null ratio counted as ok (C3d). M3i was not caught until a case with a draw of 0.6 (chance 0.5) was added.
+  - C1, CANDIDATE = this file: Hunt 183 fights, Dungeon 240, boss counters 128, **no difference**. `test-effect-shadow.mjs` with the 4d file +
+    this file: 3623 cases, 0 different. M1a (`combat_element` x1.01): the Dungeon golden fails. M5a (a literal 1.25): the C1 CI check fails.
+  - C2, neutral values: the Gauntlet week (seeds 0.42 and 0.77, 125 rooms each) and the 80 Lab fights are the **same** as the base.
+    M2a (`random()` in the synergy): 125 of 125 rooms differ. M2b (the chart on a foe with no element): 78 of 80 Lab fights differ.
+  - C4, the section 9 values: Hunt (40 Lab fights) damage after / before mean 1.0009, max 1.052. Shapes (6A2S to 3A5S x 3 bosses x 5 seeds):
+    each shape / the best shape 1.000, 0.919, 0.967, 0.900. The Gauntlet: 69 of 219 foes are beaten by a squad card; won rooms +1 on each seed.
+  - **C4b open (a measurement defect for the Planner).** The chart-on / chart-off card damage of the whole week is 1.0186 (seed 0.42) and
+    0.9920 (seed 0.77): the second is below the limit 1.00. In the rooms where a foe is beaten, the damage per card action is x1.053 and
+    x1.114. In the rooms where the chart cannot act, it is x0.963 and x0.971: one random stream runs through the whole week, so any change
+    moves every later draw. The week sum measures that noise too, and cannot hold the limit.
+  - **C4b, new measure** (Orchestrator decision 2026-11-04): the damage per card action in the rooms with at least one eligible foe, chart ON
+    vs OFF, above 1.00 and 1.15 or less on both seeds (the 1.15 limit decided by the Orchestrator on 2026-11-04): x1.0534 (seed 0.42) and
+    x1.1139 (seed 0.77): PASS. In the same run, M4c (the chart never applied) gives 1.0000 and 1.0000 and M4a (the chart x3.0) gives
+    1.3622 and 1.2906: both FAIL as required. The scripts and outputs: `lptcg-pipeline/items/SYN/evidence/c4b/` (not in this repo).
+  - Round 2 (review r1): C3d names every number that must scale for each block (the focus `crd` and `value`, each target of `shield_all`,
+    `heal_all`, `rally`, quicken `all` in round 3); C3g checks that the Lab fight calls `combat_v2_synergy` once. Mutations `REV_focus_crd_no_sf` and
+    `REV_lab_no_synergy` (round 2) and `REVR2_quicken_all_unscaled` (round 3) are caught. Round 4 (review r3): C3d runs each case again with `set_x` 1.10 (`aff_x` 1), the same paths x 1.10; `R3_863_focus_crd_set_x`, `R3_910_apply_set_x` and `R3_925_random_apply_set_x` (`sf` -> `sa`) are caught.
+- **Note for the next set**: `combat_v2_synergy` multiplies `set_x` over every set of `v2_synergy.sets`, but `set_n` holds the count of
+  the last set only. Today there is one set (`forbidden_pride`), so nothing changes. A second set must give `set_n` per set.
+- **Go-live order**: after R1a and R1b (the file replaces R1a and R1b functions). `rehearse-sql.mjs` on copy 1, `apply-sql.mjs --live` (grants OK),
+  `check-schema-drift.mjs --live` = 0 differences. The Lab is the local card studio (no deploy). No Activity or bot change. The flag stays OFF.
