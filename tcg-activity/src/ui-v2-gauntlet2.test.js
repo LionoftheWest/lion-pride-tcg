@@ -600,4 +600,19 @@ test('L-2 (final review): the info window max HP is the shown max (rounded up)',
   assert.equal(v2InfoOf(v, 124).maxHp, 648);
   v.run.state.fight.cards[124].max = 200;
   assert.equal(v2InfoOf(v, 124).maxHp, 200);
+// ON-UI (ON SPEC 3.5, G-UI (a) (b) (c)): the member mode of the Dungeon.
+});
+
+test('ON-UI screen rule: v1_run keeps the v1 screens; live or a tester may start v2; only a live run shows loot', async () => {
+  const g = await import('./ui-v2-gauntlet2.js');
+  assert.equal(g.v1RunFirst({ ok: true, live: true, v1_run: { id: 1 } }), true, '(b) an active v1 run of today: the v1 screen');
+  assert.equal(g.v1RunFirst({ ok: true, live: true, v1_run: null }), false);
+  assert.equal(g.v2CanStart({ ok: true, live: true, tester: false, can_start: true }), true, '(a) a member with the flag ON');
+  assert.equal(g.v2CanStart({ ok: true, live: false, tester: false, can_start: true }), false, '(c) flag OFF: not a tester = v1');
+  assert.equal(g.v2CanStart({ ok: true, live: false, tester: true, can_start: true }), true, '(c) flag OFF: the tester mode unchanged');
+  const st = { phase: 'fight', squad: [1], pend: { shards: 3, cards: [9] }, bank: { shards: 12, cards: [] } };
+  const live = g.v1RunOf({ live: true, run: { id: 1, live: true, status: 'active', state: st } });
+  assert.deepEqual([live.state.pend.shards, live.state.pend.cards, live.state.bank.shards], [3, [9], 12], 'a live run: its loot chips');
+  const testRun = g.v1RunOf({ live: true, run: { id: 1, live: false, status: 'active', state: st } });
+  assert.deepEqual([testRun.state.pend.shards, testRun.state.bank.shards], [0, 0], 'a test run (mark false): 0 loot');
 });

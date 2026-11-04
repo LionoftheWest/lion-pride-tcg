@@ -32,6 +32,7 @@ export const MUTATIONS = {
   no_run_shape: ['  if (!data || !data.fight) return data;', '  return data;'],
   cards_drop_bad: ['  return c.slice(0, 50).map((x) => posId(x));', '  return c.map((x) => posId(x)).filter((x) => x !== null).slice(0, 50);'],
   no_retry: ['    if (r.error && RETRY_CODES.has(r.error.code)) r = await supabase.rpc(fn, args);\n', ''],
+  no_live_gate: ['    if (data?.ok && data.live === true) return { player, view: data };', ''],
   v1_touched: ['  const refs = sharedCache', "  app.get('/api/hunt', (req, res, next) => next());\n  const refs = sharedCache"],
 };
 
@@ -226,4 +227,15 @@ test('G6-8 the retry: 40P01 then ok, 40001 then ok (exactly 2 calls); two aborts
     assert.equal((await other.call('POST', p, { body: {} })).status, 500);
     assert.equal(other.calls.filter((c) => c.name === fn).length, 1);
   }
+});
+
+// ON-UI (ON SPEC 3.5): the flag ON (hunt_v2_view.live) lets every member in; v1_today answers 409 with its message.
+test('ON-UI: live (flag ON) lets a member who is not a tester in; v1_today answers 409 with its message', async () => {
+  const base = baseRpc({ tester: false });
+  const h = harness({ rpc: (name, a) => (name === 'hunt_v2_view' ? { data: { ...base(name, a).data, live: true }, error: null } : name === 'hunt_v2_start' ? { data: { ok: false, error: 'v1_today' }, error: null } : base(name, a)) });
+  const v = await h.call('GET', '/api/hunt/v2/view');
+  assert.equal(v.status, 200);
+  const r = await h.call('POST', '/api/hunt/v2/start', { body: {} });
+  assert.equal(r.status, 409);
+  assert.equal(r.body.message, 'You already played in the old fight today.');
 });
