@@ -2491,3 +2491,44 @@ is the live text with ADDED lines only; each added line has the mark `-- M1d`, a
   work, and the flag stays OFF until then.
 - **Go-live order**: after M1c (live). `rehearse-sql.mjs` on copy 1, then `apply-sql.mjs --live` (grants OK), then `check-schema-drift.mjs --live` = 0
   differences, then `ops/deploy.sh` is NOT needed (SQL only: no Activity or bot code changes). The flag stays OFF; nothing changes in play until U0.
+
+### 20.18 SYN: element, affinity and set synergy (`tcg-bot/supabase/combat_v2_synergy.sql`)
+
+SYN puts the rule tags of a card on the v2 unit and adds the four synergy rules of 7.2, 7.3 and 7.5 to the v2 engine. Nothing in play
+changes: `combat_v2` is OFF, and no v1 function changes. Nathan's 9 answers of 2026-11-03 (SPEC SYN v3 section 9) are the values.
+
+- **The balance key `v2_synergy`** (a note, a fixed shape in `balance_v2_spec`, the step order in `balance_check_combat_v2`):
+  `element {small_at 3, big_at 5, small 1.12, big 1.20}`, `chart {bonus 1.25}`, `affinity {step 0.10, cap 0.30}`,
+  `sets.forbidden_pride {small_at 3, big_at 5, top_at 7, small 1, big 1, top 1, head ottozone-s-head}`. The set values stay 1 until the Lab
+  measures them on a copy with the Set 2 rows (Q8).
+- **The tags** (`combat_v2_card_tags`, NEW, STABLE): `element` = `card_element(tag_slugs)`, `family` = the first `origin:` slug,
+  `piece` = the subject key when the subject has the trait slug of a set, `beats` = the `element_counters` targets (no proposal row).
+  `combat_v2_card_unit` and the Lab unit carry `tags`. `gauntlet_v2_foes` and the Lab Dungeon foe carry `element`. The Hunt boss has none.
+- **The squad factors** (`combat_v2_synergy`, NEW, PURE, IMMUTABLE): `syn {elem_n, elem_x, aff_tag, aff_n, aff_x, set_n, set_x}` on each
+  card, once, when the fight state is built. It draws no random number. A card with no `tags` counts for no tag and has every factor 1.
+- **One place for each factor.** The hit core (card side only) applies `elem_x`, `set_x` and the chart. The support active applies `aff_x`
+  to its amounts, its `focus` `crd`, its smite, its area and its status values, and `set_x` to its non-hit amounts. Stacks, chances, picks,
+  durations and draws do not change. The enemy side, the ticks and the log entries do not change. The hit answer adds `chart`.
+- **The callers.** The Admin Lab calls `combat_v2_synergy` when it builds a fight. The R1b room start gets the same one line after R1b
+  merges (C3j, the next round of SYN). R2 and R3 call it in their own room builders.
+- **Deviation from SPEC v3.** The file also replaces `balance_check_combat_v2`: the step order (`small_at <= big_at <= top_at`) needs a
+  branch there. The spec list of replaced functions did not name it.
+- **GUARD**: each of the 8 replaced functions must have the old md5 (db/schema at 11b8db77) or the new md5 (read on copy 6 after the apply).
+- **Proof** (copy 6, refreshed from live on 2026-11-04; round 1):
+  - `test-combat-v2-synergy.mjs` PASS all 20 cases (C1 md5 of the 543 other functions, C3a to C3i, C3k, server only, idempotent).
+    MUTATE=all: baseline PASS in the same run, **30 of 30** caught. `M3m_no_spec_branch` and `notags_raise` stop the block (the file does not
+    apply; the synergy raises); the harness counts them only with their exact error text. The first DB run failed 3 cases, each a test
+    defect: the `subjects_flatten_tags` trigger rebuilds `tag_slugs` from `tags` (C3e), the ratio helper did not walk arrays (C3i), and a
+    null ratio counted as ok (C3d). M3i was not caught until a case with a draw of 0.6 (chance 0.5) was added.
+  - C1, CANDIDATE = this file: Hunt 183 fights, Dungeon 240, boss counters 128, **no difference**. `test-effect-shadow.mjs` with the 4d file +
+    this file: 3623 cases, 0 different. M1a (`combat_element` x1.01): the Dungeon golden fails. M5a (a literal 1.25): the C1 CI check fails.
+  - C2, neutral values: the Gauntlet week (seeds 0.42 and 0.77, 125 rooms each) and the 80 Lab fights are the **same** as the base.
+    M2a (`random()` in the synergy): 125 of 125 rooms differ. M2b (the chart on a foe with no element): 78 of 80 Lab fights differ.
+  - C4, the section 9 values: Hunt (40 Lab fights) damage after / before mean 1.0009, max 1.052. Shapes (6A2S to 3A5S x 3 bosses x 5 seeds):
+    each shape / the best shape 1.000, 0.919, 0.967, 0.900. The Gauntlet: 69 of 219 foes are beaten by a squad card; won rooms +1 on each seed.
+  - **C4b open (a measurement defect for the Planner).** The chart-on / chart-off card damage of the whole week is 1.0186 (seed 0.42) and
+    0.9920 (seed 0.77): the second is below the limit 1.00. In the rooms where a foe is beaten, the damage per card action is x1.053 and
+    x1.114. In the rooms where the chart cannot act, it is x0.963 and x0.971: one random stream runs through the whole week, so any change
+    moves every later draw. The week sum measures that noise too, and cannot hold the limit. SPEC v4 must name another measure.
+- **Go-live order**: after R1a (the file replaces two R1a functions). `rehearse-sql.mjs` on copy 1, `apply-sql.mjs --live` (grants OK),
+  `check-schema-drift.mjs --live` = 0 differences. The Lab is the local card studio (no deploy). No Activity or bot change. The flag stays OFF.
