@@ -12,7 +12,8 @@
 --   gauntlet_pool (replaced): while combat_v2_on('gauntlet') is true, only cards with a usable ability_v2 (the combat_v2_card_unit rule: an
 --     object, a role of the roles table, a list of blocks). A week that exists keeps its squad.
 -- NO CHANGE IN PLAY while the flag combat_v2.gauntlet is false: every v1 answer stays the same (a tester run has member false).
--- The switch is a separate one-statement file (combat_v2_switch_gauntlet_on.sql). Idempotent. Server only.
+-- The switch is NOT in this file: combat_v2_switch_on.sql (ON SPEC 4, sub-item Switch) turns on every mode at one moment, and
+-- combat_v2_switch_off.sql is the rollback. Idempotent. Server only.
 -- Test: card-studio/scripts/test-combat-v2-on-gauntlet.mjs (rolled back; MUTATE=all must catch every mutation).
 
 -- GUARD (the runs_per_day.sql rule): each replaced function must be the live text this file was built from (or the text this file made).

@@ -53,6 +53,9 @@ const V1_BOARD = BASE.board.replace('public.gauntlet_board(', 'public.r1on_board
 const MUT = {
   // GO1
   board_all_v2: [BOARD_P, "r.mode in ('gauntlet', 'gauntlet_v2')"],
+  // review r1 L-1: a missing member key counts as true (an R1b run made before this file); must fail a board or view case, not only the md5 guard
+  member_missing_as_true: [BOARD_P, "(r.mode = 'gauntlet' or (r.mode = 'gauntlet_v2' and coalesce(r.state->>'member', 'true') = 'true'))"],
+  view_missing_as_true: [VIEW_WEEK, "'players_week', (select count(distinct player_id) from dungeon_runs where (mode = 'gauntlet' or (mode = 'gauntlet_v2' and coalesce(state->>'member', 'true') = 'true'))"],
   // GO2
   board_v1_only: [BOARD_P, "r.mode = 'gauntlet'"],
   member_mark_missing: ["'member', combat_v2_on('gauntlet'), ", ''],
@@ -72,10 +75,10 @@ const MUT = {
   guard_missing: [GUARD_RE, ''],
   grant_anon: ['comment on function public.gauntlet_v2_begin(', 'grant execute on function public.gauntlet_board(date, integer) to anon;\ncomment on function public.gauntlet_v2_begin('],
 };
-const NAMED = `board_all_v2 board_v1_only member_mark_missing pay_skips_v2 view_v1_only view_reads_flag count_one_mode board_reads_flag
+const NAMED = `board_all_v2 member_missing_as_true view_missing_as_true board_v1_only member_mark_missing pay_skips_v2 view_v1_only view_reads_flag count_one_mode board_reads_flag
   pool_unfiltered pool_filter_always guard_missing grant_anon`.split(/\s+/).filter(Boolean);
 const pairs = (m) => (Array.isArray(m[0]) ? m : [m]);
-const EXPECT = { GO1: 'board_all_v2', GO2: 'board_v1_only member_mark_missing pay_skips_v2', GO3: 'view_v1_only view_reads_flag', GO4: 'count_one_mode', GO4b: 'count_one_mode',
+const EXPECT = { GO1: 'board_all_v2 member_missing_as_true view_missing_as_true', GO2: 'board_v1_only member_mark_missing pay_skips_v2', GO3: 'view_v1_only view_reads_flag', GO4: 'count_one_mode', GO4b: 'count_one_mode',
   GO5: 'board_reads_flag', GO6: 'pool_unfiltered pool_filter_always', GO7: 'guard_missing grant_anon' };
 const BLOCK_OF = { GO1: 'B1', GO7: 'B1', GO2: 'B2', GO3: 'B2', GO4: 'B2', GO4b: 'B2', GO5: 'B3', GO6: 'B4' };
 const casesOf = (name) => Object.keys(EXPECT).filter((k) => EXPECT[k].split(' ').includes(name));
@@ -265,6 +268,10 @@ const B1 = block(String.raw`
   perform pg_temp.addrun(${P('t2')}, 'gauntlet_v2', w0 + 1, 9, 1, 10, 'false'::jsonb);
   perform pg_temp.addrun(${P('a')}, 'gauntlet', w0 + 2, 3, 1, 30);
   perform pg_temp.addrun(${P('b')}, 'gauntlet', w0 + 3, 2, 1, 20);
+  -- review r1 L-1: a v2 run with NO member key (an R1b tester run made before this file is applied), with the best floor, this week and in W0
+  insert into dungeon_runs (player_id, day, squad, state, mode, status, ended_by, attempt, floor, room, turns, ended_at)
+    values (${P('c')}, dungeon_day(), '{}'::bigint[], '{"engine": 2, "mode": "gauntlet"}'::jsonb, 'gauntlet_v2', 'over', 'fell', 1, 8, 1, 5, now()),
+           (${P('c')}, w0 + 1, '{}'::bigint[], '{"engine": 2, "mode": "gauntlet"}'::jsonb, 'gauntlet_v2', 'over', 'fell', 1, 8, 1, 5, w0 + 1 + interval '12 hours');
   a := pg_temp.answers();
   execute $o$${BASE_SQL}$o$;
   a2 := pg_temp.answers();
@@ -273,6 +280,13 @@ const B1 = block(String.raw`
   ${add('GO1 flag OFF: gauntlet_view of the tester, a v1 member and a member with no run = the base answer, byte for byte', `a->'view_t' = a2->'view_t' and a->'view_v' = a2->'view_v' and a->'view_m' = a2->'view_m'`,
     "jsonb_build_object('t_new', a->'view_t'->'players_week', 't_base', a2->'view_t'->'players_week', 'diff', (select jsonb_agg(k) from jsonb_object_keys(a->'view_t') k where a->'view_t'->k is distinct from a2->'view_t'->k))")}
   ${add('GO1 flag OFF: the winners of dungeon_pay(gauntlet, W0) = the base winners (rank, player, Shards, packs)', `a->'pay_w0' = a2->'pay_w0' and jsonb_array_length(a->'pay_w0') = 2`, "jsonb_build_object('new', a->'pay_w0', 'base', a2->'pay_w0')")}
+  ${add('GO1 (review r1 L-1) a v2 run with no member key (best floor 8, this week and W0) is on no board, in no players_week and among no dungeon_pay winners',
+    `not exists (select 1 from jsonb_array_elements(a->'board_week') e where e->>'player_id' = ${P('c')})
+     and not exists (select 1 from jsonb_array_elements(a->'board_w0') e where e->>'player_id' = ${P('c')})
+     and not exists (select 1 from jsonb_array_elements(a->'pay_w0') e where e->>'player_id' = ${P('c')})
+     and (a->'view_m'->>'players_week')::int = (select count(distinct player_id) from dungeon_runs where day between wk and wk + 6
+           and (mode = 'gauntlet' or (mode = 'gauntlet_v2' and state->'member' = 'true'::jsonb)))`,
+    "jsonb_build_object('players_week', a->'view_m'->'players_week', 'w0', a->'board_w0', 'pay', a->'pay_w0')")}
   ${add('GO1 flag OFF: no tester v2 run is on the board (this week and W0)',
     `not exists (select 1 from jsonb_array_elements(a->'board_week') e where e->>'player_id' in (${P('t')}, ${P('t2')})) and not exists (select 1 from jsonb_array_elements(a->'board_w0') e where e->>'player_id' in (${P('t')}, ${P('t2')}))`)}
 `, '; md5_a jsonb; md5_b jsonb; md5_n jsonb; acl_a jsonb; flag_a jsonb');
