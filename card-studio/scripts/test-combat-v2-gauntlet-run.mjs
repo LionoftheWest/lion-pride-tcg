@@ -54,7 +54,8 @@ const END17 = '-- ============================================================ 1
 const MUT = {
   // G1.1
   branch_always: ["if combat_v2_on('gauntlet', p_player) then", 'if true then'],
-  v1_state_changed: ["'shield', 0, 'buff', 1, 'debuff', 1, 'cd', 0, 'sup', v_sup", "'shield', 0, 'buff', 2, 'debuff', 1, 'cd', 0, 'sup', v_sup"],
+  // the spec text ('buff', 2) is an equivalent mutant: dungeon_enter sets buff 1 on every card when room 1 is a fight room (REPORT deviation); shield 1 stays
+  v1_state_changed: ["'shield', 0, 'buff', 1, 'debuff', 1, 'cd', 0, 'sup', v_sup", "'shield', 1, 'buff', 1, 'debuff', 1, 'cd', 0, 'sup', v_sup"],
   // G1.2
   d2_not_caught: ['    exception when no_data_found then\n      v_units := null;\n', ''],
   d2_catch_all: ['    exception when no_data_found then\n      v_units := null;\n', '    exception when others then\n      v_units := null;\n'],
@@ -110,7 +111,7 @@ const MUT = {
   tester_added: [END17, "update public.balance set value = jsonb_set(value, '{testers}', coalesce(value->'testers', '[]'::jsonb) || '[\"99999999998888888888\"]'::jsonb) where key = 'combat_v2';\n" + END17],
   guard_removed: [GUARD_RE, ''],
   comment_missing: [/comment on function public\.gauntlet_v2_view\(text\) is \$cm\$[^\n]*\n/, ''],
-  v1_touched: [END17, "do $v$ begin execute replace(pg_get_functiondef('public.dungeon_settle(bigint, text, boolean)'::regprocedure), 'declare', 'declare -- r1b'); end $v$;\n" + END17],
+  v1_touched: [END17, "do $v$ begin execute replace(pg_get_functiondef('public.dungeon_settle(bigint, text, boolean)'::regprocedure), 'declare', 'declare /* r1b */'); end $v$;\n" + END17],
   comment_stale: [/comment on function public\.combat_v2_on\(text, text\) is \$cm\$[^\n]*\n/, ''],
   start_literal: ['      return gauntlet_v2_begin(p_player, w.squad, v_units, v_last + 1);', '      return gauntlet_v2_begin(p_player, w.squad, v_units, v_last * 3 + 1 - v_last * 2);'],
   start_extra_call: ['    if v_units is not null then\n', '    if v_units is not null then\n      perform random();\n'],
@@ -126,7 +127,7 @@ const MUT = {
   // G1.16
   rooms_floor_one: ["from jsonb_array_elements(p_floors->(coalesce(p_floor, 1) - 1)) with ordinality rm(v, i)", 'from jsonb_array_elements(p_floors->0) with ordinality rm(v, i)'],
   rooms_no_mask: ["then rm.v->>'type' else 'unknown' end,", "then rm.v->>'type' else rm.v->>'type' end,"],
-  view_no_generate: ['  w := gauntlet_generate(gauntlet_week(v_day));', '  select * into w from gauntlet_weeks where week = gauntlet_week(v_day);'],
+  view_no_generate: ['no run row is written\n  w := gauntlet_generate(gauntlet_week(v_day));', 'no run row is written\n  select * into w from gauntlet_weeks where week = gauntlet_week(v_day);'],
   // G1.17
   info_no_name: ["      'name', (select s.ability_v2->>'name' from", "      'name', (select null::text from"],
   needs_ally_all_supports: ["      'needs_ally', gauntlet_v2_needs_ally(e.value->'active'->'blocks'))), '{}'::jsonb)", "      'needs_ally', e.value->>'class' = 'support')), '{}'::jsonb)"],
@@ -244,6 +245,9 @@ const OTHERS = ['v', 'd', 'e', 'o'].map((x) => `tst_r1b_${x}`);
 
 // the state before the file, then the file, then the test world (members, testers, the flags of the modes)
 const PRE = String.raw`
+  -- bool_and with NULL counted as false (bool_and skips NULL: a missing value must fail a check)
+  create function pg_temp.band_sf(x boolean, y boolean) returns boolean language sql immutable as 'select x and coalesce(y, false)';
+  create aggregate pg_temp.band(boolean) (sfunc = pg_temp.band_sf, stype = boolean, initcond = 'true');
   for f in select p.oid::regprocedure::text from pg_proc p where p.pronamespace = 'public'::regnamespace
              and p.proname like 'gauntlet\_v2\_%' and p.proname <> 'gauntlet_v2_foes' loop
     execute 'drop function ' || f;
@@ -372,7 +376,7 @@ begin
   ${add('G1.13 balance combat_v2 is the same (the four flags, the tester list): INV-4', `(select value from public.balance where key = 'combat_v2') = flag_a`, `(select value - 'testers' from public.balance where key = 'combat_v2')`)}
   select jsonb_object_agg(${SIG}, p.provolatile::text) into o from pg_proc p where p.pronamespace = 'public'::regnamespace and ${SIG} = any(array[${NEW.map(lit).join(', ')}]);
   ${add('G1.13 volatility as designed (gauntlet_v2_view VOLATILE, L-3; the pure and read-only helpers IMMUTABLE or STABLE)',
-    `(select bool_and(o->>q = coalesce(${lit(JSON.stringify(VOL))}::jsonb->>q, 'v')) from unnest(array[${NEW.map(lit).join(', ')}]) q) and o->>'gauntlet_v2_view(text)' = 'v'`, 'o')}
+    `(select pg_temp.band(o->>q = coalesce(${lit(JSON.stringify(VOL))}::jsonb->>q, 'v')) from unnest(array[${NEW.map(lit).join(', ')}]) q) and o->>'gauntlet_v2_view(text)' = 'v'`, 'o')}
   select coalesce(jsonb_agg(${SIG}), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and ${SIG} = any(array[${NEW.map(lit).join(', ')}]) and not coalesce('search_path=public' = any(p.proconfig), false);
   ${add('G1.13 search_path = public on every new function', `o = '[]'::jsonb`, 'o')}
   select coalesce(jsonb_agg(${SIG} || ' ' || r3), '[]') into o from pg_proc p cross join unnest(array['anon', 'authenticated', 'public']) r3
@@ -389,9 +393,9 @@ begin
   t := coalesce(obj_description('public.combat_v2_on(text, text)'::regprocedure, 'pg_proc'), '');
   t2 := coalesce(obj_description('public.combat_v2_on(text)'::regprocedure, 'pg_proc'), '');
   ${add('G1.13 the comment of combat_v2_on(text, text) has no "No v1 function calls it.", names gauntlet_start (L7) and every M1d reader (spend_card_points_v2, reset_card_points_v2, spend_stat_points, reset_stat_points, buy_shop_item, shop_today; r6 L-2)',
-    `position('No v1 function calls it.' in t) = 0 and position('gauntlet_start' in t) > 0 and (select bool_and(position(q in t) > 0) from unnest(array['spend_card_points_v2', 'reset_card_points_v2', 'spend_stat_points', 'reset_stat_points', 'buy_shop_item', 'shop_today']) q)`, 'to_jsonb(t)')}
+    `position('No v1 function calls it.' in t) = 0 and position('gauntlet_start' in t) > 0 and (select pg_temp.band(position(q in t) > 0) from unnest(array['spend_card_points_v2', 'reset_card_points_v2', 'spend_stat_points', 'reset_stat_points', 'buy_shop_item', 'shop_today']) q)`, 'to_jsonb(t)')}
   ${add('G1.13 (r6 L-1) the comment of combat_v2_on(text) names gauntlet_start as the fifth v1 caller and keeps the 4 M1d names',
-    `position('gauntlet_start' in t2) > 0 and (select bool_and(position(q in t2) > 0) from unnest(array['spend_stat_points', 'reset_stat_points', 'buy_shop_item', 'shop_today']) q)`, 'to_jsonb(t2)')}
+    `position('gauntlet_start' in t2) > 0 and (select pg_temp.band(position(q in t2) > 0) from unnest(array['spend_stat_points', 'reset_stat_points', 'buy_shop_item', 'shop_today']) q)`, 'to_jsonb(t2)')}
   -- the file runs twice; the guard refuses another gauntlet_start
   select jsonb_object_agg(${SIG}, ${MD5}) into md5_n from pg_proc p where p.pronamespace = 'public'::regnamespace and (${SIG} = any(array[${[...NEW, ...REPLACED].map(lit).join(', ')}]));
   msg := null;
@@ -462,9 +466,9 @@ const B2 = block(String.raw`
      and (jsonb_array_length(a->'order') = 10 or (jsonb_array_length(a->'order') between 1 and 9 and a->>'event' = 'choose'))
      and not (a->'state' ?| array['cards', 'foes', 'bank', 'pend'])`, "jsonb_build_object('keys', (select jsonb_agg(k0) from jsonb_object_keys(a->'state') k0), 'order_n', jsonb_array_length(a->'order'), 'event', a->'event')")}
   ${add('G1.3 the room start: every card hp = its unit max (by id), every status {}, every meter in [0, act_at] with at most 2 decimals, the card meters not all 0 and the foe meters not all 0',
-    `(select bool_and((u.value->>'hp')::numeric = (a->'state'->'units'->u.key->>'max')::numeric and u.value->'status' = '{}'::jsonb) from jsonb_each(s->'cards') u)
-     and (select bool_and(e0->'status' = '{}'::jsonb) from jsonb_array_elements(s->'enemies') e0)
-     and (select bool_and((z->>'meter')::numeric between 0 and (b->'v2_speed'->>'act_at')::numeric and round((z->>'meter')::numeric, 2) = (z->>'meter')::numeric)
+    `(select pg_temp.band((u.value->>'hp')::numeric = (a->'state'->'units'->u.key->>'max')::numeric and u.value->'status' = '{}'::jsonb) from jsonb_each(s->'cards') u)
+     and (select pg_temp.band(e0->'status' = '{}'::jsonb) from jsonb_array_elements(s->'enemies') e0)
+     and (select pg_temp.band((z->>'meter')::numeric between 0 and (b->'v2_speed'->>'act_at')::numeric and round((z->>'meter')::numeric, 2) = (z->>'meter')::numeric)
             from (select value z from jsonb_each(s->'cards') union all select z from jsonb_array_elements(s->'enemies') z) q)
      and (select bool_or((value->>'meter')::numeric > 0) from jsonb_each(s->'cards')) and (select bool_or((z->>'meter')::numeric > 0) from jsonb_array_elements(s->'enemies') z)`,
     "jsonb_build_object('cards', (select jsonb_object_agg(key, jsonb_build_array(value->'hp', value->'meter')) from jsonb_each(s->'cards')), 'foes', (select jsonb_agg(z->'meter') from jsonb_array_elements(s->'enemies') z))")}
@@ -560,7 +564,7 @@ const B2 = block(String.raw`
       'auto', pg_temp.call($$gauntlet_v2_auto('tst_r1b_h', 1)$$), 'choose', pg_temp.call($$gauntlet_v2_choose('tst_r1b_h', 0)$$),
       'retreat', pg_temp.call($$gauntlet_v2_retreat('tst_r1b_h')$$), 'view', pg_temp.call($$gauntlet_v2_view('tst_r1b_h')$$));
     ${add("format('G1.15 L3 settings %s enabled false: act, auto, choose, retreat and view each give disabled; the v2 row is unchanged (all columns)', t)",
-      `(select bool_and(q.value->>'error' = 'disabled') from jsonb_each(r) q) and pg_temp.rowj(rid) = rw`, "(select jsonb_object_agg(q.key, coalesce(q.value->'error', q.value->'raised')) from jsonb_each(r) q)")}
+      `(select pg_temp.band(q.value->>'error' = 'disabled') from jsonb_each(r) q) and pg_temp.rowj(rid) = rw`, "(select jsonb_object_agg(q.key, coalesce(q.value->'error', q.value->'raised')) from jsonb_each(r) q)")}
     update settings set value = value || '{"enabled": true}' where key = t;
   end loop;
 
@@ -650,13 +654,13 @@ const B3 = block(String.raw`
   st_c := pg_temp.rowj(rid)->'state';
   ${add('G1.8 the room is won (planted foes at hp 1) and the run is at choose', `(r->>'won')::boolean and st_c->>'phase' = 'choose'`, "jsonb_build_object('event', r->'event', 'won', r->'won', 'phase', st_c->'phase')")}
   ${add('G1.8 D5 Q1 the carry after the room = the end of the fight by card id (hp, max, down, charge, held: a replay of the same seed)',
-    `(select bool_and(st_c->'carry'->q.key = jsonb_build_object('hp', q.value->'hp', 'max', q.value->'max', 'down', coalesce(q.value->'down', 'false'::jsonb), 'charge', q.value->'charge', 'held', q.value->'held')) from jsonb_each(s->'cards') q)
+    `(select pg_temp.band(st_c->'carry'->q.key = jsonb_build_object('hp', q.value->'hp', 'max', q.value->'max', 'down', coalesce(q.value->'down', 'false'::jsonb), 'charge', q.value->'charge', 'held', q.value->'held')) from jsonb_each(s->'cards') q)
      and (select count(*) from jsonb_object_keys(st_c->'carry')) = (select count(*) from jsonb_object_keys(s->'cards'))`, "jsonb_build_object('carry', st_c->'carry')")}
   perform pg_temp.setst(rid, st_c || '{"offers": [{"kind": "continue"}]}'::jsonb);
   x := pg_temp.spy($$gauntlet_v2_choose('tst_r1b_c', 0)$$);
   f0 := x->'f0';
   ${add('G1.8 D5 the next fight room starts with the carry: each card hp, down, charge and held = the carry (by id), statuses {}, a new meter in [0, act_at]',
-    `f0 is not null and (select bool_and((f0->'cards'->q.key->>'hp')::numeric = (q.value->>'hp')::numeric and f0->'cards'->q.key->'down' = q.value->'down'
+    `f0 is not null and (select pg_temp.band((f0->'cards'->q.key->>'hp')::numeric = (q.value->>'hp')::numeric and f0->'cards'->q.key->'down' = q.value->'down'
         and f0->'cards'->q.key->'charge' = q.value->'charge' and f0->'cards'->q.key->'held' = q.value->'held' and f0->'cards'->q.key->'status' = '{}'::jsonb
         and (f0->'cards'->q.key->>'meter')::numeric between 0 and (b->'v2_speed'->>'act_at')::numeric) from jsonb_each(st_c->'carry') q)
      and exists (select 1 from jsonb_each(st_c->'carry') q where (q.value->>'hp')::numeric < (q.value->>'max')::numeric)
@@ -692,19 +696,19 @@ const B3 = block(String.raw`
     end;
     f0 := o->'f0'; s2 := o->'pre';
     ok := msg is null and f0 is not null and case t
-      when 'reset' then (select bool_and((f0->'cards'->q.key->>'charge')::int = (b->'v2_charge'->>(q.value->>'class'))::int) from jsonb_each(s2->'units') q)
+      when 'reset' then (select pg_temp.band((f0->'cards'->q.key->>'charge')::int = (b->'v2_charge'->>(q.value->>'class'))::int) from jsonb_each(s2->'units') q)
       when 'buff' then o->>'phase' = 'rest' and (o->>'after_pick')::numeric = 0.12
-        and (select bool_and(case when q.value->>'class' = 'attacker' and combat_v2_up(q.value) then (q.value->'status'->'empowered'->>'value')::numeric = 0.12 else not (q.value->'status' ? 'empowered') end) from jsonb_each(f0->'cards') q)
+        and (select pg_temp.band(case when q.value->>'class' = 'attacker' and combat_v2_up(q.value) then (q.value->'status'->'empowered'->>'value')::numeric = 0.12 else not (q.value->'status' ? 'empowered') end) from jsonb_each(f0->'cards') q)
         and exists (select 1 from jsonb_each(f0->'cards') q where q.value->>'class' = 'attacker' and combat_v2_up(q.value))
         and exists (select 1 from jsonb_each(f0->'cards') q where q.value->>'class' = 'support')
       when 'buff_q4' then (o->>'after_pick')::numeric = 0.2
-        and (select bool_and((q.value->'status'->'empowered'->>'value')::numeric = 0.2) from jsonb_each(f0->'cards') q where q.value->>'class' = 'attacker' and combat_v2_up(q.value))
-      when 'ward' then (select bool_and(case when combat_v2_up(q.value) then (q.value->'status'->'shielded'->>'value')::numeric = round((q.value->>'max')::numeric * 0.15) else not (q.value->'status' ? 'shielded') end) from jsonb_each(f0->'cards') q)
+        and (select pg_temp.band((q.value->'status'->'empowered'->>'value')::numeric = 0.2) from jsonb_each(f0->'cards') q where q.value->>'class' = 'attacker' and combat_v2_up(q.value))
+      when 'ward' then (select pg_temp.band(case when combat_v2_up(q.value) then (q.value->'status'->'shielded'->>'value')::numeric = round((q.value->>'max')::numeric * 0.15) else not (q.value->'status' ? 'shielded') end) from jsonb_each(f0->'cards') q)
         and not combat_v2_up(f0->'cards'->(s2->'squad'->>0))
-      when 'heal' then (select bool_and(case when (q.value->>'down')::boolean then o->'state'->'carry'->q.key = q.value
+      when 'heal' then (select pg_temp.band(case when (q.value->>'down')::boolean then o->'state'->'carry'->q.key = q.value
                                else (o->'state'->'carry'->q.key->>'hp')::numeric = least((q.value->>'max')::numeric, 1 + round((q.value->>'max')::numeric * 0.35)) end) from jsonb_each(s2->'carry') q)
         and (o->'state'->>'heal_floor')::int = 1
-      else (select bool_and(case when (q.value->>'down')::boolean then (o->'state'->'carry'->q.key->>'hp')::numeric = greatest(1, round((q.value->>'max')::numeric * 0.25)) and o->'state'->'carry'->q.key->'down' = 'false'::jsonb
+      else (select pg_temp.band(case when (q.value->>'down')::boolean then (o->'state'->'carry'->q.key->>'hp')::numeric = greatest(1, round((q.value->>'max')::numeric * 0.25)) and o->'state'->'carry'->q.key->'down' = 'false'::jsonb
                                else o->'state'->'carry'->q.key = q.value end) from jsonb_each(s2->'carry') q) end;
     ${add("format('G1.9 D3 the offer %s (reset: every charge = v2_charge.<class>; buff a: Empowered a on each standing attacker at the next FIGHT room after a rest, none on a support; buff_q4: two buffs keep the higher; ward w: Shielded round(max x w) on each standing card; heal / revive: the v1 numbers on the carry)', t)",
       'ok', "jsonb_build_object('raised', coalesce(to_jsonb(msg), o->'raised'), 'after_pick', o->'after_pick', 'f0', (select jsonb_object_agg(q.key, jsonb_build_array(q.value->'class', q.value->'charge', q.value->'status')) from jsonb_each(f0->'cards') q), 'carry', o->'state'->'carry')")}
@@ -776,7 +780,7 @@ const B3 = block(String.raw`
     'pass_turn', pg_temp.call(format('dungeon_pass_turn(%L, %L, false)', 'tst_r1b_z', 'gauntlet')),
     'retreat', pg_temp.call(format('dungeon_retreat(%L, %L)', 'tst_r1b_z', 'gauntlet')));
   ${add('G1.12 INV-3 the 7 v1 action functions with p_mode gauntlet each return no_run for a player whose only run today is gauntlet_v2; the row is unchanged',
-    `(select bool_and(q.value->>'error' = 'no_run') from jsonb_each(r) q) and pg_temp.rowj(rid) = rw`, "(select jsonb_object_agg(q.key, coalesce(q.value->'error', q.value->'raised')) from jsonb_each(r) q)")}
+    `(select pg_temp.band(q.value->>'error' = 'no_run') from jsonb_each(r) q) and pg_temp.rowj(rid) = rw`, "(select jsonb_object_agg(q.key, coalesce(q.value->'error', q.value->'raised')) from jsonb_each(r) q)")}
   r := gauntlet_view('tst_r1b_z');
   ${add('G1.12 gauntlet_view of that player shows no v2 state (run null)', `r->'run' = 'null'::jsonb`, "r->'run'")}
   ${add('G1.12 dungeon_damage_reconcile(v2 run) has 0 rows with unexplained <> 0', `(select count(*) from dungeon_damage_reconcile(rid) z where z.unexplained <> 0) = 0`)}
@@ -863,7 +867,7 @@ const B4 = block(String.raw`
   a := gauntlet_start('tst_r1b_t'); rid := (a->>'run')::bigint; rw := pg_temp.rowj(rid); s := rw->'state'->'fight';
   -- (a) info
   ${add('G1.17 a info[id] for each squad card: name = subjects.ability_v2 name, role and class = the unit',
-    `(select bool_and(rw->'state'->'info'->q.key->>'name' is not distinct from (select s0.ability_v2->>'name' from cards c0 join subjects s0 on s0.id = c0.subject_id where c0.id = q.key::bigint)
+    `(select pg_temp.band(rw->'state'->'info'->q.key->>'name' is not distinct from (select s0.ability_v2->>'name' from cards c0 join subjects s0 on s0.id = c0.subject_id where c0.id = q.key::bigint)
         and rw->'state'->'info'->q.key->>'name' is not null and rw->'state'->'info'->q.key->'role' = q.value->'role' and rw->'state'->'info'->q.key->'class' = q.value->'class') from jsonb_each(rw->'state'->'units') q)
      and (select count(*) from jsonb_object_keys(rw->'state'->'info')) = jsonb_array_length(rw->'state'->'squad')`, "rw->'state'->'info'")}
   -- (b) needs_ally, two-way, on every card with a usable ability_v2 (the engine probe with draws)
@@ -899,7 +903,7 @@ const B4 = block(String.raw`
   update balance set value = jsonb_set(value, '{attacker}', '3') where key = 'v2_charge';
   x := gauntlet_v2_view('tst_r1b_t');
   ${add('G1.17 c need = the live v2_charge: v2_charge.attacker set to 3 gives need 3 for each attacker (and the live value for each support)',
-    `(select bool_and((x->'need'->>q.key)::int = case when q.value->>'class' = 'attacker' then 3 else (select (value->>'support')::int from balance where key = 'v2_charge') end) from jsonb_each(rw->'state'->'units') q)`, "x->'need'")}
+    `(select pg_temp.band((x->'need'->>q.key)::int = case when q.value->>'class' = 'attacker' then 3 else (select (value->>'support')::int from balance where key = 'v2_charge') end) from jsonb_each(rw->'state'->'units') q)`, "x->'need'")}
   update balance set value = jsonb_set(value, '{attacker}', to_jsonb((b->'v2_charge'->>'attacker')::int)) where key = 'v2_charge';
   -- (d) the order: entry 1 = ext.turn, entries 2-10 = combat_v2_turn_order(fight, 9); planted: the turn card ready and Quickened, another card Stunned at need - 1
   t := s->'ext'->'turn'->>'id';
@@ -912,12 +916,12 @@ const B4 = block(String.raw`
   x := gauntlet_v2_view('tst_r1b_t');
   o := x->'order';
   r := combat_v2_turn_order(s2, 9);
-  ok := jsonb_array_length(o) = 10 and (o->0) - 'ready' = s2->'ext'->'turn' and (select bool_and((o->(q.oo::int)) - 'ready' = q.v) from jsonb_array_elements(r) with ordinality q(v, oo));
+  ok := jsonb_array_length(o) = 10 and (o->0) - 'ready' = s2->'ext'->'turn' and (select pg_temp.band((o->(q.oo::int)) - 'ready' = q.v) from jsonb_array_elements(r) with ordinality q(v, oo));
   -- the turn card: entry 1 ready true, every later own entry null; t2: its skip entry and its next entry ready false
   ok2 := (o->0->'ready') = 'true'::jsonb and exists (select 1 from jsonb_array_elements(o) with ordinality q(v, oo) where oo > 1 and q.v->>'id' = t)
-    and (select bool_and(q.v->'ready' = 'null'::jsonb) from jsonb_array_elements(o) with ordinality q(v, oo) where oo > 1 and q.v->>'id' = t and q.v->>'side' = 'card')
+    and (select pg_temp.band(q.v->'ready' = 'null'::jsonb) from jsonb_array_elements(o) with ordinality q(v, oo) where oo > 1 and q.v->>'id' = t and q.v->>'side' = 'card')
     and (select q.v->>'skip' from jsonb_array_elements(o) with ordinality q(v, oo) where q.v->>'id' = t2 and q.v->>'side' = 'card' order by oo limit 1) = 'stunned'
-    and (select bool_and(w.vv->'ready' = 'false'::jsonb) from (select q.v as vv from jsonb_array_elements(o) with ordinality q(v, oo) where q.v->>'id' = t2 and q.v->>'side' = 'card' order by q.oo limit 2) w)
+    and (select pg_temp.band(w.vv->'ready' = 'false'::jsonb) from (select q.v as vv from jsonb_array_elements(o) with ordinality q(v, oo) where q.v->>'id' = t2 and q.v->>'side' = 'card' order by q.oo limit 2) w)
     and (select count(*) from jsonb_array_elements(o) q where q->>'id' = t2 and q->>'side' = 'card') >= 2;
   ${add('G1.17 d the order: 10 entries; entry 1 = ext.turn, entries 2-10 = combat_v2_turn_order(fight, 9) key by key', 'ok', "jsonb_build_object('order', o, 'proj', r)")}
   ${add('G1.17 d ready from the engine state: the turn card (charged) ready true on entry 1 and null on each later own entry; a Stunned card at need - 1: its skip entry and its next entry ready false', 'ok2', "jsonb_build_object('order', o, 't', t, 't2', t2)")}
@@ -981,7 +985,7 @@ const B4 = block(String.raw`
   x := pg_temp.spy($$gauntlet_start('tst_r1b_t')$$);
   e := gauntlet_v2_foes(fl->0->0->'foes', 1, 1, b);
   ${add('G1.17 i every enemy show has level and kind = the week foe; outside show and meter the enemy = gauntlet_v2_foes (no new key)',
-    `x->'f0' is not null and (select bool_and(q.v->'show' = (e->(q.oo::int - 1)->'show') || jsonb_build_object('level', fl->0->0->'foes'->(q.oo::int - 1)->'level', 'kind', fl->0->0->'foes'->(q.oo::int - 1)->'kind')
+    `x->'f0' is not null and (select pg_temp.band(q.v->'show' = (e->(q.oo::int - 1)->'show') || jsonb_build_object('level', fl->0->0->'foes'->(q.oo::int - 1)->'level', 'kind', fl->0->0->'foes'->(q.oo::int - 1)->'kind')
         and q.v - 'show' - 'meter' = (e->(q.oo::int - 1)) - 'show' - 'meter') from jsonb_array_elements(x->'f0'->'enemies') with ordinality q(v, oo))`, "x->'f0'->'enemies'->0->'show'")}
 `);
 
@@ -1025,10 +1029,10 @@ const B5 = (from, to) => block(String.raw`
       exit when r->>'event' <> 'choose';
     end loop;
     ok := a->'log' = lg and a->'event' = r->'event' and (a->>'played')::int = n
-      and (select bool_and(a->'state'->'carry'->q.key->'hp' = q.value->'hp' and a->'state'->'carry'->q.key->'charge' = q.value->'charge') from jsonb_each(s->'cards') q);
+      and (select pg_temp.band(a->'state'->'carry'->q.key->'hp' = q.value->'hp' and a->'state'->'carry'->q.key->'charge' = q.value->'charge') from jsonb_each(s->'cards') q);
     out := out || jsonb_build_array(jsonb_build_object('i', i, 'ok', ok, 'n', n, 'p1', a2->'played', 'p3', x->'played', 'end', r->'event', 'won', r->'won', 'kind', t, 'floor', j,
       'bad18', (select jsonb_agg(z) from (select z from jsonb_array_elements(bad) z limit 2) q), 'nbad18', jsonb_array_length(bad),
-      'sums', (select bool_and(coalesce((sums->>q.key)::numeric, 0) = (q.value->>0)::numeric - (pg_temp.units(s0)->q.key->>0)::numeric) from jsonb_each(pg_temp.units(s)) q),
+      'sums', (select pg_temp.band(coalesce((sums->>q.key)::numeric, 0) = (q.value->>0)::numeric - (pg_temp.units(s0)->q.key->>0)::numeric) from jsonb_each(pg_temp.units(s)) q),
       'enemy_hp', (select count(*) from jsonb_array_elements(lg) z cross join lateral jsonb_array_elements(coalesce(z->'hp', '[]'::jsonb)) hh where z->>'k' = 'act' and z->'actor'->>'side' = 'enemy'),
       'guarded', (select count(*) from jsonb_array_elements(lg) z cross join lateral jsonb_array_elements(coalesce(z->'hp', '[]'::jsonb)) hh where hh->>'side' = 'enemy' and (hh->>'shield_before')::numeric <> (hh->>'shield_after')::numeric),
       'why', case when a->'log' is distinct from lg then 'log' when a->'event' is distinct from r->'event' then 'event' when (a->>'played')::int is distinct from n then 'played ' || (a->>'played') || ' vs ' || n else null end,
@@ -1079,7 +1083,7 @@ const B6 = (from, to) => block(String.raw`
       return jsonb_build_object('same', ea is not distinct from eb and ea like 'combat\_v2\_%', 'refused', true, 'ea', ea, 'eb', eb);
     end if;
     return jsonb_build_object('same', (ra || jsonb_build_object('log', (select coalesce(jsonb_agg(z - 'hp' order by oo), '[]'::jsonb) from jsonb_array_elements(ra->'log') with ordinality q(z, oo)))) = rb,
-      'r', ra, 'has_hp', (select bool_and(z ? 'hp') from jsonb_array_elements(ra->'log') z where z->>'k' in ('act', 'clock')));
+      'r', ra, 'has_hp', (select pg_temp.band(z ? 'hp') from jsonb_array_elements(ra->'log') z where z->>'k' in ('act', 'clock')));
   end $x$;
   -- play a fight to its end with Auto v2 choices, comparing each call; counts the paths
   create function pg_temp.play(st jsonb, bb jsonb, i int, lim int) returns jsonb language plpgsql as $x$
