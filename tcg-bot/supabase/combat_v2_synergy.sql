@@ -1,5 +1,6 @@
 -- combat_v2_synergy.sql (2026-11-03): combat v2 item SYN, the element, affinity and set synergy (docs/combat-redesign-plan.md 7.1 to 7.5, 20.18).
--- Needs the combat v2 engine files on main (E1 to E9, M1b) and combat_v2_gauntlet_builders.sql (R1a: combat_v2_card_unit, gauntlet_v2_foes).
+-- Needs the combat v2 engine files on main (E1 to E9, M1b), combat_v2_gauntlet_builders.sql (R1a: combat_v2_card_unit, gauntlet_v2_foes) and
+--   combat_v2_gauntlet_run.sql (R1b: gauntlet_v2_fight).
 -- Before: no v2 function reads an element, a family or a set. The v2 card unit has no tag, the v2 foe has no element, and the hit core and the
 --   support active have no synergy factor.
 -- After this file (Nathan's decisions of 2026-11-03, SPEC SYN v3 section 9):
@@ -21,9 +22,9 @@
 -- NEUTRAL VALUES = TODAY: with every multiplier 1 and affinity.step 0, every v2 fight gives the same log and totals (a factor of 1 is not applied).
 -- FLAG OFF = NO CHANGE IN PLAY: no v1 function changes; no play path calls a v2 function (combat_v2 stays off). The goldens prove it.
 -- The callers: the Admin Combat v2 Lab (card-studio/src/combat-lab-routes.js) calls combat_v2_synergy when it builds a fight; the R1b room
---   start does (a later replace in this file, after R1b merges); R2 and R3 call it in their own room builders.
+--   start gauntlet_v2_fight does (section 5b: one added line); R2 and R3 call it in their own room builders.
 -- Every number is in balance (CI check C1). Idempotent. Server only.
--- GUARD: each replaced function must be the live text of 2026-11-03 (db/schema at 11b8db77) or the text this file made.
+-- GUARD: each replaced function must be the live text (db/schema at 7d156b3e: R1b merged) or the text this file made.
 -- Test: card-studio/scripts/test-combat-v2-synergy.mjs (rolled back; MUTATE=all must catch every mutation).
 
 do $g$
@@ -37,7 +38,8 @@ begin
     ('public.gauntlet_v2_foes(jsonb, integer, integer, jsonb)', 'f3df73d2b8fedc4686927303ffc24ee5', '92e77458e8c9c109f60d8014e3fd654e'),
     ('public.combat_v2_hit(jsonb, jsonb, jsonb)', '0ccf26061888c009b397d52b300e256b', 'a675185d72b57ba39deb7c9ceceffeca'),
     ('public.combat_v2_hit(jsonb, jsonb, jsonb, jsonb)', 'f4dfcc7c6d771a6bda7be9cb84d82001', '5ff0fc58cf3f0336991931a6f7c5023f'),
-    ('public.combat_effect_v2_active(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb)', '1fae6f148a7ad6dc2e935081188fc718', '0500874f57df3898a2efa5fb8b840618')
+    ('public.combat_effect_v2_active(jsonb, jsonb, jsonb, jsonb, jsonb, jsonb)', '1fae6f148a7ad6dc2e935081188fc718', '0500874f57df3898a2efa5fb8b840618'),
+    ('public.gauntlet_v2_fight(jsonb, jsonb, integer, integer, jsonb)', '3690c966de3eb185b81a63cf2539470a', '5063eb15ba77104b2fc653b7ee48c7a4')
   ) x(fn, old_md5, new_md5) loop
     select md5(replace(pg_get_functiondef(f.fn::regprocedure), chr(13), '')) into strict m;
     if m not in (f.old_md5, f.new_md5) then
@@ -960,6 +962,46 @@ begin
     hits := hits || jsonb_build_array(jsonb_build_object('target', ref, 'dmg', h->'dmg', 'crit', h->'crit', 'miss', h->'miss', 'area', true));
   end loop;
   return jsonb_build_object('state', s, 'hits', hits, 'draws', used);
+end $function$;
+
+-- ============================================================ 5b. the R1b room start (the live text of combat_v2_gauntlet_run.sql + the SYN line)
+CREATE OR REPLACE FUNCTION public.gauntlet_v2_fight(p_state jsonb, p_room jsonb, p_floor integer, p_room_no integer, p_b jsonb DEFAULT NULL::jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+declare
+  b jsonb := coalesce(p_b, combat_v2_enemy_numbers()); act numeric := (b->'v2_speed'->>'act_at')::numeric;
+  cards jsonb := '{}'::jsonb; en jsonb := '[]'::jsonb; fo jsonb; x text; u jsonb; cr jsonb; i int; s jsonb; up jsonb; ref jsonb;
+begin
+  if act is null then raise exception 'gauntlet_v2_fight: no balance value for v2_speed.act_at'; end if;
+  -- the cards: the run unit + the carry (HP, down, charge, held carry; D5, Q1), no status, a new meter (cards in squad order, then the foes)
+  for x in select jsonb_array_elements_text(p_state->'squad') loop
+    u := p_state->'units'->x; cr := p_state->'carry'->x;
+    cards := cards || jsonb_build_object(x, u || jsonb_build_object('hp', cr->'hp', 'max', cr->'max', 'down', cr->'down',
+      'charge', cr->'charge', 'held', cr->'held', 'status', '{}'::jsonb, 'meter', round((random() * act)::numeric, 2)));
+  end loop;
+  -- the foes of the room (R1a); show gets the level and the kind of the week foe (display only)
+  fo := gauntlet_v2_foes(p_room->'foes', p_floor, p_room_no, b);
+  for i in 0 .. jsonb_array_length(fo) - 1 loop
+    en := en || jsonb_build_array(fo->i || jsonb_build_object('meter', round((random() * act)::numeric, 2),
+      'show', (fo->i->'show') || jsonb_build_object('level', p_room->'foes'->i->'level', 'kind', p_room->'foes'->i->'kind')));
+  end loop;
+  s := jsonb_build_object('v', '2'::jsonb, 'mode', p_state->>'mode', 'round', 0, 'clock', 0, 'squad', p_state->'squad', 'cards', cards, 'enemies', en,
+    'marks', '{}'::jsonb, 'facts', jsonb_build_object('passives', '[]'::jsonb, 'cards', '{}'::jsonb), 'ext', '{}'::jsonb);
+  -- the pending offers (D3, Q2, Q3): buff = Empowered on each standing attacker, ward = Shielded max HP x the amount on each standing card
+  for x in select jsonb_array_elements_text(p_state->'squad') loop
+    up := s->'cards'->x; ref := jsonb_build_object('side', 'card', 'id', x::numeric);
+    continue when not combat_v2_up(up);
+    if (p_state->>'empower') is not null and up->>'class' = 'attacker' then
+      s := combat_v2_status_apply(s, ref, 'empowered', jsonb_build_object('value', (p_state->>'empower')::numeric), b)->'state';
+    end if;
+    if (p_state->>'ward') is not null then
+      s := combat_v2_status_apply(s, ref, 'shielded', jsonb_build_object('value', round((up->>'max')::numeric * (p_state->>'ward')::numeric)), b)->'state';
+    end if;
+  end loop;
+  s := combat_v2_synergy(s, b);   -- SYN: the squad factors, once, at the room start (20.18, C3j)
+  return s;
 end $function$;
 
 -- ============================================================ 6. server only

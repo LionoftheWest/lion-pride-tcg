@@ -13,8 +13,10 @@
  *   C3h  elem_x and set_x in the hit core (x1.232), not on the enemy side, no aff_x on a support basic hit, the 3-argument hit the same
  *   C3i  one set_x on a support smite, area and shield (combat_v2_card_act)
  *   C3k  a card with no tags: every factor 1, it counts for no tag, no chart on its hit
- * C2 and C4 (the benches) and C1 (the goldens) run in their own scripts (out/syn, SPEC 8.5). C3j (the R1b room start) runs after R1b merges.
- * Usage (copy 3, lock held):
+ *   C3j  the R1b room start gauntlet_v2_fight calls combat_v2_synergy once (rooms of the week 2026-10-25), draws nothing more, and differs from
+ *        the R1b text by its one SYN line only
+ * C2 and C4 (the benches) and C1 (the goldens) run in their own scripts (out/syn, SPEC 8.5).
+ * Usage (a local copy, its lock held; LOCALDB_ENV names the copy):
  *   LOCALDB=1 LOCALDB_ENV=%TEMP%/localdb3.env node scripts/test-combat-v2-synergy.mjs           PASS / FAIL lines, exit 1 on a FAIL
  *   MUTATE=all ...                                                                                 the baseline PASS, then every mutation must FAIL its case
  */
@@ -31,7 +33,7 @@ let LAB_SRC = read('../src/combat-lab-routes.js');
 // the replaced and the new functions (SPEC 4; balance_check_combat_v2 holds the step order of the shape)
 const REPLACED = ['balance_v2_spec(text)', 'balance_check_combat_v2()', 'combat_v2_status_numbers()', 'combat_v2_card_unit(bigint,jsonb)',
   'gauntlet_v2_foes(jsonb,integer,integer,jsonb)', 'combat_v2_hit(jsonb,jsonb,jsonb)', 'combat_v2_hit(jsonb,jsonb,jsonb,jsonb)',
-  'combat_effect_v2_active(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb)'];
+  'combat_effect_v2_active(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb)', 'gauntlet_v2_fight(jsonb,jsonb,integer,integer,jsonb)'];
 const NEW = ['combat_v2_card_tags(bigint)', 'combat_v2_synergy(jsonb,jsonb)'];
 
 // Each mutation: [the file ('mig' or 'lab'), [text, replacement] pairs, the case prefix that must FAIL, optional: the error text that counts as
@@ -88,6 +90,12 @@ const MUT = {
     "      raise exception 'combat_v2_synergy: card % has no tags', c.key;\n"]], 'C3k', 'combat_v2_synergy: card 3 has no tags'],
   notags_counts: ['mig', [["select count(*)::int into en from jsonb_each(cards) q where el is not null and q.value->'tags'->>'element' = el;",
     "select count(*)::int into en from jsonb_each(cards) q where el is not null and (q.value->'tags'->>'element' = el or jsonb_typeof(q.value->'tags') is distinct from 'object');"]], 'C3k'],
+  // C3j (the R1b room start gauntlet_v2_fight)
+  room_no_synergy: ['mig', [['  s := combat_v2_synergy(s, b);   -- SYN: the squad factors, once, at the room start (20.18, C3j)\n', '']], 'C3j'],
+  synergy_room_1_only: ['mig', [['  s := combat_v2_synergy(s, b);   -- SYN: the squad factors, once, at the room start (20.18, C3j)\n',
+    '  if p_room_no = 1 then s := combat_v2_synergy(s, b); end if;   -- SYN: the squad factors, once, at the room start (20.18, C3j)\n']], 'C3j'],
+  synergy_draws: ['mig', [["  if sx = 1 then sx := 1; end if;\n", "  if sx = 1 then sx := 1; end if;\n  perform random();\n"]], 'C3j'],
+  r1b_extra_change: ['mig', [["'round', 0, 'clock', 0, 'squad', p_state->'squad', 'cards', cards, 'enemies', en,", "'round', 0, 'clock', 0 + 0, 'squad', p_state->'squad', 'cards', cards, 'enemies', en,"]], 'C3j'],
   // M2a (C2 bench; here: the synergy draws a random number = the C3f purity case)
   M2a_synergy_random: ['mig', [["  if sx = 1 then sx := 1; end if;\n", "  if sx = 1 then sx := 1; end if;\n  perform random();\n"]], 'C3f'],
 };
@@ -131,6 +139,13 @@ const LAB_CC = (LAB_SRC.match(/cc := (card_combat_v2\(x->>'rarity'[^;]*\));/) ||
 const LAB_UNIT0 = (LAB_SRC.match(/cards := cards \|\| jsonb_build_object\(i::text, (jsonb_build_object\('role'[\s\S]*?'active', jsonb_build_object\('blocks', x->'blocks'\), 'tags', [^\n]*?\))\);\n/) || [])[1];
 if (!LAB_CC || !LAB_UNIT0 || LAB_UNIT0.split("round((random() * 100)::numeric, 2)").length !== 2) throw new Error('the Lab card unit with tags (fightSql) was not found in card-studio/src/combat-lab-routes.js');
 const LAB_UNIT = LAB_UNIT0.replace("round((random() * 100)::numeric, 2)", '0');
+// C3j: the R1b room start of this file minus its SYN line = the R1b text (as pg_temp.o_fight); the guard row holds the md5 of the R1b text
+const FIGHT = (mig.match(/CREATE OR REPLACE FUNCTION public\.gauntlet_v2_fight\([\s\S]*?end \$function\$;/) || [])[0];
+if (!FIGHT) throw new Error('gauntlet_v2_fight was not found in the SYN file');
+const OLD_FIGHT = FIGHT.replace(/\n[^\n]*-- SYN[^\n]*/g, '').replace('FUNCTION public.gauntlet_v2_fight(', 'FUNCTION pg_temp.o_fight(');
+const FIGHT_OLD_MD5 = (mig.match(/\('public\.gauntlet_v2_fight\(jsonb, jsonb, integer, integer, jsonb\)', '([0-9a-f]{32})'/) || [])[1];
+if (!FIGHT_OLD_MD5) throw new Error('the guard row of gauntlet_v2_fight was not found');
+for (const t of [mig, LAB_CC, LAB_UNIT, OLD_FIGHT]) if (['$o$'].some((x) => t.includes(x))) throw new Error('the SQL must not contain $o$');
 for (const t of [mig, LAB_CC, LAB_UNIT]) if (['$m$', '$t$', '$x$'].some((x) => t.includes(x))) throw new Error('the SQL must not contain $m$, $t$ or $x$');
 
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
@@ -204,6 +219,7 @@ declare res jsonb := '[]'; o jsonb; o2 jsonb; md5_a jsonb; md5_b jsonb; b jsonb;
   t jsonb; s jsonb; s2 jsonb; r jsonb; r2 jsonb; foe jsonb; foe2 jsonb; at jsonb; at2 jsonb; sp jsonb; ctx jsonb; dr jsonb; el text; tel text; rev text; boss jsonb;
   cards jsonb; c jsonb; v_subj bigint; v_card bigint; ids bigint[] := '{}'; heads bigint; e text; msg text; ok boolean; d1 numeric; d2 numeric; got jsonb; want jsonb;
   mine text[] := ${arr([...REPLACED, ...NEW])}; blk jsonb; pieces bigint[] := '{}'; fam_ids bigint[];
+  wk record; un jsonb; st0 jsonb; f1 jsonb; f0 jsonb; nread int;
 begin
   select jsonb_object_agg(${SIG}, ${MD5}) into md5_a from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prokind in ('f', 'p') and ${SIG} <> all (mine);
   -- C3a M3a: a planted proposal pair (fire beats a target that it does not beat in the rows of the table)
@@ -221,7 +237,7 @@ begin
     'changed', (select jsonb_agg(x2.key) from jsonb_each_text(md5_b) x2 where md5_a->>x2.key is distinct from x2.value),
     'gone', (select jsonb_agg(x2.key) from jsonb_each_text(md5_a) x2 where not md5_b ? x2.key));
   select coalesce(jsonb_agg(f2), '[]') into o from unnest(mine) f2 where not exists (select 1 from pg_proc p where p.pronamespace = 'public'::regnamespace and ${SIG} = f2);
-  res := res || jsonb_build_object('case', 'C1 the 8 replaced and the 2 new functions exist', 'ok', o = '[]'::jsonb, 'missing', o);
+  res := res || jsonb_build_object('case', 'C1 the 9 replaced and the 2 new functions exist', 'ok', o = '[]'::jsonb, 'missing', o);
 
   b := combat_v2_action_numbers();
   res := res || jsonb_build_object('case', 'C1 the bundle carries v2_synergy (combat_v2_status_numbers, the root of combat_v2_action_numbers and combat_v2_enemy_numbers)',
@@ -541,6 +557,48 @@ begin
       and (select bool_and((s->'cards'->q->'syn'->>'elem_n')::int = 3) from unnest(array['1', '2', '3']) q) and (s->'cards'->'1'->'syn'->>'elem_x')::numeric = 1.12
       and not (r->>'chart')::boolean and (r->>'dmg')::numeric = (r2->>'dmg')::numeric and (t->>'chart')::boolean,
     'syn', s->'cards'->'4'->'syn', 'fire', s->'cards'->'1'->'syn');
+
+  -- ========== C3j: the R1b room start calls the synergy (gauntlet_v2_fight; the fight rooms of the week 2026-10-25, each read at its FIRST
+  -- choose; a room that ends before a card turn is skipped; at least 2 rooms, one of them not room 1 of its floor)
+  execute $o$${OLD_FIGHT}$o$;
+  create function pg_temp.nosyn(s jsonb) returns jsonb language sql as $x$
+    select jsonb_set(s, '{cards}', coalesce((select jsonb_object_agg(q.key, q.value - 'syn') from jsonb_each(s->'cards') q), '{}'::jsonb)) $x$;
+  select g.* into wk from public.gauntlet_weeks g where g.week = '2026-10-25';
+  un := '{}';
+  for i in 1..cardinality(wk.squad) loop
+    begin un := un || jsonb_build_object(wk.squad[i]::text, combat_v2_card_unit(wk.squad[i]::bigint)); exception when others then null; end;
+  end loop;
+  st0 := jsonb_build_object('engine', '2'::jsonb, 'mode', 'gauntlet',
+    'squad', (select jsonb_agg(z.q::bigint order by z.o) from unnest(wk.squad) with ordinality z(q, o) where un ? z.q::text), 'units', un,
+    'carry', (select jsonb_object_agg(e.key, jsonb_build_object('hp', e.value->'hp', 'max', e.value->'max', 'down', false, 'charge', e.value->'charge', 'held', e.value->'held')) from jsonb_each(un) e),
+    'info', gauntlet_v2_info(un));
+  ba := combat_v2_enemy_numbers();   -- the R1b bundle (gauntlet_v2_enter)
+  o := '[]'; nread := 0; k := 0;
+  for x in select jsonb_build_object('room', rv.v, 'fl', fv.o, 'rm', rv.o) from jsonb_array_elements(wk.floors) with ordinality fv(v, o), jsonb_array_elements(fv.v) with ordinality rv(v, o)
+            where rv.v->>'type' in ('fight', 'horde', 'elite', 'miniboss', 'guardian') order by fv.o, rv.o loop
+    k := k + 1; exit when k > 8 or nread >= 3;
+    perform setseed(0.31 + k / 100.0);
+    f1 := gauntlet_v2_fight(st0 || jsonb_build_object('room_type', x->'room'->>'type'), x->'room', (x->>'fl')::int, (x->>'rm')::int, ba);
+    r := combat_v2_step(f1, null, ba);
+    perform setseed(0.31 + k / 100.0);
+    f0 := pg_temp.o_fight(st0 || jsonb_build_object('room_type', x->'room'->>'type'), x->'room', (x->>'fl')::int, (x->>'rm')::int, ba);
+    r2 := combat_v2_step(f0, null, ba);
+    continue when r->>'event' is distinct from 'choose' and r2->>'event' is distinct from 'choose';
+    nread := nread + 1;
+    got := (select jsonb_object_agg(q.key, q.value->'syn') from jsonb_each(r->'state'->'cards') q);
+    want := (select jsonb_object_agg(q.key, q.value->'syn') from jsonb_each(combat_v2_synergy(f1, ba)->'cards') q);
+    o := o || jsonb_build_object('floor', x->'fl', 'room', x->'rm', 'event', r->'event', 'ok', got = want
+      and not exists (select 1 from jsonb_each(got) q where jsonb_typeof(q.value) is distinct from 'object')
+      and pg_temp.nosyn(f1) = f0 and pg_temp.nosyn(r->'state') = r2->'state' and (r - 'state') = (r2 - 'state'),
+      'syn_ok', got = want, 'state_ok', pg_temp.nosyn(f1) = f0, 'step_ok', pg_temp.nosyn(r->'state') = r2->'state' and (r - 'state') = (r2 - 'state'),
+      'first_syn', (select q.value from jsonb_each(got) q limit 1));
+  end loop;
+  select md5(replace(regexp_replace(pg_get_functiondef('public.gauntlet_v2_fight(jsonb, jsonb, integer, integer, jsonb)'::regprocedure), '\n[^\n]*-- SYN[^\n]*', '', 'g'), chr(13), '')),
+         (length(pg_get_functiondef('public.gauntlet_v2_fight(jsonb, jsonb, integer, integer, jsonb)'::regprocedure)) - length(replace(pg_get_functiondef('public.gauntlet_v2_fight(jsonb, jsonb, integer, integer, jsonb)'::regprocedure), '-- SYN', ''))) / 6
+    into e, n;
+  res := res || jsonb_build_object('case', format('C3j the R1b room start gauntlet_v2_fight: each card syn = combat_v2_synergy of the room state, the room state and the first step without syn = the R1b text with the same seed (%s rooms read); its text minus its one SYN line = the R1b text (md5)', nread),
+    'ok', nread >= 2 and exists (select 1 from jsonb_array_elements(o) q where (q->>'room')::int <> 1) and not exists (select 1 from jsonb_array_elements(o) q where not (q->>'ok')::boolean)
+      and e = ${lit(FIGHT_OLD_MD5)} and n = 1, 'md5_minus_line', e, 'syn_lines', n, 'rooms', o);
 
   -- ========== the rest: server only, comments, idempotent
   select coalesce(jsonb_agg(${SIG} || ' ' || r3), '[]') into o from pg_proc p cross join unnest(array['anon', 'authenticated']) r3
