@@ -284,6 +284,7 @@ export function fightUpdate(F, v, s, H) {
     u.classList.toggle('g2-lit', !!s.picking && allies.has(c.id));
     u.classList.toggle('g2-unlit', !!s.picking && !allies.has(c.id));
     const shield = c.shield > 0 ? ` <em>+${H.fmt(c.shield)}</em>` : '';
+    const shieldS = c.shield > 0 ? ` <span class="g2-shn">+${H.fmt(c.shield)}</span>` : '';
     if (u.classList.contains('dg-unit')) {
       u.querySelector('.dg-hp i').style.width = `${pct}%`;
       u.querySelector('.dg-hpn').innerHTML = `${H.fmt(c.hp)}/${H.fmt(c.max)}${shield}`;
@@ -298,7 +299,7 @@ export function fightUpdate(F, v, s, H) {
       u.querySelector('.g2-stline em').innerHTML = c.down ? 'Down' : c.ready ? `${ic('check')}Ready` : `<span class="g2-waitc">${pipsHTML(c)}${H.fmt(c.charge)} of ${H.fmt(c.need)}</span>`;
       u.querySelector('.g2-shpl').innerHTML = shieldPlace(c);
       u.querySelector('.g2-shp .dg-hp i').style.width = `${pct}%`;
-      u.querySelector('.g2-shp small').innerHTML = `${H.fmt(c.hp)}/${H.fmt(c.max)}${shield}`;
+      u.querySelector('.g2-shp small').innerHTML = `${H.fmt(c.hp)}/${H.fmt(c.max)}${shieldS}`;
       u.disabled = !!s.busy && !s.picking;
     }
   }
@@ -312,9 +313,12 @@ export function fightUpdate(F, v, s, H) {
   hint.classList.toggle('g2-tapbar', !!s.tap);
   if (s.picking) hint.innerHTML = `${H.hand}Choose a card for <b>${esc(actor?.name || '')}</b><button class="dg-cancel" type="button">Cancel</button>`;
   else if (s.notice) hint.innerHTML = `${H.timer}${esc(s.notice)}`;
-  else if (s.tap) hint.innerHTML = `<span class="g2-tap">${badgeHTML(s.tap.badge)}<span><b>${esc(s.tap.label)}:</b> ${esc(s.tap.text)}${s.tap.left != null ? ` <small>${H.fmt(s.tap.left)} steps left</small>` : ''}</span></span>`;
+  else if (s.tap) hint.innerHTML = `<span class="g2-tap">${badgeHTML(s.tap.badge)}<span><b>${esc(s.tap.label)}:</b> ${esc(s.tap.text)}</span></span>`;
   else if (s.busy) hint.innerHTML = `${H.timer}The monsters are acting…`;
   else hint.innerHTML = `${H.hand}${m.targets.length > 1 ? 'Tap a monster to target it · tap a card to attack' : 'Tap a card to attack'}`;
+  // the steps left (server left) are in the tooltip: frame 11 draws one line, and the hint keeps one fixed height (nothing moves)
+  const tl = hint.querySelector('.g2-tap'); if (tl && s.tap) tl.title = s.tap.left != null ? `${s.tap.line} ${H.fmt(s.tap.left)} steps left.` : s.tap.line;
+  if (s.tap) F.querySelector(`.g2-b[data-unit="${s.tap.unit}"][data-st="${s.tap.key}"]`)?.classList.add('is-tapped');
   F.classList.toggle('picking', !!s.picking);
   F.classList.toggle('busy', !!s.busy);
   const fbs = H.finishButton({ busy: s.busy, finishing: s.finishing, picking: !!s.picking, unavailable: false });
@@ -581,6 +585,8 @@ function layout(F) {
     const cards = [...units.querySelectorAll('.dg-unit')].map((x) => x.getBoundingClientRect());
     if (cards.length) F.style.setProperty('--g2-cards', `${Math.max(...cards.map((q) => q.right)) - Math.min(...cards.map((q) => q.left))}px`);
   }
+  // a wide support tile (the text column 200 px or more, review-5): the HP row sits on the state line
+  F.querySelectorAll('.dg-sup.g2-sup').forEach((b) => { const t = b.querySelector('.t'); b.classList.toggle('g2-row', !!t && t.getBoundingClientRect().width >= 200); });
   const narrow = F.classList.contains('is-narrow');
   F.querySelectorAll('.dg-sup.g2-sup').forEach((b) => { const home = narrow ? units : F.querySelector('.dg-sups'); if (home && b.parentNode !== home) home.appendChild(b); b.classList.toggle('g2-plate', narrow); });
   place(F.closest('#main') || undefined);

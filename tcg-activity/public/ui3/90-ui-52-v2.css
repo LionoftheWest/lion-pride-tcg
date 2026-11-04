@@ -103,7 +103,7 @@ body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup .g2-mag { display: none; }
 body[data-size="expanded"].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup .g2-mag, body[data-size="medium"].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup .g2-mag {
   display: flex; position: absolute; left: var(--sp-1); top: var(--sp-1); width: var(--chip-sm); height: var(--chip-sm); border-radius: var(--rad-round); background: var(--scrim); color: var(--text-primary); align-items: center; justify-content: center; }
 /* the ally pick (D-70): the lit cards are the server's allies; the others are dimmed */
-body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-lit .dg-card, body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup.g2-lit { box-shadow: var(--glow-focus); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-lit .dg-card, body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup.g2-lit { box-shadow: 0 0 0 var(--bw-2) var(--success); }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-unlit { opacity: calc(1 - var(--item-disabled)); }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-hint.g2-pickbar button { min-height: var(--u3-none); height: auto; align-self: stretch; margin: var(--u3-none); padding-block: var(--u3-none); }
 
@@ -155,3 +155,8 @@ body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-stack.is-short .g2-shp .
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pips i { display: block; flex: none; background: none; }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pips i.is-on { background: var(--gold); border-color: var(--gold); }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-shp small { white-space: nowrap; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-shp .g2-shn { color: var(--info); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup.g2-row .g2-stline { flex-direction: row; align-items: center; gap: var(--sp-3); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup.g2-row .g2-stline em { flex: none; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup.g2-row .g2-shp { flex: 1 1 auto; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-b.is-tapped { box-shadow: var(--glow-focus); }
