@@ -1438,7 +1438,7 @@ function offerInfo(o) {
 function chooseHTML() {
   const R = run(); const st = R.state;
   const ph = st.phase;
-  if (V3() && ['choose', 'rest', 'path', 'chest'].includes(ph)) return chooseV3HTML(R, st);   // UI-48 (the reward) and UI-49 (rest, doors, chest)
+  if (V3() && (['choose', 'rest', 'path', 'chest'].includes(ph) || (dg.v2 && ph === 'pass'))) return chooseV3HTML(R, st);   // R2b: pass = the v2 empty treasure room (one Continue)   // UI-48 (the reward) and UI-49 (rest, doors, chest)
   const offer = (o, i) => {
     const t = offerInfo(o);
     return `<button class="dg-offer k-${o.kind}${o.to ? ` to-${o.to}` : ''}" data-choose="${i}" style="${TIER[o.tier] ? `--tc:${TIER[o.tier][1]}` : ''}">${tierTag(o.tier)}<span class="ic">${t[0]}</span><b>${t[1]}</b>${t[2] ? `<small>${t[2]}</small>` : ''}</button>`;
