@@ -43,6 +43,7 @@ const MUT = {
   M1b_other_function: ['mig', [['-- ============================================================ 6. server only',
     "create or replace function public.card_element(p_tags text[]) returns text language sql stable parallel safe set search_path = public as $ce$\n  select a.element from unnest(coalesce(p_tags, '{}'::text[])) t join public.element_aliases() a on a.alias = lower(trim(regexp_replace(t, '^trait:', '', 'i'))) order by a.ord limit 1 $ce$;\n-- ============================================================ 6. server only"]], 'C1'],
   // C3d (review r1 B-1): the focus crd without the affinity and set factor
+  REVR2_quicken_all_unscaled: ['mig', [["id::numeric), 'quickened', jsonb_build_object('value', 1 + amt * ab", "id::numeric), 'quickened', jsonb_build_object('value', 1 + amt / sf * ab"]], 'C3d'],   // review r2 R2-1
   REV_focus_crd_no_sf: ['mig', [["(blk->>'crd')::numeric * ab * sf)", "(blk->>'crd')::numeric * ab)"]], 'C3d'],
   // C3a
   M3a_beats_proposal: ['mig', [['where e.beater = el and not e.proposal), ', 'where e.beater = el), ']], 'C3a'],
@@ -161,6 +162,7 @@ const C3D_CASES = [
   { b: [{ k: 'rally', v: 0.2 }], e: ['cards.2.status.empowered.value', 'cards.3.status.empowered.value'] },
   { b: [{ k: 'focus', crit: 0.2, crd: 0.5 }], e: ['cards.2.status.focused.crd', 'cards.2.status.focused.value'] },
   { b: [{ k: 'quicken', v: 0.2 }], e: ['cards.2.status.quickened.value'] },
+  { b: [{ k: 'quicken', v: 0.2, all: true }], e: ['cards.2.status.quickened.value', 'cards.3.status.quickened.value'] },   // review r2 R2-1: the all branch has its own line
   { b: [{ k: 'smite', x: 1 }], e: ['enemies.0.hp', 'enemies.0.last_smite', 'hit 1'] },
   { b: [{ k: 'smite', x: 1 }, { k: 'area', x: 0.5 }], e: ['enemies.0.hp', 'enemies.0.last_smite', 'enemies.1.hp', 'hit 1', 'hit 2'] },
   { b: [{ k: 'apply', status: 'exposed', chance: 0.5, value: 0.2 }], e: ['enemies.0.status.exposed.value'] },
