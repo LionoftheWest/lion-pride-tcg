@@ -74,10 +74,11 @@ const MUT = {
 const NAMED = `board_all_v2 board_v1_only member_mark_missing pay_skips_v2 view_v1_only view_reads_flag count_one_mode board_reads_flag
   pool_unfiltered pool_filter_always guard_missing grant_anon`.split(/\s+/).filter(Boolean);
 const pairs = (m) => (Array.isArray(m[0]) ? m : [m]);
-const EXPECT = { GO1: 'board_all_v2', GO2: 'board_v1_only member_mark_missing pay_skips_v2', GO3: 'view_v1_only view_reads_flag', GO4: 'count_one_mode',
+const EXPECT = { GO1: 'board_all_v2', GO2: 'board_v1_only member_mark_missing pay_skips_v2', GO3: 'view_v1_only view_reads_flag', GO4: 'count_one_mode', GO4b: 'count_one_mode',
   GO5: 'board_reads_flag', GO6: 'pool_unfiltered pool_filter_always', GO7: 'guard_missing grant_anon' };
-const BLOCK_OF = { GO1: 'B1', GO7: 'B1', GO2: 'B2', GO3: 'B2', GO4: 'B2', GO5: 'B3', GO6: 'B4' };
-const caseOf = (name) => Object.keys(EXPECT).find((k) => EXPECT[k].split(' ').includes(name));
+const BLOCK_OF = { GO1: 'B1', GO7: 'B1', GO2: 'B2', GO3: 'B2', GO4: 'B2', GO4b: 'B2', GO5: 'B3', GO6: 'B4' };
+const casesOf = (name) => Object.keys(EXPECT).filter((k) => EXPECT[k].split(' ').includes(name));
+const caseOf = (name) => casesOf(name)[0];
 
 if (process.env.MUTATE === 'all') {
   let ok = true;
@@ -97,12 +98,14 @@ if (process.env.MUTATE === 'all') {
     const lines = (r.stdout || '').split(/\r?\n/);
     const line = (r.stdout || '').trim().split(/\r?\n/).pop() || '';
     const want = caseOf(name);
-    const hit = lines.find((l) => l.startsWith(`FAIL ${want} `));
+    // a mutation is caught only when EVERY case that names it FAILS (count_one_mode: GO4 and GO4b)
+    const hits = casesOf(name).map((c) => lines.find((l) => l.startsWith(`FAIL ${c} `)));
+    const hit = hits.every(Boolean) ? hits.join(' | ') : null;
     const crashed = lines.some((l) => /the test block raised/.test(l));
     const caught = r.status !== 0 && /FAILED/.test(line) && !!hit && !crashed;
     if (!caught) ok = false; else ran.push(name);
     const why = hit || lines.find((l) => /^FAIL/.test(l)) || (r.stderr || '').trim().split(/\r?\n/).pop() || '';
-    console.log(`mutation ${name.padEnd(22)} ${caught ? 'caught (test FAILS)' : 'NOT CAUGHT'}  [${want} in ${BLOCK_OF[want]}${crashed ? ', a block crashed' : ''}]  ${Math.round((Date.now() - t0) / 1000)}s  ${why.slice(0, 170)}`);
+    console.log(`mutation ${name.padEnd(22)} ${caught ? 'caught (test FAILS)' : 'NOT CAUGHT'}  [${casesOf(name).join('+')} in ${BLOCK_OF[want]}${crashed ? ', a block crashed' : ''}]  ${Math.round((Date.now() - t0) / 1000)}s  ${why.slice(0, 170)}`);
   }
   const notRun = NAMED.filter((n) => !ran.includes(n));
   if (notRun.length) { ok = false; console.log(`named mutations not caught or not run: ${notRun.join(' ')}`); }
@@ -332,6 +335,17 @@ const B2 = block(String.raw`
   a2 := pg_temp.call($q$gauntlet_start(${P('m2')})$q$);
   ${add('GO4 one run a day: a member with a v1 run today gets already_gauntlet; a member with a v2 run today gets already_gauntlet', `a->>'error' = 'already_gauntlet' and a2->>'error' = 'already_gauntlet'`,
     "jsonb_build_object('v1', a - 'state' - 'log', 'v2', a2 - 'state' - 'log')")}
+
+  -- the rollback: the flag goes OFF (SPEC v2 GO3 state 2, GO4b)
+  perform pg_temp.flag(false);
+  -- the count again (GO4 added a v1 player), by the mark
+  n := (select count(distinct player_id) from dungeon_runs where day between wk and wk + 6 and (mode = 'gauntlet' or (mode = 'gauntlet_v2' and state->'member' = 'true'::jsonb)));
+  o := gauntlet_view(${P('m2')});
+  ${add('GO3 state 2: flag OFF with a mark-true run today: gauntlet_view still counts it (best = the run, runs_left 0, players_week the same set)',
+    `o->'best'->>'player_id' = ${P('m2')} and (o->>'runs_left')::int = 0 and (o->>'players_week')::int = n`,
+    "jsonb_build_object('best', o->'best', 'runs_left', o->'runs_left', 'players_week', o->'players_week', 'want', n)")}
+  a2 := pg_temp.call($q$gauntlet_start(${P('m2')})$q$);
+  ${add('GO4b after the rollback (flag OFF): a member with a v2 run today gets already_gauntlet (no second run, in v1)', `a2->>'error' = 'already_gauntlet'`, "a2 - 'state' - 'log'")}
 `);
 
 // ---------------------------------------------------------------------------------------------------------- B3: GO5 the rollback (flag ON -> OFF)
@@ -351,9 +365,6 @@ const B3 = block(String.raw`
     `exists (select 1 from jsonb_array_elements(o) e join dungeon_runs r on r.id = rid where e->>'player_id' = ${P('m4')} and (e->>'floor')::int = r.floor and (e->>'room')::int = r.room)`,
     `(select jsonb_agg(e) from jsonb_array_elements(o) e where e->>'player_id' = ${P('m4')})`)}
   ${add('GO5 after the rollback gauntlet_view of the member: best is the run, runs_left 0', `(gauntlet_view(${P('m4')})->'best'->>'player_id') = ${P('m4')} and (gauntlet_view(${P('m4')})->>'runs_left')::int = 0`)}
-  -- SPEC-REVIEW r1 H-2 (the v1 side of a rollback): the same day, a v1 start of the member is refused (one run a day, both modes)
-  a := gauntlet_start(${P('m4')});
-  ${add('GO5 the same day after the rollback: a new start of the member (it would be v1) gets already_gauntlet', `a->>'error' = 'already_gauntlet'`, "a - 'state' - 'log'")}
   -- the next day: the run moves to yesterday; a new start with the flag OFF is a v1 run
   update dungeon_runs set day = day - 1 where id = rid;
   a := gauntlet_start(${P('m4')});
