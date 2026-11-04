@@ -24,6 +24,7 @@ import { icon as ui3Icon } from './ui3/icons.js';
 import { button as btn3, segmented as ui3Segmented } from './ui3/components.js';
 import { TOKENS } from './tokens.js';
 import { fmtFor } from './ui3/number.js';
+import * as g2 from './ui-v2-gauntlet2.js';
 
 const ctx = () => v2ctx();
 const icon3 = (name, size = 'md') => ui3Icon(name, { size });
@@ -137,11 +138,26 @@ export function advTabs(active = 'hunt') {
 async function load() {
   let d = null;
   const m = dg.mode;
+  const v2q = GA() ? Promise.resolve(ctx().api(G2_API)).catch(() => null) : null;   // R1e: a tester's v2 run (R1c); a non-tester gets 403 not_tester
   try { d = await ctx().api(API()); } catch { d = null; }
+  const v2 = v2q ? await v2q : null;
   if (m !== dg.mode) return dg.data;   // the member switched tabs while it loaded
   dg.data = d && d.ok ? d : { closed: true, message: GA() && d?.error === 'disabled' ? 'The Gauntlet is closed.' : d?.message || (GA() ? 'The Gauntlet is closed.' : 'The Dungeon is closed.') };
+  dg.v2 = null;
+  if (d?.ok && g2.v2Owns(v2)) v2Take(v2);
   return dg.data;
 }
+// R1e (combat v2, testers): the v2 answer owns the run. The v1 screens that the v2 run reuses (Q-E1: reward, rest, door, floor done, over)
+// read a v1-shaped run with no loot; the fight is the v2 view (ui-v2-gauntlet2.js).
+const G2_API = '/api/gauntlet/v2';
+function v2Take(v) { dg.v2 = v; dg.data = { ...dg.data, run: g2.v1RunOf(v), rooms: v.rooms || dg.data.rooms }; }
+const g2Host = () => ({
+  dg, base: G2_API, esc, fmt, thumb, elIcon, plateName, cardTile, bolt: I.bolt, trophy: I.trophy, up: I.up, hand: I.hand, timer: I.timer,
+  progressHTML, musicBtnHTML, finishHTML, finishButton, autoDisabled, waitMs, AUTO_ROUNDS, fitFight: fitFightV3, placeArena, openInfo, toast,
+  apiPost: (p, b) => ctx().apiPost(p, b), sfx: (k) => ctx().sfx?.(k), currentView: () => ctx().currentView(),
+  setAuto: (on) => { dg.auto = !!on; localStorage.setItem(AUTO, on ? '1' : ''); }, setView: (v) => v2Take(v),
+  reload: async () => { await load(); if (ctx().currentView() === 'dungeon') paint(); },
+});
 // The member's cards (the Dungeon), or the week's squad (the Gauntlet: the same base cards for everyone).
 const cardsOf = () => dg.data?.mine || (Array.isArray(dg.data?.squad) ? dg.data.squad : []);
 const mine = () => new Map(cardsOf().map((c) => [Number(c.id), c]));
@@ -169,6 +185,7 @@ export function disposeDungeon() {
   clearInterval(tick); tick = null;
   dg.stage?.dispose(); dg.stage = null; dg.roomKey = '';
   clearTimeout(autoT); stopMusic(); dg.chest?.dispose(); dg.chest = null;
+  g2.disposeFight();
   closeCardPicker();   // the Card picker belongs to the lobby (UI-64)
 }
 
@@ -201,7 +218,7 @@ function paint() {
   const d = dg.data;
   const fight = active() && d.run.state?.phase === 'fight';
   // The same room: change the parts in place (no rebuild, no flicker).
-  if (fight && dg.view !== 'board' && main.querySelector(`.dg-fight[data-room="${roomKey()}"]`)) { fightUpdate(main, d.run.state); return; }
+  if (fight && dg.view !== 'board' && main.querySelector(`.dg-fight[data-room="${roomKey()}"]`)) { if (dg.v2) g2.updateFight(main, dg.v2, g2Host()); else fightUpdate(main, d.run.state); return; }
   // Keep the 3D canvas across repaints of the same room (no model reload, no flash).
   const keep = fight && dg.stage ? dg.stage.canvas : null;
   if (!fight && dg.stage) { dg.stage.dispose(); dg.stage = null; dg.roomKey = ''; }
@@ -210,7 +227,7 @@ function paint() {
   if (d.closed) body = `<div class="dg-closed"><b>${esc(d.message)}</b></div>`;
   else if (!d.gate?.ok) body = gateHTML(d.gate || {}, GA() ? 'the Gauntlet' : 'the Dungeon');
   else if (dg.view === 'board') body = boardHTML();
-  else if (fight) body = fightHTML();
+  else if (fight) body = dg.v2 ? g2.fightHTML(dg.v2, g2Host()) : fightHTML();
   else if (active() && d.run.state?.phase === 'floor_done') body = floorDoneHTML();
   else if (active()) body = chooseHTML();
   else if (run()) body = overHTML();
@@ -223,7 +240,7 @@ function paint() {
   main.querySelectorAll('.card-info').forEach((b) => b.addEventListener('click', (e) => { if (fight) return; e.stopPropagation(); const id = Number(b.closest('.dg-card')?.dataset.id); if (id) openInfo(id); }));
   wireGate(main);
   if (dg.view === 'board') wireBoard(main);
-  else if (fight) wireFight(main, keep);
+  else if (fight) { if (dg.v2) g2.wireFight(main, dg.v2, g2Host(), keep); else wireFight(main, keep); }
   else if (active() && d.run.state?.phase === 'floor_done') wireFloorDone(main);
   else if (active()) wireChoose(main);
   else if (run()) wireOver(main);
@@ -1350,7 +1367,7 @@ async function retreat() {
   bts.forEach((x) => { x.disabled = true; x.setAttribute('aria-busy', 'true'); });
   if (lab) lab.textContent = 'Retreating';
   let r = null;
-  try { r = await ctx().apiPost('/api/dungeon/retreat', { mode: dg.mode }); } catch (e) { r = e?.body || null; }
+  try { r = await (dg.v2 ? ctx().apiPost(`${G2_API}/retreat`, {}) : ctx().apiPost('/api/dungeon/retreat', { mode: dg.mode })); } catch (e) { r = e?.body || null; }
   dg.busy = false;
   if (!r?.ok) {
     bts.forEach((x) => { x.disabled = false; x.removeAttribute('aria-busy'); });
@@ -1448,7 +1465,7 @@ function chipsV3HTML(st) {
   const loot = (b) => `${fmt3(b.shards)}${(b.cards || []).length ? ` +${b.cards.length}${icon3('layers', 'sm')}` : ''}`;
   return `<div class="u3-dgc-chips"><span class="u3-dgc-chip is-risk" title="This floor's loot: lost if the squad falls. The floor guardian banks it.">${COIN}<b>${loot(pend)}</b><i>at risk</i></span>`
     + `<span class="u3-dgc-chip is-bank" title="Banked loot: safe. Yours when the run ends.">${icon3('lock')}<b>${loot(bank)}</b><i>banked</i></span>`
-    + `<span class="u3-dgc-chip" title="The run damage bonus">${icon3('trending-up')}<b>+${buff}%</b><i>damage</i></span></div>`;
+    + `<span class="u3-dgc-chip${dg.v2 ? ' g2-empty' : ''}" title="The run damage bonus">${icon3('trending-up')}<b>+${buff}%</b><i>damage</i></span></div>`;
 }
 const ROOM_HEAD_V3 = {
   choose: ['Room cleared', 'Choose a reward', ''],
@@ -1635,7 +1652,7 @@ async function choose(pick) {
   if (dg.busy) return;
   dg.busy = true; mark('room:go');
   let r = null;
-  try { r = await ctx().apiPost('/api/dungeon/choose', { pick, mode: dg.mode }); } catch (e) { r = e?.body || null; }
+  try { r = await (dg.v2 ? ctx().apiPost(`${G2_API}/choose`, { pick }) : ctx().apiPost('/api/dungeon/choose', { pick, mode: dg.mode })); } catch (e) { r = e?.body || null; }
   dg.busy = false;
   if (!r?.ok) { toast(r?.message || 'That did not work.'); return; }
   ctx().sfx?.('click');

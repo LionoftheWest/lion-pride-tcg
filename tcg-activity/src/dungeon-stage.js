@@ -77,17 +77,22 @@ export function mountStage(canvas, opts = {}) {
     // Frame the row tightly: the monsters fill the height (bigger on screen) with room between them.
     const n = Math.max(1, slots.length);
     const rowW = (n - 1) * spread + tallest * 1.3;
-    const vh = Math.max(tallest * 1.12, rowW / camera.aspect);
+    // opts.slotFill() (the v2 fight on phones only, R1e / UI-52 review-5): one monster under each plate slot, slotFill x the slot width high,
+    // standing on the floor of the stage, below opts.slotTop() px (the plates and their status rows). 0 or no option (every v1 screen): unchanged.
+    const fill = n > 1 ? opts.slotFill?.() || 0 : 0;
+    const free = fill ? Math.max(1, h - (opts.slotTop?.() || 0)) : h;
+    const vh = fill ? Math.max((tallest * h) / free, (tallest * n) / (fill * camera.aspect)) : Math.max(tallest * 1.12, rowW / camera.aspect);
     // A wide, short arena (a landscape phone): spread the monsters over the width (they bunched in the middle).
     if (n > 1) {
       const wide = Math.min(tallest * 3.2, (vh * camera.aspect * 0.84) / n);
-      const sp = Math.max(spread, wide);
+      const sp = fill ? (vh * camera.aspect) / n : Math.max(spread, wide);
       slots.forEach((sl, i) => { sl.x0 = (i - (n - 1) / 2) * sp; sl.root.position.x = sl.x0; });
       cur = sp;
     } else cur = spread;
     const dist = (vh / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    camera.position.set(0, tallest * 0.5, dist + 0.4);
-    camera.lookAt(0, tallest * 0.5, 0);
+    const cy = fill ? vh / 2 : tallest * 0.5;   // fill: the floor of the view is the floor of the stage
+    camera.position.set(0, cy, fill ? dist : dist + 0.4);
+    camera.lookAt(0, cy, 0);
     camera.updateProjectionMatrix();
   }
 
