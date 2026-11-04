@@ -24,11 +24,11 @@ comment, or when a table or a function is not on these pages.
 |---|---|---|---|---|---|
 | [Cards and trading](cards-and-trading.md) | 22 | 22 (100%) | 222 of 222 (100%) | 96 | 96 (100%) |
 | [Hunt and combat](hunt-and-combat.md) | 19 | 19 (100%) | 225 of 225 (100%) | 221 | 221 (100%) |
-| [Dungeon, Shards and achievements](dungeon-shards-achievements.md) | 14 | 14 (100%) | 105 of 105 (100%) | 125 | 125 (100%) |
+| [Dungeon, Shards and achievements](dungeon-shards-achievements.md) | 14 | 14 (100%) | 109 of 109 (100%) | 127 | 127 (100%) |
 | [Members and platform](members-and-platform.md) | 18 | 18 (100%) | 113 of 113 (100%) | 52 | 52 (100%) |
 | [Admin view](admin.md) | 1 | 1 (100%) | 11 of 11 (100%) | 50 | 50 (100%) |
 | [Events](events.md) | 6 | 6 (100%) | 69 of 69 (100%) | 29 | 29 (100%) |
 | [Other](other.md) | 8 | 8 (100%) | 54 of 54 (100%) | 21 | 21 (100%) |
-| **All** | 88 | 88 (100%) | 799 of 799 (100%) | 594 | 594 (100%) |
+| **All** | 88 | 88 (100%) | 803 of 803 (100%) | 596 | 596 (100%) |
 
 [Balance numbers](balance.md): 63 keys with the note, the shape and the current value.
