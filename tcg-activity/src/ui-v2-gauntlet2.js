@@ -33,6 +33,7 @@ export const TAP_LINE = {
 };
 export const STRIP_N = 10;   // D-203: the strip shows the next 10 turns (the server sends at most 10)
 export const FOE_PLACES = 3; // UI-52 review-5 parts: a foe shows 3 status places, then "+N"
+export const SLOT_FILL = 1.25; // UI-52 review-5 frames 01-04 (Nathan 2026-11-03 "match the approved designs"): a phone monster is 1.25 x its plate slot high (r5-capture.mjs: h = plate width x 1.25)
 export const CARD_PLACES = 3;// a card plate: the Shielded place and 2 more, then "+N"
 
 const num = (n) => (Number.isFinite(Number(n)) ? Number(n) : 0);
@@ -372,7 +373,7 @@ export async function wireFight(main, v, host, keep) {
     try {
       const { mountStage } = await import('./dungeon-stage.js');
       if (!main.contains(canvas)) return;
-      H.dg.stage = mountStage(canvas, { onPick: (i) => target(i), onLayout: () => place(main) });
+      H.dg.stage = mountStage(canvas, { onPick: (i) => target(i), onLayout: () => place(main), slotFill: () => (document.body.dataset.size === 'compact-port' ? SLOT_FILL : 0), slotTop: () => slotTop(canvas) });
       H.dg.stage.canvas = canvas; H.dg.roomKey = key;
       portraits(foesOf(V));   // the strip portraits: the same models (not awaited)
       await H.dg.stage.setFoes(foesOf(V));
@@ -558,6 +559,8 @@ function place(main = document.getElementById('main')) {
   const l = L[S.target];
   const canvas = main.querySelector('.dg-fight.g2 .dg-canvas');
   const on = !!l && fightModel(V).targets.includes(S.target) && !S.picking;
+  // the drawn height of the monsters (the stage's own projection, the tallest standing one): measured by the R1e size check (G-E11)
+  if (canvas && L.length) { const up = foesOf(V).filter((f) => !f.down).map((f) => L[f.i]).filter(Boolean); if (up.length) canvas.dataset.monsterPx = String(Math.round(Math.max(...up.map((x) => x.foot - x.y)))); }
   if (r) {
     r.classList.toggle('on', on);
     if (l) { r.style.left = `${l.x}px`; r.style.top = `${(canvas ? canvas.offsetTop : 0) + (l.y + l.foot) / 2}px`; r.style.width = r.style.height = `${Math.max(1, (l.foot - l.y) * 0.8)}px`; }
@@ -648,4 +651,12 @@ export async function portraits(foes) {
     document.querySelectorAll(`.g2-strip img.g2-port[data-model="${m}"]`).forEach((img) => { img.src = url; img.classList.add('is-on'); });
   }
   renderer.dispose(); renderer.forceContextLoss?.();
+}
+
+// The top band of the stage that the monsters leave free on phones: down to the plate bottom + sp-3 (review-5: the models start there).
+function slotTop(canvas) {
+  const F = canvas.closest('.dg-fight'); if (!F) return 0;
+  const pl = [...F.querySelectorAll('.dg-plate')].map((p) => p.getBoundingClientRect().bottom);
+  if (!pl.length) return 0;
+  return Math.max(0, Math.max(...pl) + TOKENS['sp-3'] - canvas.getBoundingClientRect().top);
 }
