@@ -2194,8 +2194,9 @@ function huntSelectV3HTML(d) {
   else if (squad.locked && picks.length) act = `${ui3Button({ label: 'Edit', data: { hpick: '1' } })}${ui3Button({ label: 'Enter battle', icon: 'swords', variant: 'primary', data: { henter: '1' } })}`;
   else act = ui3Button({ label: 'Select your squad', variant: 'primary', data: { hpick: '1' } });
   // R3b: the tester "Practice v2" button; ON-UI member mode (live): the v2 fight is THE Hunt fight of the day, so Start replaces Enter battle
-  if (huntV2?.ok && huntLive(huntV2) && !squad.ko) act = `${squad.locked && picks.length ? ui3Button({ label: 'Edit', data: { hpick: '1' } }) : ui3Button({ label: 'Select your squad', data: { hpick: '1' } })}${ui3Button({ label: 'Enter battle', icon: 'swords', variant: 'primary', disabled: !huntV2CanStart(huntV2), data: { h2start: '1' } })}`;
-  else if (huntV2CanStart(huntV2) && !huntLive(huntV2)) act += ui3Button({ label: 'Practice v2', icon: 'swords', data: { h2start: '1' } });
+  // (the same two states as v1: Select your squad, then Edit + Enter battle; only the Enter battle target changes)
+  if (huntV2?.ok && huntLive(huntV2) && !squad.ko && squad.locked && picks.length) act = `${ui3Button({ label: 'Edit', data: { hpick: '1' } })}${ui3Button({ label: 'Enter battle', icon: 'swords', variant: 'primary', disabled: !huntV2CanStart(huntV2), data: { h2start: '1' } })}`;
+  else if (huntV2CanStart(huntV2) && !huntLive(huntV2)) act += ui3IconButton({ icon: 'swords', label: 'Practice v2', data: { h2start: '1' } });   // tester only: an icon button keeps the approved row width
   return `<div class="u3-hunt">${stage}
     <section class="u3-hs-squad">
       <div class="u3-hs-info">
