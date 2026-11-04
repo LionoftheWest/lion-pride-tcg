@@ -202,7 +202,7 @@ body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-card .g2-turn { position: absolute
   padding: var(--sp-half) var(--sp-1-5); border-radius: var(--rad-pill); background: var(--gold-hi); color: var(--on-gold);
   font: var(--fw-heading) var(--fs-label)/var(--lh-label) var(--font-ui); pointer-events: none; }
 /* D-215: the active callout uses the v1 move label pop, in gold (it names an active) */
-body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-pop.g2-callout { color: var(--gold-hi); white-space: nowrap; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-pop.g2-callout { color: var(--gold-hi); white-space: nowrap; font-size: var(--fs-heading); line-height: var(--lh-heading); }
 /* the motion rules: no pulse and a plain fade with reduced motion */
 @media (prefers-reduced-motion: reduce) {
   body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pill:not(.is-wait), body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-stline em .g2-ready.is-now { animation: none; }
