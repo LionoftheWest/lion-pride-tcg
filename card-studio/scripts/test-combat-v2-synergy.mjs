@@ -42,6 +42,8 @@ const MUT = {
   // C1
   M1b_other_function: ['mig', [['-- ============================================================ 6. server only',
     "create or replace function public.card_element(p_tags text[]) returns text language sql stable parallel safe set search_path = public as $ce$\n  select a.element from unnest(coalesce(p_tags, '{}'::text[])) t join public.element_aliases() a on a.alias = lower(trim(regexp_replace(t, '^trait:', '', 'i'))) order by a.ord limit 1 $ce$;\n-- ============================================================ 6. server only"]], 'C1'],
+  // C3d (review r1 B-1): the focus crd without the affinity and set factor
+  REV_focus_crd_no_sf: ['mig', [["(blk->>'crd')::numeric * ab * sf)", "(blk->>'crd')::numeric * ab)"]], 'C3d'],
   // C3a
   M3a_beats_proposal: ['mig', [['where e.beater = el and not e.proposal), ', 'where e.beater = el), ']], 'C3a'],
   M3b_family_last: ['mig', [["where q.t like 'origin:%' order by q.o limit 1;", "where q.t like 'origin:%' order by q.o desc limit 1;"]], 'C3a'],
@@ -73,6 +75,7 @@ const MUT = {
   M3m_no_spec_branch: ['mig', [[/  when 'v2_synergy' then '\{\n[\s\S]*?"enum ottozone-s-head"\}\}\}'::jsonb\n/, '']], 'C3f', 'v2_synergy: a combat v2 key needs a shape in balance_v2_spec'],
   M3m_loose_step: ['mig', [['"affinity": {"step": "num 0 0.3", "cap": "num 0 1"},', '"affinity": {"step": "num 0 1", "cap": "num 0 1"},']], 'C3f'],
   // C3g
+  REV_lab_no_synergy: ['lab', [['  s := combat_v2_synergy(s, b);\n', '']], 'C3g'],   // review r1 B-2: the Lab fight without the synergy call
   M3n_lab_no_beats: ['lab', [["'tags', combat_v2_card_tags((x->>'card_id')::bigint)", "'tags', combat_v2_card_tags((x->>'card_id')::bigint) - 'beats'"]], 'C3g'],
   // C3h
   hit_no_elem_x: ['mig', [["fx := coalesce((p_att->'syn'->>'elem_x')::numeric, 1) * coalesce((p_att->'syn'->>'set_x')::numeric, 1);", "fx := coalesce((p_att->'syn'->>'set_x')::numeric, 1);"]], 'C3h'],
@@ -148,6 +151,21 @@ if (!FIGHT_OLD_MD5) throw new Error('the guard row of gauntlet_v2_fight was not 
 for (const t of [mig, LAB_CC, LAB_UNIT, OLD_FIGHT]) if (['$o$'].some((x) => t.includes(x))) throw new Error('the SQL must not contain $o$');
 for (const t of [mig, LAB_CC, LAB_UNIT]) if (['$m$', '$t$', '$x$'].some((x) => t.includes(x))) throw new Error('the SQL must not contain $m$, $t$ or $x$');
 
+// C3d: each support amount block and every number that must scale by aff_x (paths in the state after the act; 'hit n' = the n-th hit)
+const C3D_CASES = [
+  { b: [{ k: 'shield', v: 0.1 }], e: ['cards.2.status.shielded.value'] },
+  { b: [{ k: 'shield_all', v: 0.1 }], e: ['cards.1.status.shielded.value', 'cards.2.status.shielded.value', 'cards.3.status.shielded.value'] },
+  { b: [{ k: 'heal', v: 0.1 }], e: ['cards.2.healed.v', 'cards.2.hp', 'ext.healed.v'] },
+  { b: [{ k: 'heal_all', v: 0.1 }], e: ['cards.2.healed.v', 'cards.2.hp', 'cards.3.healed.v', 'cards.3.hp', 'ext.healed.v'] },
+  { b: [{ k: 'empower', v: 0.2 }], e: ['cards.2.status.empowered.value'] },
+  { b: [{ k: 'rally', v: 0.2 }], e: ['cards.2.status.empowered.value', 'cards.3.status.empowered.value'] },
+  { b: [{ k: 'focus', crit: 0.2, crd: 0.5 }], e: ['cards.2.status.focused.crd', 'cards.2.status.focused.value'] },
+  { b: [{ k: 'quicken', v: 0.2 }], e: ['cards.2.status.quickened.value'] },
+  { b: [{ k: 'smite', x: 1 }], e: ['enemies.0.hp', 'enemies.0.last_smite', 'hit 1'] },
+  { b: [{ k: 'smite', x: 1 }, { k: 'area', x: 0.5 }], e: ['enemies.0.hp', 'enemies.0.last_smite', 'enemies.1.hp', 'hit 1', 'hit 2'] },
+  { b: [{ k: 'apply', status: 'exposed', chance: 0.5, value: 0.2 }], e: ['enemies.0.status.exposed.value'] },
+  { b: [{ k: 'random_apply', chance: 0.5, options: [{ status: 'exposed', value: 0.2 }, { status: 'weakened', value: 0.1 }] }], e: ['enemies.0.status.exposed.value'] },
+];
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 const arr = (xs) => `array[${xs.map(lit).join(', ')}]::text[]`;
 const MD5 = `md5(replace(pg_get_functiondef(p.oid), chr(13), ''))`;
@@ -373,11 +391,10 @@ begin
   o := '[]';
   foe := combat_v2_dungeon_foe((select m2.key from public.dungeon_monsters_v2 m2 order by m2.key limit 1), 1, 1, 'fight', null, b)
          || jsonb_build_object('hp', 100000, 'max', 100000, 'def', 0, 'evasion', 0, 'mechanics', '[]'::jsonb, 'meter', 0);
-  for blk in select v from jsonb_array_elements(${lit(JSON.stringify([
-    [{ k: 'shield', v: 0.1 }], [{ k: 'shield_all', v: 0.1 }], [{ k: 'heal', v: 0.1 }], [{ k: 'heal_all', v: 0.1 }], [{ k: 'empower', v: 0.2 }],
-    [{ k: 'rally', v: 0.2 }], [{ k: 'focus', crit: 0.2, crd: 0.5 }], [{ k: 'quicken', v: 0.2 }], [{ k: 'smite', x: 1 }], [{ k: 'smite', x: 1 }, { k: 'area', x: 0.5 }],
-    [{ k: 'apply', status: 'exposed', chance: 0.5, value: 0.2 }], [{ k: 'random_apply', chance: 0.5, options: [{ status: 'exposed', value: 0.2 }, { status: 'weakened', value: 0.1 }] }],
-  ]))}::jsonb) v loop
+  -- each case names every number that must scale (review r1 B-1: a number that does not change is not seen, so a missed factor on one of
+  -- two numbers passed): the scaled paths (and hits) must be exactly this list, each x 1.30
+  for x in select v from jsonb_array_elements(${lit(JSON.stringify(C3D_CASES))}::jsonb) v loop
+    blk := x->'b';
     cards := jsonb_build_object('1', pg_temp.su('support', 'herald', jsonb_build_object('active', jsonb_build_object('blocks', blk))),
       '2', pg_temp.su('attacker', 'breaker', jsonb_build_object('hp', 300)), '3', pg_temp.su('attacker', 'striker', jsonb_build_object('hp', 300)));
     s := pg_temp.st(cards, 'dungeon', jsonb_build_array(foe, foe));
@@ -389,7 +406,10 @@ begin
       'ally', jsonb_build_object('side', 'card', 'id', 2), 'draws', dr), b);
     -- every number that changed: its ratio; every other key the same
     got := pg_temp.syn_ratios(s, r, r2);
-    o := o || jsonb_build_object('blocks', blk, 'ok', (got->>'ok')::boolean and not exists (select 1 from jsonb_array_elements(got->'ratios') q where (q->>'r')::numeric <> 1.30), 'got', got);
+    want := coalesce((select jsonb_agg(p order by p) from jsonb_array_elements_text(x->'e') p), '[]'::jsonb);
+    t := coalesce((select jsonb_agg(coalesce(q->>'path', 'hit ' || (q->>'hit')) order by coalesce(q->>'path', 'hit ' || (q->>'hit'))) from jsonb_array_elements(got->'ratios') q), '[]'::jsonb);
+    o := o || jsonb_build_object('blocks', blk, 'ok', (got->>'ok')::boolean and t = want
+      and not exists (select 1 from jsonb_array_elements(got->'ratios') q where (q->>'r')::numeric <> 1.30), 'scaled', t, 'want', want, 'got', got);
   end loop;
   -- the chance is not scaled (M3i): every draw 0.6 (0.5 <= 0.6 < 0.5 x 1.30), so the status lands in neither run
   for blk in select v from jsonb_array_elements(${lit(JSON.stringify([
@@ -614,11 +634,22 @@ end $t$;`;
 
 const txt = await runBlock(body);
 const rows = JSON.parse(txt);
+// C3g (review r1 B-2): the Lab fight (fightSql, the file text) calls combat_v2_synergy exactly once, after the state is built and before the
+// turn order and the fight
+{
+  const a = LAB_SRC.indexOf('export function fightSql('), z = LAB_SRC.indexOf('\nexport function ', a + 1);
+  const fs2 = a < 0 ? '' : LAB_SRC.slice(a, z < 0 ? undefined : z);
+  const call = 's := combat_v2_synergy(s, b);';
+  const i = fs2.indexOf(call), built = fs2.indexOf("  s := jsonb_build_object('v', 2,"), order = fs2.indexOf('combat_v2_turn_order(s'), fight = fs2.indexOf('pg_temp.v2lab_fight(s');
+  const n = fs2.split('combat_v2_synergy(').length - 1;
+  rows.splice(rows.findIndex((r) => String(r.case).startsWith('C3h')), 0, { case: 'C3g the Lab fight (fightSql) calls combat_v2_synergy exactly once, after the state is built and before the turn order and the fight',
+    ok: n === 1 && built >= 0 && i > built && order > i && fight > i, calls: n, at: { built, call: i, order, fight } });
+}
 let fails = 0;
 for (const r of rows) {
   const ok = r.ok === true;
   if (!ok) fails++;
-  const extra = ok ? '' : `  ${JSON.stringify(Object.fromEntries(Object.entries(r).filter(([k]) => !['case', 'ok'].includes(k)))).slice(0, 2500)}`;
+  const extra = ok ? '' : `  ${JSON.stringify(Object.fromEntries(Object.entries(r).filter(([k]) => !['case', 'ok'].includes(k)))).slice(0, process.env.SYN_FULL ? 1e7 : 2500)}`;
   console.log(`${ok ? 'PASS' : 'FAIL'} ${r.case}${extra}`);
 }
 console.log(fails ? `FAILED: ${fails} of ${rows.length} cases` : `PASS all ${rows.length} cases`);

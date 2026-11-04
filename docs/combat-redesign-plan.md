@@ -2564,10 +2564,10 @@ changes: `combat_v2` is OFF, and no v1 function changes. Nathan's 9 answers of 2
   the apply).
 - **Proof** (copy 6, refreshed from live on 2026-11-04 after the R1b merge; branch merged with main 7d156b3e; the round 1 numbers before the
   merge were the same):
-  - `test-combat-v2-synergy.mjs` PASS all 21 cases (C1 md5 of the other functions, C3a to C3k, server only, idempotent).
+  - `test-combat-v2-synergy.mjs` PASS all 22 cases (C1 md5 of the other functions, C3a to C3k, server only, idempotent; round 2).
     C3j: 3 fight rooms of the week 2026-10-25, each read at its first card turn: each card `syn` = `combat_v2_synergy` of the room state; the
     room state and the first step without `syn` = the R1b text with the same seed; the live text minus its one `-- SYN` line has the R1b md5.
-    MUTATE=all: baseline PASS in the same run, **34 of 34** caught (4 for C3j: `room_no_synergy`, `synergy_room_1_only`, `synergy_draws`,
+    MUTATE=all: baseline PASS in the same run, **36 of 36** caught (round 2; 4 for C3j: `room_no_synergy`, `synergy_room_1_only`, `synergy_draws`,
     `r1b_extra_change`). `M3m_no_spec_branch` and `notags_raise` stop the block (the file does not
     apply; the synergy raises); the harness counts them only with their exact error text. The first DB run failed 3 cases, each a test
     defect: the `subjects_flatten_tags` trigger rebuilds `tag_slugs` from `tags` (C3e), the ratio helper did not walk arrays (C3i), and a
@@ -2583,8 +2583,13 @@ changes: `combat_v2` is OFF, and no v1 function changes. Nathan's 9 answers of 2
     x1.114. In the rooms where the chart cannot act, it is x0.963 and x0.971: one random stream runs through the whole week, so any change
     moves every later draw. The week sum measures that noise too, and cannot hold the limit.
   - **C4b, new measure** (Orchestrator decision 2026-11-04): the damage per card action in the rooms with at least one eligible foe, chart ON
-    vs OFF: x1.0534 (seed 0.42) and x1.1139 (seed 0.77), above 1.00 on both seeds: PASS. In the same run, M4c (the chart never applied)
-    gives 1.0000 and 1.0000: FAIL as required. M4a (the chart x3.0) gives 1.3622 and 1.2906: the rule "above 1.00" alone does NOT catch it;
-    the upper limit 1.15 of SPEC v3 catches it. Open for the Orchestrator: keep the 1.15 limit in the new rule.
+    vs OFF, above 1.00 and 1.15 or less on both seeds (the 1.15 limit decided by the Orchestrator on 2026-11-04): x1.0534 (seed 0.42) and
+    x1.1139 (seed 0.77): PASS. In the same run, M4c (the chart never applied) gives 1.0000 and 1.0000 and M4a (the chart x3.0) gives
+    1.3622 and 1.2906: both FAIL as required. The scripts and outputs: `lptcg-pipeline/items/SYN/evidence/c4b/` (not in this repo).
+  - Round 2 (review r1): C3d names every number that must scale for each block (the focus `crd` and `value`, each target of `shield_all`,
+    `heal_all`, `rally`); C3g checks that the Lab fight calls `combat_v2_synergy` once. Mutations `REV_focus_crd_no_sf` and
+    `REV_lab_no_synergy` are caught.
+- **Note for the next set**: `combat_v2_synergy` multiplies `set_x` over every set of `v2_synergy.sets`, but `set_n` holds the count of
+  the last set only. Today there is one set (`forbidden_pride`), so nothing changes. A second set must give `set_n` per set.
 - **Go-live order**: after R1a and R1b (the file replaces R1a and R1b functions). `rehearse-sql.mjs` on copy 1, `apply-sql.mjs --live` (grants OK),
   `check-schema-drift.mjs --live` = 0 differences. The Lab is the local card studio (no deploy). No Activity or bot change. The flag stays OFF.
