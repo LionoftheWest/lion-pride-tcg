@@ -224,3 +224,5 @@ body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit > .
 /* the stacked phone layout: READY keeps the height of the state line (the support row keeps its approved height, G-E6) */
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-stack .g2-stline em .g2-ready { min-height: var(--counter); padding: var(--sp-half) var(--sp-2); font-size: var(--fs-caption); }
 body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-card .g2-turn { top: var(--sp-5); padding: var(--u3-none) var(--sp-1); }
+/* UI-08: the v2 ability line is a sentence ("Charge 1 of 2"), not the capitalized v1 meta words (style.css .v-ability-meta) */
+body.ui-v2 #viewer .v-ability.is-v2 .v-ability-meta { text-transform: none; }

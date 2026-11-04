@@ -3355,6 +3355,7 @@ function fillRaidInfo(c) {
 // (name, charge, the text when the server sends it) in place of the v1 ability. v2 = ui-v2-gauntlet2.js v2InfoOf.
 function fillViewerV2(v2) {
   fillViewerAbility(v2.ability);
+  el('v-ability').classList.add('is-v2');   // sentence case: "Finisher · Attacker active · Charge 1 of 2"
   const box = el('v-raid');
   if (!box) return;
   box.querySelector('.g2-vrole')?.remove();
@@ -3365,6 +3366,7 @@ function fillViewerV2(v2) {
 // The Ability section of the card viewer (name, plain-words effect, meta).
 function fillViewerAbility(ab) {
   const box = el('v-ability');
+  box.classList.remove('is-v2');   // the v1 meta words are capitalized (style.css); a v2 card sets is-v2 (sentence case)
   if (!ab || !ab.name) { box.classList.add('hidden'); return; }
   el('v-ability-name').textContent = ab.name;
   el('v-ability-desc').textContent = ab.desc || '';
