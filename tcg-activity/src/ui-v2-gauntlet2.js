@@ -310,6 +310,9 @@ export function fightUpdate(F, v, s, H) {
   const actor = m.squad.find((c) => c.actor);
   const hint = F.querySelector('.dg-hint');
   hint.classList.toggle('g2-pickbar', !!s.picking);
+  // wide classes: the pick prompt goes over the bottom of the stage (frame 14), and back to its row after
+  const home = F.querySelector('.g2-l'), arena = F.querySelector('.dg-arena');
+  if (home && arena) { if (s.picking && hint.parentNode !== arena) arena.appendChild(hint); else if (!s.picking && hint.parentNode !== home) home.appendChild(hint); }
   hint.classList.toggle('g2-tapbar', !!s.tap);
   if (s.picking) hint.innerHTML = `${H.hand}Choose a card for <b>${esc(actor?.name || '')}</b><button class="dg-cancel" type="button">Cancel</button>`;
   else if (s.notice) hint.innerHTML = `${H.timer}${esc(s.notice)}`;

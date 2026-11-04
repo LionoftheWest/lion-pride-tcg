@@ -76,7 +76,7 @@ body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-hprow > .dg-hp { flex: 1 1 auto; m
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pipbox { display: flex; flex: none; }
 /* D-204 option A: the acting card has the gold ring and the active pill; the other cards are dimmed a little */
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit.g2-actor .dg-card { box-shadow: var(--glow-focus), var(--glow-action); }
-body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit.g2-wait, body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup.g2-wait { opacity: calc(1 - var(--item-disabled) / 2); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit.g2-wait { opacity: calc(1 - var(--item-disabled) / 2); }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup.g2-actor { box-shadow: var(--glow-focus), var(--glow-action); }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pillbox { display: contents; }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pill { position: absolute; left: var(--sp-1); right: var(--sp-1); bottom: var(--sp-1); display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
@@ -92,7 +92,7 @@ body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit .dg-card > .card-info { top: 
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup { position: relative; }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-stline { grid-column: 2; display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-1); min-width: 0; }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-stline em { display: flex; align-items: center; gap: var(--sp-1); font-style: normal; color: var(--success); }
-body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-stline .g2-waitc { display: inline-flex; align-items: center; gap: var(--sp-1); color: var(--text-muted); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-stline .g2-waitc { display: inline-flex; align-items: center; gap: var(--sp-1); color: var(--text-secondary); opacity: 1; }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-shp { display: flex; align-items: center; gap: var(--sp-1-5); min-width: 0; }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-shp .dg-hp { flex: 1 1 auto; display: block; min-width: 0; height: var(--sp-1-5); border-radius: var(--rad-pill); background: var(--surface-3); overflow: hidden; }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-shp .dg-hp i { display: block; height: 100%; background: var(--success); border-radius: var(--rad-pill); }
@@ -105,7 +105,7 @@ body[data-size="expanded"].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup .g2-mag,
 /* the ally pick (D-70): the lit cards are the server's allies; the others are dimmed */
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-lit .dg-card, body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup.g2-lit { box-shadow: 0 0 0 var(--bw-2) var(--success); }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-unlit { opacity: calc(1 - var(--item-disabled)); }
-body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-hint.g2-pickbar button { min-height: var(--u3-none); height: auto; align-self: stretch; margin: var(--u3-none); padding-block: var(--u3-none); }
+
 
 /* ---- the status tap line in the hint place (approved Q7) ---- */
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-tap { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; text-align: left; }
@@ -160,3 +160,8 @@ body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup.g2-row .g2-stline { flex-direc
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup.g2-row .g2-stline em { flex: none; }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup.g2-row .g2-shp { flex: 1 1 auto; }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-b.is-tapped { box-shadow: var(--glow-focus); }
+/* the Down label on a card (11 px at least) */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit .dg-state { font-size: var(--fs-label); line-height: var(--lh-label); }
+/* wide classes, the ally pick (D-70): the prompt and Cancel sit over the bottom of the dimmed stage, at full width (review-5 frame 14) */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-arena > .dg-hint.g2-pickbar { position: absolute; left: 50%; bottom: var(--sp-2); transform: translateX(-50%); width: calc(100% - var(--sp-5));
+  max-width: calc(var(--dialog-w) * 1.6); height: auto; min-height: var(--hit); margin: var(--u3-none); opacity: 1; filter: none; }
