@@ -158,7 +158,7 @@ const V2_BASE = () => (GA() ? G2_API : D2_API);
 const V2_GET = () => (GA() ? G2_API : `${D2_API}/view`);
 function v2Take(v) { dg.v2 = v; dg.data = { ...dg.data, run: g2.v1RunOf(v), rooms: v.rooms || dg.data.rooms }; }
 const g2Host = () => ({
-  dg, base: V2_BASE(), esc, fmt, thumb, elIcon, plateName, cardTile, bolt: I.bolt, trophy: I.trophy, up: I.up, hand: I.hand, timer: I.timer,
+  dg, base: V2_BASE(), stats: GA() ? null : statsHTML, esc, fmt, thumb, elIcon, plateName, cardTile, bolt: I.bolt, trophy: I.trophy, up: I.up, hand: I.hand, timer: I.timer,
   progressHTML, musicBtnHTML, finishHTML, finishButton, autoDisabled, waitMs, AUTO_ROUNDS, fitFight: fitFightV3, placeArena, openInfo, toast,
   apiPost: (p, b) => ctx().apiPost(p, b), sfx: (k) => ctx().sfx?.(k), currentView: () => ctx().currentView(),
   setAuto: (on) => { dg.auto = !!on; localStorage.setItem(AUTO, on ? '1' : ''); }, setView: (v) => v2Take(v),
@@ -749,7 +749,7 @@ function statsHTML() {
   }
   const pend = st.pend || {}, bank = st.bank || {};
   const pc = (pend.cards || []).length, bc = (bank.cards || []).length;
-  return `<div class="dg-stats"><span class="risk" title="This floor's loot: lost if the squad falls. The floor guardian banks it.">${COIN}<b>${fmt(pend.shards)}${pc ? ` +${pc}${I.cards}` : ''}</b><i>at risk</i></span><span class="bank" title="Banked loot: safe. Yours when the run ends.">${I.lock}<b>${fmt(bank.shards)}${bc ? ` +${bc}${I.cards}` : ''}</b><i>banked</i></span><span title="The run damage bonus">${I.up}<b>+${buff}%</b><i>damage</i></span></div>`;
+  return `<div class="dg-stats"><span class="risk" title="This floor's loot: lost if the squad falls. The floor guardian banks it.">${COIN}<b>${fmt(pend.shards)}${pc ? ` +${pc}${I.cards}` : ''}</b><i>at risk</i></span><span class="bank" title="Banked loot: safe. Yours when the run ends.">${I.lock}<b>${fmt(bank.shards)}${bc ? ` +${bc}${I.cards}` : ''}</b><i>banked</i></span><span${dg.v2 ? ' class="g2-empty" aria-hidden="true"' : ''} title="The run damage bonus">${I.up}<b>+${buff}%</b><i>damage</i></span></div>`;   // R2b N3: the v2 damage place stays empty
 }
 // A weakness / resistance as an icon: an element icon, or a short word (melee, beast ...).
 const traitIcon = (v) => {

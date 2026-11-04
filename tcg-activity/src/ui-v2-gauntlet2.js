@@ -266,6 +266,7 @@ export function fightHTML(v, H) {
 }
 // N2: the week best is the v1 value (v2 runs are off the board, D1). N3: the "+n% damage" place stays, empty (nothing moves).
 function statsHTML(H) {
+  if (H.stats) return H.stats();   // R2b: the Dungeon test mode shows the v1 Dungeon chips with v2 data (0 at risk, 0 banked; Nathan answer 4)
   const b = H.dg.data?.best;
   return `<div class="dg-stats"><span title="Your best run this week">${H.trophy}<b>${b ? `${b.floor}F R${b.room}` : '—'}</b><i>week best</i></span><span class="g2-empty" aria-hidden="true">${H.up}<b>+0%</b><i>damage</i></span></div>`;
 }
@@ -280,7 +281,7 @@ export function fightUpdate(F, v, s, H) {
     const p = F.querySelector(`.dg-plate[data-foe="${f.i}"]`); if (!p) continue;
     p.classList.toggle('on', f.i === s.target && !f.down && !s.picking);
     p.classList.toggle('dead', f.down);
-    p.querySelector('.hpn').textContent = `${H.fmt(f.hp)} / ${H.fmt(f.max)}`;
+    p.querySelector('.hpn').textContent = `${fmtN(f.hp)} / ${fmtN(f.max)}`;   // HP can be a fraction (stars, R2 QD3): whole numbers on the screen
     p.querySelector('.bar i').style.width = `${f.max ? Math.max(0, (f.hp / f.max) * 100) : 0}%`;
     const md = F.classList.contains('g2-wide');
     p.querySelector('.g2-fst').innerHTML = foeStatusHTML(f, md);
@@ -296,11 +297,11 @@ export function fightUpdate(F, v, s, H) {
     u.classList.toggle('g2-wait', !c.actor && !c.down && !s.picking && !s.finishing);
     u.classList.toggle('g2-lit', !!s.picking && allies.has(c.id));
     u.classList.toggle('g2-unlit', !!s.picking && !allies.has(c.id));
-    const shield = c.shield > 0 ? ` <em>+${H.fmt(c.shield)}</em>` : '';
-    const shieldS = c.shield > 0 ? ` <span class="g2-shn">+${H.fmt(c.shield)}</span>` : '';
+    const shield = c.shield > 0 ? ` <em>+${fmtN(c.shield)}</em>` : '';
+    const shieldS = c.shield > 0 ? ` <span class="g2-shn">+${fmtN(c.shield)}</span>` : '';
     if (u.classList.contains('dg-unit')) {
       u.querySelector('.dg-hp i').style.width = `${pct}%`;
-      u.querySelector('.dg-hpn').innerHTML = `${H.fmt(c.hp)}/${H.fmt(c.max)}${shield}`;
+      u.querySelector('.dg-hpn').innerHTML = `${fmtN(c.hp)}/${fmtN(c.max)}${shield}`;
       u.querySelector('.dg-state').textContent = c.down ? 'Down' : '';
       u.querySelector('.g2-st').innerHTML = c.down ? '<span class="g2-b is-empty"></span>' : cardStatusHTML(c);
       u.querySelector('.g2-pipbox').innerHTML = c.down ? '' : pipsHTML(c);
@@ -313,11 +314,11 @@ export function fightUpdate(F, v, s, H) {
       u.querySelector('.g2-stline em').innerHTML = c.down ? 'Down' : c.ready ? `${ic('check')}Ready` : `<span class="g2-waitc">${pipsHTML(c)}${H.fmt(c.charge)} of ${H.fmt(c.need)}</span>`;
       u.querySelector('.g2-shpl').innerHTML = shieldPlace(c);
       u.querySelector('.g2-shp .dg-hp i').style.width = `${pct}%`;
-      u.querySelector('.g2-shp small').innerHTML = `${H.fmt(c.hp)}/${H.fmt(c.max)}${shieldS}`;
+      u.querySelector('.g2-shp small').innerHTML = `${fmtN(c.hp)}/${fmtN(c.max)}${shieldS}`;
       u.disabled = !!s.busy && !s.picking;
     }
   }
-  F.querySelector('.dg-shp .v').innerHTML = `${H.fmt(m.squadHp.hp)}<small> / ${H.fmt(m.squadHp.max)}</small>`;
+  F.querySelector('.dg-shp .v').innerHTML = `${fmtN(m.squadHp.hp)}<small> / ${fmtN(m.squadHp.max)}</small>`;
   F.querySelector('.dg-shp .dg-hp i').style.width = `${m.squadHp.max ? (m.squadHp.hp / m.squadHp.max) * 100 : 0}%`;
   F.querySelector('.g2-strip').innerHTML = stripHTML(m, H);
   F.querySelector('.dg-log').innerHTML = s.log.slice(-6).reverse().map((l) => `<li class="${l.kind}"><b>${esc(l.who)}</b>${l.to ? `<span>→ ${esc(l.to)}</span>` : ''}<em>${esc(l.txt)}</em></li>`).join('') || '<li class="none">The fight starts. Tap a card.</li>';
