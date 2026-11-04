@@ -2555,14 +2555,20 @@ changes: `combat_v2` is OFF, and no v1 function changes. Nathan's 9 answers of 2
 - **One place for each factor.** The hit core (card side only) applies `elem_x`, `set_x` and the chart. The support active applies `aff_x`
   to its amounts, its `focus` `crd`, its smite, its area and its status values, and `set_x` to its non-hit amounts. Stacks, chances, picks,
   durations and draws do not change. The enemy side, the ticks and the log entries do not change. The hit answer adds `chart`.
-- **The callers.** The Admin Lab calls `combat_v2_synergy` when it builds a fight. The R1b room start gets the same one line after R1b
-  merges (C3j, the next round of SYN). R2 and R3 call it in their own room builders.
+- **The callers.** The Admin Lab calls `combat_v2_synergy` when it builds a fight. The R1b room start `gauntlet_v2_fight` calls it once,
+  before `return s;` (section 5b of the file: the live R1b text + one line with the mark `-- SYN`). R2 and R3 call it in their own room builders.
+  `combat_v2_gauntlet_run.sql` is now in `SUPERSEDED.md` (a re-run would put back the R1b `gauntlet_v2_fight`).
 - **Deviation from SPEC v3.** The file also replaces `balance_check_combat_v2`: the step order (`small_at <= big_at <= top_at`) needs a
   branch there. The spec list of replaced functions did not name it.
-- **GUARD**: each of the 8 replaced functions must have the old md5 (db/schema at 11b8db77) or the new md5 (read on copy 6 after the apply).
-- **Proof** (copy 6, refreshed from live on 2026-11-04; round 1):
-  - `test-combat-v2-synergy.mjs` PASS all 20 cases (C1 md5 of the 543 other functions, C3a to C3i, C3k, server only, idempotent).
-    MUTATE=all: baseline PASS in the same run, **30 of 30** caught. `M3m_no_spec_branch` and `notags_raise` stop the block (the file does not
+- **GUARD**: each of the 9 replaced functions must have the old md5 (db/schema at 7d156b3e, R1b merged) or the new md5 (read on copy 6 after
+  the apply).
+- **Proof** (copy 6, refreshed from live on 2026-11-04 after the R1b merge; branch merged with main 7d156b3e; the round 1 numbers before the
+  merge were the same):
+  - `test-combat-v2-synergy.mjs` PASS all 21 cases (C1 md5 of the other functions, C3a to C3k, server only, idempotent).
+    C3j: 3 fight rooms of the week 2026-10-25, each read at its first card turn: each card `syn` = `combat_v2_synergy` of the room state; the
+    room state and the first step without `syn` = the R1b text with the same seed; the live text minus its one `-- SYN` line has the R1b md5.
+    MUTATE=all: baseline PASS in the same run, **34 of 34** caught (4 for C3j: `room_no_synergy`, `synergy_room_1_only`, `synergy_draws`,
+    `r1b_extra_change`). `M3m_no_spec_branch` and `notags_raise` stop the block (the file does not
     apply; the synergy raises); the harness counts them only with their exact error text. The first DB run failed 3 cases, each a test
     defect: the `subjects_flatten_tags` trigger rebuilds `tag_slugs` from `tags` (C3e), the ratio helper did not walk arrays (C3i), and a
     null ratio counted as ok (C3d). M3i was not caught until a case with a draw of 0.6 (chance 0.5) was added.
@@ -2576,5 +2582,5 @@ changes: `combat_v2` is OFF, and no v1 function changes. Nathan's 9 answers of 2
     0.9920 (seed 0.77): the second is below the limit 1.00. In the rooms where a foe is beaten, the damage per card action is x1.053 and
     x1.114. In the rooms where the chart cannot act, it is x0.963 and x0.971: one random stream runs through the whole week, so any change
     moves every later draw. The week sum measures that noise too, and cannot hold the limit. SPEC v4 must name another measure.
-- **Go-live order**: after R1a (the file replaces two R1a functions). `rehearse-sql.mjs` on copy 1, `apply-sql.mjs --live` (grants OK),
+- **Go-live order**: after R1a and R1b (the file replaces R1a and R1b functions). `rehearse-sql.mjs` on copy 1, `apply-sql.mjs --live` (grants OK),
   `check-schema-drift.mjs --live` = 0 differences. The Lab is the local card studio (no deploy). No Activity or bot change. The flag stays OFF.

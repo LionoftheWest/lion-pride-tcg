@@ -144,6 +144,7 @@ const NEW_FNS = ['balance_shape_errors', 'balance_v2_spec', 'balance_check_comba
   'combat_v2_card_unit', 'gauntlet_v2_foes', 'combat_v2_step',   // R1a combat_v2_gauntlet_builders.sql: the v2 Gauntlet builders (v2_speed, v2_charge, v2_dungeon and the engine keys); no function in play calls them
   'dailies_tasks', 'gauntlet_start', 'gauntlet_v2_enter', 'gauntlet_v2_fight', 'gauntlet_v2_hp', 'gauntlet_v2_pick', 'gauntlet_v2_play', 'gauntlet_v2_screen', 'gauntlet_v2_view',   // R1b combat_v2_gauntlet_run.sql: the v2 Gauntlet run of a tester (v2_speed, v2_charge, v2_status, the engine keys; dailies_tasks names the mode gauntlet_v2); only a tester plays it
   'card_progress_v2_view', 'spend_card_points_v2', 'reset_card_points_v2',   // M1c combat_v2_progress_spend.sql: a player spends and resets v2 points (combat_v2_on progress, v2_stats, v2_level); no fight reads it
+  'combat_v2_card_tags', 'combat_v2_synergy',   // SYN combat_v2_synergy.sql: the rule tags and the squad factors (they read v2_synergy; combat_v2 is OFF)
   'balance_check'];   // combat_v2_testers.sql: the generic balance trigger names combat_v2 only to let a tester id go (it reads no mode)
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 
