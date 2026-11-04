@@ -8,6 +8,7 @@
 // the view with the helpers of its host (ui-v2-dungeon.js passes them), so this file imports no DOM module.
 import { icon as ui3Icon } from './ui3/icons.js';
 import { TOKENS } from './tokens.js';
+import { fmtFull, fmtCompact } from './ui3/number.js';
 
 // ---- The static tables (UI-67): status key -> Lucide icon, the family colors, role key -> Lucide icon ----
 export const STATUS_ICON = {
@@ -40,6 +41,8 @@ const num = (n) => (Number.isFinite(Number(n)) ? Number(n) : 0);
 const unitKey = (side, id) => `${side === 'enemy' ? 'enemy' : 'card'}:${id}`;
 // A number for the screen: whole numbers, no decimals (the engine HP can have decimals, R1b 3.2 item 4).
 export const fmtN = (n) => Math.round(num(n)).toLocaleString('en-US');
+/** The power on the card chip: the full form, the compact form from 10,000 ("123.5M": a 9-digit power fits the chip, G3 long variant). */
+export const fmtPower = (n) => (Math.abs(num(n)) >= 10000 ? fmtCompact(n) : fmtFull(n));
 const pctOf = (n) => `${Math.round(num(n) * 100)}%`;
 const refStatus = (ref, key) => (ref?.statuses || []).find((s) => s.key === key) || null;
 const refRole = (ref, key) => (ref?.roles || []).find((r) => r.key === key) || null;
@@ -231,7 +234,7 @@ export function fightHTML(v, H) {
       <span class="bar"><i></i></span>
       <span class="g2-fst"></span></div>`;
   const unit = (c) => `<div class="dg-unit g2-unit" data-card="${c.id}">${roleHTML(c)}
-      ${H.cardTile({ id: c.id, name: c.name, image_url: c.image_url, rarity: c.rarity }, { top: `<span class="dg-pw">${H.bolt}${c.power != null ? esc(H.fmt(c.power)) : ''}</span>`, over: '<span class="dg-state"></span><span class="g2-pillbox"></span>' })}
+      ${H.cardTile({ id: c.id, name: c.name, image_url: c.image_url, rarity: c.rarity }, { top: `<span class="dg-pw">${H.bolt}${c.power != null ? esc(fmtPower(c.power)) : ''}</span>`, over: '<span class="dg-state"></span><span class="g2-pillbox"></span>' })}
       <span class="dg-fx g2-st"></span>
       <span class="g2-hprow"><span class="dg-hp"><i></i></span><span class="g2-pipbox"></span></span><small class="dg-hpn"></small></div>`;
   const sup = (c) => `<button class="dg-sup g2-sup" data-sup="${c.id}" type="button">
@@ -299,7 +302,8 @@ export function fightUpdate(F, v, s, H) {
       // D-204 option A: the active is a pill on the acting card; tap the pill = the active, tap the card = the basic attack.
       const pill = u.querySelector('.g2-pillbox');
       pill.innerHTML = c.actor && !c.down && !s.picking && !s.finishing
-        ? `<button type="button" class="g2-pill${c.ready ? '' : ' is-wait'}" data-active="${c.id}"><b>${esc(c.activeName)}</b>${pipsHTML(c)}${c.ready ? '' : `<span>${H.fmt(c.charge)} of ${H.fmt(c.need)}</span>`}</button>` : '';
+        ? (c.ready ? `<button type="button" class="g2-pill" data-active="${c.id}"><b>${esc(c.activeName)}</b>${pipsHTML(c)}</button>`
+          : `<span class="g2-pill is-wait"><b>${esc(c.activeName)}</b>${pipsHTML(c)}<span>${H.fmt(c.charge)} of ${H.fmt(c.need)}</span></span>`) : '';
     } else {
       u.querySelector('.g2-stline em').innerHTML = c.down ? 'Down' : c.ready ? `${ic('check')}Ready` : `<span class="g2-waitc">${pipsHTML(c)}${H.fmt(c.charge)} of ${H.fmt(c.need)}</span>`;
       u.querySelector('.g2-shpl').innerHTML = shieldPlace(c);

@@ -198,15 +198,15 @@ function derivedG2(kind) {
   return v;
 }
 DERIVED.push({ when: (p, c) => p === '/api/gauntlet/v2' && ['g2-fight', 'g2-charge', 'g2-pick', 'g2-down', 'g2-choose', 'g2-over'].includes(c.ci_dungeon), make: (body, c) => derivedG2(c.ci_dungeon) });
-// The answer of POST /api/gauntlet/v2/finish (cookie ci_finish=ok): 30 card turns on monster 0 and an enemy strike each, in the R1a log shape,
+// The answer of POST /api/gauntlet/v2/finish (cookie ci_finish=ok): 80 card turns on monster 0 and an enemy strike each, in the R1a log shape,
 // so the replay at 3x lasts longer than a G3 cell (the cell reads the page in the middle of it). Nothing is written.
 function g2Finish() {
   const v = derivedG2('g2-fight');
   const log = [];
   let hp = 50;
-  for (let k = 0; k < 30; k += 1) {
+  for (let k = 0; k < 80; k += 1) {
     const clock = 7 + k;
-    const next = Math.max(1, hp - 1);
+    const next = Math.max(1, hp - 0.5);
     log.push({ k: 'clock', clock, event: 'act', actor: { side: 'card', id: 318 }, skip: false, reason: null, ticks: [], ended: [], hp: [] });
     log.push({ k: 'act', actor: { side: 'card', id: 318 }, action: 'basic', target: { side: 'enemy', id: 0 }, hits: [{ target: { side: 'enemy', id: 0 }, dmg: hp - next, crit: false, miss: false }],
       hp: [{ side: 'enemy', id: 0, before: hp, after: next, down: false, shield_before: 0, shield_after: 0 }] });
@@ -214,7 +214,7 @@ function g2Finish() {
     hp = next;
   }
   v.run.state.fight.enemies[0].hp = hp;
-  return { ok: true, run: 1, event: 'choose', won: null, actor: { side: 'card', id: 318 }, steps_left: 10, played: 30, log, state: v.run.state, status: 'active', ended_by: null,
+  return { ok: true, run: 1, event: 'choose', won: null, actor: { side: 'card', id: 318 }, steps_left: 10, played: 80, log, state: v.run.state, status: 'active', ended_by: null,
     floor: 2, room: 4, need: v.need, squad_hp: v.squad_hp, order: v.order, targets: v.targets, allies: v.allies, status_lines: v.status_lines, rooms: v.rooms, floors: v.floors, cards: v.cards, auto: [] };
 }
 // UI-50: the run over (a fall on floor 3, room 2) with 4 found cards: the names of the approved frames.

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, cardStatusHTML, squadOf, foesOf, portraitKey, STRIP_N } from './ui-v2-gauntlet2.js';
+import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, cardStatusHTML, squadOf, foesOf, portraitKey, fmtPower, STRIP_N } from './ui-v2-gauntlet2.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIX = JSON.parse(readFileSync(join(here, '..', '..', 'ci', 'ui-check', 'fixtures', 'g2-fight.json'), 'utf8')).body;
@@ -200,4 +200,12 @@ test('every squad card and every card chip has its art URL (cards[id].image_url)
     assert.match(c.image_url, /\/card-art\/cards\//);
   }
   for (const c of stripOf(v).filter((x) => x.side === 'card')) assert.equal(c.image, v.cards[c.id].image_url);
+});
+
+// R1e round 4 (CI G3 run 41756233905: a 9-digit power was clipped on the card chip in the long variant)
+test('the power chip: the full form, the compact form from 10,000 (a 9-digit power fits)', () => {
+  assert.equal(fmtPower(148), '148');
+  assert.equal(fmtPower(9999), '9,999');
+  assert.equal(fmtPower(123456789), '123.5M');
+  assert.ok(fmtPower(123456789).length <= 6);
 });
