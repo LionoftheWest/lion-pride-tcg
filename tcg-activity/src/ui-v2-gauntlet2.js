@@ -191,6 +191,11 @@ export function v1RunOf(v) {
 }
 /** Does this v2 answer take the screen? A tester's v2 run of today (active or just over); else the v1 screens stay (INV-E1). */
 export const v2Owns = (v) => !!(v?.ok && v.run && (v.active_mode === 'gauntlet_v2' || v.run.status === 'over'));
+/** The Dungeon test mode (R2b; dungeon_v2_view): the tester's active v2 run takes the screen; a v2 run that is over takes it only when the
+ *  v1 view (v1) has no active run (QD2: the v2 run is an extra run, so a v1 run of the same day keeps its screens). */
+export const v2OwnsDungeon = (v, v1) => !!(v?.ok && v.run && (v.run.status === 'active' || (v.run.status === 'over' && v1?.run?.status !== 'active')));
+/** The Dungeon test mode (R2b): the tester-only "Play v2 (test)" in the lobby. can_start is the server's (tester, no active v2 run, a run left). */
+export const v2CanStart = (v) => !!(v?.ok && v.tester === true && v.can_start === true);
 
 // ---- The view (DOM) -----------------------------------------------------------------------------------------------------------------
 const ic = (name, size = 'sm') => ui3Icon(name, { size, cls: 'g2-ico' });

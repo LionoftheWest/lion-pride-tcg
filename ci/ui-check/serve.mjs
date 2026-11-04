@@ -217,6 +217,32 @@ function g2Finish() {
   return { ok: true, run: 1, event: 'choose', won: null, actor: { side: 'card', id: 318 }, steps_left: 10, played: 80, log, state: v.run.state, status: 'active', ended_by: null,
     floor: 2, room: 4, need: v.need, squad_hp: v.squad_hp, order: v.order, targets: v.targets, allies: v.allies, status_lines: v.status_lines, rooms: v.rooms, floors: v.floors, cards: v.cards, auto: [] };
 }
+// R2b (combat v2 Dungeon test mode, testers): GET /api/dungeon/v2/view answers 403 not_tester (the recorded default, fixtures/api.json:
+// every member who is not a tester sees the v1 Dungeon). Cookie ci_dungeon = d2-<state> answers a tester's v2 Dungeon run in the
+// dungeon_v2_view shape (R2 SPEC 3.4), made from the R1e answer (fixtures/g2-fight.json): the same fight states (d2-fight, d2-charge,
+// d2-pick, d2-down), the v1 room steps with v2 data (d2-choose, d2-rest, d2-path a door, d2-pass the empty treasure room, d2-floor),
+// d2-over (the run is over), and d2-lobby (no run: the tester's lobby with "Play v2 (test)"). The v1 /api/dungeon answer stays the lobby.
+const D2_KINDS = ['d2-fight', 'd2-charge', 'd2-pick', 'd2-down', 'd2-choose', 'd2-rest', 'd2-path', 'd2-pass', 'd2-floor', 'd2-over', 'd2-lobby'];
+function derivedD2(kind) {
+  const g = { 'd2-charge': 'g2-charge', 'd2-pick': 'g2-pick', 'd2-down': 'g2-down', 'd2-over': 'g2-over' }[kind] || (['d2-fight', 'd2-lobby'].includes(kind) ? 'g2-fight' : 'g2-choose');
+  const v = derivedG2(g);
+  delete v.active_mode; delete v.run.mode;
+  Object.assign(v, { tester: true, runs_left: 0, can_start: false, floors: FIX.routes['/api/dungeon']?.body?.floors || v.floors });
+  v.run.attempt = 1;
+  const st = v.run.state;
+  if (kind === 'd2-rest') Object.assign(st, { phase: 'rest', room_type: 'rest', offers: [{ kind: 'continue' }] });
+  if (kind === 'd2-path') Object.assign(st, { phase: 'path', room_type: 'choice', offers: [{ kind: 'door', to: 'gamble' }, { kind: 'door', to: 'rest' }] });
+  if (kind === 'd2-pass') Object.assign(st, { phase: 'pass', room_type: 'treasure', offers: [{ kind: 'continue' }] });
+  if (kind === 'd2-floor') { v.run.room = 5; Object.assign(st, { phase: 'floor_done', room_type: 'guardian', offers: [] }); }
+  if (kind === 'd2-over') { Object.assign(v.run, { floor: 3, room: 2, turns: 27 }); v.last_run = { id: 1, attempt: 1, ended_by: 'fell', floor: 3, room: 2, turns: 27 }; }
+  if (kind === 'd2-lobby') {
+    for (const k of ['order', 'targets', 'allies']) v[k] = [];
+    Object.assign(v, { run: null, runs_left: 1, can_start: true, last_run: null, need: {}, squad_hp: {}, status_lines: {} });
+    delete v.cards;
+  }
+  return v;
+}
+DERIVED.push({ when: (p, c) => p === '/api/dungeon/v2/view' && D2_KINDS.includes(c.ci_dungeon), make: (body, c) => derivedD2(c.ci_dungeon) });
 // UI-50: the run over (a fall on floor 3, room 2) with 4 found cards: the names of the approved frames.
 function derivedOver(body) {
   const base = derivedDungeon(body);
@@ -653,6 +679,8 @@ createServer((req, res) => {
   }
   // UI-52 combat v2 (R1e): Finish Room of a v2 run (cookie ci_finish=ok) answers g2Finish; nothing is written. Without the cookie: 403 below.
   if (req.method === 'POST' && p === '/api/gauntlet/v2/finish' && cookies(req).ci_finish === 'ok') { req.resume(); return send(res, 200, JSON.stringify(g2Finish())); }
+  // R2b: Finish Room of a v2 Dungeon run (cookie ci_finish=ok): the same replay answer (the dungeon_v2_auto shape); nothing is written.
+  if (req.method === 'POST' && p === '/api/dungeon/v2/finish' && cookies(req).ci_finish === 'ok') { req.resume(); return send(res, 200, JSON.stringify(g2Finish())); }
   // UI-32: withdrawing a bid answers ok (nothing is written) so the screen shows "Bid withdrawn." with Undo; start, bid, accept, close and confirm stay refused (the error states).
   if (req.method === 'POST' && p === '/api/auction/withdraw') return send(res, 200, '{"ok":true}');
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 403, '{"error":"ui-check: writes are blocked"}');

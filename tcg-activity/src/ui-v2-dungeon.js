@@ -138,21 +138,27 @@ export function advTabs(active = 'hunt') {
 async function load() {
   let d = null;
   const m = dg.mode;
-  const v2q = GA() ? Promise.resolve(ctx().api(G2_API)).catch(() => null) : null;   // R1e: a tester's v2 run (R1c); a non-tester gets 403 not_tester
+  // R1e / R2b: a tester's v2 run (R1c /api/gauntlet/v2, R2b /api/dungeon/v2/view); a non-tester gets 403 not_tester and the v1 path stays
+  const v2q = Promise.resolve(ctx().api(V2_GET())).catch(() => null);
   try { d = await ctx().api(API()); } catch { d = null; }
-  const v2 = v2q ? await v2q : null;
+  const v2 = await v2q;
   if (m !== dg.mode) return dg.data;   // the member switched tabs while it loaded
   dg.data = d && d.ok ? d : { closed: true, message: GA() && d?.error === 'disabled' ? 'The Gauntlet is closed.' : d?.message || (GA() ? 'The Gauntlet is closed.' : 'The Dungeon is closed.') };
-  dg.v2 = null;
-  if (d?.ok && g2.v2Owns(v2)) v2Take(v2);
+  dg.v2 = null; dg.v2can = false;
+  if (d?.ok && (GA() ? g2.v2Owns(v2) : g2.v2OwnsDungeon(v2, d))) v2Take(v2);
+  // R2b: the tester-only "Play v2 (test)" in the Dungeon lobby (QD2: an extra run, so the lobby shows when the v1 run is not active)
+  else if (d?.ok && !GA() && g2.v2CanStart(v2) && !active()) { dg.v2can = true; dg.data = { ...dg.data, run: null }; }
   return dg.data;
 }
 // R1e (combat v2, testers): the v2 answer owns the run. The v1 screens that the v2 run reuses (Q-E1: reward, rest, door, floor done, over)
 // read a v1-shaped run with no loot; the fight is the v2 view (ui-v2-gauntlet2.js).
 const G2_API = '/api/gauntlet/v2';
+const D2_API = '/api/dungeon/v2';   // R2b: the Dungeon test mode (dungeon-v2-routes.js)
+const V2_BASE = () => (GA() ? G2_API : D2_API);
+const V2_GET = () => (GA() ? G2_API : `${D2_API}/view`);
 function v2Take(v) { dg.v2 = v; dg.data = { ...dg.data, run: g2.v1RunOf(v), rooms: v.rooms || dg.data.rooms }; }
 const g2Host = () => ({
-  dg, base: G2_API, esc, fmt, thumb, elIcon, plateName, cardTile, bolt: I.bolt, trophy: I.trophy, up: I.up, hand: I.hand, timer: I.timer,
+  dg, base: V2_BASE(), esc, fmt, thumb, elIcon, plateName, cardTile, bolt: I.bolt, trophy: I.trophy, up: I.up, hand: I.hand, timer: I.timer,
   progressHTML, musicBtnHTML, finishHTML, finishButton, autoDisabled, waitMs, AUTO_ROUNDS, fitFight: fitFightV3, placeArena, openInfo, toast,
   apiPost: (p, b) => ctx().apiPost(p, b), sfx: (k) => ctx().sfx?.(k), currentView: () => ctx().currentView(),
   setAuto: (on) => { dg.auto = !!on; localStorage.setItem(AUTO, on ? '1' : ''); }, setView: (v) => v2Take(v),
@@ -441,7 +447,9 @@ function lobbyV3HTML() {
   const head = `<header class="u3-dg-head"><img class="u3-dg-thumb" src="/dungeon/room.webp" alt="">${icon3('castle', 'lg')}<h1 class="u3-dg-name">${esc(d.name)}</h1>${date}</header>`;
   const timer = `<section class="u3-dg-panel u3-dg-timer">${icon3('timer')}<span>New dungeon in</span><b class="dg-left">${left(d.next_at)}</b></section>`;
   const pick = s.picks.length ? btn3({ label: 'Edit', data: { pickopen: '1' } }) : btn3({ label: 'Select your squad', variant: 'primary', data: { pickopen: '1' } });
-  const start = btn3({ label: 'Start run', icon: 'swords', variant: 'primary', disabled: !s.ok || dg.busy, busy: dg.busy, busyLabel: 'Starting', data: { start3: '1' } });
+  const start = btn3({ label: 'Start run', icon: 'swords', variant: 'primary', disabled: !s.ok || dg.busy, busy: dg.busy, busyLabel: 'Starting', data: { start3: '1' } })
+    // R2b (combat v2 testers, R2 SPEC 3.4): the same squad starts a v2 test run; only when the server says can_start (dungeon_v2_view)
+    + (dg.v2can ? btn3({ label: 'Play v2 (test)', icon: 'swords', disabled: !s.ok || dg.busy, data: { start2: '1' } }) : '');
   const types = ['Character', 'Creature', 'Item', 'Moment', 'Place'];
   const ruleChips = rule.types ? `<div class="u3-dg-rchips">${types.map((t) => `<span class="u3-dg-rchip ${rule.types.includes(t) ? 'is-yes' : 'is-no'}">${icon3(rule.types.includes(t) ? 'check' : 'ban')}${t}</span>`).join('')}</div>` : '';
   const ruleIn = `<span class="u3-label u3-dg-k">${icon3('layers')}Today's rule</span><h2 class="u3-dg-h">${esc(rule.name || 'Everything goes')}</h2>${rule.note ? `<p class="u3-dg-p">${esc(rule.note)}</p>` : ''}${ruleChips}`;
@@ -524,6 +532,7 @@ function wireLobbyV3(main) {
   const slot = main.querySelector('.u3-dg-tabpanel:not([hidden]) .u3-dg-slot__card, .u3-dg-main .u3-dg-slot__card');
   const over = [...main.querySelectorAll('.u3-dg-main, .u3-dg-side, .u3-dg-tabpanel:not([hidden])')].some((n) => n.scrollHeight > n.clientHeight + 1);
   if (!dg.tight && ((slot && slot.getBoundingClientRect().width < TOKENS['card-mini']) || over)) { dg.tight = 1; paint(); return; }
+  main.querySelector('[data-start2]')?.addEventListener('click', () => startV2(M));
   main.querySelector('[data-start3]')?.addEventListener('click', async () => {
     if (dg.busy || !squadStatus(dg.sel).ok) return;
     dg.busy = true; paint(); mark('room:go');
@@ -537,6 +546,23 @@ function wireLobbyV3(main) {
     if (enterAt(r, squad)) return;   // the answer holds the first room: paint it at once
     await load(); paint();
   });
+}
+
+// R2b: start a v2 Dungeon test run with the picked squad (POST /api/dungeon/v2/start); the v2 view then owns the run (load).
+// A refusal shows the server message; no_v2 (QD4) adds the names of the cards with no v2 active.
+async function startV2(M) {
+  if (dg.busy || !squadStatus(dg.sel).ok) return;
+  dg.busy = true; paint(); mark('room:go');
+  let r = null;
+  try { r = await ctx().apiPost(`${D2_API}/start`, { cards: dg.sel.filter((id) => M.has(id)) }); } catch (e) { r = e?.body || null; }
+  dg.busy = false;
+  if (!r?.ok) {
+    const names = (r?.error === 'no_v2' && Array.isArray(r.cards) ? r.cards : []).map((x) => M.get(Number(x))?.name).filter(Boolean);
+    toast(`${r?.message || 'The run did not start.'}${names.length ? ` ${names.join(', ')}` : ''}`); paint(); return;
+  }
+  ctx().sfx?.('click');
+  dg.log = []; dg.target = 0; dg.sel = [];
+  await load(); paint();
 }
 
 // ---- v3: the Gauntlet lobby (UI-52), behind the ui_v3 flag --------------------------------------------------------------
@@ -1367,7 +1393,7 @@ async function retreat() {
   bts.forEach((x) => { x.disabled = true; x.setAttribute('aria-busy', 'true'); });
   if (lab) lab.textContent = 'Retreating';
   let r = null;
-  try { r = await (dg.v2 ? ctx().apiPost(`${G2_API}/retreat`, {}) : ctx().apiPost('/api/dungeon/retreat', { mode: dg.mode })); } catch (e) { r = e?.body || null; }
+  try { r = await (dg.v2 ? ctx().apiPost(`${V2_BASE()}/retreat`, {}) : ctx().apiPost('/api/dungeon/retreat', { mode: dg.mode })); } catch (e) { r = e?.body || null; }
   dg.busy = false;
   if (!r?.ok) {
     bts.forEach((x) => { x.disabled = false; x.removeAttribute('aria-busy'); });
@@ -1652,7 +1678,7 @@ async function choose(pick) {
   if (dg.busy) return;
   dg.busy = true; mark('room:go');
   let r = null;
-  try { r = await (dg.v2 ? ctx().apiPost(`${G2_API}/choose`, { pick }) : ctx().apiPost('/api/dungeon/choose', { pick, mode: dg.mode })); } catch (e) { r = e?.body || null; }
+  try { r = await (dg.v2 ? ctx().apiPost(`${V2_BASE()}/choose`, { pick }) : ctx().apiPost('/api/dungeon/choose', { pick, mode: dg.mode })); } catch (e) { r = e?.body || null; }
   dg.busy = false;
   if (!r?.ok) { toast(r?.message || 'That did not work.'); return; }
   ctx().sfx?.('click');
