@@ -280,7 +280,7 @@ language plpgsql stable set search_path = public as $fn$
 declare
   v_on timestamptz := (select max(at) from public.combat_v2_switch_log where action = 'on');
   r record; e jsonb; p public.card_progress_v2%rowtype; why text[]; items jsonb := '[]';
-  n_miss int := 0; n_bad int := 0; n_live int := 0; n_log int := 0; n_checked int := 0; s text; led record;
+  n_miss int := 0; n_bad int := 0; n_live int := 0; n_log int := 0; n_cards int := 0; s text; led record;
 begin
   for r in
     with k as (
@@ -294,7 +294,7 @@ begin
      where p_cards is null or k.card_id = any(p_cards)
      order by k.player_id, k.card_id
   loop
-    n_checked := n_checked + 1; why := '{}';
+    n_cards := n_cards + 1; why := '{}';
     -- 2a: each card with v1 points has an input row
     if r.cur is null and coalesce(r.live, '{}'::jsonb) <> '{}'::jsonb then why := why || 'input_missing'::text; n_miss := n_miss + 1; end if;
     -- 2a: the progress row = combat_v2_convert_expect(the current input row), and its ledger rows sum to it (T6 of M1a). A card with no input
@@ -328,7 +328,7 @@ begin
       items := items || jsonb_build_object('player_id', r.player_id, 'card_id', r.card_id, 'why', to_jsonb(why));
     end if;
   end loop;
-  return jsonb_build_object('ok', jsonb_array_length(items) = 0, 'switch_at', v_on, 'checked', n_checked, 'input_missing', n_miss,
+  return jsonb_build_object('ok', jsonb_array_length(items) = 0, 'switch_at', v_on, 'cards', n_cards, 'input_missing', n_miss,
     'progress_mismatch', n_bad, 'live_differs', n_live, 'log_after_switch', n_log, 'items', items);
 end $fn$;
 

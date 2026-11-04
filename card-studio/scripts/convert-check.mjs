@@ -1,3 +1,4 @@
+import './localdb-guard.mjs';
 /**
  * The M1e live check after the switch (SPEC ON v6 6.7 rows 2a and 2b), READ ONLY: one request
  *   select combat_v2_convert_check()   (a STABLE function: Postgres refuses any write inside it)
@@ -8,7 +9,6 @@
  * Exit 0 = no item, 1 = items found, 2 = an error.
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
-if (process.env.LOCALDB === '1' && !globalThis.__LOCALDB_API) await import('./localdb-preload.mjs');
 const live = process.argv.includes('--live');
 if (process.env.LOCALDB !== '1' && !live) { console.error('convert-check: add --live for the live project, or LOCALDB=1 for the local copy'); process.exit(2); }
 const ref = (process.env.SUPABASE_URL || '').match(/https:\/\/([a-z0-9]+)/)?.[1];
