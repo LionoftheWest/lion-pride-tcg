@@ -388,6 +388,9 @@ export async function wireFight(main, v, host, keep) {
       if (alive()) upd();
     } catch (e) { console.warn('v2 stage', e); }
   }
+  // the stage loads in the background: when another fight (or another screen) opened meanwhile, this old call stops here and does not
+  // take the resize observer or the layout of the new fight (round 5, L-4)
+  if (fightEl() !== F) return;
   H.fitFight(F);
   layout(F);
   wideRO?.disconnect(); wideRO = null;

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, cardStatusHTML, squadOf, foesOf, portraitKey, fmtPower, STRIP_N } from './ui-v2-gauntlet2.js';
+import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, cardStatusHTML, squadOf, foesOf, portraitKey, fmtPower, wireFight, STRIP_N } from './ui-v2-gauntlet2.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIX = JSON.parse(readFileSync(join(here, '..', '..', 'ci', 'ui-check', 'fixtures', 'g2-fight.json'), 'utf8')).body;
@@ -208,4 +208,52 @@ test('the power chip: the full form, the compact form from 10,000 (a 9-digit pow
   assert.equal(fmtPower(9999), '9,999');
   assert.equal(fmtPower(123456789), '123.5M');
   assert.ok(fmtPower(123456789).length <= 6);
+});
+
+// R1e round 5 (REVIEW-r4 M-1, L-4): wireFight on a stubbed DOM (no browser). The 3D stage cannot load in node, so the stage part ends in its
+// catch; what matters is WHEN the listeners are attached and what happens after the stage await.
+// any other element: a stub that takes every property and call (fightUpdate writes text, widths and classes into many parts)
+const anyEl = () => new Proxy(function stub() {}, { get: (o, k) => (k === 'then' ? undefined : k === Symbol.toPrimitive ? () => '' : anyEl()), set: () => true, apply: () => anyEl() });
+function stubFight() {
+  const listeners = [];
+  const el = (name) => ({ name, addEventListener: (type) => listeners.push(`${name}:${type}`), classList: { toggle() {}, contains: () => false, add() {}, remove() {} }, setAttribute() {}, dataset: {}, closest: () => null });
+  const auto = el('auto'), finish = el('finish');
+  const canvas = { ...el('canvas'), replaceWith() {}, closest: () => null, getBoundingClientRect: () => ({ top: 0 }) };
+  const F = { ...el('fight'), isConnected: true, style: { setProperty() {} }, querySelectorAll: () => [],
+    querySelector: (s) => (s === '.dg-auto' ? auto : s === '.dg-finish' ? finish : s === '.dg-canvas' ? canvas : anyEl()) };
+  const main = { querySelector: (s) => (s === '.dg-fight.g2' ? F : null), contains: () => true };
+  const calls = { fitFight: 0 };
+  const host = { dg: { auto: false, stage: null }, fitFight: () => { calls.fitFight += 1; }, placeArena() {}, currentView: () => 'dungeon', sfx() {}, setAuto() {}, setView() {}, toast() {}, fmt: String, esc: String, thumb: String, elIcon: () => '', hand: '', timer: '', finishButton: () => ({}), autoDisabled: () => false };
+  return { listeners, F, main, host, calls };
+}
+function withDocument(fightEl, fn) {
+  const saved = { document: globalThis.document, raf: globalThis.requestAnimationFrame, gcs: globalThis.getComputedStyle, warn: console.warn };
+  globalThis.document = { querySelector: (s) => (s === '.dg-fight.g2' ? fightEl() : null), querySelectorAll: () => [], getElementById: () => null, body: { dataset: {} } };
+  globalThis.requestAnimationFrame = () => 0;
+  globalThis.getComputedStyle = () => ({ gridTemplateAreas: '', gridTemplateRows: '' });
+  console.warn = () => {};
+  return Promise.resolve().then(fn).finally(() => { globalThis.document = saved.document; globalThis.requestAnimationFrame = saved.raf; globalThis.getComputedStyle = saved.gcs; console.warn = saved.warn; });
+}
+
+test('M-1: the Finish Room, Auto and fight listeners are attached before wireFight awaits the 3D stage', async () => {
+  const s = stubFight();
+  await withDocument(() => null, async () => {
+    const p = wireFight(s.main, fresh(), s.host);   // not awaited: what is attached before the first await is attached now
+    assert.deepEqual([...s.listeners].sort(), ['auto:click', 'fight:click', 'finish:click']);
+    await p;
+  });
+});
+
+test('L-4: when another fight opened while the stage loaded, the old wireFight stops (no layout, no observer of the old fight)', async () => {
+  const s = stubFight();
+  let open = s.F;
+  await withDocument(() => open, async () => {
+    const p = wireFight(s.main, fresh(), s.host);
+    open = { other: true };   // the member left this fight during the load
+    await p;
+  });
+  assert.equal(s.calls.fitFight, 0);
+  const t = stubFight();   // the same fight stays open: the layout runs
+  await withDocument(() => t.F, () => wireFight(t.main, fresh(), t.host));
+  assert.equal(t.calls.fitFight, 1);
 });
