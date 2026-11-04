@@ -37,19 +37,19 @@ alter table public.dungeon_v2_runs enable row level security;
 revoke all on table public.dungeon_v2_runs from public, anon, authenticated;
 grant all on table public.dungeon_v2_runs to service_role;
 comment on table public.dungeon_v2_runs is $cm$[combat] Combat v2 Dungeon runs of testers (20.19 R2): one row per run (attempt of the day), the run state (engine 2: units, info, carry, the fight, the offers; never bank or pend: 0 loot, QD1), status active or over, ended_by. Only the dungeon_v2_ functions read or write it; no v1 reader of dungeon_runs sees it (INV-3). RLS on, no policy, service_role only. combat_v2_dungeon_run.sql.$cm$;
-comment on column public.dungeon_v2_runs.id is $c$Run id of a v2 Dungeon run. No ledger and no dungeon_log row points at it (0 loot, QD1).$c$;
-comment on column public.dungeon_v2_runs.player_id is $c$The tester (players.id) who plays the run.$c$;
-comment on column public.dungeon_v2_runs.day is $c$The game day the run started (dungeon_day()). The floors are the dungeon_days row of this day.$c$;
-comment on column public.dungeon_v2_runs.squad is $c$The 5 card ids (cards.id) that the tester picked at the start, in pick order.$c$;
-comment on column public.dungeon_v2_runs.state is $c$The run state, engine 2: units, info, carry, phase, room_type, fight, turn, offers, last_pick, heal_floor, pending empower and ward, last. Never bank or pend.$c$;
-comment on column public.dungeon_v2_runs.floor is $c$The current floor (1 = the first floor).$c$;
-comment on column public.dungeon_v2_runs.room is $c$The current room of the floor (1 = the first room).$c$;
-comment on column public.dungeon_v2_runs.turns is $c$The count of card turns played in this run.$c$;
-comment on column public.dungeon_v2_runs.status is $c$active while the run plays, over when it ended.$c$;
-comment on column public.dungeon_v2_runs.ended_by is $c$How the run ended: cleared, fell, retreat or abandoned (an active run of an earlier day, ended at the next start). Null while active.$c$;
-comment on column public.dungeon_v2_runs.attempt is $c$The number of the run of this player on this day (1, 2, ...), counted in dungeon_v2_runs only (QD2: an extra run).$c$;
-comment on column public.dungeon_v2_runs.started_at is $c$When the run started.$c$;
-comment on column public.dungeon_v2_runs.ended_at is $c$When the run ended. Null while active.$c$;
+comment on column public.dungeon_v2_runs.id is $cm$Run id of a v2 Dungeon run. No ledger and no dungeon_log row points at it (0 loot, QD1).$cm$;
+comment on column public.dungeon_v2_runs.player_id is $cm$The tester (players.id) who plays the run.$cm$;
+comment on column public.dungeon_v2_runs.day is $cm$The game day the run started (dungeon_day()). The floors are the dungeon_days row of this day.$cm$;
+comment on column public.dungeon_v2_runs.squad is $cm$The 5 card ids (cards.id) that the tester picked at the start, in pick order.$cm$;
+comment on column public.dungeon_v2_runs.state is $cm$The run state, engine 2: units, info, carry, phase, room_type, fight, turn, offers, last_pick, heal_floor, pending empower and ward, last. Never bank or pend.$cm$;
+comment on column public.dungeon_v2_runs.floor is $cm$The current floor (1 = the first floor).$cm$;
+comment on column public.dungeon_v2_runs.room is $cm$The current room of the floor (1 = the first room).$cm$;
+comment on column public.dungeon_v2_runs.turns is $cm$The count of card turns played in this run.$cm$;
+comment on column public.dungeon_v2_runs.status is $cm$active while the run plays, over when it ended.$cm$;
+comment on column public.dungeon_v2_runs.ended_by is $cm$How the run ended: cleared, fell, retreat or abandoned (an active run of an earlier day, ended at the next start). Null while active.$cm$;
+comment on column public.dungeon_v2_runs.attempt is $cm$The number of the run of this player on this day (1, 2, ...), counted in dungeon_v2_runs only (QD2: an extra run).$cm$;
+comment on column public.dungeon_v2_runs.started_at is $cm$When the run started.$cm$;
+comment on column public.dungeon_v2_runs.ended_at is $cm$When the run ended. Null while active.$cm$;
 
 -- ============================================================ 2. the card unit and the screen facts of a card
 create or replace function public.dungeon_v2_unit(p_player text, p_card bigint, p_b jsonb default null) returns jsonb
