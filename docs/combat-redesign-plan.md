@@ -2567,7 +2567,7 @@ changes: `combat_v2` is OFF, and no v1 function changes. Nathan's 9 answers of 2
   - `test-combat-v2-synergy.mjs` PASS all 22 cases (C1 md5 of the other functions, C3a to C3k, server only, idempotent; round 2).
     C3j: 3 fight rooms of the week 2026-10-25, each read at its first card turn: each card `syn` = `combat_v2_synergy` of the room state; the
     room state and the first step without `syn` = the R1b text with the same seed; the live text minus its one `-- SYN` line has the R1b md5.
-    MUTATE=all: baseline PASS in the same run, **37 of 37** caught (round 3; 4 for C3j: `room_no_synergy`, `synergy_room_1_only`, `synergy_draws`,
+    MUTATE=all: baseline PASS in the same run, **40 of 40** caught (round 4; 4 for C3j: `room_no_synergy`, `synergy_room_1_only`, `synergy_draws`,
     `r1b_extra_change`). `M3m_no_spec_branch` and `notags_raise` stop the block (the file does not
     apply; the synergy raises); the harness counts them only with their exact error text. The first DB run failed 3 cases, each a test
     defect: the `subjects_flatten_tags` trigger rebuilds `tag_slugs` from `tags` (C3e), the ratio helper did not walk arrays (C3i), and a
@@ -2588,7 +2588,7 @@ changes: `combat_v2` is OFF, and no v1 function changes. Nathan's 9 answers of 2
     1.3622 and 1.2906: both FAIL as required. The scripts and outputs: `lptcg-pipeline/items/SYN/evidence/c4b/` (not in this repo).
   - Round 2 (review r1): C3d names every number that must scale for each block (the focus `crd` and `value`, each target of `shield_all`,
     `heal_all`, `rally`, quicken `all` in round 3); C3g checks that the Lab fight calls `combat_v2_synergy` once. Mutations `REV_focus_crd_no_sf` and
-    `REV_lab_no_synergy` (round 2) and `REVR2_quicken_all_unscaled` (round 3) are caught.
+    `REV_lab_no_synergy` (round 2) and `REVR2_quicken_all_unscaled` (round 3) are caught. Round 4 (review r3): C3d runs each case again with `set_x` 1.10 (`aff_x` 1), the same paths x 1.10; `R3_863_focus_crd_set_x`, `R3_910_apply_set_x` and `R3_925_random_apply_set_x` (`sf` -> `sa`) are caught.
 - **Note for the next set**: `combat_v2_synergy` multiplies `set_x` over every set of `v2_synergy.sets`, but `set_n` holds the count of
   the last set only. Today there is one set (`forbidden_pride`), so nothing changes. A second set must give `set_n` per set.
 - **Go-live order**: after R1a and R1b (the file replaces R1a and R1b functions). `rehearse-sql.mjs` on copy 1, `apply-sql.mjs --live` (grants OK),

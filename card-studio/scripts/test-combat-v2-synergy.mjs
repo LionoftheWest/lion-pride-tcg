@@ -44,6 +44,10 @@ const MUT = {
     "create or replace function public.card_element(p_tags text[]) returns text language sql stable parallel safe set search_path = public as $ce$\n  select a.element from unnest(coalesce(p_tags, '{}'::text[])) t join public.element_aliases() a on a.alias = lower(trim(regexp_replace(t, '^trait:', '', 'i'))) order by a.ord limit 1 $ce$;\n-- ============================================================ 6. server only"]], 'C1'],
   // C3d (review r1 B-1): the focus crd without the affinity and set factor
   REVR2_quicken_all_unscaled: ['mig', [["id::numeric), 'quickened', jsonb_build_object('value', 1 + amt * ab", "id::numeric), 'quickened', jsonb_build_object('value', 1 + amt / sf * ab"]], 'C3d'],   // review r2 R2-1
+  // C3d (review r3 R3-1): the set_x part of sf dropped (sf -> sa) at the focus crd, the apply value and the random_apply value
+  R3_863_focus_crd_set_x: ['mig', [["(blk->>'crd')::numeric * ab * sf)", "(blk->>'crd')::numeric * ab * sa)"]], 'C3d'],
+  R3_910_apply_set_x: ['mig', [["amt := (am->>'v')::numeric * cnt * ab * cr * sf;", "amt := (am->>'v')::numeric * cnt * ab * cr * sa;"]], 'C3d'],
+  R3_925_random_apply_set_x: ['mig', [["jsonb_build_object('value', (op->>'value')::numeric * sf)", "jsonb_build_object('value', (op->>'value')::numeric * sa)"]], 'C3d'],
   REV_focus_crd_no_sf: ['mig', [["(blk->>'crd')::numeric * ab * sf)", "(blk->>'crd')::numeric * ab)"]], 'C3d'],
   // C3a
   M3a_beats_proposal: ['mig', [['where e.beater = el and not e.proposal), ', 'where e.beater = el), ']], 'C3a'],
@@ -412,6 +416,14 @@ begin
     t := coalesce((select jsonb_agg(coalesce(q->>'path', 'hit ' || (q->>'hit')) order by coalesce(q->>'path', 'hit ' || (q->>'hit'))) from jsonb_array_elements(got->'ratios') q), '[]'::jsonb);
     o := o || jsonb_build_object('blocks', blk, 'ok', (got->>'ok')::boolean and t = want
       and not exists (select 1 from jsonb_array_elements(got->'ratios') q where (q->>'r')::numeric <> 1.30), 'scaled', t, 'want', want, 'got', got);
+    -- review r3 R3-1: the same case with set_x 1.10 (aff_x 1): the same paths, each x 1.10 (the set_x part of sf at the crd, apply and
+    -- random_apply lines; with aff_x 1.30 and set_x 1 a site that uses sa in place of sf gives the same result)
+    r2 := combat_v2_card_act(jsonb_set(s, '{cards,1,syn}', '{"aff_x": 1, "set_x": 1.10}'::jsonb), '{"side": "card", "id": 1}'::jsonb, jsonb_build_object('use', true, 'target', jsonb_build_object('side', 'enemy', 'id', 0),
+      'ally', jsonb_build_object('side', 'card', 'id', 2), 'draws', dr), b);
+    got := pg_temp.syn_ratios(s, r, r2);
+    t := coalesce((select jsonb_agg(coalesce(q->>'path', 'hit ' || (q->>'hit')) order by coalesce(q->>'path', 'hit ' || (q->>'hit'))) from jsonb_array_elements(got->'ratios') q), '[]'::jsonb);
+    o := o || jsonb_build_object('set_x', 1.10, 'blocks', blk, 'ok', (got->>'ok')::boolean and t = want
+      and not exists (select 1 from jsonb_array_elements(got->'ratios') q where (q->>'r')::numeric <> 1.10), 'scaled', t, 'want', want, 'got', got);
   end loop;
   -- the chance is not scaled (M3i): every draw 0.6 (0.5 <= 0.6 < 0.5 x 1.30), so the status lands in neither run
   for blk in select v from jsonb_array_elements(${lit(JSON.stringify([
@@ -429,7 +441,7 @@ begin
     o := o || jsonb_build_object('blocks', blk, 'draw', 0.6, 'ok', got->'bad' = '[]'::jsonb and got->'ratios' = '[]'::jsonb
       and r->'state'->'enemies'->0->'status' is not distinct from foe->'status', 'got', got);
   end loop;
-  res := res || jsonb_build_object('case', 'C3d every support amount block (shield, shield_all, heal, heal_all, empower, rally, focus value and crd, quicken, smite, area, apply exposed, random_apply value) x aff_x 1.30 exactly; stacks, chances, durations and the draw list the same; a draw of 0.6 lands no status (chance 0.5) with aff_x 1.30',
+  res := res || jsonb_build_object('case', 'C3d every support amount block (shield, shield_all, heal, heal_all, empower, rally, focus value and crd, quicken, smite, area, apply exposed, random_apply value) x aff_x 1.30 exactly, and x set_x 1.10 exactly (aff_x 1); stacks, chances, durations and the draw list the same; a draw of 0.6 lands no status (chance 0.5) with aff_x 1.30',
     'ok', not exists (select 1 from jsonb_array_elements(o) q where not (q->>'ok')::boolean), 'cases', o);
 
   -- ========== C3e: the set synergy on synthetic subjects (set values 1.05 / 1.10 / 1.15 in this block)
