@@ -290,7 +290,16 @@ export function v1RunOf(v) {
   if (!R) return null;
   const st = R.state || {};
   return { id: R.id, status: R.status, ended_by: R.ended_by ?? null, floor: R.floor, room: R.room, turns: R.turns ?? 0, rank: null, shards: 0,
-    squad: (st.squad || []).map(Number), state: { phase: st.phase, room_type: st.room_type, offers: st.offers || [], pend: { shards: 0, cards: [] }, bank: { shards: 0, cards: [] } } };
+    squad: (st.squad || []).map(Number), state: { phase: st.phase, room_type: st.room_type, offers: st.offers || [], ...lootOf(v, R, st) } };
+}
+/** ON-UI (ON SPEC 3.5): a live run (the view flag live and the row mark run.live) shows its loot chips; a test run (mark false) shows 0.
+ *  The loot is the v1 shape (state.pend / state.bank: shards, cards), written by the R2-ON loot rules for live runs only. */
+export const isLive = (v) => !!(v?.live === true && v.run && v.run.live !== false);
+function lootOf(v, R, st) {
+  const z = () => ({ shards: 0, cards: [] });
+  if (!isLive(v)) return { pend: z(), bank: z() };
+  const one = (x) => ({ shards: Number(x?.shards) || 0, cards: Array.isArray(x?.cards) ? x.cards : [] });
+  return { pend: one(st.pend), bank: one(st.bank) };
 }
 /** Does this v2 answer take the screen? A tester's v2 run of today (active or just over); else the v1 screens stay (INV-E1). */
 export const v2Owns = (v) => !!(v?.ok && v.run && (v.active_mode === 'gauntlet_v2' || v.run.status === 'over'));
@@ -298,7 +307,10 @@ export const v2Owns = (v) => !!(v?.ok && v.run && (v.active_mode === 'gauntlet_v
  *  v1 view (v1) has no active run (QD2: the v2 run is an extra run, so a v1 run of the same day keeps its screens). */
 export const v2OwnsDungeon = (v, v1) => !!(v?.ok && v.run && (v.run.status === 'active' || (v.run.status === 'over' && v1?.run?.status !== 'active')));
 /** The Dungeon test mode (R2b): the tester-only "Play v2 (test)" in the lobby. can_start is the server's (tester, no active v2 run, a run left). */
-export const v2CanStart = (v) => !!(v?.ok && v.tester === true && v.can_start === true);
+export const v2CanStart = (v) => !!(v?.ok && (v.tester === true || v.live === true) && v.can_start === true);
+/** ON-UI screen rule (ON SPEC 3.5, review M-2): while the member has an active v1 run of today (dungeon_v2_view.v1_run), the Dungeon
+ *  opens the v1 run screen; else v2 when live is true or the member is a tester. */
+export const v1RunFirst = (v) => !!(v?.ok && v.v1_run);
 
 // ---- The view (DOM) -----------------------------------------------------------------------------------------------------------------
 const ic = (name, size = 'sm') => ui3Icon(name, { size, cls: 'g2-ico' });

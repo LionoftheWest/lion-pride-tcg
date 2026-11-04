@@ -237,6 +237,14 @@ export const SCREENS = {
   'dungeon-v2-path': { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-path', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-v2-pass': { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-pass', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-v2-floor': { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-floor', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  // ON-UI (combat v2 for every member, ON SPEC 3.5, G-UI): the member mode (live, not a tester): cookie ci_dungeon = m2-* (serve.mjs derivedM2).
+  // (a) no test text, Start run starts v2, the loot chips; (b) m2-v1: an active v1 run of today keeps the v1 fight (mutation screen_reads_live_only).
+  'dungeon-m2-lobby': { id: 'UI-46', long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-lobby', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-m2-done': { id: 'UI-46', long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-done', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-m2-fight': { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-fight', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
+  'dungeon-m2-choose': { id: 'UI-48', long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-choose', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-m2-over': { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-m2-v1': { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-v1', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
   'dungeon-v2-over': { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-over':        { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-over-revealed': { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '.u3-dgs-reveal, .dg-reveal'], ['wait', 3]] },

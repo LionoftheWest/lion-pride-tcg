@@ -145,9 +145,13 @@ async function load() {
   if (m !== dg.mode) return dg.data;   // the member switched tabs while it loaded
   dg.data = d && d.ok ? d : { closed: true, message: GA() && d?.error === 'disabled' ? 'The Gauntlet is closed.' : d?.message || (GA() ? 'The Gauntlet is closed.' : 'The Dungeon is closed.') };
   dg.v2 = null; dg.v2can = false;
-  if (d?.ok && (GA() ? g2.v2Owns(v2) : g2.v2OwnsDungeon(v2, d))) v2Take(v2);
+  // ON-UI: the member mode (dungeon_v2_view.live, combat v2 for everyone): the v2 run is THE run of the day (no test button, Start run starts v2)
+  dg.v2live = !GA() && !!(v2?.ok && v2.live === true);
+  if (d?.ok && !GA() && g2.v1RunFirst(v2)) dg.v2live = false;   // ON-UI screen rule: an active v1 run of today keeps the v1 screens
+  else if (d?.ok && (GA() ? g2.v2Owns(v2) : g2.v2OwnsDungeon(v2, d))) v2Take(v2);
   // R2b: the tester-only "Play v2 (test)" in the Dungeon lobby (QD2: an extra run, so the lobby shows when the v1 run is not active)
   else if (d?.ok && !GA() && g2.v2CanStart(v2) && !active()) { dg.v2can = true; dg.data = { ...dg.data, run: null }; }
+  else if (dg.v2live && !active()) dg.data = { ...dg.data, run: null };   // live, no run left today: the lobby with Start run disabled
   return dg.data;
 }
 // R1e (combat v2, testers): the v2 answer owns the run. The v1 screens that the v2 run reuses (Q-E1: reward, rest, door, floor done, over)
@@ -449,9 +453,10 @@ function lobbyV3HTML() {
   const head = `<header class="u3-dg-head"><img class="u3-dg-thumb" src="/dungeon/room.webp" alt="">${icon3('castle', 'lg')}<h1 class="u3-dg-name">${esc(d.name)}</h1>${date}</header>`;
   const timer = `<section class="u3-dg-panel u3-dg-timer">${icon3('timer')}<span>New dungeon in</span><b class="dg-left">${left(d.next_at)}</b></section>`;
   const pick = s.picks.length ? btn3({ label: 'Edit', data: { pickopen: '1' } }) : btn3({ label: 'Select your squad', variant: 'primary', data: { pickopen: '1' } });
-  const start = btn3({ label: 'Start run', icon: 'swords', variant: 'primary', disabled: !s.ok || dg.busy, busy: dg.busy, busyLabel: 'Starting', data: { start3: '1' } })
+  const start = btn3({ label: 'Start run', icon: 'swords', variant: 'primary', disabled: !s.ok || dg.busy || (dg.v2live && !dg.v2can), busy: dg.busy, busyLabel: 'Starting', data: { start3: '1' } })
     // R2b (combat v2 testers, R2 SPEC 3.4): the same squad starts a v2 test run; only when the server says can_start (dungeon_v2_view)
-    + (dg.v2can ? btn3({ label: 'Play v2 (test)', icon: 'swords', disabled: !s.ok || dg.busy, data: { start2: '1' } }) : '');
+    // ON-UI: in the member mode (live) Start run itself starts the v2 run, so the test button is not shown
+    + (dg.v2can && !dg.v2live ? btn3({ label: 'Play v2 (test)', icon: 'swords', disabled: !s.ok || dg.busy, data: { start2: '1' } }) : '');
   const types = ['Character', 'Creature', 'Item', 'Moment', 'Place'];
   const ruleChips = rule.types ? `<div class="u3-dg-rchips">${types.map((t) => `<span class="u3-dg-rchip ${rule.types.includes(t) ? 'is-yes' : 'is-no'}">${icon3(rule.types.includes(t) ? 'check' : 'ban')}${t}</span>`).join('')}</div>` : '';
   const ruleIn = `<span class="u3-label u3-dg-k">${icon3('layers')}Today's rule</span><h2 class="u3-dg-h">${esc(rule.name || 'Everything goes')}</h2>${rule.note ? `<p class="u3-dg-p">${esc(rule.note)}</p>` : ''}${ruleChips}`;
@@ -536,6 +541,7 @@ function wireLobbyV3(main) {
   if (!dg.tight && ((slot && slot.getBoundingClientRect().width < TOKENS['card-mini']) || over)) { dg.tight = 1; paint(); return; }
   main.querySelector('[data-start2]')?.addEventListener('click', () => startV2(M));
   main.querySelector('[data-start3]')?.addEventListener('click', async () => {
+    if (dg.v2live) { if (dg.v2can) startV2(M); return; }   // ON-UI: the member mode starts the v2 run (the v1 start refuses v2_on)
     if (dg.busy || !squadStatus(dg.sel).ok) return;
     dg.busy = true; paint(); mark('room:go');
     let r = null;

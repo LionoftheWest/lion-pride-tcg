@@ -161,6 +161,7 @@ function derivedFight(body, kind) {
   return { ...base, name: 'The Hollow Mines', run: { ...R, state: st } };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && ['fight', 'fight2', 'fight-2s3', 'fight-1s4'].includes(c.ci_dungeon) && body?.ok, make: (body, c) => derivedFight(body, c.ci_dungeon) });
+DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && c.ci_dungeon === 'm2-v1' && body?.ok, make: (body) => derivedFight(body, 'fight') });   // ON-UI fixture (b): the v1 run of today
 // UI-52: a Gauntlet fight (cookie ci_dungeon = g-fight): the week's squad (3 attackers, 2 supports) against the 5-monster horde of the
 // approved frames; floor 2, room 4 of 5, week best 4F R1, damage +23%. The squad cards come from the recorded lobby answer.
 function derivedGauntletFight(body) {
@@ -249,6 +250,24 @@ function derivedD2(kind) {
   return v;
 }
 DERIVED.push({ when: (p, c) => p === '/api/dungeon/v2/view' && D2_KINDS.includes(c.ci_dungeon), make: (body, c) => derivedD2(c.ci_dungeon) });
+// ON-UI (combat v2 for every member, ON SPEC 3.5, G-UI fixtures): cookie ci_dungeon = m2-<state>: the same answers as d2-<state> with the
+// flag ON for a member who is not a tester (live true, tester false) and the live row mark (run.live true) with loot: 3 Shards and 1 card
+// at risk, 12 Shards banked. m2-lobby: no run, can_start (Start run starts v2). m2-done: no run left today. m2-v1 (fixture b): the flag ON
+// and an active v1 run of today (v1_run): the v1 fight screen (/api/dungeon answers the v1 fight below).
+const M2_KINDS = ['m2-fight', 'm2-lobby', 'm2-over', 'm2-done', 'm2-choose', 'm2-v1'];
+function derivedM2(kind) {
+  const v = derivedD2({ 'm2-fight': 'd2-fight', 'm2-over': 'd2-over', 'm2-choose': 'd2-choose' }[kind] || 'd2-lobby');
+  Object.assign(v, { tester: false, live: true, v1_run: null });
+  if (v.run) {
+    v.run.live = true;
+    Object.assign(v.run.state, { pend: { shards: 3, cards: [v.run.state.squad?.[0] ?? 1] }, bank: { shards: 12, cards: [] } });
+    if (kind === 'm2-over') Object.assign(v.run, { shards: 15, cards: [] });
+  }
+  if (kind === 'm2-done') Object.assign(v, { can_start: false, runs_left: 0 });
+  if (kind === 'm2-v1') Object.assign(v, { can_start: false, runs_left: 0, v1_run: { id: 1879, floor: 2, room: 3 } });
+  return v;
+}
+DERIVED.push({ when: (p, c) => p === '/api/dungeon/v2/view' && M2_KINDS.includes(c.ci_dungeon), make: (body, c) => derivedM2(c.ci_dungeon) });
 // UI-50: the run over (a fall on floor 3, room 2) with 4 found cards: the names of the approved frames.
 function derivedOver(body) {
   const base = derivedDungeon(body);

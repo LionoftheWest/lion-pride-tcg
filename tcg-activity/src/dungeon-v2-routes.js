@@ -58,6 +58,7 @@ export function registerDungeonV2Routes(app, { supabase, caller, rateLimit, getC
     if (error) { res.status(500).json({ error: error.message }); return null; }
     if (!data?.ok) { fail(res, data); return null; }
     if (data.tester === true) { testers.set(player, Date.now()); return { player, view: data }; }
+    if (data.live === true) return { player, view: data };   // ON-UI: combat v2 for everyone (the view flag live; ON SPEC 3.5)
     if (!start && data.run?.status === 'active') return { player, view: data };
     res.status(403).json({ ok: false, error: 'not_tester', message: ERR.not_tester });
     return null;
