@@ -173,4 +173,13 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
     const me = await gate(req, res, true); if (!me) return;
     await rpc(res, 'gauntlet_start', { p_player: String(me.id) });
   });
+  // R1-ON (combat_v2_on_gauntlet.sql): the Gauntlet view and board read the member v2 runs too, but a v2 write goes through the
+  // /api/gauntlet/v2 routes (gauntlet-v2-routes.js), not through gate() above. Those routes call this after each write: it drops the
+  // member's cached GET /api/gauntlet (best, rank, runs_left) and, when the run ended, the shared Gauntlet board. No v1 route changes.
+  return {
+    gauntletRunChanged(memberId, ended) {
+      views?.bust(`g:${memberId}`);
+      if (ended) boards?.bust('g');
+    },
+  };
 }
