@@ -284,8 +284,11 @@ test('exceptions.json: every entry is valid; the UI-49 empty-space entries name 
   const { readFileSync } = await import('node:fs');
   const list = JSON.parse(readFileSync(new URL('./exceptions.json', import.meta.url), 'utf8'));
   assert.doesNotThrow(() => verdict(full(), REG, { browsers: ['chromium'], exceptions: list }));
+  const TEST_V2 = ['dungeon-v2-floor', 'dungeon-v2-pass', 'dungeon-v2-over'];   // D-210: the Dungeon v2 TEST version may show an empty reward area
   const mine = list.filter((e) => e.id === 'UI-49');
-  assert.ok(mine.length > 0 && mine.every((e) => e.decision === 'D-134' && e.rule === 'empty' && /^dungeon-/.test(e.screen)));
+  assert.ok(mine.length > 0 && mine.every((e) => (e.decision === 'D-134' || (e.decision === 'D-210' && TEST_V2.includes(e.screen))) && e.rule === 'empty' && /^dungeon-/.test(e.screen)));
+  const d210 = list.filter((e) => e.decision === 'D-210');   // only the 3 test specs, only the empty rule: never a v1 spec or a member spec
+  assert.ok(d210.length > 0 && d210.every((e) => TEST_V2.includes(e.screen) && e.rule === 'empty' && ['UI-49', 'UI-50'].includes(e.id)));
   const pts = list.filter((e) => e.id === 'UI-08');   // D-171: the open stat points editor on a phone sheet
   assert.equal(pts.length, 10);   // the enforced phone sizes (375x667 is report-only, D-136) and the portrait tablets 692x917 and 820x1180 (D-181)
   assert.ok(pts.every((e) => e.decision === 'D-171' && e.rule === 'missing' && ['collection-detail-points', 'stat-points-error'].includes(e.screen) && ['412x915', '430x822', '430x932', '692x917', '820x1180'].includes(e.size) && /stat-points-open/.test(e.why)));
