@@ -30,11 +30,12 @@ function fnText(src, name, file) {
   const semi = src.indexOf(';', close + m[1].length);
   return src.slice(i, semi + 1);
 }
-// the base texts (main = live for the 3 v1 functions; the R1b file for gauntlet_v2_begin)
+// the base texts: the migration file that made each live text before this file (SUPERSEDED.md "live =" names; not db/schema, which
+// shows the state AFTER this file once the snapshot is made again). The R1-ON guard checks each md5: a wrong base text makes it raise.
 const BASE = {
-  board: fnText(read('../../db/schema/functions/gauntlet_board.sql'), 'gauntlet_board', 'db/schema gauntlet_board.sql'),
-  view: fnText(read('../../db/schema/functions/gauntlet_view.sql'), 'gauntlet_view', 'db/schema gauntlet_view.sql'),
-  pool: fnText(read('../../db/schema/functions/gauntlet_pool.sql'), 'gauntlet_pool', 'db/schema gauntlet_pool.sql'),
+  board: fnText(read('../../tcg-bot/supabase/board_tie_order.sql'), 'gauntlet_board', 'board_tie_order.sql'),
+  view: fnText(read('../../tcg-bot/supabase/runs_per_day.sql'), 'gauntlet_view', 'runs_per_day.sql'),
+  pool: fnText(read('../../tcg-bot/supabase/gauntlet.sql'), 'gauntlet_pool', 'gauntlet.sql'),
   begin: fnText(read('../../tcg-bot/supabase/combat_v2_gauntlet_run.sql'), 'gauntlet_v2_begin', 'combat_v2_gauntlet_run.sql'),
 };
 const BASE_SQL = Object.values(BASE).join('\n');
