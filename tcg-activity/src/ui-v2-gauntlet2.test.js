@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, STRIP_N } from './ui-v2-gauntlet2.js';
+import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, cardStatusHTML, squadOf, STRIP_N } from './ui-v2-gauntlet2.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIX = JSON.parse(readFileSync(join(here, '..', '..', 'ci', 'ui-check', 'fixtures', 'g2-fight.json'), 'utf8')).body;
@@ -153,4 +153,15 @@ test('the v2 view owns the screen only for a tester with a v2 run (INV-E1)', () 
 test('the act body has only use, target and ally (R1c INV-C4)', () => {
   assert.deepEqual(choiceOf({ use: 'basic', target: 2, actor: 9 }), { use: 'basic', target: 2 });
   assert.deepEqual(choiceOf({ use: 'active', target: -1, ally: 5 }), { use: 'active', ally: 5 });
+});
+
+test('the Shielded place stays when a card has no shield (nothing moves, INV-E3)', () => {
+  const v = fresh();
+  const places = (id) => [...cardStatusHTML(squadOf(v).find((c) => c.id === id)).matchAll(/class="g2-b[ "]/g)].length;
+  const first = (id) => /^<span class="g2-b ([^"]*)"/.exec(cardStatusHTML(squadOf(v).find((c) => c.id === id)))?.[1] || '';
+  assert.equal(places(124), 2);
+  assert.match(first(124), /f-boon/);
+  v.status_lines['card:124'] = v.status_lines['card:124'].filter((l) => l.key !== 'shielded');   // the shield is gone
+  assert.equal(places(124), 2);   // the empty place + Empowered: Empowered does not move left
+  assert.equal(first(124), 'is-empty');
 });

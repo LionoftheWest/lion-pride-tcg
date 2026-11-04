@@ -200,7 +200,7 @@ const pipsHTML = (c) => (c.need > 0 ? `<span class="g2-pips${c.ready ? ' is-read
 const roleHTML = (c, sm) => (c.role ? `<span class="g2-role ${c.cls === 'support' ? 'is-sup' : 'is-att'}${sm ? ' is-sm' : ''}" title="${c.role}">${ic(ROLE_ICON[c.role] || 'circle', sm ? 'xs' : 'md')}</span>` : '');
 // The Shielded place stays when there is no shield (nothing moves when a status changes, INV-E3).
 const shieldPlace = (c) => { const b = c.badges.find((x) => x.key === 'shielded'); return b ? badgeHTML(b, { unit: `card:${c.id}` }) : '<span class="g2-b is-empty"></span>'; };
-function cardStatusHTML(c) {
+export function cardStatusHTML(c) {
   const rest = c.badges.filter((x) => x.key !== 'shielded');
   const p = placesOf(rest, CARD_PLACES - 1);
   return shieldPlace(c) + p.shown.map((b) => badgeHTML(b, { unit: `card:${c.id}` })).join('') + moreHTML(p.more);
