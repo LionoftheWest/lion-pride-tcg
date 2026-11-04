@@ -115,6 +115,12 @@ export async function pushCard(card, artFor, outDir, onProgress) {
     if (sete) throw new Error(`set ${sid}: ${sete.message}`);
     if (!set) throw new Error(`set ${sid} does not exist. Create it in the Sets section first.`);
   }
+  // INV-8 (S2-PUB): a push never sets a live v1 ability to null (the upsert below writes card.ability ?? null). No write before this check.
+  if (card.ability == null) {
+    const { data: live, error: le } = await supabase.from('subjects').select('ability').eq('key', card.id).maybeSingle();
+    if (le) throw new Error(`subject ${card.id}: ${le.message}`);
+    if (live && live.ability != null) throw new Error(`${card.name}: the live v1 ability would be removed. Put the ability in cards.json first.`);
+  }
   await ensureBucket();
 
   // Progress is measured in frame-units: each animated tier is FRAMES frames,
