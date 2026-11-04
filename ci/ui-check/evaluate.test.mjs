@@ -342,3 +342,11 @@ test('UI-52 v2 fight exceptions (D-155): 6 specs x the 5 portrait sizes, rule mi
   const x = (screen, rule) => ({ owner: 'UI-52', screen, size: '430x932', rule });
   assert.ok(!list.some((e) => accepts(e, x('gauntlet-v2-fight', 'bleed'))), 'only the missing rule is excepted');
 });
+test('PACK-SET-B: open-chooser-sets is enforced at 375x667 (enforceAt); every other screen stays report-only there', () => {
+  assert.deepEqual(SCREENS['open-chooser-sets'].enforceAt, ['375x667']);
+  const midword = { rule: 'bleed', where: 'midword: .u3-set__name', size: '375x667' };
+  assert.equal(reportOnly({ ...midword, screen: 'open-chooser-sets' }), false, 'the Origins word break fails G3');
+  assert.equal(reportOnly({ ...midword, screen: 'open-chooser' }), true, 'D-154 unchanged for the other screens');
+  assert.equal(reportOnly({ ...midword, screen: 'open-chooser-sets', size: '667x375' }), true, 'only the listed size');
+  for (const [k, s] of Object.entries(SCREENS)) if (s.enforceAt) assert.ok(s.enforceAt.every((z) => REPORT_ONLY_SIZES.includes(z)), k + ': enforceAt lists report-only sizes only');
+});

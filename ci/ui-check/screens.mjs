@@ -340,7 +340,8 @@ export const SCREENS = {
   'open-chooser':        { id: 'UI-33', safe: true, under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen']] },
   // PACK-SET-B: the Open window with 2 pullable sets (S1 + S2 Double Team "New" with its pack art, serve.mjs ci_open=sets).
   // The count step makes the cell "not checked" unless 2 set tiles show (a cookie that never matches would check 1 tile).
-  'open-chooser-sets':   { id: 'UI-33', safe: true, under: 'UI-03', open: 'sets', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['count', '.u3-set', 2]] },
+  // enforceAt: the set name must not break inside a word at 375x667 either (Nathan 2026-11-04, "Fix the Origins word break"; G3 midword check).
+  'open-chooser-sets':   { id: 'UI-33', safe: true, under: 'UI-03', open: 'sets', enforceAt: ['375x667'], notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['count', '.u3-set', 2]] },
   // The single pack reveal (UI-34): the open answer comes from serve.mjs (openAnswer, 1 pack with a Full Art).
   // Waiting (the idle loop), then the cards face down after the tap, then every card turned (Reveal all).
   'pack-single':         { id: 'UI-34', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['js', '.u3-count[data-count="1"]'], ['wait', 1.5]] },
