@@ -143,6 +143,8 @@ const NEW_FNS = ['balance_shape_errors', 'balance_v2_spec', 'balance_check_comba
   'spend_stat_points', 'reset_stat_points', 'buy_shop_item', 'shop_today',   // M1d combat_v2_progress_freeze_v1.sql: the v1 spend and reset refuse, the Shop reset routes to v2 and shop_today shows its free reset, when combat_v2_on progress is ON
   'combat_v2_card_unit', 'gauntlet_v2_foes', 'combat_v2_step',   // R1a combat_v2_gauntlet_builders.sql: the v2 Gauntlet builders (v2_speed, v2_charge, v2_dungeon and the engine keys); no function in play calls them
   'card_progress_v2_view', 'spend_card_points_v2', 'reset_card_points_v2',   // M1c combat_v2_progress_spend.sql: a player spends and resets v2 points (combat_v2_on progress, v2_stats, v2_level); no fight reads it
+  'combat_v2_convert_expect', 'combat_v2_convert_write', 'combat_v2_convert', 'combat_v2_convert_undo', 'combat_v2_convert_check', 'combat_v2_convert_fix',
+  'card_progress_v2_fight',   // M1e combat_v2_convert.sql: the stat conversion at the switch (v2_convert, v2_stats, v2_level, card_level) and the fight level (N-7b); called by the switch file and dungeon_v2_unit (R2-ON)
   'balance_check'];   // combat_v2_testers.sql: the generic balance trigger names combat_v2 only to let a tester id go (it reads no mode)
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 
