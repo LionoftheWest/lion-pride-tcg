@@ -12,13 +12,17 @@ import './localdb-guard.mjs';
  * Lines (the gate reads them):
  *   CARDS_FILE <path> sha256=<x>                                   first line
  *   ART <key> <finish> <path relative to card-studio> <sha256>    every finish of a card, before its push
+ *   FACE <key> <finish> v2 role=<r> name="<n>" | v1 | v1 no-ui68   the face of each finish (UI-68 src/face-data.js loadFaceV2, the same
+ *                                                                  env: FACE_V2=0, FACE_V2_FILE); before each ROW line, and in --dry
+ *   CHECK <key> <finish> ok|FAIL white=<f> blankRows=<f>           the face content check (scripts/face-check.mjs) after the push;
+ *   RETRY <key> face check                                         a FAIL re-renders the card once (rows update in place), a 2nd FAIL stops
  *   WOULD PUSH <key>                                               --dry
  *   ROW <key> <finish> id=<row id> number=<set_number> image_url=<url>   read from the target after the push
  *   PUSHED <key> <n> tiers numbers=<list>
  *   ERROR <key>: <message> / STOPPED at <key>
  *   SUMMARY pushed=<n> errors=<n> selected=<n> target=<LOCAL <url>|LIVE <ref>>   last line
  */
-import { readFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, mkdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -57,6 +61,12 @@ async function main() {
   const { artKeyFor } = await import('../src/rarity.js');
   const { resolveArtFile } = await import('../src/artsources.js');
   const { updateCard } = await import('../src/cardstore.js');
+  // UI-68 (PR 504): the face data is loaded ONCE for each card and given to pushCard as card.v2, so the FACE line is the face
+  // that renders. A tree without src/face-data.js renders the face of before UI-68 (v1 no-ui68).
+  const faceMod = existsSync(join(ROOT, 'src', 'face-data.js')) ? await import('../src/face-data.js') : null;
+  const { faceCheck } = await import('./face-check.mjs');
+  // a test hook for the re-render path, LOCAL only: plant a white face PNG once for this key after its first render
+  const whiteOnce = local ? process.env.S2PUB_TEST_WHITE_ONCE || null : null;
 
   let pushed = 0, errors = 0, selected = 0;
   const summary = () => console.log(`SUMMARY pushed=${pushed} errors=${errors} selected=${selected} target=${target}`);
@@ -85,12 +95,32 @@ async function main() {
       const sha = createHash('sha256').update(readFileSync(file)).digest('hex');
       console.log(`ART ${card.id} ${f} ${relative(ROOT, file).replace(/\\/g, '/')} ${sha}`);
     }
-    if (DRY) { console.log(`WOULD PUSH ${card.id}`); continue; }
+    let v2 = null;
+    if (faceMod) { try { v2 = await faceMod.loadFaceV2(supabase, card); } catch (e) { return stop(card.id, e.message || String(e)); } }
+    const face = !faceMod ? 'v1 no-ui68' : v2 ? `v2 role=${v2.role} name="${v2.active?.name ?? ''}"` : 'v1';
+    if (DRY) { for (const f of card.finishes) console.log(`FACE ${card.id} ${f} ${face}`); console.log(`WOULD PUSH ${card.id}`); continue; }
     console.error(`[push-set] ${new Date().toISOString()} rendering ${card.id} (${card.finishes.length} tiers)`);
-    try {
-      await pushCard(card, (r) => resolveArtFile(card.id, artKeyFor(r)), outDir);
-    } catch (e) {
-      return stop(card.id, e.message || String(e));
+    let checked = false;
+    for (let attempt = 0; attempt < 2 && !checked; attempt++) {
+      try {
+        await pushCard(faceMod ? { ...card, v2 } : card, (r) => resolveArtFile(card.id, artKeyFor(r)), outDir);
+      } catch (e) {
+        return stop(card.id, e.message || String(e));
+      }
+      if (attempt === 0 && whiteOnce === card.id) {
+        const sharp = (await import('sharp')).default;
+        await sharp({ create: { width: 500, height: 700, channels: 3, background: '#ffffff' } }).png().toFile(join(outDir, `${card.id}-${card.finishes[0]}.png`));
+        console.log(`TEST planted a white face PNG for ${card.id} ${card.finishes[0]} (S2PUB_TEST_WHITE_ONCE)`);
+      }
+      const fails = [];
+      for (const f of card.finishes) {
+        const c = await faceCheck(join(outDir, `${card.id}-${f}.png`));
+        console.log(`CHECK ${card.id} ${f} ${c.ok ? 'ok' : 'FAIL'} white=${c.white} blankRows=${c.blankRows}`);
+        if (!c.ok) fails.push(f);
+      }
+      if (!fails.length) checked = true;
+      else if (attempt === 0) console.log(`RETRY ${card.id} face check (${fails.join(',')})`);
+      else return stop(card.id, `the face check failed again after one re-render: ${fails.join(',')}`);
     }
     const { data: rows, error } = await supabase.from('cards').select('id, rarity, set_number, image_url, subject:subjects!inner(key)').eq('subject.key', card.id);
     if (error) return stop(card.id, `read back: ${error.message}`);
@@ -100,6 +130,7 @@ async function main() {
       const r = byRarity.get(f);
       if (!r) return stop(card.id, `read back: no cards row for ${f}`);
       nums.push(r.set_number);
+      console.log(`FACE ${card.id} ${f} ${face}`);
       console.log(`ROW ${card.id} ${f} id=${r.id} number=${r.set_number} image_url=${r.image_url}`);
     }
     console.log(`PUSHED ${card.id} ${card.finishes.length} tiers numbers=${nums.join(',')}`);
