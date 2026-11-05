@@ -102,6 +102,7 @@ async function runCell([s, screen, variant], ref = {}) {
         if (spec.treq) cookies.push({ name: 'ci_treq', value: spec.treq, url: BASE });   // UI-63 / UI-25 trade requests (serve.mjs)
         if (spec.fx) cookies.push({ name: 'ci_fx', value: spec.fx, url: BASE });
         if (spec.play) cookies.push({ name: 'ci_play', value: spec.play, url: BASE });   // UI-28: the check server answers POST /api/effects/play (a play that works)
+        if (spec.open) cookies.push({ name: 'ci_open', value: spec.open, url: BASE });   // PACK-SET-B: /api/sets answers 2 sets (serve.mjs)
         if (spec.auction) cookies.push({ name: 'ci_auction', value: spec.auction, url: BASE });   // UI-32: the derived auction states (serve.mjs)
         if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });
         if (cookies.length) await ctx.addCookies(cookies);

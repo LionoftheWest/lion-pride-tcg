@@ -1,6 +1,6 @@
 // The screens and windows of the G3 UI check: the walkthrough of the 2026-10-04 audit (discord-ui-audit/common.py),
 // ported step for step, with the register ID of each screen (docs/ui-register.md).
-// A step: ['dock', view, waitSeconds?] | ['js', selector, fallbackSteps?] | ['wait', seconds]
+// A step: ['dock', view, waitSeconds?] | ['js', selector, fallbackSteps?] | ['wait', seconds] | ['count', selector, n]
 
 export const SIZES = [   // docs/design.md 2.2 (D-18): [width, height, class, touch]. D-136: 667x375, 932x430, 915x412, 1180x820 and 917x692 are DESKTOP windows (phones and tablets are locked to portrait in the Developer Portal): no touch, so no safe and no keyboard variant.
   [375, 667, 'compact-port', true], [667, 375, 'compact-land', false], [430, 932, 'compact-port', true], [932, 430, 'compact-land', false],
@@ -224,6 +224,20 @@ export const SCREENS = {
   'dungeon-fight-finishing-pass': { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight', finish: 'pass', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 5], ['click', '.dg-finish'], ['pause', 0.7]] },
   'dungeon-fight-skipped':        { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight', finish: 'ok', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 5], ['click', '.dg-finish'], ['pause', 1], ['js', '.dg-finish']] },
   'dungeon-fight-finish-old':     { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'fight', finish: '404', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 5], ['js', '.dg-finish']] },
+  // R2b combat v2 Dungeon test mode (testers; R2 SPEC v3 3.4, the UI-52 v2 fight approved for this mode by Nathan 2026-11-03): cookie ci_dungeon = d2-* (serve.mjs derivedD2).
+  'dungeon-v2-lobby': { id: 'UI-46', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-lobby', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-fight-v2': { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-fight', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
+  'dungeon-fight-v2-charging': { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-charge', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
+  'dungeon-fight-v2-tap': { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-fight', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 5], ['js', '.dg-plate[data-foe="0"] .g2-b[data-st="chill"]'], ['wait', 1]] },
+  'dungeon-fight-v2-pick': { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-pick', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 5], ['js', '.dg-sup.g2-actor'], ['wait', 1]] },
+  'dungeon-fight-v2-down': { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-down', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
+  'dungeon-fight-v2-finishing': { id: 'UI-47', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-fight', finish: 'ok', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 5], ['click', '.dg-finish'], ['pause', 2]] },
+  'dungeon-v2-choose': { id: 'UI-48', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-choose', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-v2-rest': { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-rest', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-v2-path': { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-path', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-v2-pass': { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-pass', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-v2-floor': { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-floor', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-v2-over': { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-over':        { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-over-revealed': { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '.u3-dgs-reveal, .dg-reveal'], ['wait', 3]] },
   // v3: the loader and the sign-in retry (UI-56). `loader` = the sign-in state (sdk-stub.js reads the cookie ci_loader): wait = never answers
@@ -338,6 +352,10 @@ export const SCREENS = {
   'walk-8':              { id: 'UI-37', safe: true, under: 'UI-03', walk: true, notOn: ['tiny'], steps: [...WALK_START, ...WALK_NEXT(6)] },
   // The Open window (UI-33) opens over Home: a defect outside the window belongs to Home ('under'). tiny has no dock (D-06).
   'open-chooser':        { id: 'UI-33', safe: true, under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen']] },
+  // PACK-SET-B: the Open window with 2 pullable sets (S1 + S2 Double Team "New" with its pack art, serve.mjs ci_open=sets).
+  // The count step makes the cell "not checked" unless 2 set tiles show (a cookie that never matches would check 1 tile).
+  // enforceAt: the set name must not break inside a word at 375x667 either (Nathan 2026-11-04, "Fix the Origins word break"; G3 midword check).
+  'open-chooser-sets':   { id: 'UI-33', safe: true, under: 'UI-03', open: 'sets', enforceAt: ['375x667'], notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['count', '.u3-set', 2]] },
   // The single pack reveal (UI-34): the open answer comes from serve.mjs (openAnswer, 1 pack with a Full Art).
   // Waiting (the idle loop), then the cards face down after the tap, then every card turned (Reveal all).
   'pack-single':         { id: 'UI-34', under: 'UI-03', notOn: ['tiny'], steps: [['wait', 4], ['js', '#dockOpen'], ['js', '.u3-count[data-count="1"]'], ['wait', 1.5]] },
@@ -504,6 +522,12 @@ export async function runSteps(pg, steps) {
       if (!ok) miss.push(st[1]);
     }
     else if (st[0] === 'pause') await sleep(st[1]);
+    // ['count', sel, n]: n visible elements must match sel within 10 s, else a miss ("not checked").
+    else if (st[0] === 'count') {
+      const ok = await pg.waitForFunction(([q, n]) => [...document.querySelectorAll(q)].filter((x) => x.getClientRects().length).length === n, [st[1], st[2]], { timeout: 10000 }).then(() => true, () => false);
+      if (!ok) miss.push(`${st[1]} x${st[2]}`);
+      else await settle(pg);
+    }
     else if (st[0] === 'js') {
       if (st[2] && !(await pg.evaluate((s) => [...document.querySelectorAll(s)].some((x) => x.getClientRects().length), st[1]))) {
         miss.push(`${st[1]} (fallback used)`); miss.push(...(await runSteps(pg, st[2]))); continue;

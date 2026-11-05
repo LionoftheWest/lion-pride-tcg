@@ -14,6 +14,7 @@
  */
 import 'dotenv/config';
 import { createTradeRequestProbe } from './src/trade-request-probe.js';
+import { resolveOpenSet } from './src/open-set.js';
 import { measure as measureAchievements, achievementList, LEDGER, withRewards, setRewardFor, isSetKey } from './src/achievements.js';
 // The released (pullable) sets: each has a "<set name> Set Complete" achievement (src/achievements.js, D-190). card_sets changes
 // only when the owner edits it (pack_color: the set holo frames, D-191): a 60 s cache. A failed read keeps the last list (none yet: the achievements fall back to S1 only).
@@ -44,6 +45,7 @@ import { registerEventsRoutes } from './src/events-routes.js';
 import { registerDungeonRoutes } from './src/dungeon-routes.js';
 import { registerGauntletV2Routes } from './src/gauntlet-v2-routes.js';
 import { registerHuntV2Routes } from './src/hunt-v2-routes.js';
+import { registerDungeonV2Routes } from './src/dungeon-v2-routes.js';
 import { makePingLimiter } from './src/trade-ping-limit.js';
 import { dailyExtras } from './src/dailies-pay.js';
 import { makeTtlCache } from './src/ttl-cache.js';
@@ -1744,10 +1746,22 @@ app.post('/api/open', async (req, res) => {
   // 1, 5 or 10 packs at once (Nathan: "in increments of 1x, 5x, 10x"); the bot stops
   // early if the balance runs out. Cards the member did not own before get isNew.
   const count = [1, 5, 10].includes(Number(req.body?.count)) ? Number(req.body.count) : 1;
-  // The set the member chose (card_sets.sql, D-80): optional. No set = every pullable set, the same
-  // request to the bot as before; a set the bot refuses comes back as 400 set_not_pullable.
-  const set = req.body?.set == null ? undefined : String(req.body.set);
-  if (set !== undefined && !/^[A-Z0-9]{1,8}$/.test(set)) return res.status(400).json({ error: 'set_not_pullable' });
+  // The set the member chose (card_sets.sql, D-80); a set the bot refuses comes back as 400 set_not_pullable.
+  // PACK-SET-B (src/open-set.js): no set + 1 pullable set = that set by name; no set + 2 or more = 400 set_required
+  // with no bot call, so no pack is spent and no pack mixes sets. The no-set path reads card_sets fresh, not
+  // getReleasedSets (its 60 s cache can still hold 1 set just after a flip).
+  const bodySet = req.body?.set == null ? undefined : String(req.body.set);
+  if (bodySet !== undefined && !/^[A-Z0-9]{1,8}$/.test(bodySet)) return res.status(400).json({ error: 'set_not_pullable' });
+  let pullableIds = null;
+  if (bodySet === undefined) {
+    try {
+      const { data: rows, error: setsErr } = await supabase.from('card_sets').select('id').eq('pullable', true);
+      if (!setsErr && Array.isArray(rows)) pullableIds = rows.map((r) => r.id);
+    } catch { /* null: sets_unavailable */ }
+  }
+  const rule = resolveOpenSet(bodySet, pullableIds);
+  if (rule.error) return res.status(rule.status).json({ error: rule.error });
+  const set = rule.set;
   try {
     const { data: before } = await supabase.from('player_cards').select('card_id').eq('player_id', me.id);
     const had = new Set((before || []).map((r) => r.card_id));
@@ -1790,7 +1804,8 @@ app.get('/api/sets', async (req, res) => {
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const { data, error } = await supabase.rpc('pullable_sets', { p_player: String(me.id) });
   if (error) return res.status(500).json({ error: error.message });
-  const sets = (data?.sets || []).map((s) => ({ ...s, cover_image_url: s.cover_image_url ? toProxyImg(s.cover_image_url) : null }));
+  // D-208: pack_art_url through the image proxy, as cover_image_url (the tile shows the pack art first, open-window.js setPicture).
+  const sets = (data?.sets || []).map((s) => ({ ...s, cover_image_url: s.cover_image_url ? toProxyImg(s.cover_image_url) : null, pack_art_url: s.pack_art_url ? toProxyImg(s.pack_art_url) : null }));
   res.json({ sets, last_set: data?.last_set ?? null });
 });
 
@@ -1910,6 +1925,7 @@ registerEventsRoutes(app, { supabase, caller, eventsOn, sharedCache, artUrl: (u)
 registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun: dungeonPing, userCache, sharedCache });
 registerGauntletV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, sharedCache });   // R1c: /api/gauntlet/v2/* for Combat v2 testers
 registerHuntV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, huntOn: () => FEATURE_HUNT, sharedCache });   // R3b: /api/hunt/v2/* the Hunt v2 practice of Combat v2 testers
+registerDungeonV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, sharedCache });   // R2b: /api/dungeon/v2/* for Combat v2 testers
 const cardShape = (c) => c && { id: c.id, name: c.name, rarity: c.rarity, image_url: toProxyImg(c.image_url) };
 
 // Another player's cards — for picking what to request/gift in a trade.

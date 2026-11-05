@@ -90,8 +90,9 @@ export function checkExceptions(list) {
 }
 export const accepts = (e, x) => e.id === x.owner && e.screen === x.screen && e.size === x.size && e.rule === x.rule;
 
-/** D-136: a defect at a report-only size is listed but never fails. A cell that produced no result still fails (the run is broken). */
-export const reportOnly = (x) => REPORT_ONLY_SIZES.includes(x.size) && x.where !== 'no result';
+/** D-136: a defect at a report-only size is listed but never fails. A cell that produced no result still fails (the run is broken).
+ *  A screen with `enforceAt: [size]` (screens.mjs) is enforced at those sizes (Nathan 2026-11-04: "Fix the Origins word break", 375x667). */
+export const reportOnly = (x) => REPORT_ONLY_SIZES.includes(x.size) && x.where !== 'no result' && !(SCREENS[x.screen]?.enforceAt || []).includes(x.size);
 
 /** The verdict: { enforced, isEnforced, defects, fails }. */
 // screens = the screens that the run planned (plan.mjs): each of them must have a result in each browser and size.

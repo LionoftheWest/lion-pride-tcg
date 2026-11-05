@@ -213,22 +213,22 @@ test('a missing cell always fails; a runner error fails on an enforced ID', () =
 import { plan, enforcedIds } from './plan.mjs';
 test('plan: the title IDs and the Migrated rows; the shell checks every screen; an unknown screen is uncovered', () => {
   assert.deepEqual([...enforcedIds('UI-46 Dungeon lobby', REG)].sort(), ['UI-07', 'UI-46'], 'UI-07 is Migrated in REG');
-  assert.deepEqual(plan(new Set(['UI-46'])).screens, ['dungeon']);
+  assert.deepEqual(plan(new Set(['UI-46'])).screens, ['dungeon', 'dungeon-v2-lobby']);   // R2b: the tester lobby with Play v2 (test)
   assert.deepEqual(plan(new Set(['UI-12'])).screens, ['achievements', 'achievements-detail', 'achievements-ready', 'achievements-claim-error']);
   assert.deepEqual(plan(new Set(['UI-13'])).screens.sort(), ['tracks', 'tracks-badges', 'tracks-claim-error', 'tracks-equip-error', 'tracks-frames', 'tracks-set-frames', 'tracks-titles', 'tracks-window']);   // the 8 UI-13 specs
   assert.equal(plan(new Set(['UI-01'])).screens.length, Object.keys(SCREENS).length);
   assert.equal(plan(new Set(['UI-02', 'UI-46'])).screens.length, Object.keys(SCREENS).length);
   assert.deepEqual(plan(new Set(['UI-00'])), { screens: Object.keys(SCREENS), uncovered: [] }, 'the design system is on every screen');
   assert.deepEqual(plan(new Set(['UI-58'])), { screens: [], uncovered: ['UI-58'] });
-  assert.deepEqual(plan(new Set(['UI-47'])).screens.sort(), ['dungeon-fight', 'dungeon-fight-1s4', 'dungeon-fight-2s3', 'dungeon-fight-finish-idle', 'dungeon-fight-finish-off', 'dungeon-fight-finish-old', 'dungeon-fight-finishing', 'dungeon-fight-finishing-pass', 'dungeon-fight-pick', 'dungeon-fight-skipped', 'dungeon-fight2']);   // the 11 UI-47 specs (6 of them are Finish Room states)
-  assert.deepEqual(plan(new Set(['UI-50'])).screens.sort(), ['dungeon-over', 'dungeon-over-revealed']);   // the 2 UI-50 specs
-  assert.deepEqual(plan(new Set(['UI-49'])).screens.filter((x) => x.startsWith('dungeon-')).sort(), ['dungeon-chest', 'dungeon-chest-flipped', 'dungeon-chest-open', 'dungeon-floor', 'dungeon-floor-revealed', 'dungeon-path', 'dungeon-rest', 'dungeon-retreat']);   // the 8 UI-49 specs
+  assert.deepEqual(plan(new Set(['UI-47'])).screens.sort(), ['dungeon-fight', 'dungeon-fight-1s4', 'dungeon-fight-2s3', 'dungeon-fight-finish-idle', 'dungeon-fight-finish-off', 'dungeon-fight-finish-old', 'dungeon-fight-finishing', 'dungeon-fight-finishing-pass', 'dungeon-fight-pick', 'dungeon-fight-skipped', 'dungeon-fight-v2', 'dungeon-fight-v2-charging', 'dungeon-fight-v2-down', 'dungeon-fight-v2-finishing', 'dungeon-fight-v2-pick', 'dungeon-fight-v2-tap', 'dungeon-fight2']);   // the 11 UI-47 specs (6 of them are Finish Room states) and the 6 R2b v2 test fight states
+  assert.deepEqual(plan(new Set(['UI-50'])).screens.sort(), ['dungeon-over', 'dungeon-over-revealed', 'dungeon-v2-over']);   // the 2 UI-50 specs and the R2b v2 over
+  assert.deepEqual(plan(new Set(['UI-49'])).screens.filter((x) => x.startsWith('dungeon-')).sort(), ['dungeon-chest', 'dungeon-chest-flipped', 'dungeon-chest-open', 'dungeon-floor', 'dungeon-floor-revealed', 'dungeon-path', 'dungeon-rest', 'dungeon-retreat', 'dungeon-v2-floor', 'dungeon-v2-pass', 'dungeon-v2-path', 'dungeon-v2-rest']);   // the 8 UI-49 specs and the 4 R2b v2 room steps
   assert.deepEqual(plan(new Set()).screens, []);
   assert.equal(plan(new Set(), { full: true }).screens.length, Object.keys(SCREENS).length);
 });
 test('plan with the title IDs (pick): a PR runs only its own screens and the screens under them, not every Migrated row', () => {
   const enforced = new Set(['UI-07', 'UI-46', 'UI-17']);   // the title UI-46 plus Migrated rows
-  assert.deepEqual(plan(enforced, { pick: new Set(['UI-46']) }).screens, ['dungeon', 'dungeon-picker', 'dungeon-picker-detail', 'dungeon-board']);   // the pickers and the Leaderboard window (UI-66) sit under UI-46
+  assert.deepEqual(plan(enforced, { pick: new Set(['UI-46']) }).screens, ['dungeon', 'dungeon-picker', 'dungeon-picker-detail', 'dungeon-v2-lobby', 'dungeon-board']);   // the pickers and the Leaderboard window (UI-66) sit under UI-46
   const ui17 = plan(enforced, { pick: new Set(['UI-17']) }).screens;
   assert.ok(ui17.includes('hunt-picker') && ui17.includes('boss-window'), 'the screens UNDER the title ID run too');
   assert.ok(!ui17.includes('collection'), 'a Migrated row that is not in the title does not run');
@@ -284,8 +284,11 @@ test('exceptions.json: every entry is valid; the UI-49 empty-space entries name 
   const { readFileSync } = await import('node:fs');
   const list = JSON.parse(readFileSync(new URL('./exceptions.json', import.meta.url), 'utf8'));
   assert.doesNotThrow(() => verdict(full(), REG, { browsers: ['chromium'], exceptions: list }));
+  const TEST_V2 = ['dungeon-v2-floor', 'dungeon-v2-pass', 'dungeon-v2-over'];   // D-210: the Dungeon v2 TEST version may show an empty reward area
   const mine = list.filter((e) => e.id === 'UI-49');
-  assert.ok(mine.length > 0 && mine.every((e) => e.decision === 'D-134' && e.rule === 'empty' && /^dungeon-/.test(e.screen)));
+  assert.ok(mine.length > 0 && mine.every((e) => (e.decision === 'D-134' || (e.decision === 'D-210' && TEST_V2.includes(e.screen))) && e.rule === 'empty' && /^dungeon-/.test(e.screen)));
+  const d210 = list.filter((e) => e.decision === 'D-210');   // only the 3 test specs, only the empty rule: never a v1 spec or a member spec
+  assert.ok(d210.length > 0 && d210.every((e) => TEST_V2.includes(e.screen) && e.rule === 'empty' && ['UI-49', 'UI-50'].includes(e.id)));
   const pts = list.filter((e) => e.id === 'UI-08');   // D-171: the open stat points editor on a phone sheet
   assert.equal(pts.length, 10);   // the enforced phone sizes (375x667 is report-only, D-136) and the portrait tablets 692x917 and 820x1180 (D-181)
   assert.ok(pts.every((e) => e.decision === 'D-171' && e.rule === 'missing' && ['collection-detail-points', 'stat-points-error'].includes(e.screen) && ['412x915', '430x822', '430x932', '692x917', '820x1180'].includes(e.size) && /stat-points-open/.test(e.why)));
@@ -341,4 +344,12 @@ test('UI-52 v2 fight exceptions (D-155): 6 specs x the 5 portrait sizes, rule mi
   assert.ok(!list.some((e) => ['gauntlet-v2-choose', 'gauntlet-v2-over'].includes(e.screen)), 'the v1 reward and over screens are not excepted');
   const x = (screen, rule) => ({ owner: 'UI-52', screen, size: '430x932', rule });
   assert.ok(!list.some((e) => accepts(e, x('gauntlet-v2-fight', 'bleed'))), 'only the missing rule is excepted');
+});
+test('PACK-SET-B: open-chooser-sets is enforced at 375x667 (enforceAt); every other screen stays report-only there', () => {
+  assert.deepEqual(SCREENS['open-chooser-sets'].enforceAt, ['375x667']);
+  const midword = { rule: 'bleed', where: 'midword: .u3-set__name', size: '375x667' };
+  assert.equal(reportOnly({ ...midword, screen: 'open-chooser-sets' }), false, 'the Origins word break fails G3');
+  assert.equal(reportOnly({ ...midword, screen: 'open-chooser' }), true, 'D-154 unchanged for the other screens');
+  assert.equal(reportOnly({ ...midword, screen: 'open-chooser-sets', size: '667x375' }), true, 'only the listed size');
+  for (const [k, s] of Object.entries(SCREENS)) if (s.enforceAt) assert.ok(s.enforceAt.every((z) => REPORT_ONLY_SIZES.includes(z)), k + ': enforceAt lists report-only sizes only');
 });
