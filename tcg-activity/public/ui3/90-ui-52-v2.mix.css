@@ -32,3 +32,6 @@ body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-small .dg-card .g2-turn 
 /* the READY button of PR 503 in a support small card: the narrow-card size of 90-ui-52-v2.css (is-narrow .g2-plate .g2-ready) */
 body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates .dg-sup.g2-plate .g2-ready { min-height: var(--chip-sm); padding: var(--sp-half) var(--sp-1-5); font-size: var(--fs-label); }
 body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates.g2-small .dg-sup.g2-plate .g2-ready { padding: var(--sp-half) var(--sp-1); gap: var(--sp-half); }
+/* a support small card is a touch target (9.1): at least --hit high, also when the approved short layout (is-short3) hides its picture
+   (CI run 41986181252: 80x32 at 820x1180) */
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates .dg-sup.g2-plate { min-height: var(--hit); }
