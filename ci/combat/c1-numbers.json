@@ -217,6 +217,32 @@
         "count": 1,
         "reason": "n_order 10: the turn strip shows 10 entries (plan 3.2, D-203; R2 SPEC INV-6). A screen length, not a combat number."
       }
+    },
+    "hunt_v2_boon_plan": {
+      "2": {
+        "count": 1,
+        "reason": "group by 1, 2, 3: the column positions of the raid_crasher extras (player, card, fallback). Not a fight value."
+      },
+      "3": {
+        "count": 1,
+        "reason": "group by 1, 2, 3: the column positions of the raid_crasher extras (player, card, fallback). Not a fight value."
+      },
+      "100": {
+        "count": 5,
+        "reason": "coalesce(p_cap, 100): the default of balance combat.effect_cap_pct (the caller passes it); and 4 x x / 100: a percent (a boon or prank amount, capped by balance combat.effect_cap_pct) to a share, as hunt_attack 100.0. Not a fight value."
+      }
+    },
+    "hunt_v2_live_credit": {
+      "100": {
+        "count": 1,
+        "reason": "coalesce(balance_num(combat, effect_cap_pct), 100): the default when the balance key is missing (live = 100). Not a fight value."
+      }
+    },
+    "hunt_v2_turns": {
+      "100": {
+        "count": 2,
+        "reason": "mend: coalesce(balance_num(combat, effect_cap_pct), 100) (the default when the key is missing) and x / 100: a percent (a boon or prank amount, capped by balance combat.effect_cap_pct) to a share, as hunt_attack 100.0. Not a fight value."
+      }
     }
   }
 }
