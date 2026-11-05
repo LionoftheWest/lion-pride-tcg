@@ -591,7 +591,7 @@ function popCard(id, txt, cls = '') {
   n.className = `dg-pop on-card ${cls}`; n.textContent = txt;
   u.appendChild(n); setTimeout(() => n.remove(), 1500);
   // the v1 hit shake (ui-v2-dungeon.css .dg-unit.hurt): restart it on each hit
-  u.classList.remove('hurt'); void u.offsetWidth; if (cls === 'hurt') u.classList.add('hurt');
+  if (!off('g')) { u.classList.remove('hurt'); void u.offsetWidth; if (cls === 'hurt') u.classList.add('hurt'); }
 }
 // D-215: the callout of an active (the v1 move label of the monsters, the same pop on a card)
 function gainPops(e) { for (const g of gainsOf(e)) { if (g.side === 'enemy') pop(g.id, g.text, 'heal', 10); else popCard(g.id, g.text, 'heal'); } }
@@ -602,7 +602,19 @@ function callout(co) { if (!co) return; if (co.side === 'enemy') pop(co.id, co.t
 export const liteReplay = (s) => !!s?.finishing;
 const lite = () => liteReplay(S);
 /** Replay the log of a write answer on the stage, then take the server's state. */
+// ---- H-1 bisect (throwaway) ----
+const BIS = () => (typeof document !== 'undefined' && /(?:^|; )ci_bisect=([a-z]+)/.exec(document.cookie || '')?.[1]) || '';
+const off = (k) => BIS().includes(k) || BIS().includes('z');
+function bisectStyle() {
+  if (typeof document === 'undefined' || document.getElementById('h1-bisect')) return;
+  let css = '';
+  if (off('b')) css += '.dg-fight.g2 .g2-pill, .dg-fight.g2 .g2-ready, .dg-fight.g2 .g2-turn { animation: none !important; box-shadow: none !important; }';
+  if (off('d')) css += '.dg-fight.g2 .dg-unit, .dg-fight.g2 .dg-sup { isolation: auto !important; }';
+  if (css) document.head.insertAdjacentHTML('beforeend', `<style id="h1-bisect">${css}</style>`);
+}
 async function play(r) {
+  bisectStyle();
+  const fx = !off('a');
   const step = clone(V);
   for (const e of r.log || []) {
     if (S.skip || !alive()) break;
@@ -610,38 +622,38 @@ async function play(r) {
     const lines = logLines(step, [e]);
     if (e.k === 'act' && e.actor?.side === 'card') {
       const me = document.querySelector(`.dg-fight.g2 .dg-unit[data-card="${e.actor.id}"], .dg-fight.g2 .dg-sup[data-sup="${e.actor.id}"]`);
-      me?.classList.add('striking');   // the v1 card lunge (ui-v2-dungeon.css .striking)
-      callout(calloutOf(step, e));     // D-215: the active's name
+      if (fx && !off('g')) me?.classList.add('striking');   // the v1 card lunge (ui-v2-dungeon.css .striking)
+      if (fx && !off('c')) callout(calloutOf(step, e));     // D-215: the active's name
       const first = (e.hits || []).find((h) => h.target?.side === 'enemy');
       if (first && H.dg.stage?.cast && !lite()) { const el = H.elementOf?.(e.actor.id) || 'physical'; H.snd?.(el, 0.6); H.dg.stage.cast(first.target.id, el); await nap(480); }   // the v1 element impact and its sound
       for (const h of e.hits || []) {
         if (h.target?.side !== 'enemy') continue;
         const down = (e.hp || []).some((x) => x.side === 'enemy' && x.id === h.target.id && x.down);
-        H.dg.stage?.play(h.target.id, down ? 'death' : 'hit');
+        if (fx) H.dg.stage?.play(h.target.id, down ? 'death' : 'hit');
         const foe = foesOf(step)[h.target.id];
         if (lite()) { /* the fast replay: no voices */ } else if (down) { H.voice?.(foe, 'die', 0.6); if (foe?.boss) H.snd?.('boss:defeat', 0.6); } else if (hitText(h, e).startsWith('-')) H.voice?.(foe, 'hurt', 0.45);   // the v1 voices
-        pop(h.target.id, hitText(h, e), h.miss || hitText(h, e) === 'BLOCKED' ? 'miss' : h.crit ? 'crit' : '');
+        if (fx) pop(h.target.id, hitText(h, e), h.miss || hitText(h, e) === 'BLOCKED' ? 'miss' : h.crit ? 'crit' : '');
       }
       if (!(e.hits || []).length && e.ally) popCard(e.ally.id, step.run.state.info?.[e.actor.id]?.name || '', 'heal');
-      if ((e.hits || []).length) H.sfx('hit');
-      gainPops(e);
-      applyHp(step, e.hp); S.log.push(...lines); upd(step);
+      if (fx && !off('f') && (e.hits || []).length) H.sfx('hit');
+      if (fx) gainPops(e);
+      applyHp(step, e.hp); S.log.push(...lines); if (!off('e')) upd(step);
       await nap(700);
       me?.classList.remove('striking');
     } else if (e.k === 'act' && e.actor?.side === 'enemy') {
-      callout(calloutOf(step, e));     // the move name (as v1)
+      if (fx && !off('c')) callout(calloutOf(step, e));     // the move name (as v1)
       if (!lite()) H.dg.stage?.foeFx?.(e.actor.id, e.move);   // the v1 move effect (dungeon-stage.js MOVE_FX)
-      H.dg.stage?.play(e.actor.id, 'attack');    // the v1 monster lunge
+      if (fx) H.dg.stage?.play(e.actor.id, 'attack');    // the v1 monster lunge
       if (!lite()) { H.voice?.(foesOf(step)[e.actor.id], 'atk', 0.55); const ms = H.moveSnd?.(e.move); if (ms) H.snd?.(ms, 0.4); }   // the v1 attack voice and move sound
       await nap(380);
-      for (const x of e.hp || []) if (x.side !== 'enemy' && shownDrop(x) > 0) popCard(x.id, `-${fmtN(shownDrop(x))}`, 'hurt');
-      if ((e.hp || []).some((x) => shownDrop(x) > 0)) H.sfx('hit');
-      gainPops(e);
-      applyHp(step, e.hp); S.log.push(...lines); upd(step);
+      if (fx) for (const x of e.hp || []) if (x.side !== 'enemy' && shownDrop(x) > 0) popCard(x.id, `-${fmtN(shownDrop(x))}`, 'hurt');
+      if (fx && !off('f') && (e.hp || []).some((x) => shownDrop(x) > 0)) H.sfx('hit');
+      if (fx) gainPops(e);
+      applyHp(step, e.hp); S.log.push(...lines); if (!off('e')) upd(step);
       await nap(600);
     } else if (e.k === 'clock' && ((e.ticks || []).length || (e.hp || []).length)) {
-      for (const t of e.ticks || []) { const d = dmgText(t.dmg); if (!d) continue; if (t.side === 'enemy') pop(t.id, d, ''); else popCard(t.id, d, 'hurt'); }
-      applyHp(step, e.hp); S.log.push(...lines); upd(step);
+      if (fx) for (const t of e.ticks || []) { const d = dmgText(t.dmg); if (!d) continue; if (t.side === 'enemy') pop(t.id, d, ''); else popCard(t.id, d, 'hurt'); }
+      applyHp(step, e.hp); S.log.push(...lines); if (!off('e')) upd(step);
       await nap(300);
     }
   }

@@ -19,7 +19,7 @@ export const EXPANDED = '1990x830';   // the size that "missing on another class
 const COMM = '#commTabs';
 const WALK_START = [['wait', 2], ['js', '#menuBtn'], ['js', '[data-menu="faq"]'], ['wait', 1], ['js', '[data-hp-replay]'], ['wait', 2]];
 const WALK_NEXT = (n) => Array.from({ length: n }, () => [['js', '[data-wt="next"]'], ['wait', 1]]).flat();
-export const SCREENS = {
+const SCREENS_ALL = {
   // Home (UI-03): a resting hunt, 9 pulls and 5 members in voice (the state of the approved frames, UI-03/approved); home-live: the recorded live hunt.
   'home':                { id: 'UI-03', safe: true, long: true, home: 'busy', notOn: ['tiny'], steps: [] },
   'home-live':           { id: 'UI-03', long: true, safe: true, home: 'live', notOn: ['tiny'], steps: [] },
@@ -264,6 +264,8 @@ export const SCREENS = {
   'gauntlet-v2-tap':       { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g2-fight', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 5], ['js', '.dg-plate[data-foe="0"] .g2-b[data-st="chill"]'], ['wait', 1]] },
   'gauntlet-v2-pick':      { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g2-pick', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 5], ['js', '.dg-sup.g2-actor'], ['wait', 1]] },
   'gauntlet-v2-down':      { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g2-down', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 12]] },
+  ...Object.fromEntries(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'z'].map((k) => [`gauntlet-v2-finishing-bis-${k}`, { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g2-fight', finish: 'ok', bisect: k,
+    steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 5], ['click', '.dg-finish'], ['pause', 2]] }])),
   'gauntlet-v2-finishing': { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g2-fight', finish: 'ok', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 5], ['click', '.dg-finish'], ['pause', 2]] },
   'gauntlet-v2-choose':    { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g2-choose', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
   // Nathan's live test 2026-11-04 (item 1): the attacker Details magnifier opens the card info with the v2 role and active (UI-08, D-212b). Only where the
@@ -530,3 +532,6 @@ export async function runSteps(pg, steps) {
   }
   return miss;
 }
+
+// THROWAWAY H-1 bisect: only the Finish Room specs of UI-52
+export const SCREENS = Object.fromEntries(Object.entries(SCREENS_ALL).filter(([k, v]) => (v.id !== 'UI-52' && v.under !== 'UI-52') || /^gauntlet-v2-finishing/.test(k)));
