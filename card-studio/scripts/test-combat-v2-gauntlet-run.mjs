@@ -256,6 +256,9 @@ const PRE = String.raw`
   execute $o$${OLD_DAILIES}$o$;
   execute $o$${R1A_STEP}$o$;
   execute $o$${OLD_COMMENTS}$o$;
+  -- the runs of a later mode (a tester's live gauntlet_v2 run, after the go-live) did not exist before the file: set them aside inside this
+  -- rolled-back block (dungeon_log follows by ON DELETE CASCADE), so the old 2-value check fits; the final RAISE brings them back
+  delete from public.dungeon_runs where mode not in ('daily', 'gauntlet');
   alter table public.dungeon_runs drop constraint if exists dungeon_runs_mode_check;
   alter table public.dungeon_runs add constraint dungeon_runs_mode_check check (mode in ('daily', 'gauntlet'));`;
 const WORLD = String.raw`
@@ -912,6 +915,10 @@ const B4 = block(String.raw`
           'status', (s->'cards'->t->'status') || jsonb_build_object('quickened', jsonb_build_object('until', (s->>'clock')::int + 999)), 'speed', (s->'cards'->t->>'speed')::numeric * 3));
   s2 := jsonb_set(s2, array['cards', t2], (s2->'cards'->t2) || jsonb_build_object('charge', (b->'v2_charge'->>(s2->'cards'->t2->>'class'))::int - 1,
           'status', (s2->'cards'->t2->'status') || jsonb_build_object('stunned', jsonb_build_object('until', (s->>'clock')::int + 999)), 'speed', (s2->'cards'->t2->>'speed')::numeric * 5, 'meter', (b->'v2_speed'->>'act_at')::numeric - 0.01));
+  -- no random room meters in this projection (the flake of a random start): every other unit starts at meter 0, so the Stunned card skips
+  -- first and acts again soon (x5), and the turn card (x3, Quickened) has later own entries in the 10
+  for uid in select q.key from jsonb_each(s2->'cards') q where q.key <> t2 loop s2 := jsonb_set(s2, array['cards', uid, 'meter'], '0'); end loop;
+  for i in 0 .. jsonb_array_length(s2->'enemies') - 1 loop s2 := jsonb_set(s2, array['enemies', i::text, 'meter'], '0'); end loop;
   perform pg_temp.setst(rid, jsonb_set(rw->'state', '{fight}', s2));
   x := gauntlet_v2_view('tst_r1b_t');
   o := x->'order';
