@@ -149,6 +149,8 @@ const NEW_FNS = ['balance_shape_errors', 'balance_v2_spec', 'balance_check_comba
   'dungeon_v2_after', 'dungeon_v2_room', 'dungeon_v2_pick', 'dungeon_v2_rooms', 'dungeon_v2_out', 'dungeon_v2_end', 'dungeon_v2_start', 'dungeon_v2_turns', 'dungeon_v2_act',
   'dungeon_v2_auto', 'dungeon_v2_choose', 'dungeon_v2_retreat', 'dungeon_v2_view',   // R2a combat_v2_dungeon_run.sql: the v2 Dungeon run of testers (combat_v2_on dungeon, the engine keys); no v1 function calls them
   'dungeon_start', 'dailies_tasks', 'dungeon_v2_settle', 'dungeon_v2_loot',   // R2-ON combat_v2_on_dungeon.sql: dungeon_start refuses v2_on (combat_v2_on dungeon); the dailies_tasks comment names the file; the settle and loot of a live run
+  'combat_v2_convert_expect', 'combat_v2_convert_write', 'combat_v2_convert', 'combat_v2_convert_undo', 'combat_v2_convert_check', 'combat_v2_convert_fix',
+  'card_progress_v2_fight',   // M1e combat_v2_convert.sql: the stat conversion at the switch (v2_convert, v2_stats, v2_level, card_level) and the fight level (N-7b); called by the switch file and dungeon_v2_unit (R2-ON)
   'balance_check'];   // combat_v2_testers.sql: the generic balance trigger names combat_v2 only to let a tester id go (it reads no mode)
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 
