@@ -11,6 +11,8 @@
 --   gauntlet_view (replaced): players_week and runs_left read the same set as the board (best and top come from the board).
 --   gauntlet_pool (replaced): while combat_v2_on('gauntlet') is true, only cards with a usable ability_v2 (the combat_v2_card_unit rule: an
 --     object, a role of the roles table, a list of blocks). A week that exists keeps its squad.
+--   gauntlet_v2_info (replaced, the R1b text plus ONE key): each card's info has text = the description of its active
+--     (ability_v2_text of its class and blocks: the card info window, R1e). A run keeps the info of its start (D4).
 -- NO CHANGE IN PLAY while the flag combat_v2.gauntlet is false: every v1 answer stays the same (a tester run has member false).
 -- The switch is NOT in this file: combat_v2_switch_on.sql (ON SPEC 4, sub-item Switch) turns on every mode at one moment, and
 -- combat_v2_switch_off.sql is the rollback. Idempotent. Server only.
@@ -24,7 +26,8 @@ begin
     ('public.gauntlet_v2_begin(text, bigint[], jsonb, integer)', '232f4e27b4aabbc68ca0df9ef4a67adc', '892d5d55e3f97abee932ae6c95b0ec2c'),
     ('public.gauntlet_board(date, integer)', '8ed0efb90f0174ef43a091d812d64a6f', 'e42f6675df0e631b9fca388d15a68207'),
     ('public.gauntlet_view(text)', 'b109912842b67cf1299b7a7befff93da', '8837ba6084c9da5bf7fdd9c910d8879c'),
-    ('public.gauntlet_pool()', 'fa50cc96e510a739d1f806c72c1e9271', 'b043c321853267cf52d5a663cd38ab0d')
+    ('public.gauntlet_pool()', 'fa50cc96e510a739d1f806c72c1e9271', 'b043c321853267cf52d5a663cd38ab0d'),
+    ('public.gauntlet_v2_info(jsonb)', '474c9f8fb6c6168ab3eec01fbead835b', 'df54b4de09f68d6cd53fedcf4934d2dd')
   ) x(fn, old_md5, new_md5) loop
     select md5(replace(pg_get_functiondef(f.fn::regprocedure), chr(13), '')) into strict m;
     if m not in (f.old_md5, f.new_md5) then
@@ -133,11 +136,23 @@ language sql stable set search_path = public as $function$
          and jsonb_typeof(s.ability_v2->'blocks') = 'array' and exists (select 1 from roles x where x.key = s.ability_v2->>'role')));
 $function$;
 
+-- ============================================================ 4b. the card info: the active's description (the R1b text plus 'text')
+create or replace function public.gauntlet_v2_info(p_units jsonb) returns jsonb
+language sql stable set search_path = public as $fn$
+  select coalesce(jsonb_object_agg(e.key, jsonb_build_object(
+      'name', (select s.ability_v2->>'name' from public.cards c join public.subjects s on s.id = c.subject_id where c.id = e.key::bigint),
+      'role', e.value->'role', 'class', e.value->'class',
+      'needs_ally', gauntlet_v2_needs_ally(e.value->'active'->'blocks'),
+      -- R1-ON: the description of the active (the one text builder of the v2 abilities; the client shows info[id].text)
+      'text', ability_v2_text(e.value->>'class', e.value->'active'->'blocks')->>'text')), '{}'::jsonb)
+    from jsonb_each(coalesce(p_units, '{}'::jsonb)) e;
+$fn$;
+
 -- ============================================================ 5. server only (the grants before the file stay), the comments of the generated docs
 do $g$
 declare f text;
 begin
-  foreach f in array array['gauntlet_v2_begin(text, bigint[], jsonb, integer)', 'gauntlet_board(date, integer)', 'gauntlet_view(text)', 'gauntlet_pool()'] loop
+  foreach f in array array['gauntlet_v2_begin(text, bigint[], jsonb, integer)', 'gauntlet_board(date, integer)', 'gauntlet_view(text)', 'gauntlet_pool()', 'gauntlet_v2_info(jsonb)'] loop
     execute format('revoke all on function public.%s from public, anon, authenticated', f);
     execute format('grant execute on function public.%s to service_role', f);
   end loop;
@@ -146,6 +161,7 @@ end $g$;
 comment on function public.gauntlet_v2_begin(text, bigint[], jsonb, integer) is $cm$[combat] Combat v2 Gauntlet (20.15 R1b): the start of a v2 run for the tester branch of gauntlet_start: the run state (engine 2, units, carry, info), room 1 of floor 1, the row (mode gauntlet_v2, the next attempt of both modes) and the start log. combat_v2_gauntlet_run.sql. Since combat_v2_on_gauntlet.sql (R1-ON) the state also has member = combat_v2_on('gauntlet') at the start: the mark that gauntlet_board and gauntlet_view read (false for a tester run before the switch; it stays true after a rollback).$cm$;
 comment on function public.gauntlet_board(date, integer) is $cm$GET /api/gauntlet/board, gauntlet_view and dungeon_pay: the Gauntlet board of a week (default this week). Each member's best run of the week counts, ranked by floor, room, turns, end time (an active run: now), then the member id, so a tie always has the same order (board_tie_order.sql). Returns a jsonb array with rank and runs. Since combat_v2_on_gauntlet.sql (R1-ON) a run is a v1 run (mode gauntlet) or a v2 run with the member mark (mode gauntlet_v2, state.member true); a tester v2 run of before the switch is not on the board.$cm$;
 comment on function public.gauntlet_view(text) is $cm$GET /api/gauntlet: the member's Gauntlet screen. Ends the member's active runs of earlier days, builds the week, and returns the squad (costs: balance dungeon.cost), the budget (balance gauntlet.budget), today's newest run (null when it is over and a run is left: runs_left, last_run), the member's best rank, the rooms, the top 3 and the prizes. Since combat_v2_on_gauntlet.sql (R1-ON) runs_left and players_week count the board set (v1 runs and v2 runs with the member mark); run stays the v1 run (gauntlet_v2_view has the v2 run).$cm$;
+comment on function public.gauntlet_v2_info(jsonb) is $cm$[combat] Combat v2 Gauntlet (20.15 R1b): the screen facts of the squad at the run start (a snapshot, D4): for each card the active name (subjects.ability_v2 name), the role, the class and needs_ally. Reads only. combat_v2_gauntlet_run.sql. Since combat_v2_on_gauntlet.sql (R1-ON) each card also has text: the description of its active (ability_v2_text of its class and blocks), for the card info window.$cm$;
 comment on function public.gauntlet_pool() is $cm$Internal helper: the cards that the Gauntlet squad can use (attackers and support cards, no Event or Promo), with cost (balance dungeon.cost), tags and affinity. Called by gauntlet_squad. Since combat_v2_on_gauntlet.sql (R1-ON), while combat_v2_on('gauntlet') is true, only cards with a usable ability_v2 (the combat_v2_card_unit rule), so a new week squad always plays v2.$cm$;
 
 comment on function public.combat_v2_on(text) is $cm$[combat] The ONE reader of the combat v2 switch (balance combat_v2, plan 14.2): true only when combat_v2.<p_mode> is the JSON boolean true (p_mode = gauntlet, dungeon, hunt or progress). Fails closed: a missing key, another type, a name that is not one of the four capabilities or any error gives false. Its only caller is combat_v2_on(text, text). Since combat_v2_progress_freeze_v1.sql (M1d) four v1 functions read the switch through that form: spend_stat_points and reset_stat_points (they refuse when progress is ON), buy_shop_item (its stat reset is the v2 reset when progress is ON) and shop_today (its free reset counts the gifts of that reset). Since combat_v2_gauntlet_run.sql (R1b) a fifth: gauntlet_start (its tester branch starts a gauntlet_v2 run). Since combat_v2_on_gauntlet.sql (R1-ON) two more: gauntlet_v2_begin (the member mark of a v2 run) and gauntlet_pool (only cards with a usable ability_v2 while the Gauntlet is v2).$cm$;

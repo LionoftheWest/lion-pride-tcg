@@ -37,6 +37,7 @@ const BASE = {
   view: fnText(read('../../tcg-bot/supabase/runs_per_day.sql'), 'gauntlet_view', 'runs_per_day.sql'),
   pool: fnText(read('../../tcg-bot/supabase/gauntlet.sql'), 'gauntlet_pool', 'gauntlet.sql'),
   begin: fnText(read('../../tcg-bot/supabase/combat_v2_gauntlet_run.sql'), 'gauntlet_v2_begin', 'combat_v2_gauntlet_run.sql'),
+  info: fnText(read('../../tcg-bot/supabase/combat_v2_gauntlet_run.sql'), 'gauntlet_v2_info', 'combat_v2_gauntlet_run.sql'),
 };
 const BASE_SQL = Object.values(BASE).join('\n');
 
@@ -73,14 +74,16 @@ const MUT = {
   pool_filter_always: ["    and (not combat_v2_on('gauntlet') or (jsonb_typeof", '    and (false or (jsonb_typeof'],
   // GO7
   guard_missing: [GUARD_RE, ''],
+  // GO9 (orchestrator addition from Nathan's live test): the info of a card has no description
+  text_missing: [",\n      -- R1-ON: the description of the active (the one text builder of the v2 abilities; the client shows info[id].text)\n      'text', ability_v2_text(e.value->>'class', e.value->'active'->'blocks')->>'text')), '{}'::jsonb)", ")), '{}'::jsonb)"],
   grant_anon: ['comment on function public.gauntlet_v2_begin(', 'grant execute on function public.gauntlet_board(date, integer) to anon;\ncomment on function public.gauntlet_v2_begin('],
 };
 const NAMED = `board_all_v2 member_missing_as_true view_missing_as_true board_v1_only member_mark_missing pay_skips_v2 view_v1_only view_reads_flag count_one_mode board_reads_flag
-  pool_unfiltered pool_filter_always guard_missing grant_anon`.split(/\s+/).filter(Boolean);
+  pool_unfiltered pool_filter_always guard_missing grant_anon text_missing`.split(/\s+/).filter(Boolean);
 const pairs = (m) => (Array.isArray(m[0]) ? m : [m]);
 const EXPECT = { GO1: 'board_all_v2 member_missing_as_true view_missing_as_true', GO2: 'board_v1_only member_mark_missing pay_skips_v2', GO3: 'view_v1_only view_reads_flag', GO4: 'count_one_mode', GO4b: 'count_one_mode',
-  GO5: 'board_reads_flag', GO6: 'pool_unfiltered pool_filter_always', GO7: 'guard_missing grant_anon' };
-const BLOCK_OF = { GO1: 'B1', GO7: 'B1', GO2: 'B2', GO3: 'B2', GO4: 'B2', GO4b: 'B2', GO5: 'B3', GO6: 'B4' };
+  GO5: 'board_reads_flag', GO6: 'pool_unfiltered pool_filter_always', GO7: 'guard_missing grant_anon', GO9: 'text_missing' };
+const BLOCK_OF = { GO1: 'B1', GO7: 'B1', GO2: 'B2', GO3: 'B2', GO4: 'B2', GO4b: 'B2', GO5: 'B3', GO6: 'B4', GO9: 'B2' };
 const casesOf = (name) => Object.keys(EXPECT).filter((k) => EXPECT[k].split(' ').includes(name));
 const caseOf = (name) => casesOf(name)[0];
 
@@ -131,7 +134,7 @@ for (const t of [mig, BASE_SQL]) if (['$m$', '$t$', '$o$', '$x$', '$w$'].some((x
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 const MD5 = `md5(replace(pg_get_functiondef(p.oid), chr(13), ''))`;
 const SIG = `replace(p.oid::regprocedure::text, ', ', ',')`;
-const REPLACED = ['gauntlet_board(date,integer)', 'gauntlet_pool()', 'gauntlet_v2_begin(text,bigint[],jsonb,integer)', 'gauntlet_view(text)'];
+const REPLACED = ['gauntlet_board(date,integer)', 'gauntlet_pool()', 'gauntlet_v2_begin(text,bigint[],jsonb,integer)', 'gauntlet_v2_info(jsonb)', 'gauntlet_view(text)'];
 // the test members: 20-digit ids (the tester list takes Discord ids of 17 to 20 digits; a real id has at most 19 digits now)
 const NAMES = ['t', 't2', 'm', 'm2', 'm3', 'm4', 'a', 'b', 'c', 'v'];
 const pid = (x) => '9999999997' + String(1000000000 + NAMES.indexOf(x) + 1).slice(1);
@@ -222,12 +225,12 @@ const B1 = block(String.raw`
   flag_a := (select value from balance where key = 'combat_v2');
   execute $m$${mig}$m$;
   select jsonb_object_agg(${SIG}, ${MD5}) into md5_b from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prokind in ('f', 'p');
-  ${add('GO7 exactly the 4 replaced functions change (gauntlet_board, gauntlet_pool, gauntlet_v2_begin, gauntlet_view); every other public function keeps its md5; none is added or gone',
+  ${add('GO7 exactly the 5 replaced functions change (gauntlet_board, gauntlet_pool, gauntlet_v2_begin, gauntlet_v2_info, gauntlet_view); every other public function keeps its md5; none is added or gone',
     `(select coalesce(array_agg(q.key order by q.key), '{}') from jsonb_each_text(md5_a) q where md5_b->>q.key is distinct from q.value) = array[${[...REPLACED].sort().map(lit).join(', ')}]::text[]
      and (select count(*) from jsonb_object_keys(md5_b) k where not md5_a ? k) = 0`,
     `jsonb_build_object('changed', (select jsonb_agg(q.key) from jsonb_each_text(md5_a) q where md5_b->>q.key is distinct from q.value), 'added', (select jsonb_agg(k) from jsonb_object_keys(md5_b) k where not md5_a ? k))`)}
   ${add('GO7 the file changes no balance value (the flag combat_v2.gauntlet stays as it was: the switch is its own file)', `(select value from balance where key = 'combat_v2') = flag_a`)}
-  ${add('GO7 the 4 replaced functions keep their grants (the ACL before the file)',
+  ${add('GO7 the 5 replaced functions keep their grants (the ACL before the file)',
     `(select jsonb_object_agg(${SIG}, coalesce(p.proacl::text, '')) from pg_proc p where p.pronamespace = 'public'::regnamespace and ${SIG} = any(array[${REPLACED.map(lit).join(', ')}])) = acl_a`,
     `jsonb_build_object('before', acl_a, 'after', (select jsonb_object_agg(${SIG}, coalesce(p.proacl::text, '')) from pg_proc p where p.pronamespace = 'public'::regnamespace and ${SIG} = any(array[${REPLACED.map(lit).join(', ')}])))`)}
   select coalesce(jsonb_agg(${SIG} || ' ' || r3), '[]') into o from pg_proc p cross join unnest(array['anon', 'authenticated']) r3
@@ -246,7 +249,7 @@ const B1 = block(String.raw`
   ${add('GO7 idempotent: the file runs a second time with no error and changes no function',
     `msg is null and md5_n = (select jsonb_object_agg(${SIG}, ${MD5}) from pg_proc p where p.pronamespace = 'public'::regnamespace and ${SIG} = any(array[${REPLACED.map(lit).join(', ')}]))`, 'to_jsonb(msg)')}
   -- the guard refuses each replaced function when its live text is another text
-  foreach f in array array['public.gauntlet_board(date, integer)', 'public.gauntlet_view(text)', 'public.gauntlet_pool()', 'public.gauntlet_v2_begin(text, bigint[], jsonb, integer)'] loop
+  foreach f in array array['public.gauntlet_board(date, integer)', 'public.gauntlet_view(text)', 'public.gauntlet_pool()', 'public.gauntlet_v2_begin(text, bigint[], jsonb, integer)', 'public.gauntlet_v2_info(jsonb)'] loop
     msg := null;
     begin
       execute regexp_replace(pg_get_functiondef(f::regprocedure), '\$function\$\n', E'$function$\n/* changed by someone else */\n');
@@ -361,7 +364,21 @@ const B2 = block(String.raw`
     "jsonb_build_object('best', o->'best', 'runs_left', o->'runs_left', 'players_week', o->'players_week', 'want', n)")}
   a2 := pg_temp.call($q$gauntlet_start(${P('m2')})$q$);
   ${add('GO4b after the rollback (flag OFF): a member with a v2 run today gets already_gauntlet (no second run, in v1)', `a2->>'error' = 'already_gauntlet'`, "a2 - 'state' - 'log'")}
-`);
+
+  -- GO9 (orchestrator addition, Nathan's live test): the info of each card carries the description of its active
+  select coalesce(jsonb_agg(jsonb_build_object('card', k.key, 'info', k.value)), '[]'::jsonb) into o from dungeon_runs r cross join jsonb_each(r.state->'info') k
+   where r.player_id = ${P('m')} and r.mode = 'gauntlet_v2' and (jsonb_typeof(k.value->'text') is distinct from 'string' or length(trim(k.value->>'text')) = 0);
+  n := (select count(*) from dungeon_runs r cross join jsonb_object_keys(r.state->'info') k where r.player_id = ${P('m')} and r.mode = 'gauntlet_v2');
+  ${add('GO9 a member v2 start: the run info of each squad card has a non-empty text (the active description)', `n = 5 and o = '[]'::jsonb`, "jsonb_build_object('cards', n, 'bad', o)")}
+  perform pg_temp.flag(true);
+  bad := '[]'; n := 0;
+  for f in select p.id::text from gauntlet_pool() p loop
+    n := n + 1;
+    x := gauntlet_v2_info(jsonb_build_object(f, combat_v2_card_unit(f::bigint)))->f;
+    if jsonb_typeof(x->'text') is distinct from 'string' or length(trim(x->>'text')) = 0 then bad := bad || jsonb_build_array(jsonb_build_object('card', f, 'info', x)); end if;
+  end loop;
+  ${add('GO9 every card of the v2 pool (each has a usable ability_v2): gauntlet_v2_info gives a non-empty text', `n > 0 and bad = '[]'::jsonb`, "jsonb_build_object('cards', n, 'bad', left(bad::text, 600))")}
+`, '; bad jsonb');
 
 // ---------------------------------------------------------------------------------------------------------- B3: GO5 the rollback (flag ON -> OFF)
 const B3 = block(String.raw`

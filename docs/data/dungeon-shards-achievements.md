@@ -1181,7 +1181,7 @@ POST /api/gauntlet/start: starts a Gauntlet run with the week's squad. Checks bo
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Gauntlet (20.15 R1b): the screen facts of the squad at the run start (a snapshot, D4): for each card the active name (subjects.ability_v2 name), the role, the class and needs_ally. Reads only. combat_v2_gauntlet_run.sql.
+[combat] Combat v2 Gauntlet (20.15 R1b): the screen facts of the squad at the run start (a snapshot, D4): for each card the active name (subjects.ability_v2 name), the role, the class and needs_ally. Reads only. combat_v2_gauntlet_run.sql. Since combat_v2_on_gauntlet.sql (R1-ON) each card also has text: the description of its active (ability_v2_text of its class and blocks), for the card info window.
 
 <a id="fn-gauntlet-v2-needs-ally-jsonb"></a>
 
