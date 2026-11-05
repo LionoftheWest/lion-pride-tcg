@@ -100,7 +100,10 @@ begin
   end if;
   select count(*) into n from events where repeat_id = rid and status = 'scheduled' and starts_at > T;
   if n not between 3 and 4 then bad := bad || format('1: the fill at now made %s weekly rows, not 4; ', n); end if;
+  -- the one-time week of event 5 (weekly_hunt_20261105): Fri 2026-11-06 00:00 to Tue 2026-11-10 17:00 Denver by Nathan's decision of
+  -- 2026-11-04 (the combat v2 switch, ON SPEC v6.1 section 5); only that row with exactly those times is exempt, every other row keeps the rule
   if exists (select 1 from events where repeat_id = rid and status = 'scheduled' and starts_at > T
+               and not (key = 'weekly_hunt_20261105' and starts_at = '2026-11-06 07:00+00' and ends_at = '2026-11-11 00:00+00')
                and not (extract(isodow from starts_at at time zone 'America/Denver') = 4 and (starts_at at time zone 'America/Denver')::time = time '15:00'
                         and extract(isodow from ends_at at time zone 'America/Denver') = 1 and (ends_at at time zone 'America/Denver')::time = time '17:00')) then
     bad := bad || '1: a weekly row is not Thursday 15:00 to Monday 17:00 Denver; ';
