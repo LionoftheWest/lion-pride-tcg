@@ -200,6 +200,12 @@
         "reason": "round(random() x act_at, 2): the meter of a card and of a foe at the room start has 2 decimals (the Lab rule of plan 20.15, R2 SPEC INV-6). A display precision, not a combat number."
       }
     },
+    "hunt_v2_shared": {
+      "3": {
+        "count": 1,
+        "reason": "limit 3: the defeat event lists the top 3 damage dealers (the v1 hunt_attack defeat text, R3-ON 3.4 (4)). A display length, not a combat number."
+      }
+    },
     "hunt_v2_start": {
       "2": {
         "count": 2,
