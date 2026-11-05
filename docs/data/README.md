@@ -23,12 +23,12 @@ comment, or when a table or a function is not on these pages.
 | Page | Tables | Tables with a comment | Columns with a comment | Functions | Functions with a comment |
 |---|---|---|---|---|---|
 | [Cards and trading](cards-and-trading.md) | 22 | 22 (100%) | 222 of 222 (100%) | 97 | 97 (100%) |
-| [Hunt and combat](hunt-and-combat.md) | 21 | 21 (100%) | 236 of 236 (100%) | 227 | 227 (100%) |
-| [Dungeon, Shards and achievements](dungeon-shards-achievements.md) | 14 | 14 (100%) | 109 of 109 (100%) | 127 | 127 (100%) |
+| [Hunt and combat](hunt-and-combat.md) | 22 | 22 (100%) | 251 of 251 (100%) | 242 | 242 (100%) |
+| [Dungeon, Shards and achievements](dungeon-shards-achievements.md) | 14 | 14 (100%) | 105 of 105 (100%) | 125 | 125 (100%) |
 | [Members and platform](members-and-platform.md) | 18 | 18 (100%) | 113 of 113 (100%) | 52 | 52 (100%) |
 | [Admin view](admin.md) | 1 | 1 (100%) | 11 of 11 (100%) | 50 | 50 (100%) |
 | [Events](events.md) | 6 | 6 (100%) | 69 of 69 (100%) | 29 | 29 (100%) |
 | [Other](other.md) | 8 | 8 (100%) | 54 of 54 (100%) | 21 | 21 (100%) |
-| **All** | 90 | 90 (100%) | 814 of 814 (100%) | 603 | 603 (100%) |
+| **All** | 91 | 91 (100%) | 825 of 825 (100%) | 616 | 616 (100%) |
 
 [Balance numbers](balance.md): 64 keys with the note, the shape and the current value.

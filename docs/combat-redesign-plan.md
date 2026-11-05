@@ -2642,3 +2642,42 @@ true. The number 20.19b keeps the R2 parts together (20.20 is R3a).
   v2_convert.level_per_star x the current stars)` and the points and bonus of the `card_progress_v2` row (no row: 0). M1e adds `v2_convert`.
 - **Proof**: `card-studio/scripts/test-combat-v2-on-dungeon.mjs` (cases DO1-DO10, rolled back, `MUTATE=all`). The REPORT of item ON (R2-ON) has
   the runs. DO9 needs M1e on the copy for the real `v2_convert` key: until then it uses a stand-in key and prints WAIT.
+
+### 20.20 R3a: the v2 Hunt practice for testers (`tcg-bot/supabase/combat_v2_hunt_practice.sql`)
+
+R3a is the SQL part of the TESTER practice of plan row 14.1 phase 7 "R3 Hunt v2 ON" (pipeline item R3, SPEC v3; Nathan QH1-QH5, QT1).
+Nothing in play changes: `combat_v2.hunt` stays false, and only a player on `balance combat_v2.testers` can start a practice day. The shared
+boss stays v1 for everyone: one HP number on the v1 scale cannot take v2 damage (R3 SPEC section 0). A real Hunt v2 for all is item R3-ON.
+
+- **A private copy of the live boss** (QH1): the v2 template of the same boss (`hunt_v2_boss_key`: the `hunt_bosses_v2` name with or without a
+  leading "The "), the live tier, the live `hp_remaining / hp_max` at the start (INV-4). One practice day per Hunt, tester and Denver day (QH2),
+  40 steps (`v2_hunt.round_cap`), the player's stars and level 0 (QH3), the auto-pick against the boss or the own pick of up to
+  `hunt_card_cap()` cards (QH4), `combat_v2_synergy` once before the first step.
+- **No shared write, no boss lock (INV-2)**: the new table `hunt_v2_days` has NO foreign key to `hunts`; every `hunt_v2_` function reads the
+  `hunts` row with no lock; no table but `hunt_v2_days` is written. No reward, no XP, no board row, no `hunt_hits` row.
+- **The functions** (server only, R3b routes): `hunt_v2_start`, `hunt_v2_act`, `hunt_v2_auto` (the R2a helper `dungeon_v2_play`), `hunt_v2_view`
+  (`can_start`, `hunt.live_frac` = the shared v1 bar, read only). The end: `cap`, `squad_down`, `boss_down`, `hunt_over` (the Hunt closed: no
+  fight call), `abandoned` (an active day of an earlier day).
+- **Proof**: `card-studio/scripts/test-combat-v2-hunt-practice.mjs` (cases H1-H11; H3 on two real connections; `MUTATE=all`). The REPORT of
+  item R3 has the runs. H5b (the synergy and the unit `tags`) needs SYN on the copy: until then it prints WAIT.
+- **Go-live order**: after R1b, SYN and R2a (the merge order R1b -> SYN -> R2a -> R3a). `rehearse-sql.mjs`, then `apply-sql.mjs --live`, then
+  `check-schema-drift.mjs --live` = 0. Not in Thu 14-15 MT or Mon 16-17 MT (new objects only; no lock on `hunts`).
+
+### 20.21 R3-ON: the Hunt in combat v2 for every member (`tcg-bot/supabase/combat_v2_on_hunt.sql`)
+
+R3-ON is the Hunt part of the one switch (pipeline item ON, SPEC v6.1 section 3.4). With the flag `combat_v2.hunt` OFF nothing changes (the R3a
+practice for testers). The switch file sets it ON; then every member plays the Hunt in v2 and a live day credits the SHARED boss.
+
+- **The mark** (INV-ON-1): `hunt_v2_days.live` = the flag at the start, `credited` = the shared damage of the day. Readers read the mark.
+- **The credit** (`hunt_v2_credit`): each decrease of the private boss HP in the call log (heals not credited) x `hunts.hp_max / the private boss max`;
+  an act decrease to its card, any other decrease (a tick) to the first squad card (the engine keeps no status source); per card the largest remainder.
+- **The shared write** (`hunt_v2_shared`, in every call with a credit, after the private step): `hunts ... for no key update`, the status and the close
+  time again (closed: no write, the day ends `hunt_over`), `hunt_hits` per card (the v1 rule), the boss HP (stops at 0; `hunt_hits` gets the full
+  credit), one `hunt_combat_log` row per credited card, `credited`; only the call that defeats the boss runs `settle_hunt` and writes the defeat event.
+- **The live start**: no write lock on the boss row. First `hunts ... for key share`, then `players ... for update` (the order of the defeat settle);
+  `v1_today` when the member played v1 today; one downed `hunt_card_hp` bridge row per squad card (the v1 readers count the day: the daily task,
+  `raider`, `slayer`). The start step credits a boss HP decrease like an act. The routes retry a call once on `40P01`/`40001`, then `busy`.
+- **v1**: `hunt_attack` and `hunt_support` (md5 guard: the live text + 4 lines) refuse `v2_on` with the flag ON and `v2_today` after a live v2 day of today.
+- **Testers with the flag OFF**: no active Hunt = a practice against the newest ended Hunt (live frac 1, no shared write).
+- **The auto-pick** ranks the `dungeon_v2_unit` stats (the live level and points after R2-ON and M1e) with the fight speed (`combat_v2_speed`).
+- **Proof**: `card-studio/scripts/test-combat-v2-on-hunt.mjs` (HO1-HO12; HO4b and HO7 on two real connections; `MUTATE=all`). The REPORT of item ON.

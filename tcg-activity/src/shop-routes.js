@@ -11,6 +11,8 @@ const ERR = {
   stats_disabled: 'Stat points are off.', not_owned: 'You do not own that card.', nothing_spent: 'That card has no points to reset.',
   bad_kind: 'Unknown item.', bad_count: 'Pick how many copies to convert.', no_value: 'That card cannot convert to Shards.',
   too_many: 'You can convert only the extra copies.',
+  // UI-43 N-10: buy_shop_item refuses stat_reset while combat v2 progress is ON (ON SPEC 3.5, CV12)
+  stat_reset_paused: 'Stat reset returns with the v2 stats screen.',
 };
 // bad_qty: the limit is balance shards.max_packs_per_buy (buy_shop_item reads it through shard_cfg).
 const qtyText = (max) => `Buy 1 to ${max} packs at a time.`;

@@ -12,6 +12,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { SIZES, SCREENS, sizeKey, boot, runSteps } from './screens.mjs';
+import { TOKENS } from '../../tcg-activity/src/tokens.js';   // ON-UI content rules: card-mini, the stage floor
 
 const here = dirname(fileURLToPath(import.meta.url));
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
@@ -92,6 +93,8 @@ async function runCell([s, screen, variant], ref = {}) {
         if (spec.board) cookies.push({ name: 'ci_board', value: spec.board, url: BASE });   // UI-66: the Leaderboard board states (rows | empty | error)
         if (spec.ach) cookies.push({ name: 'ci_ach', value: spec.ach, url: BASE });
         if (spec.frames) cookies.push({ name: 'ci_frames', value: spec.frames, url: BASE });   // UI-13 D-191: the set holo frames (sets)
+        if (spec.shop) cookies.push({ name: 'ci_shop', value: spec.shop, url: BASE });   // UI-43 N-10: the paused stat reset (serve.mjs)
+        if (spec.v3) cookies.push({ name: 'ci_v3', value: spec.v3, url: BASE });   // UI-43 N-10: off = the v2 screens (serve.mjs)
         if (spec.stats) cookies.push({ name: 'ci_stats', value: spec.stats, url: BASE });
         if (spec.loader) {   // UI-56: the sign-in never answers (loading, timeout) or fails (error); the hint says "v3 member" (the loader cannot read the flag)
           cookies.push({ name: 'ci_loader', value: spec.loader === 'error' ? 'error' : 'wait', url: BASE });
@@ -102,6 +105,7 @@ async function runCell([s, screen, variant], ref = {}) {
         if (spec.treq) cookies.push({ name: 'ci_treq', value: spec.treq, url: BASE });   // UI-63 / UI-25 trade requests (serve.mjs)
         if (spec.fx) cookies.push({ name: 'ci_fx', value: spec.fx, url: BASE });
         if (spec.play) cookies.push({ name: 'ci_play', value: spec.play, url: BASE });   // UI-28: the check server answers POST /api/effects/play (a play that works)
+        if (spec.open) cookies.push({ name: 'ci_open', value: spec.open, url: BASE });   // PACK-SET-B: /api/sets answers 2 sets (serve.mjs)
         if (spec.auction) cookies.push({ name: 'ci_auction', value: spec.auction, url: BASE });   // UI-32: the derived auction states (serve.mjs)
         if (variant === 'long') cookies.push({ name: 'ci_data', value: 'long', url: BASE });
         if (cookies.length) await ctx.addCookies(cookies);
@@ -156,6 +160,42 @@ async function runCell([s, screen, variant], ref = {}) {
           res.cut = await call(pg, CUT, 'body');
           res.cutWin = await call(pg, CUT, '[data-audit-win]');
           res.extra = await call(pg, EXTRA);
+          // see (screens.mjs): each selector must exist and be in the view (UI-43 N-10: the paused line and the disabled button)
+          if (spec.see) res.see = await pg.evaluate((sels) => sels.map((q) => {
+            const e = document.querySelector(q); if (!e) return [q, 'absent'];
+            const b = e.getBoundingClientRect(); const st = getComputedStyle(e);
+            const ok = b.width > 0 && b.height > 0 && st.visibility !== 'hidden' && b.top >= -1 && b.left >= -1 && b.bottom <= innerHeight + 1 && b.right <= innerWidth + 1;
+            return ok ? null : [q, 'outside the view'];
+          }).filter(Boolean), spec.see);
+          // ON-UI content rules (screens.mjs; 'see' is the UI-43 check above): noText = words not on the page; squad = every squad card at
+          // least TOKENS card-mini, at most 2 lines, inside the squad row; stageMin = the boss stage (the arena under its plates) at least the approved
+          // UI-47 floor sp-7 + sp-6 + sp-5 (a list of sizes: the Hunt at 430x932, the D-61 phone frame and review M-3; the approved Gauntlet and
+          // Dungeon fights are lower at 1280x720 (99 px) and 430x822 (100 px), so the floor is not a rule there)
+          if (spec.noText || spec.squad || spec.stageMin) res.content = await pg.evaluate(({ noText, squad, stageMin, mini }) => {
+            const out = [];
+            const text = document.getElementById('main')?.innerText || '';
+            for (const w of noText || []) if (text.includes(w)) out.push([`noText "${w}"`, 'on the page']);
+            const F = document.querySelector('.dg-fight.g2');
+            if (squad) {
+              const u = F?.querySelector('.dg-units');
+              if (!u) out.push(['squad .dg-units', 'absent']);
+              else {
+                const ub = u.getBoundingClientRect(); const tops = new Set();
+                for (const it of u.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')) {
+                  const c = [...it.querySelectorAll('.dg-card, img')].find((e) => e.getClientRects().length) || it; /* a picture the approved short layout hides (is-short3): the card itself */ const w = c.getBoundingClientRect().width; const b = it.getBoundingClientRect();
+                  if (w < mini - 0.5) out.push(['squad card below card-mini', `${Math.round(w)} px`]);
+                  if (b.left < ub.left - 1 || b.right > ub.right + 1 || b.top < ub.top - 1 || b.bottom > ub.bottom + 1) out.push(['squad card outside the squad row', `${Math.round(b.left)},${Math.round(b.top)}`]);
+                  tops.add(Math.round(b.top));
+                }
+                if (tops.size > 2) out.push(['squad row', `${tops.size} lines`]);
+              }
+            }
+            if (stageMin) {
+              const a = F?.querySelector('.dg-arena'), pl = F?.querySelector('.dg-plates');
+              if (a) { const h = a.getBoundingClientRect().bottom - Math.max(a.getBoundingClientRect().top, pl ? pl.getBoundingClientRect().bottom : 0); if (h < stageMin - 0.5) out.push(['boss stage below its minimum', `${Math.round(h)} px < ${stageMin}`]); }
+            }
+            return out;
+          }, { noText: spec.noText, squad: !!spec.squad, stageMin: spec.stageMin === true || (Array.isArray(spec.stageMin) && spec.stageMin.includes(size)) ? TOKENS['sp-7'] + TOKENS['sp-6'] + TOKENS['sp-5'] : 0, mini: TOKENS['card-mini'] });
           if (spec.walk) res.walk = await call(pg, WALK, { touch });   // UI-37: the walkthrough card (the other checks skip #tutLayer)
           if (!res.checks || !res.fit || !res.cut || !res.extra) throw new Error('a check returned nothing');
           // A loaded runner (software WebGL, the 3D chest) timed out on page.screenshot (PR #290, three runs). On a TimeoutError wait 2 s

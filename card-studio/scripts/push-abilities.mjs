@@ -30,7 +30,8 @@ if (process.argv.includes('--v2')) process.exitCode = await pushV2(process.argv[
 else await pushV1();
 
 async function pushV1() {
-  const cards = JSON.parse(readFileSync(fileURLToPath(new URL('../cards.json', import.meta.url)), 'utf8'));
+  // CARDS_FILE: a copy of cards.json (S2-PUB / ABIL gate runs on work/ files); else the repo file
+  const cards = JSON.parse(readFileSync(process.env.CARDS_FILE || fileURLToPath(new URL('../cards.json', import.meta.url)), 'utf8'));
 
   const TYPES = ['Character', 'Creature', 'Moment', 'Item', 'Place'];
   const ATTACK = ['focus', 'pierce', 'execute', 'lifesteal', 'rampage'];

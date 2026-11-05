@@ -32,6 +32,9 @@ export const MUTATIONS = {
   shared_dep_patched: ['  // The tester bit of each member', "  { const r0 = supabase.rpc; supabase.rpc = async (...a) => { const r = await r0(...a); if (a[0] === 'gauntlet_view' && r?.data) r.data = { ...r.data, v2: true }; return r; }; }\n  // The tester bit of each member"],
   // Extra: the raw ids reach the engine (combat_v2_card_act refuses a target that is not {side: enemy, id}).
   choice_raw_ids: ["c.target = { side: 'enemy', id: t };", 'c.target = t;'],
+  // R1-ON (the cache drop after a v2 write): the spec mutation, and a board that is never dropped at a run end
+  no_cache_clear: ['try { onRunChange?.(player, ended); }', 'try { /* no cache drop */ }'],
+  board_not_cleared: ['try { onRunChange?.(player, ended); }', 'try { onRunChange?.(player, false); }'],
 };
 async function loadModule() {
   const name = process.env.MUTATE;
@@ -96,8 +99,10 @@ function harness({ rpc = baseRpc(), v1 = true, v2 = true, v2First = false, me = 
     supabase, caller: async () => me, rateLimit: () => rateOk, getCatalogBase: async () => clone(CATALOG), dungeonOn: () => on,
     onRun: (m, mode) => calls.push({ onRun: mode }), userCache: (o) => makeTtlCache(o), sharedCache: (_n, o) => makeTtlCache(o),
   };
-  const regV1 = () => v1 && registerDungeonRoutes(app, deps);
-  const regV2 = () => v2 && registerGauntletV2Routes(app, deps);
+  // R1-ON: the v2 module gets the cache hook of the v1 module, as server.js wires it (read at call time, so either order works)
+  let v1h = null;
+  const regV1 = () => v1 && (v1h = registerDungeonRoutes(app, deps));
+  const regV2 = () => v2 && registerGauntletV2Routes(app, { ...deps, onRunChange: (...a) => v1h?.gauntletRunChanged(...a) });
   if (v2First) { regV2(); regV1(); } else { regV1(); regV2(); }
   const request = async (method, path, body = {}, q = {}) => {
     let status = 200, json, sent = false; const fin = [];
@@ -272,4 +277,58 @@ test('G-C6 cards: the catalog fields for each state.squad id (write answers and 
   assert.deepEqual(v.json.cards, want, 'the view: run.state.squad');
   const rt = await harness({ rpc: baseRpc({ tester: true }) }).post('/api/gauntlet/v2/retreat', {});
   assert.equal(rt.json.cards, undefined);
+});
+
+// ------------------------------------------------------------------ R1-ON: a v2 write drops the cached Gauntlet view and, at a run end, the board
+// The view (15 s) and the board (5 s) read member v2 runs since combat_v2_on_gauntlet.sql. A member who ends a v2 run and opens the
+// lobby or the board within the cache time must see the new best (orchestrator KEEP from the R1e review r4 F-3; mutation no_cache_clear).
+const liveRpc = (st) => (name) => {
+  if (name === 'combat_v2_on') return { data: true, error: null };
+  if (name === 'gauntlet_view') return { data: { ok: true, week: 7, best: { floor: st.best }, runs_left: st.left }, error: null };
+  if (name === 'gauntlet_board') return { data: [{ player_id: '77', floor: st.best }], error: null };
+  if (name === 'gauntlet_v2_retreat') { st.best = st.next; st.left = 0; return { data: { ok: true, floor: st.next, room: 1 }, error: null }; }
+  if (name.startsWith('gauntlet_v2_')) {
+    st.best = st.next; if (st.end) st.left = 0;
+    return { data: { ok: true, state: clone(STATE), status: st.end ? 'over' : 'active', log: [] }, error: null };
+  }
+  return baseRpc({ tester: true })(name);
+};
+for (const [route, body, end] of [['/api/gauntlet/v2/finish', {}, true], ['/api/gauntlet/v2/auto', { max: 1 }, true], ['/api/gauntlet/v2/act', { use: 'basic', target: 0 }, true], ['/api/gauntlet/v2/retreat', {}, false]]) {
+  test(`R1-ON a v2 run end by ${route.split('/').pop()} drops the cached GET /api/gauntlet and the board: the new best at once`, async () => {
+    const st = { best: 2, next: 6, left: 1, end };
+    const h = harness({ rpc: liveRpc(st) });
+    assert.equal((await h.get('/api/gauntlet')).json.best.floor, 2);
+    assert.equal((await h.get('/api/gauntlet/board')).json.board[0].floor, 2);
+    assert.equal((await h.get('/api/gauntlet')).json.best.floor, 2, 'the second GET is the cached answer');
+    const w = await h.post(route, body);
+    assert.equal(w.status, 200);
+    const v = await h.get('/api/gauntlet'); const b = await h.get('/api/gauntlet/board');
+    assert.equal(v.json.best.floor, 6, 'the lobby best within the 15 s view cache');
+    assert.equal(v.json.runs_left, 0, 'runs_left within the view cache');
+    assert.equal(b.json.board[0].floor, 6, 'the board within the 5 s board cache');
+  });
+}
+test('R1-ON a v2 write that does not end the run drops the member view only (the board stays cached)', async () => {
+  const st = { best: 2, next: 3, left: 1, end: false };
+  const h = harness({ rpc: liveRpc(st) });
+  await h.get('/api/gauntlet'); await h.get('/api/gauntlet/board');
+  await h.post('/api/gauntlet/v2/act', { use: 'basic', target: 0 });
+  assert.equal((await h.get('/api/gauntlet')).json.best.floor, 3, 'the member view is read again');
+  assert.equal(h.calls.filter((c) => c.name === 'gauntlet_board').length, 1, 'no second board read');
+});
+test('R1-ON a refused v2 write and a transport error never drop the shared board (the member view drop is the v1 rule of every write)', async () => {
+  for (const bad of [{ data: { ok: false, error: 'not_fighting' }, error: null }, { data: null, error: { message: 'down' } }]) {
+    const st = { best: 2, next: 6, left: 1, end: true };
+    const r0 = liveRpc(st);
+    const h = harness({ rpc: (n, a) => (n === 'gauntlet_v2_auto' ? bad : r0(n, a)) });
+    await h.get('/api/gauntlet'); await h.get('/api/gauntlet/board');
+    await h.post('/api/gauntlet/v2/finish', {});
+    await h.get('/api/gauntlet'); await h.get('/api/gauntlet/board');
+    assert.equal(h.calls.filter((c) => c.name === 'gauntlet_board').length, 1, 'the board stays cached');
+  }
+});
+test('R1-ON server.js passes the v1 cache hook to the v2 routes', () => {
+  const src = readFileSync(join(here, '..', 'server.js'), 'utf8');
+  assert.ok(src.includes('const dungeonCaches = registerDungeonRoutes(app, '), 'server.js keeps the hooks of registerDungeonRoutes');
+  assert.match(src, /registerGauntletV2Routes\(app, \{[^}]*onRunChange: dungeonCaches\.gauntletRunChanged \}\)/);
 });

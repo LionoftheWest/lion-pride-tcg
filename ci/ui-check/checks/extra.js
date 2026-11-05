@@ -1,6 +1,8 @@
 // The two checks of docs/design.md 12.6 that fitdetect.js, cutdetect.js and walk-checks.js do not cover:
 //   iconNoName  an icon-only control (no visible text) with no aria-label or aria-labelledby (5.3, 9.3)
 //   contrast    text below 4.5:1 on its surface, or below 3:1 for large text (18 px, or 14 px bold) (9.4)
+//   turnLabel   UI-52 D-216 (PR 503 review L-3): the v2 "Your turn" label overlaps its pill, leaves its card, or is covered (3.3).
+//               The narrow layout hides it on purpose (display: none); a label with no box outside the narrow layout is a defect.
 // Contrast is measured on solid backgrounds only. A text over a gradient or an image is counted in
 // contrastSkipped (design.md 4.4 asks for a scrim there; the design review checks it). Disabled controls are exempt.
 () => {
@@ -10,7 +12,7 @@
   const visDeep = (e) => { for (let x = e; x && x !== document.body; x = x.parentElement) { const cs = getComputedStyle(x); if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) return false; } const r = e.getBoundingClientRect(); return r.width > 2 && r.height > 2; };
   const inView = (r) => r.right > 0 && r.bottom > 0 && r.left < vw && r.top < vh;
   const skip = (e) => e.closest('#loader:not([data-measure]), #tutLayer, svg, canvas, .hidden');
-  const out = { iconNoName: [], contrast: [], contrastSkipped: 0 };
+  const out = { iconNoName: [], contrast: [], contrastSkipped: 0, turnLabel: [] };
 
   // 1) icon-only controls
   for (const e of document.querySelectorAll('button, a[href], [role=button], [role=tab], input[type=button], input[type=submit]')) {
@@ -50,6 +52,23 @@
     const fs = parseFloat(cs.fontSize), bold = parseInt(cs.fontWeight) >= 700;
     const need = fs >= 18 || (fs >= 14 && bold) ? 3 : 4.5;
     if (ratio + 0.01 < need) out.contrast.push([path(e) + ' "' + e.textContent.trim().slice(0, 20) + '"', +ratio.toFixed(2), need, cs.color]);
+  }
+
+  // 3) the v2 "Your turn" label (UI-52 D-216)
+  for (const t of document.querySelectorAll('.dg-fight.g2 .g2-turn')) {
+    const p = t.parentElement?.querySelector('.g2-pill'), c = t.closest('.dg-card');
+    if (!p || !c) { out.turnLabel.push([path(t), !p ? 'no pill' : 'not on a card']); continue; }
+    if (!t.getClientRects().length) { if (!t.closest('.dg-fight.is-narrow, .dg-fight.g2-small')) out.turnLabel.push([path(t), 'hidden outside the narrow layout']);   /* g2-small (PR 499): fitted cards below the squad step take the same D-216 narrow rule */ continue; }
+    const a = t.getBoundingClientRect(), b = p.getBoundingClientRect(), k = c.getBoundingClientRect();
+    const ov = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)) * Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+    if (ov > 0) out.turnLabel.push([path(t), `overlaps the pill ${Math.round(ov)} px2`]);
+    if (!(a.left >= k.left - 0.5 && a.right <= k.right + 0.5 && a.top >= k.top - 0.5 && a.bottom <= k.bottom + 0.5)) out.turnLabel.push([path(t), 'outside its card']);
+    // the top layer at the label centre (elementFromPoint skips pointer-events: none, so the label and its column take hits for the check)
+    const w = t.parentElement; const pe = [t.style.pointerEvents, w.style.pointerEvents]; t.style.pointerEvents = 'auto'; w.style.pointerEvents = 'auto';
+    const top = document.elementFromPoint((a.left + a.right) / 2, (a.top + a.bottom) / 2);
+    t.style.pointerEvents = pe[0]; w.style.pointerEvents = pe[1];
+    // only a part of the fight covers it: an open window over the fight (the card info, gauntlet-v2-info) is by design
+    if (!top || (!(top === t || t.contains(top)) && top.closest('.dg-fight'))) out.turnLabel.push([path(t), `covered by ${top ? name(top) : 'nothing'}`]);
   }
   return out;
 }

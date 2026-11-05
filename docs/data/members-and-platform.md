@@ -722,7 +722,7 @@ Pays the one tutorial pack (ref ('tutorial', 'complete')) when all the steps are
 - Returns: `jsonb`
 - Security definer: no
 
-Returns the daily tasks of a member today (jsonb array): checkin, chat, hunt, voice, social, and dungeon and gauntlet when their mode is on, with progress, done, claimed and reward. Internal helper of dailies_view and claim_daily. R2-ON (combat_v2_on_dungeon.sql): the dungeon task also counts a LIVE v2 run of today (not a tester run).
+Returns the daily tasks of a member today (jsonb array): checkin, chat, hunt, voice, social, and dungeon and gauntlet when their mode is on, with progress, done, claimed and reward. Internal helper of dailies_view and claim_daily.
 
 <a id="fn-dailies-view-text"></a>
 

@@ -20,7 +20,7 @@ import { studioAuth, loadSecret } from './studio-auth.js';
 import { artKeyFor, artSlots, SLOT_LABEL, ORDER, slugify, needsPeriod, tiersPublic, ANIMATED } from './rarity.js';
 import { getFrame, setFrame } from './frames.js';
 import { getArtist, setArtist } from './artists.js';
-import { getSource, setSource } from './artsources.js';
+import { getSource, setSource, artFile, resolveArtFile } from './artsources.js';
 import { checkTierSetChange, homeLiveSet, tierSetOrNull } from './tier-set.js';
 import { getCards, getCard, addCard, updateCard, deleteCard, slotDetails, setSlotDetails, subjectType, isSetId } from './cardstore.js';
 
@@ -99,15 +99,6 @@ const cardById = (id) => getCard(id);
 // Mark a card as changed since its last render, so the portal can flag it as
 // having "unpushed changes". Cleared (pushedAt bumped) when it renders.
 const touch = (id) => { updateCard(id, { updatedAt: Date.now() }); };
-const artFile = (id, slot) => {
-  const f = readdirSync(ART).find((n) => n.startsWith(`${id}-${slot}.`));
-  return f ? join(ART, f) : null;
-};
-// The art file for a slot, following a "pull from another card" source if set.
-const resolveArtFile = (id, slot) => {
-  const src = getSource(id, slot);
-  return src ? artFile(src.fromId, src.fromSlot) : artFile(id, slot);
-};
 
 // The full card list, tagged with per-slot art + pushed status.
 // The tier catalog (labels, colors, order, flags) — the studio reads this so a

@@ -8,21 +8,25 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { createAttackFX } from './attack-fx.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { MODEL_BASE, MODEL_BOSSES } from './boss-models.js';
 
 const BASE = '/dungeon/monsters/';
 const CLIPS = {
-  idle: ['Idle', 'Flying_Idle'],
-  attack: ['Attack', 'Punch', 'Bite_Front', 'Headbutt', 'Weapon'],
-  hit: ['HitReact', 'HitRecieve'],
-  death: ['Death'],
+  idle: ['Idle', 'Flying_Idle', 'idle'],
+  attack: ['Attack', 'Punch', 'Bite_Front', 'Headbutt', 'Weapon', 'strike'],
+  hit: ['HitReact', 'HitRecieve', 'hit'],
+  death: ['Death', 'death'],
 };
 const ELEMENT = { fire: 0xff6a3d, water: 0x3da5ff, lightning: 0xffd23d, earth: 0xb08850, nature: 0x5fd06a, ice: 0x9fe6ff, shadow: 0xa070ff, light: 0xfff2b0 };
 const TARGET = 0xff3b55;
 const cache = new Map();
-const loader = new GLTFLoader();
+const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);   // the Hunt boss models (*-z2.glb) are meshopt files
 const load = (model) => {
   if (!cache.has(model)) {
-    const p = new Promise((ok, no) => loader.load(BASE + model + '.glb', ok, undefined, no));
+    // R3b / ON-UI: a Hunt boss is "boss:<key>" (boss-models.js, the same file as the Hunt view); a monster is a file name here
+    const url = String(model).startsWith('boss:') ? `${MODEL_BASE}/${MODEL_BOSSES[String(model).slice(5)]?.file}` : BASE + model + '.glb';
+    const p = new Promise((ok, no) => loader.load(url, ok, undefined, no));
     cache.set(model, p);
     p.catch(() => { if (cache.get(model) === p) cache.delete(model); });   // a failed load is tried again on the next use (never kept as a permanent empty slot)
   }
@@ -79,7 +83,7 @@ export function mountStage(canvas, opts = {}) {
     const rowW = (n - 1) * spread + tallest * 1.3;
     // opts.slotFill() (the v2 fight on phones only, R1e / UI-52 review-5): one monster under each plate slot, slotFill x the slot width high,
     // standing on the floor of the stage, below opts.slotTop() px (the plates and their status rows). 0 or no option (every v1 screen): unchanged.
-    const fill = n > 1 ? opts.slotFill?.() || 0 : 0;
+    const fill = n > 1 || opts.fillOne?.() ? opts.slotFill?.() || 0 : 0;   // N-3: one Hunt boss fills its slot too (opts.fillOne)
     const free = fill ? Math.max(1, h - (opts.slotTop?.() || 0)) : h;
     const vh = fill ? Math.max((tallest * h) / free, (tallest * n) / (fill * camera.aspect)) : Math.max(tallest * 1.12, rowW / camera.aspect);
     // A wide, short arena (a landscape phone): spread the monsters over the width (they bunched in the middle).

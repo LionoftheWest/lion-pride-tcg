@@ -5,6 +5,8 @@
 // Flag: dungeonOn(id) (DUNGEON_USERS = Nathan first, FEATURE_DUNGEON=1 = everyone). The database flag
 // settings.dungeon.enabled is the second switch: while it is false, every RPC refuses.
 
+import { sendV2Refusal } from './v2-refusals.js';
+
 const ERR = {
   disabled: 'The Dungeon is closed.', locked: 'Finish the steps to unlock the Dungeon.', already: 'You used today\'s run. A new dungeon opens tomorrow.',
   squad_size: 'Pick 5 cards.', not_owned: 'You do not own that card.', rule: 'That card breaks today\'s rule.', budget: 'Your squad is over the budget.',
@@ -17,7 +19,7 @@ const ERR = {
   one_support: 'One support per turn. Attack to end the turn.', not_between_floors: 'You can leave only between floors, after the guardian.',
   can_act: 'You can still act: the turn does not pass.', already_gauntlet: 'You used today\'s Gauntlet run. Come back tomorrow.',
 };
-const fail = (res, data) => res.status(400).json({ ...data, ok: false, message: ERR[data?.error] || data?.error || 'failed' });
+const fail = (res, data) => (sendV2Refusal(res, data) ? res : res.status(400).json({ ...data, ok: false, message: ERR[data?.error] || data?.error || 'failed' }));   // ON-UI: v2_on, v2_today, v1_today -> 409
 const id = (v) => { const n = Number(v); return Number.isInteger(n) && n > 0 ? n : null; };
 // The run mode: the daily Dungeon or the weekly Gauntlet (gauntlet.sql). Each action finds the run of its mode.
 const mode = (v) => (v === 'gauntlet' ? 'gauntlet' : 'daily');
@@ -173,4 +175,13 @@ export function registerDungeonRoutes(app, { supabase, caller, rateLimit, getCat
     const me = await gate(req, res, true); if (!me) return;
     await rpc(res, 'gauntlet_start', { p_player: String(me.id) });
   });
+  // R1-ON (combat_v2_on_gauntlet.sql): the Gauntlet view and board read the member v2 runs too, but a v2 write goes through the
+  // /api/gauntlet/v2 routes (gauntlet-v2-routes.js), not through gate() above. Those routes call this after each write: it drops the
+  // member's cached GET /api/gauntlet (best, rank, runs_left) and, when the run ended, the shared Gauntlet board. No v1 route changes.
+  return {
+    gauntletRunChanged(memberId, ended) {
+      views?.bust(`g:${memberId}`);
+      if (ended) boards?.bust('g');
+    },
+  };
 }

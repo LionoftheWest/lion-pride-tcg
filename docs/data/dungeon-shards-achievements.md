@@ -9,7 +9,7 @@ The daily Dungeon, the weekly Gauntlet, the Shards and the Shop, the achievement
 
 Tables (14): [achievement_claims](#table-achievement-claims), [achievement_switch_map](#table-achievement-switch-map), [achievement_tracks](#table-achievement-tracks), [dungeon_days](#table-dungeon-days), [dungeon_log](#table-dungeon-log), [dungeon_monsters](#table-dungeon-monsters), [dungeon_monsters_v2](#table-dungeon-monsters-v2), [dungeon_payouts](#table-dungeon-payouts), [dungeon_runs](#table-dungeon-runs), [dungeon_v2_runs](#table-dungeon-v2-runs), [gauntlet_weeks](#table-gauntlet-weeks), [shard_ledger](#table-shard-ledger), [shop_purchases](#table-shop-purchases), [shop_stock](#table-shop-stock)
 
-Functions (127): [ach_has_element(jsonb)](#fn-ach-has-element-jsonb), [ach_tag_badges(text)](#fn-ach-tag-badges-text), [ach_tier_need(text,integer)](#fn-ach-tier-need-text-integer), [ach_tier_paid_before(text,text,integer)](#fn-ach-tier-paid-before-text-text-integer), [ach_tier_reward(text,integer)](#fn-ach-tier-reward-text-integer), [ach_track_values(text)](#fn-ach-track-values-text), [ach_tracks_on(text)](#fn-ach-tracks-on-text), [ach_wish_gift()](#fn-ach-wish-gift), [ach_wish_grant(text,text,bigint,text,bigint)](#fn-ach-wish-grant-text-text-bigint-text-bigint), [ach_wish_trade()](#fn-ach-wish-trade), [achievement_gallery(text)](#fn-achievement-gallery-text), [achievement_view(text)](#fn-achievement-view-text), [buy_shop_item(text,text,integer,bigint,integer)](#fn-buy-shop-item-text-text-integer-bigint-integer), [claim_achievement(text,text,integer,text,text)](#fn-claim-achievement-text-text-integer-text-text), [claim_achievement_tiers(text,text)](#fn-claim-achievement-tiers-text-text), [dungeon_after_kill(dungeon_runs,jsonb)](#fn-dungeon-after-kill-dungeon-runs-jsonb), [dungeon_attack(text,bigint,integer,text)](#fn-dungeon-attack-text-bigint-integer-text), [dungeon_auto_action(dungeon_runs,jsonb,bigint[],text)](#fn-dungeon-auto-action-dungeon-runs-jsonb-bigint-text), [dungeon_auto_attackers(dungeon_runs,jsonb,jsonb,integer)](#fn-dungeon-auto-attackers-dungeon-runs-jsonb-jsonb-integer), [dungeon_auto_rounds(text,text,integer)](#fn-dungeon-auto-rounds-text-text-integer), [dungeon_board(date,integer)](#fn-dungeon-board-date-integer), [dungeon_card(text,bigint)](#fn-dungeon-card-text-bigint), [dungeon_card_base(bigint)](#fn-dungeon-card-base-bigint), [dungeon_card_of(text)](#fn-dungeon-card-of-text), [dungeon_cfg()](#fn-dungeon-cfg), [dungeon_chest_rarity(integer)](#fn-dungeon-chest-rarity-integer), [dungeon_chest_shards(integer,integer)](#fn-dungeon-chest-shards-integer-integer), [dungeon_choose(text,integer,text)](#fn-dungeon-choose-text-integer-text), [dungeon_combat_log(dungeon_runs,jsonb)](#fn-dungeon-combat-log-dungeon-runs-jsonb), [dungeon_damage_reconcile(bigint)](#fn-dungeon-damage-reconcile-bigint), [dungeon_day()](#fn-dungeon-day), [dungeon_drop_rarity(integer)](#fn-dungeon-drop-rarity-integer), [dungeon_effect_apply(jsonb,jsonb)](#fn-dungeon-effect-apply-jsonb-jsonb), [dungeon_enemy_turn(jsonb,bigint,integer,integer)](#fn-dungeon-enemy-turn-jsonb-bigint-integer-integer), [dungeon_enter(jsonb,jsonb,integer,integer)](#fn-dungeon-enter-jsonb-jsonb-integer-integer), [dungeon_fight_state(dungeon_runs,bigint,bigint,jsonb)](#fn-dungeon-fight-state-dungeon-runs-bigint-bigint-jsonb), [dungeon_fight_state_info(dungeon_runs,jsonb,bigint,jsonb,bigint,jsonb)](#fn-dungeon-fight-state-info-dungeon-runs-jsonb-bigint-jsonb-bigint-jsonb), [dungeon_finish_room(text,text)](#fn-dungeon-finish-room-text-text), [dungeon_foe_elements()](#fn-dungeon-foe-elements), [dungeon_generate(date)](#fn-dungeon-generate-date), [dungeon_hp_changes(jsonb,jsonb,text,integer,integer)](#fn-dungeon-hp-changes-jsonb-jsonb-text-integer-integer), [dungeon_hp_event(text,text,bigint,bigint,integer,integer,text,text,integer,jsonb,jsonb)](#fn-dungeon-hp-event-text-text-bigint-bigint-integer-integer-text-text-integer-jsonb-jsonb), [dungeon_log_add(bigint,jsonb,jsonb)](#fn-dungeon-log-add-bigint-jsonb-jsonb), [dungeon_loot(jsonb,integer,bigint)](#fn-dungeon-loot-jsonb-integer-bigint), [dungeon_make_foe(text,integer,integer,text)](#fn-dungeon-make-foe-text-integer-integer-text), [dungeon_monsters_v2_check()](#fn-dungeon-monsters-v2-check), [dungeon_offers(jsonb,integer)](#fn-dungeon-offers-jsonb-integer), [dungeon_pass_turn(text,text,boolean)](#fn-dungeon-pass-turn-text-text-boolean), [dungeon_pay(text,date)](#fn-dungeon-pay-text-date), [dungeon_pick(jsonb,numeric)](#fn-dungeon-pick-jsonb-numeric), [dungeon_prepare_day()](#fn-dungeon-prepare-day), [dungeon_prize_tick()](#fn-dungeon-prize-tick), [dungeon_prizes_cfg()](#fn-dungeon-prizes-cfg), [dungeon_rand(text)](#fn-dungeon-rand-text), [dungeon_retreat(text,text)](#fn-dungeon-retreat-text-text), [dungeon_room_foes(text,integer,integer,text)](#fn-dungeon-room-foes-text-integer-integer-text), [dungeon_rules()](#fn-dungeon-rules), [dungeon_run_card(dungeon_runs,bigint)](#fn-dungeon-run-card-dungeon-runs-bigint), [dungeon_run_floors(dungeon_runs)](#fn-dungeon-run-floors-dungeon-runs), [dungeon_settle(bigint,text,boolean)](#fn-dungeon-settle-bigint-text-boolean), [dungeon_settle_stale()](#fn-dungeon-settle-stale), [dungeon_start(text,bigint[])](#fn-dungeon-start-text-bigint), [dungeon_support(text,bigint,bigint,integer,text)](#fn-dungeon-support-text-bigint-bigint-integer-text), [dungeon_tier(double precision)](#fn-dungeon-tier-double-precision), [dungeon_txt(jsonb)](#fn-dungeon-txt-jsonb), [dungeon_v2_act(text,jsonb)](#fn-dungeon-v2-act-text-jsonb), [dungeon_v2_after(jsonb,jsonb,integer,integer)](#fn-dungeon-v2-after-jsonb-jsonb-integer-integer), [dungeon_v2_amounts(text,jsonb,jsonb)](#fn-dungeon-v2-amounts-text-jsonb-jsonb), [dungeon_v2_auto(text,integer)](#fn-dungeon-v2-auto-text-integer), [dungeon_v2_choose(text,integer)](#fn-dungeon-v2-choose-text-integer), [dungeon_v2_end(bigint,text)](#fn-dungeon-v2-end-bigint-text), [dungeon_v2_fight(jsonb,jsonb,integer,integer,jsonb)](#fn-dungeon-v2-fight-jsonb-jsonb-integer-integer-jsonb), [dungeon_v2_hp(jsonb,jsonb)](#fn-dungeon-v2-hp-jsonb-jsonb), [dungeon_v2_info(bigint)](#fn-dungeon-v2-info-bigint), [dungeon_v2_loot(jsonb,jsonb,integer)](#fn-dungeon-v2-loot-jsonb-jsonb-integer), [dungeon_v2_needs_ally(jsonb)](#fn-dungeon-v2-needs-ally-jsonb), [dungeon_v2_out(bigint,jsonb)](#fn-dungeon-v2-out-bigint-jsonb), [dungeon_v2_pick(jsonb,jsonb,integer)](#fn-dungeon-v2-pick-jsonb-jsonb-integer), [dungeon_v2_play(jsonb,jsonb,integer,jsonb)](#fn-dungeon-v2-play-jsonb-jsonb-integer-jsonb), [dungeon_v2_retreat(text)](#fn-dungeon-v2-retreat-text), [dungeon_v2_room(jsonb,jsonb,integer,integer,text)](#fn-dungeon-v2-room-jsonb-jsonb-integer-integer-text), [dungeon_v2_rooms(jsonb,integer,integer,boolean)](#fn-dungeon-v2-rooms-jsonb-integer-integer-boolean), [dungeon_v2_screen(jsonb,jsonb)](#fn-dungeon-v2-screen-jsonb-jsonb), [dungeon_v2_settle(bigint,text,boolean)](#fn-dungeon-v2-settle-bigint-text-boolean), [dungeon_v2_start(text,bigint[])](#fn-dungeon-v2-start-text-bigint), [dungeon_v2_turns(text,jsonb,boolean,integer)](#fn-dungeon-v2-turns-text-jsonb-boolean-integer), [dungeon_v2_unit(text,bigint,jsonb)](#fn-dungeon-v2-unit-text-bigint-jsonb), [dungeon_v2_view(text)](#fn-dungeon-v2-view-text), [dungeon_view(text)](#fn-dungeon-view-text), [dungeon_view_core(text,boolean)](#fn-dungeon-view-core-text-boolean), [dungeon_view_lite(text)](#fn-dungeon-view-lite-text), [gauntlet_board(date,integer)](#fn-gauntlet-board-date-integer), [gauntlet_cfg()](#fn-gauntlet-cfg), [gauntlet_generate(date)](#fn-gauntlet-generate-date), [gauntlet_pool()](#fn-gauntlet-pool), [gauntlet_squad(date)](#fn-gauntlet-squad-date), [gauntlet_start(text)](#fn-gauntlet-start-text), [gauntlet_v2_act(text,jsonb)](#fn-gauntlet-v2-act-text-jsonb), [gauntlet_v2_after(jsonb,jsonb,integer,integer)](#fn-gauntlet-v2-after-jsonb-jsonb-integer-integer), [gauntlet_v2_amounts(text,jsonb,jsonb)](#fn-gauntlet-v2-amounts-text-jsonb-jsonb), [gauntlet_v2_auto(text,integer)](#fn-gauntlet-v2-auto-text-integer), [gauntlet_v2_begin(text,bigint[],jsonb,integer)](#fn-gauntlet-v2-begin-text-bigint-jsonb-integer), [gauntlet_v2_choose(text,integer)](#fn-gauntlet-v2-choose-text-integer), [gauntlet_v2_end(bigint,text)](#fn-gauntlet-v2-end-bigint-text), [gauntlet_v2_enter(jsonb,jsonb,integer,integer,integer,jsonb)](#fn-gauntlet-v2-enter-jsonb-jsonb-integer-integer-integer-jsonb), [gauntlet_v2_fight(jsonb,jsonb,integer,integer,jsonb)](#fn-gauntlet-v2-fight-jsonb-jsonb-integer-integer-jsonb), [gauntlet_v2_foes(jsonb,integer,integer,jsonb)](#fn-gauntlet-v2-foes-jsonb-integer-integer-jsonb), [gauntlet_v2_hp(jsonb,jsonb)](#fn-gauntlet-v2-hp-jsonb-jsonb), [gauntlet_v2_info(jsonb)](#fn-gauntlet-v2-info-jsonb), [gauntlet_v2_needs_ally(jsonb)](#fn-gauntlet-v2-needs-ally-jsonb), [gauntlet_v2_out(bigint,jsonb)](#fn-gauntlet-v2-out-bigint-jsonb), [gauntlet_v2_pick(jsonb,jsonb,integer)](#fn-gauntlet-v2-pick-jsonb-jsonb-integer), [gauntlet_v2_play(jsonb,jsonb,integer,integer,integer)](#fn-gauntlet-v2-play-jsonb-jsonb-integer-integer-integer), [gauntlet_v2_retreat(text)](#fn-gauntlet-v2-retreat-text), [gauntlet_v2_rooms(jsonb,integer,integer,boolean)](#fn-gauntlet-v2-rooms-jsonb-integer-integer-boolean), [gauntlet_v2_screen(jsonb)](#fn-gauntlet-v2-screen-jsonb), [gauntlet_v2_turns(text,jsonb,boolean,integer)](#fn-gauntlet-v2-turns-text-jsonb-boolean-integer), [gauntlet_v2_view(text)](#fn-gauntlet-v2-view-text), [gauntlet_view(text)](#fn-gauntlet-view-text), [gauntlet_week(date)](#fn-gauntlet-week-date), [give_shards_gift_all(text,text,integer,text)](#fn-give-shards-gift-all-text-text-integer-text), [grant_shards(text,integer,text,text,text)](#fn-grant-shards-text-integer-text-text-text), [shard_cfg()](#fn-shard-cfg), [shard_ledger_reconcile()](#fn-shard-ledger-reconcile), [shop_day()](#fn-shop-day), [shop_pick_stock(date)](#fn-shop-pick-stock-date), [shop_today(text)](#fn-shop-today-text)
+Functions (125): [ach_has_element(jsonb)](#fn-ach-has-element-jsonb), [ach_tag_badges(text)](#fn-ach-tag-badges-text), [ach_tier_need(text,integer)](#fn-ach-tier-need-text-integer), [ach_tier_paid_before(text,text,integer)](#fn-ach-tier-paid-before-text-text-integer), [ach_tier_reward(text,integer)](#fn-ach-tier-reward-text-integer), [ach_track_values(text)](#fn-ach-track-values-text), [ach_tracks_on(text)](#fn-ach-tracks-on-text), [ach_wish_gift()](#fn-ach-wish-gift), [ach_wish_grant(text,text,bigint,text,bigint)](#fn-ach-wish-grant-text-text-bigint-text-bigint), [ach_wish_trade()](#fn-ach-wish-trade), [achievement_gallery(text)](#fn-achievement-gallery-text), [achievement_view(text)](#fn-achievement-view-text), [buy_shop_item(text,text,integer,bigint,integer)](#fn-buy-shop-item-text-text-integer-bigint-integer), [claim_achievement(text,text,integer,text,text)](#fn-claim-achievement-text-text-integer-text-text), [claim_achievement_tiers(text,text)](#fn-claim-achievement-tiers-text-text), [dungeon_after_kill(dungeon_runs,jsonb)](#fn-dungeon-after-kill-dungeon-runs-jsonb), [dungeon_attack(text,bigint,integer,text)](#fn-dungeon-attack-text-bigint-integer-text), [dungeon_auto_action(dungeon_runs,jsonb,bigint[],text)](#fn-dungeon-auto-action-dungeon-runs-jsonb-bigint-text), [dungeon_auto_attackers(dungeon_runs,jsonb,jsonb,integer)](#fn-dungeon-auto-attackers-dungeon-runs-jsonb-jsonb-integer), [dungeon_auto_rounds(text,text,integer)](#fn-dungeon-auto-rounds-text-text-integer), [dungeon_board(date,integer)](#fn-dungeon-board-date-integer), [dungeon_card(text,bigint)](#fn-dungeon-card-text-bigint), [dungeon_card_base(bigint)](#fn-dungeon-card-base-bigint), [dungeon_card_of(text)](#fn-dungeon-card-of-text), [dungeon_cfg()](#fn-dungeon-cfg), [dungeon_chest_rarity(integer)](#fn-dungeon-chest-rarity-integer), [dungeon_chest_shards(integer,integer)](#fn-dungeon-chest-shards-integer-integer), [dungeon_choose(text,integer,text)](#fn-dungeon-choose-text-integer-text), [dungeon_combat_log(dungeon_runs,jsonb)](#fn-dungeon-combat-log-dungeon-runs-jsonb), [dungeon_damage_reconcile(bigint)](#fn-dungeon-damage-reconcile-bigint), [dungeon_day()](#fn-dungeon-day), [dungeon_drop_rarity(integer)](#fn-dungeon-drop-rarity-integer), [dungeon_effect_apply(jsonb,jsonb)](#fn-dungeon-effect-apply-jsonb-jsonb), [dungeon_enemy_turn(jsonb,bigint,integer,integer)](#fn-dungeon-enemy-turn-jsonb-bigint-integer-integer), [dungeon_enter(jsonb,jsonb,integer,integer)](#fn-dungeon-enter-jsonb-jsonb-integer-integer), [dungeon_fight_state(dungeon_runs,bigint,bigint,jsonb)](#fn-dungeon-fight-state-dungeon-runs-bigint-bigint-jsonb), [dungeon_fight_state_info(dungeon_runs,jsonb,bigint,jsonb,bigint,jsonb)](#fn-dungeon-fight-state-info-dungeon-runs-jsonb-bigint-jsonb-bigint-jsonb), [dungeon_finish_room(text,text)](#fn-dungeon-finish-room-text-text), [dungeon_foe_elements()](#fn-dungeon-foe-elements), [dungeon_generate(date)](#fn-dungeon-generate-date), [dungeon_hp_changes(jsonb,jsonb,text,integer,integer)](#fn-dungeon-hp-changes-jsonb-jsonb-text-integer-integer), [dungeon_hp_event(text,text,bigint,bigint,integer,integer,text,text,integer,jsonb,jsonb)](#fn-dungeon-hp-event-text-text-bigint-bigint-integer-integer-text-text-integer-jsonb-jsonb), [dungeon_log_add(bigint,jsonb,jsonb)](#fn-dungeon-log-add-bigint-jsonb-jsonb), [dungeon_loot(jsonb,integer,bigint)](#fn-dungeon-loot-jsonb-integer-bigint), [dungeon_make_foe(text,integer,integer,text)](#fn-dungeon-make-foe-text-integer-integer-text), [dungeon_monsters_v2_check()](#fn-dungeon-monsters-v2-check), [dungeon_offers(jsonb,integer)](#fn-dungeon-offers-jsonb-integer), [dungeon_pass_turn(text,text,boolean)](#fn-dungeon-pass-turn-text-text-boolean), [dungeon_pay(text,date)](#fn-dungeon-pay-text-date), [dungeon_pick(jsonb,numeric)](#fn-dungeon-pick-jsonb-numeric), [dungeon_prepare_day()](#fn-dungeon-prepare-day), [dungeon_prize_tick()](#fn-dungeon-prize-tick), [dungeon_prizes_cfg()](#fn-dungeon-prizes-cfg), [dungeon_rand(text)](#fn-dungeon-rand-text), [dungeon_retreat(text,text)](#fn-dungeon-retreat-text-text), [dungeon_room_foes(text,integer,integer,text)](#fn-dungeon-room-foes-text-integer-integer-text), [dungeon_rules()](#fn-dungeon-rules), [dungeon_run_card(dungeon_runs,bigint)](#fn-dungeon-run-card-dungeon-runs-bigint), [dungeon_run_floors(dungeon_runs)](#fn-dungeon-run-floors-dungeon-runs), [dungeon_settle(bigint,text,boolean)](#fn-dungeon-settle-bigint-text-boolean), [dungeon_settle_stale()](#fn-dungeon-settle-stale), [dungeon_start(text,bigint[])](#fn-dungeon-start-text-bigint), [dungeon_support(text,bigint,bigint,integer,text)](#fn-dungeon-support-text-bigint-bigint-integer-text), [dungeon_tier(double precision)](#fn-dungeon-tier-double-precision), [dungeon_txt(jsonb)](#fn-dungeon-txt-jsonb), [dungeon_v2_act(text,jsonb)](#fn-dungeon-v2-act-text-jsonb), [dungeon_v2_after(jsonb,jsonb,integer,integer)](#fn-dungeon-v2-after-jsonb-jsonb-integer-integer), [dungeon_v2_amounts(text,jsonb,jsonb)](#fn-dungeon-v2-amounts-text-jsonb-jsonb), [dungeon_v2_auto(text,integer)](#fn-dungeon-v2-auto-text-integer), [dungeon_v2_choose(text,integer)](#fn-dungeon-v2-choose-text-integer), [dungeon_v2_end(bigint,text)](#fn-dungeon-v2-end-bigint-text), [dungeon_v2_fight(jsonb,jsonb,integer,integer,jsonb)](#fn-dungeon-v2-fight-jsonb-jsonb-integer-integer-jsonb), [dungeon_v2_hp(jsonb,jsonb)](#fn-dungeon-v2-hp-jsonb-jsonb), [dungeon_v2_info(bigint)](#fn-dungeon-v2-info-bigint), [dungeon_v2_needs_ally(jsonb)](#fn-dungeon-v2-needs-ally-jsonb), [dungeon_v2_out(bigint,jsonb)](#fn-dungeon-v2-out-bigint-jsonb), [dungeon_v2_pick(jsonb,jsonb,integer)](#fn-dungeon-v2-pick-jsonb-jsonb-integer), [dungeon_v2_play(jsonb,jsonb,integer,jsonb)](#fn-dungeon-v2-play-jsonb-jsonb-integer-jsonb), [dungeon_v2_retreat(text)](#fn-dungeon-v2-retreat-text), [dungeon_v2_room(jsonb,jsonb,integer,integer,text)](#fn-dungeon-v2-room-jsonb-jsonb-integer-integer-text), [dungeon_v2_rooms(jsonb,integer,integer,boolean)](#fn-dungeon-v2-rooms-jsonb-integer-integer-boolean), [dungeon_v2_screen(jsonb,jsonb)](#fn-dungeon-v2-screen-jsonb-jsonb), [dungeon_v2_start(text,bigint[])](#fn-dungeon-v2-start-text-bigint), [dungeon_v2_turns(text,jsonb,boolean,integer)](#fn-dungeon-v2-turns-text-jsonb-boolean-integer), [dungeon_v2_unit(text,bigint,jsonb)](#fn-dungeon-v2-unit-text-bigint-jsonb), [dungeon_v2_view(text)](#fn-dungeon-v2-view-text), [dungeon_view(text)](#fn-dungeon-view-text), [dungeon_view_core(text,boolean)](#fn-dungeon-view-core-text-boolean), [dungeon_view_lite(text)](#fn-dungeon-view-lite-text), [gauntlet_board(date,integer)](#fn-gauntlet-board-date-integer), [gauntlet_cfg()](#fn-gauntlet-cfg), [gauntlet_generate(date)](#fn-gauntlet-generate-date), [gauntlet_pool()](#fn-gauntlet-pool), [gauntlet_squad(date)](#fn-gauntlet-squad-date), [gauntlet_start(text)](#fn-gauntlet-start-text), [gauntlet_v2_act(text,jsonb)](#fn-gauntlet-v2-act-text-jsonb), [gauntlet_v2_after(jsonb,jsonb,integer,integer)](#fn-gauntlet-v2-after-jsonb-jsonb-integer-integer), [gauntlet_v2_amounts(text,jsonb,jsonb)](#fn-gauntlet-v2-amounts-text-jsonb-jsonb), [gauntlet_v2_auto(text,integer)](#fn-gauntlet-v2-auto-text-integer), [gauntlet_v2_begin(text,bigint[],jsonb,integer)](#fn-gauntlet-v2-begin-text-bigint-jsonb-integer), [gauntlet_v2_choose(text,integer)](#fn-gauntlet-v2-choose-text-integer), [gauntlet_v2_end(bigint,text)](#fn-gauntlet-v2-end-bigint-text), [gauntlet_v2_enter(jsonb,jsonb,integer,integer,integer,jsonb)](#fn-gauntlet-v2-enter-jsonb-jsonb-integer-integer-integer-jsonb), [gauntlet_v2_fight(jsonb,jsonb,integer,integer,jsonb)](#fn-gauntlet-v2-fight-jsonb-jsonb-integer-integer-jsonb), [gauntlet_v2_foes(jsonb,integer,integer,jsonb)](#fn-gauntlet-v2-foes-jsonb-integer-integer-jsonb), [gauntlet_v2_hp(jsonb,jsonb)](#fn-gauntlet-v2-hp-jsonb-jsonb), [gauntlet_v2_info(jsonb)](#fn-gauntlet-v2-info-jsonb), [gauntlet_v2_needs_ally(jsonb)](#fn-gauntlet-v2-needs-ally-jsonb), [gauntlet_v2_out(bigint,jsonb)](#fn-gauntlet-v2-out-bigint-jsonb), [gauntlet_v2_pick(jsonb,jsonb,integer)](#fn-gauntlet-v2-pick-jsonb-jsonb-integer), [gauntlet_v2_play(jsonb,jsonb,integer,integer,integer)](#fn-gauntlet-v2-play-jsonb-jsonb-integer-integer-integer), [gauntlet_v2_retreat(text)](#fn-gauntlet-v2-retreat-text), [gauntlet_v2_rooms(jsonb,integer,integer,boolean)](#fn-gauntlet-v2-rooms-jsonb-integer-integer-boolean), [gauntlet_v2_screen(jsonb)](#fn-gauntlet-v2-screen-jsonb), [gauntlet_v2_turns(text,jsonb,boolean,integer)](#fn-gauntlet-v2-turns-text-jsonb-boolean-integer), [gauntlet_v2_view(text)](#fn-gauntlet-v2-view-text), [gauntlet_view(text)](#fn-gauntlet-view-text), [gauntlet_week(date)](#fn-gauntlet-week-date), [give_shards_gift_all(text,text,integer,text)](#fn-give-shards-gift-all-text-text-integer-text), [grant_shards(text,integer,text,text,text)](#fn-grant-shards-text-integer-text-text-text), [shard_cfg()](#fn-shard-cfg), [shard_ledger_reconcile()](#fn-shard-ledger-reconcile), [shop_day()](#fn-shop-day), [shop_pick_stock(date)](#fn-shop-pick-stock-date), [shop_today(text)](#fn-shop-today-text)
 
 ## Tables
 
@@ -246,10 +246,6 @@ Table. [combat] Combat v2 Dungeon runs of testers (20.19 R2): one row per run (a
 | `attempt` | smallint | not null | `1` | The number of the run of this player on this day (1, 2, ...), counted in dungeon_v2_runs only (QD2: an extra run). |
 | `started_at` | timestamp with time zone | not null | `now()` | When the run started. |
 | `ended_at` | timestamp with time zone | null |  | When the run ended. Null while active. |
-| `live` | boolean | not null | `false` | The mark (INV-ON-1): true when the run started while combat_v2_on('dungeon') was true (every member). A live run gets the v1 loot, counts for the board, the prizes and the daily task. False = a tester run (0 loot). Readers read this mark, never the flag. |
-| `shards` | integer | not null | `0` | The Shards that dungeon_v2_settle granted for this run (= the sum of its shard_ledger rows, ref run_v2 + id). 0 for a tester run and before the settle. |
-| `cards` | bigint[] | not null | `'{}'::bigint[]` | The card ids that dungeon_v2_settle granted for this run (one card_ledger row each, ref dungeon_v2_run + id). Empty for a tester run and before the settle. |
-| `settled_at` | timestamp with time zone | null |  | When dungeon_v2_settle ended the run (fell, cleared, retreat, abandoned). Set once: a second settle grants nothing. Null while active. |
 
 - Primary key: `PRIMARY KEY (id)`
 - Unique: `dungeon_v2_runs_player_id_day_attempt_key` `UNIQUE (player_id, day, attempt)`
@@ -257,7 +253,6 @@ Table. [combat] Combat v2 Dungeon runs of testers (20.19 R2): one row per run (a
   - `dungeon_v2_runs_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: 
   - `dungeon_v2_runs_ended_by_check`: `CHECK ((ended_by = ANY (ARRAY['cleared'::text, 'fell'::text, 'retreat'::text, 'abandoned'::text])))`
-  - `dungeon_v2_runs_shards_check`: `CHECK ((shards >= 0))`
   - `dungeon_v2_runs_status_check`: `CHECK ((status = ANY (ARRAY['active'::text, 'over'::text])))`
 - Row level security: on. Policies: none
 
@@ -567,7 +562,7 @@ POST /api/dungeon/auto: plays up to p_max Auto rounds (a useful support, then th
 - Returns: `jsonb`
 - Security definer: no
 
-GET /api/dungeon/board, dungeon_view and dungeon_pay: the daily board of a day (default today): the best run of each member, ranked by floor, room, turns, end time (an active run: now), then the member id, so a tie always has the same order (board_tie_order.sql). Returns a jsonb array with rank, member and depth. R2-ON (combat_v2_on_dungeon.sql): the v1 daily runs and the LIVE v2 runs (dungeon_v2_runs.live) of the day, then one row per member (review H-2); a tester run is not on it.
+GET /api/dungeon/board, dungeon_view and dungeon_pay: the daily board of a day (default today): the best run of each member, ranked by floor, room, turns, end time (an active run: now), then the member id, so a tie always has the same order (board_tie_order.sql). Returns a jsonb array with rank, member and depth.
 
 <a id="fn-dungeon-card-text-bigint"></a>
 
@@ -967,7 +962,7 @@ Ends a Dungeon or Gauntlet run once: pays the banked Shards (and the pending one
 - Returns: `integer`
 - Security definer: no
 
-Ends every active run of an earlier day as abandoned (dungeon_settle, banked loot only). Called by the pg_cron job dungeon-settle-stale and by dungeon_pay. Returns the count. R2-ON (combat_v2_on_dungeon.sql): also every active v2 Dungeon run of an earlier day (dungeon_v2_settle, the bank only; a tester run grants 0).
+Ends every active run of an earlier day as abandoned (dungeon_settle, banked loot only). Called by the pg_cron job dungeon-settle-stale and by dungeon_pay. Returns the count.
 
 <a id="fn-dungeon-start-text-bigint"></a>
 
@@ -977,7 +972,7 @@ Ends every active run of an earlier day as abandoned (dungeon_settle, banked loo
 - Returns: `jsonb`
 - Security definer: no
 
-POST /api/dungeon/start: starts a daily run with the squad (balance dungeon.squad cards). Checks the flag, adventure_gate, one active run at a time and at most game_var('dungeon_runs_per_day') runs today (else already), the daily rule and the budget (the rule's budget, else balance dungeon.budget; the costs are balance dungeon.cost). Writes dungeon_runs (the next attempt) and dungeon_log. Returns ok, run and state. R2-ON (combat_v2_on_dungeon.sql, review H-2): refuses v2_on while combat_v2_on('dungeon') is true, and already when a live v2 run of today exists (by row, also after a rollback).
+POST /api/dungeon/start: starts a daily run with the squad (balance dungeon.squad cards). Checks the flag, adventure_gate, one active run at a time and at most game_var('dungeon_runs_per_day') runs today (else already), the daily rule and the budget (the rule's budget, else balance dungeon.budget; the costs are balance dungeon.cost). Writes dungeon_runs (the next attempt) and dungeon_log. Returns ok, run and state.
 
 <a id="fn-dungeon-support-text-bigint-bigint-integer-text"></a>
 
@@ -1027,7 +1022,7 @@ Internal helper: a jsonb array of strings as text[] (empty for null).
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Dungeon (20.19 R2, 20.19b R2-ON): the run state after a play answer: the next card turn (phase fight), or the end of the fight: the carry of each card, then won: a live run gets dungeon_v2_loot; a tester run: floor_done or cleared after a guardian, else choose with the v1 daily offers minus shards and card (QD1; none left = continue); lost or the step cap: fell. combat_v2_on_dungeon.sql.
+[combat] Combat v2 Dungeon (20.19 R2): the run state after a play answer: the next card turn (phase fight), or the end of the fight: the carry of each card, then won: floor_done or cleared after a guardian, else choose with the v1 daily offers minus shards and card (QD1; none left = continue); lost or the step cap: fell. combat_v2_dungeon_run.sql.
 
 <a id="fn-dungeon-v2-amounts-text-jsonb-jsonb"></a>
 
@@ -1067,7 +1062,7 @@ Internal helper: a jsonb array of strings as text[] (empty for null).
 - Returns: `void`
 - Security definer: no
 
-[combat] Combat v2 Dungeon (20.19 R2, 20.19b R2-ON): ends a v2 Dungeon run at fell or cleared through dungeon_v2_settle (the v1 flags: fell loses the pend, cleared keeps it). combat_v2_on_dungeon.sql.
+[combat] Combat v2 Dungeon (20.19 R2): ends a v2 Dungeon run at fell or cleared: status over, ended_by, ended_at. No grant, no ledger row (QD1). combat_v2_dungeon_run.sql.
 
 <a id="fn-dungeon-v2-fight-jsonb-jsonb-integer-integer-jsonb"></a>
 
@@ -1097,17 +1092,7 @@ Internal helper: a jsonb array of strings as text[] (empty for null).
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Dungeon (20.19 R2, 20.19b R2-ON; R3 reuses it): the screen facts of a card: name (subjects.ability_v2 name), role, class, needs_ally, and text = ability_v2_text(class, the active blocks).text (the Dungeon and the Hunt screens). Raises no_data_found for a card with no usable ability_v2. Reads only. combat_v2_on_dungeon.sql.
-
-<a id="fn-dungeon-v2-loot-jsonb-jsonb-integer"></a>
-
-### dungeon_v2_loot(jsonb,jsonb,integer)
-
-- Function: `dungeon_v2_loot(p_state jsonb, p_fight jsonb, p_floor integer)`
-- Returns: `jsonb`
-- Security definer: no
-
-[combat] Combat v2 Dungeon (20.19b R2-ON): the v1 loot of a won fight room of a live run: one dungeon_after_kill per foe on a shim (mode daily, the carry as cards, bank, pend, last_pick, heal_floor, room_type; the run of the day state.day): the kill Shards and card chance, then at the last kill the guardian floor Shards and pend to bank (floor_done or cleared) or the v1 offers with shards and card (none: continue). Draws random numbers. combat_v2_on_dungeon.sql.
+[combat] Combat v2 Dungeon (20.19 R2, R3 reuses it): the screen facts of a card: name (subjects.ability_v2 name), role, class, needs_ally. Raises no_data_found for a card with no usable ability_v2. Reads only. combat_v2_dungeon_run.sql.
 
 <a id="fn-dungeon-v2-needs-ally-jsonb"></a>
 
@@ -1137,7 +1122,7 @@ Internal helper: a jsonb array of strings as text[] (empty for null).
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Dungeon (20.19 R2, 20.19b R2-ON): one offer between rooms on the carry: heal and revive (the v1 numbers), buff (a pending Empowered, the higher amount stays: Q4, until the next fight room: Q3), ward (a pending Shielded: Q2), reset (every charge = v2_charge of the class: D3); a live run also: shards (the amount to pend) and card (a card of the tier odds to pend), as dungeon_choose. Draws random numbers. combat_v2_on_dungeon.sql.
+[combat] Combat v2 Dungeon (20.19 R2): one offer between rooms on the carry: heal and revive (the v1 numbers), buff (a pending Empowered, the higher amount stays: Q4, until the next fight room: Q3), ward (a pending Shielded: Q2), reset (every charge = v2_charge of the class: D3). Reads only. combat_v2_dungeon_run.sql.
 
 <a id="fn-dungeon-v2-play-jsonb-jsonb-integer-jsonb"></a>
 
@@ -1157,7 +1142,7 @@ Internal helper: a jsonb array of strings as text[] (empty for null).
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Dungeon (20.19 R2, 20.19b R2-ON; server only, R2b route): ends the v2 Dungeon run at floor_done as retreat through dungeon_v2_settle (the bank only). Returns ok, floor, room, shards, cards. Errors: disabled, no_run, not_between_floors. combat_v2_on_dungeon.sql.
+[combat] Combat v2 Dungeon (20.19 R2, server only, R2b route): ends the v2 Dungeon run at floor_done as retreat (0 loot). Errors: disabled, no_run, not_between_floors. combat_v2_dungeon_run.sql.
 
 <a id="fn-dungeon-v2-room-jsonb-jsonb-integer-integer-text"></a>
 
@@ -1167,7 +1152,7 @@ Internal helper: a jsonb array of strings as text[] (empty for null).
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Dungeon (20.19 R2, 20.19b R2-ON): enter one room of a v2 Dungeon run (p_key null: room p_room of floor p_floor; p_key given: the door state.door with the v1 door foes of that key; gamble = balance dungeon_rewards.door.gamble_rare the chest room, else an elite fight): a fight room (dungeon_v2_fight, then combat_v2_step to the first card turn), rest (the v1 rest numbers on the carry), choice (the v1 daily doors), treasure: a live run gets the v1 chest (dungeon_enter on a shim; the gamble rare chest of door.rare_tier as dungeon_choose) into pend; a tester run an empty pass room (QD1). Returns {state, step}. combat_v2_on_dungeon.sql.
+[combat] Combat v2 Dungeon (20.19 R2): enter one room of a v2 Dungeon run (p_key null: room p_room of floor p_floor; p_key given: the door state.door with the v1 door foes of that key; gamble = balance dungeon_rewards.door.gamble_rare the empty chest room, else an elite fight): a fight room (dungeon_v2_fight, then combat_v2_step to the first card turn), rest (the v1 rest numbers on the carry), choice (the v1 daily doors: dungeon_enter on a shim, only its offers), treasure (an empty pass room, QD1). Returns {state, step}. combat_v2_dungeon_run.sql.
 
 <a id="fn-dungeon-v2-rooms-jsonb-integer-integer-boolean"></a>
 
@@ -1189,16 +1174,6 @@ Internal helper: a jsonb array of strings as text[] (empty for null).
 
 [combat] Combat v2 Dungeon (20.19 R2, R3 reuses it): the screen fields of a fight state, from the engine state and the live balance (not stored): need (v2_charge of each card's class), squad_hp, order (the card that has the turn, then combat_v2_turn_order to 10 entries; ready from the charge while no earlier non-skip entry of the same card), targets (the standing enemies), allies (every card of the fight), status_lines. A null fight gives empty values. Reads only. combat_v2_dungeon_run.sql.
 
-<a id="fn-dungeon-v2-settle-bigint-text-boolean"></a>
-
-### dungeon_v2_settle(bigint,text,boolean)
-
-- Function: `dungeon_v2_settle(p_run bigint, p_how text, p_with_pend boolean)`
-- Returns: `jsonb`
-- Security definer: no
-
-[combat] Combat v2 Dungeon (20.19b R2-ON): the end of a v2 Dungeon run (fell, cleared, retreat, abandoned), once: the row is locked; a settled or ended run returns its stored shards and cards (again true) and grants nothing. A live run grants the bank (and the pend when p_with_pend: cleared) with grant_shards (reason dungeon, ref run_v2 + id) and card_move per card (dungeon_loot, ref dungeon_v2_run + id); a tester run grants 0. Then status over, ended_by, ended_at, settled_at, shards, cards (and state.lost = the pend when it is lost). combat_v2_on_dungeon.sql.
-
 <a id="fn-dungeon-v2-start-text-bigint"></a>
 
 ### dungeon_v2_start(text,bigint[])
@@ -1207,7 +1182,7 @@ Internal helper: a jsonb array of strings as text[] (empty for null).
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Dungeon (20.19 R2, 20.19b R2-ON; server only, R2b route): starts a v2 Dungeon run. The mark live = combat_v2_on('dungeon') (every member); with the flag off only a tester starts (not_tester; a tester run, 0 loot, an extra run). disabled, locked, not_tester, then the player row lock; each active v2 run of an earlier day settles abandoned; a live start also settles the stale v1 daily runs and counts the v1 daily runs and the live v2 runs of today (one run a day across v1 and v2, INV-ON-3); already; the squad checks of dungeon_start (squad_size, not_owned, rule, no_attacker, budget), then no_v2 + cards (QD4). A live run state has live, day, bank, pend. Room 1 of floor 1 plays to its first card turn. combat_v2_on_dungeon.sql.
+[combat] Combat v2 Dungeon (20.19 R2, server only, R2b route): starts a v2 Dungeon run for a tester (combat_v2_on dungeon): disabled, locked, not_tester, a stale v2 run of an earlier day ends as abandoned, already (the v2 runs of today only, QD2), then the squad checks of dungeon_start with its codes and keys (squad_size, not_owned, rule, no_attacker, budget), then no_v2 + cards (QD4). The row goes to dungeon_v2_runs; room 1 of floor 1 plays to its first card turn. combat_v2_dungeon_run.sql.
 
 <a id="fn-dungeon-v2-turns-text-jsonb-boolean-integer"></a>
 
@@ -1227,7 +1202,7 @@ Internal helper: a jsonb array of strings as text[] (empty for null).
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Dungeon (20.19 R2, 20.19b R2-ON; R3 reuses it): the v2 unit of a player's card: combat_v2_card_unit (after SYN with tags) with the 12 star-dependent stat keys (atk, crt, crd, abl, acc, def, ddg, max, hp, spd, power, extra_stack) from card_combat_v2. With combat_v2_on('progress'): the level, the points and the bonus of card_progress_v2_fight (M1e, N-7b: v2_convert.level_per_star x the current stars, at most v2_level.max_level, a stored level above it kept; the points and the bonus of the card_progress_v2 row). Else the player's stars, level 0, no points (QD3). Every other key stays. A card with no usable ability_v2 raises no_data_found. Reads only. combat_v2_on_dungeon.sql.
+[combat] Combat v2 Dungeon (20.19 R2, R3 reuses it): the v2 unit of a player's card: combat_v2_card_unit (after SYN with tags) with the 12 star-dependent stat keys (atk, crt, crd, abl, acc, def, ddg, max, hp, spd, power, extra_stack) from card_combat_v2 with the player's stars (player_cards.ascension), level 0, no points (QD3). Every other key stays. A card with no usable ability_v2 raises no_data_found (D2). Reads only. combat_v2_dungeon_run.sql.
 
 <a id="fn-dungeon-v2-view-text"></a>
 
@@ -1237,7 +1212,7 @@ Internal helper: a jsonb array of strings as text[] (empty for null).
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Dungeon (20.19 R2, 20.19b R2-ON; server only, R2b route): the v2 part of the Dungeon screen of a player: tester (combat_v2_on dungeon of the player), member (the flag), live (the mark of the run), v1_run (the active v1 daily run of today, or null: the screen opens v1 then), run, runs_left and can_start (flag on: the v1 daily runs and the live v2 runs of today; flag off: the v2 runs of today, QD2), last_run (with live, shards, cards), the floor map and the screen fields. Makes the day first; writes no run row. combat_v2_on_dungeon.sql.
+[combat] Combat v2 Dungeon (20.19 R2, server only, R2b route): the v2 part of the Dungeon screen of a player: tester, run (the newest v2 run of today; null when it is over and a run is left), runs_left (the v2 runs of today only, QD2), last_run, can_start (tester, no active v2 run, a run left), the floor map and the screen fields. Makes the day first (as dungeon_view_core); writes no run row. combat_v2_dungeon_run.sql.
 
 <a id="fn-dungeon-view-text"></a>
 
@@ -1277,7 +1252,7 @@ The Dungeon view without the member card list (key mine). The Home slide reads i
 - Returns: `jsonb`
 - Security definer: no
 
-GET /api/gauntlet/board, gauntlet_view and dungeon_pay: the Gauntlet board of a week (default this week). Each member's best run of the week counts, ranked by floor, room, turns, end time (an active run: now), then the member id, so a tie always has the same order (board_tie_order.sql). Returns a jsonb array with rank and runs.
+GET /api/gauntlet/board, gauntlet_view and dungeon_pay: the Gauntlet board of a week (default this week). Each member's best run of the week counts, ranked by floor, room, turns, end time (an active run: now), then the member id, so a tie always has the same order (board_tie_order.sql). Returns a jsonb array with rank and runs. Since combat_v2_on_gauntlet.sql (R1-ON) a run is a v1 run (mode gauntlet) or a v2 run with the member mark (mode gauntlet_v2, state.member true); a tester v2 run of before the switch is not on the board.
 
 <a id="fn-gauntlet-cfg"></a>
 
@@ -1307,7 +1282,7 @@ Internal helper: builds the Gauntlet of a week once (squad and seeded floors: ba
 - Returns: `TABLE(id bigint, ckey bigint, role text, cost integer, tags text[], aff text)`
 - Security definer: no
 
-Internal helper: the cards that the Gauntlet squad can use (attackers and support cards, no Event or Promo), with cost (balance dungeon.cost), tags and affinity. Called by gauntlet_squad.
+Internal helper: the cards that the Gauntlet squad can use (attackers and support cards, no Event or Promo), with cost (balance dungeon.cost), tags and affinity. Called by gauntlet_squad. Since combat_v2_on_gauntlet.sql (R1-ON), while combat_v2_on('gauntlet') is true, only cards with a usable ability_v2 (the combat_v2_card_unit rule), so a new week squad always plays v2.
 
 <a id="fn-gauntlet-squad-date"></a>
 
@@ -1377,7 +1352,7 @@ POST /api/gauntlet/start: starts a Gauntlet run with the week's squad. Checks bo
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Gauntlet (20.15 R1b): the start of a v2 run for the tester branch of gauntlet_start: the run state (engine 2, units, carry, info), room 1 of floor 1, the row (mode gauntlet_v2, the next attempt of both modes) and the start log. combat_v2_gauntlet_run.sql.
+[combat] Combat v2 Gauntlet (20.15 R1b): the start of a v2 run for the tester branch of gauntlet_start: the run state (engine 2, units, carry, info), room 1 of floor 1, the row (mode gauntlet_v2, the next attempt of both modes) and the start log. combat_v2_gauntlet_run.sql. Since combat_v2_on_gauntlet.sql (R1-ON) the state also has member = combat_v2_on('gauntlet') at the start: the mark that gauntlet_board and gauntlet_view read (false for a tester run before the switch; it stays true after a rollback).
 
 <a id="fn-gauntlet-v2-choose-text-integer"></a>
 
@@ -1447,7 +1422,7 @@ POST /api/gauntlet/start: starts a Gauntlet run with the week's squad. Checks bo
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Gauntlet (20.15 R1b): the screen facts of the squad at the run start (a snapshot, D4): for each card the active name (subjects.ability_v2 name), the role, the class and needs_ally. Reads only. combat_v2_gauntlet_run.sql.
+[combat] Combat v2 Gauntlet (20.15 R1b): the screen facts of the squad at the run start (a snapshot, D4): for each card the active name (subjects.ability_v2 name), the role, the class and needs_ally. Reads only. combat_v2_gauntlet_run.sql. Since combat_v2_on_gauntlet.sql (R1-ON) each card also has text: the description of its active (ability_v2_text of its class and blocks), for the card info window.
 
 <a id="fn-gauntlet-v2-needs-ally-jsonb"></a>
 
@@ -1547,7 +1522,7 @@ POST /api/gauntlet/start: starts a Gauntlet run with the week's squad. Checks bo
 - Returns: `jsonb`
 - Security definer: no
 
-GET /api/gauntlet: the member's Gauntlet screen. Ends the member's active runs of earlier days, builds the week, and returns the squad (costs: balance dungeon.cost), the budget (balance gauntlet.budget), today's newest run (null when it is over and a run is left: runs_left, last_run), the member's best rank, the rooms, the top 3 and the prizes.
+GET /api/gauntlet: the member's Gauntlet screen. Ends the member's active runs of earlier days, builds the week, and returns the squad (costs: balance dungeon.cost), the budget (balance gauntlet.budget), today's newest run (null when it is over and a run is left: runs_left, last_run), the member's best rank, the rooms, the top 3 and the prizes. Since combat_v2_on_gauntlet.sql (R1-ON) runs_left and players_week count the board set (v1 runs and v2 runs with the member mark); run stays the v1 run (gauntlet_v2_view has the v2 run).
 
 <a id="fn-gauntlet-week-date"></a>
 

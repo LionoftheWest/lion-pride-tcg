@@ -4,6 +4,7 @@ import { promisify } from 'node:util';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RARITY } from './rarity.js';
+import { faceParts } from './face-v2.js';
 
 const execFileP = promisify(execFile);
 
@@ -40,10 +41,16 @@ export function fillHtml(card, rarity, artUrl, mask = false, frame = null, artis
   const art = artUrl
     ? `<img class="art-img" data-ax="${f.x}" data-ay="${f.y}" data-az="${f.scale}" src="${artUrl}">`
     : 'ART';
-  return template
+  // UI-68: the v2 parts (role, element, active, Silver, chips) come from card.v2 (data, never in a template).
+  // mask: true = the holo mask (as today); 'text' = the text-safe mask (white = the v2 text) for blender/card_scene.py.
+  const v2 = faceParts(card);
+  const mode = mask === 'text' ? ' textmask' : mask ? ' maskmode' : '';
+  let html = template;
+  for (const [k, v] of Object.entries(v2)) html = html.replaceAll(`%%${k}%%`, v);
+  return html
     .replaceAll('%%ACCENT%%', meta.accent)
     .replaceAll('%%ACCENT_SOFT%%', meta.soft)
-    .replaceAll('%%CLASS%%', mask ? `${rarity} maskmode` : rarity)
+    .replaceAll('%%CLASS%%', `${rarity}${mode}${v2.V2CLASS ? ' ' + v2.V2CLASS : ''}`)
     .replaceAll('%%NAME%%', esc(card.name))
     .replaceAll('%%GENRE%%', esc((card.genre || '').toUpperCase()))
     .replaceAll('%%LORE%%', esc(card.lore))
