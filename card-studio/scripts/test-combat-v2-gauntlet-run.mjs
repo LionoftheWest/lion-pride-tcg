@@ -21,6 +21,10 @@ assertLocal('test-combat-v2-gauntlet-run.mjs');
 const read = (p) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'utf8').replace(/\r\n/g, '\n');
 const MIG_PATH = '../../tcg-bot/supabase/combat_v2_gauntlet_run.sql';
 let mig = process.env.MIG ? readFileSync(process.env.MIG, 'utf8').replace(/\r\n/g, '\n') : read(MIG_PATH);
+// R1b-FIX (2026-11-05): combat_v2_needs_ally_self.sql replaces gauntlet_v2_needs_ally of this file (a "self" block asks no ally, the engine
+// rule). Each block runs it right after the file, so the blocks test the live pair (G1.17 b failed on S2 Time Skip without it).
+// Its own test: test-combat-v2-needs-ally-self.mjs.
+mig += '\n' + read('../../tcg-bot/supabase/combat_v2_needs_ally_self.sql');
 mig = mig.replace(/notify pgrst[^\n]*\n/g, '');
 const FIGHTS = Number(process.env.FIGHTS || 30);
 // G1.19: 30 fights of the R1a set-up give about 340 step calls; the gate asks for at least 1,000 calls, so G1.19 plays 100 fights (REPORT deviation)
