@@ -84,7 +84,13 @@ if (process.env.MUTATE === 'all') {
 // switches the Dungeon. A mutation changes the LAST of the two texts that has its anchor (the engine function that is installed at the end).
 let mig2 = process.env.MIG2 === '' ? '' : readFileSync(process.env.MIG2 || here('../../tcg-bot/supabase/f3_engine_dungeon.sql'), 'utf8').replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '');
 // The 4d file (f3_engine_hunt.sql; MIG3=<file.sql> for another text, MIG3= for none) runs after the 4c file: it switches the Hunt.
-let mig3 = process.env.MIG3 === '' ? '' : readFileSync(process.env.MIG3 || here('../../tcg-bot/supabase/f3_engine_hunt.sql'), 'utf8').replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '');
+// R3-ON (combat_v2_on_hunt.sql, 2026-11-05) replaces hunt_attack and hunt_support, so SUPERSEDED.md lists the 4d file: its guard refuses a re-run.
+// The old Hunt text (test-effect-shadow.base.sql, before 4d) is not the live behavior any more (later Hunt files: 198 of 3623 cases differ
+// with no 4d text, 2026-11-05), so the Hunt cases can only compare the old text with the 4d file. Then the default skips the Hunt cases
+// (the Dungeon and Gauntlet cases run). The v1 Hunt keeps its golden tests (combat-golden.mjs, 183 fights; test-boss-counters-golden.mjs).
+const SUPERSEDED_4D = /^\| `f3_engine_hunt\.sql` \| SUPERSEDED/m.test(readFileSync(here('../../tcg-bot/supabase/SUPERSEDED.md'), 'utf8'));
+if (SUPERSEDED_4D && process.env.MIG3 === undefined) console.log('SKIP the Hunt cases: f3_engine_hunt.sql is SUPERSEDED (SUPERSEDED.md, by combat_v2_on_hunt.sql), so it cannot run again; the Dungeon and Gauntlet cases run');
+let mig3 = process.env.MIG3 === '' || (process.env.MIG3 === undefined && SUPERSEDED_4D) ? '' : readFileSync(process.env.MIG3 || here('../../tcg-bot/supabase/f3_engine_hunt.sql'), 'utf8').replace(/\r/g, '').replace(/notify pgrst[^\n]*\n/g, '');
 if (process.env.MUTATE) {
   const m = MUT[process.env.MUTATE];
   if (!m) throw new Error(`no mutation ${process.env.MUTATE}`);
@@ -495,6 +501,7 @@ begin
   raise exception 'RESULT:%', jsonb_build_object('n', n, 'fail', nfail, 'err', nerr, 'noab', nnoab, 'noabdiff', nnoabdiff, 'fails', fails, 'cov', v_cov${process.env.SHADOW_DUMP ? ", 'first', (select o[1])" : ''})::text;
 end $t$;`;
 
+if (SUPERSEDED_4D && process.env.MIG3 === undefined) cases.splice(0, cases.length, ...cases.filter((c) => c.m !== 'hunt'));
 if (process.env.SHADOW_ONLY) { const re = new RegExp(process.env.SHADOW_ONLY); cases.splice(0, cases.length, ...cases.filter((c) => re.test(c.tag))); }   // development: only the cases whose tag matches
 if (process.env.SHADOW_LIST) { for (const c of cases) console.log(c.tag, c.seed); process.exit(0); }
 console.log(`shadow cases: ${cases.length} (Hunt support ${cases.filter((c) => c.m === 'hunt' && c.fn === 'support').length}, Dungeon support ${cases.filter((c) => c.m === 'dungeon' && c.fn === 'support').length}, Gauntlet support ${cases.filter((c) => c.m === 'gauntlet' && c.fn === 'support').length}, attacks ${cases.filter((c) => c.fn === 'attack').length}), ${BATCH} a request`);
@@ -607,7 +614,13 @@ for (const f of shown.slice(0, 3)) {
   if (f.error) console.log(`  ERROR ${f.error}`);
   else console.log(`  line ${f.line}\n  OLD ${f.old}\n  NEW ${f.new}`);
 }
-const gap = process.env.MUTATE || process.env.SHADOW_ONLY ? [] : COVER.filter((k) => !cov[k]);
+// With the Hunt cases skipped (the 4d file SUPERSEDED), only the Hunt cases show these (the boss counter passives and marks; 0 in the
+// Dungeon and Gauntlet cases, 2026-11-05), so the coverage check asks for the others only.
+const HUNT_ONLY = ['"gained": [1-9]', '"effect": "stun".*"countered": [[]"juggernaut"]', '"nullified": true', '"mirrored": true', '"defeated": true',
+  '"undying"', '"spiral"', '"desync"', '"hotfix"', '"rot"', '"bloodrot"', '"countered": [[]"plague"]', '"shatterer"', '"dispeller"', '"block_', '"half_',
+  '"target_after": null', '"error": "stunned"'];
+const huntSkipped = SUPERSEDED_4D && process.env.MIG3 === undefined;
+const gap = process.env.MUTATE || process.env.SHADOW_ONLY ? [] : COVER.filter((k) => !cov[k] && !(huntSkipped && HUNT_ONLY.includes(k)));
 if (noab || !process.env.SHADOW_ONLY) console.log(`\nno ability (decision A): ${noab} cases with the same hit, ${noabdiff} of them with another random stream after the hit (expected: above 0)`);
 if (!noab && !process.env.SHADOW_ONLY && !process.env.MUTATE) { console.log('FAIL no case of an attacker with no ability ran'); fail += 1; }
 console.log(`\ncoverage (the cases whose OLD transcript shows it): ${COVER.map((k) => `${k} ${cov[k] || 0}`).join(' | ')}`);

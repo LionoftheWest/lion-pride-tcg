@@ -2,7 +2,7 @@
 // D-85 the preselected set, D-88 the hidden counts, D-90 / 3.4 the page size of the set list.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { openCounts, preselect, fitSets, pageOf } from './open-window.js';
+import { openCounts, preselect, fitSets, pageOf, setPicture, cacheFresh, SETS_TTL_MS, openErrorAction } from './open-window.js';
 
 const S = (id, released_at = null) => ({ id, name: id, code: id, released_at, cards: 10, owned: 1 });
 
@@ -60,4 +60,31 @@ test('3.4: never 0 rows or 0 columns, even in a frame too small for one tile', (
 test('D-85 + D-90: the window opens on the page of the selected set', () => {
   assert.equal(pageOf(0, 4), 1); assert.equal(pageOf(3, 4), 1); assert.equal(pageOf(4, 4), 2); assert.equal(pageOf(11, 4), 3);
   assert.equal(pageOf(-1, 4), 1, 'no selected set: page 1');
+});
+
+// PACK-SET-B GB.2.
+test('D-208 (INV-B7): the tile picture is the pack art, else the cover card, else none (the code slot)', () => {
+  assert.equal(setPicture({ pack_art_url: '/api/img/a.png', cover_image_url: '/api/img/c.png' }), '/api/img/a.png');
+  assert.equal(setPicture({ pack_art_url: null, cover_image_url: '/api/img/c.png' }), '/api/img/c.png');
+  assert.equal(setPicture({ pack_art_url: null, cover_image_url: null }), null);
+  assert.equal(setPicture({}), null);
+});
+test('INV-B8: the set list is fresh for less than 60 s, and a list with no time is never fresh', () => {
+  assert.equal(SETS_TTL_MS, 60000);
+  const at = 1_000_000;
+  assert.equal(cacheFresh(at, at), true);
+  assert.equal(cacheFresh(at, at + 59_999), true);
+  assert.equal(cacheFresh(at, at + 60_000), false);
+  assert.equal(cacheFresh(at, at + 3_600_000), false);
+  assert.equal(cacheFresh(null, at), false);
+  assert.equal(cacheFresh(undefined, at), false);
+  assert.equal(cacheFresh(0, at), false);
+});
+test('INV-B6: set_required opens the v3 window for a ui_v3 member; every other case keeps the note', () => {
+  assert.equal(openErrorAction('set_required', true), 'window');
+  assert.equal(openErrorAction('set_required', false), 'note');
+  assert.equal(openErrorAction('set_not_pullable', true), 'note');
+  assert.equal(openErrorAction('sets_unavailable', true), 'note');
+  assert.equal(openErrorAction('open failed', true), 'note');
+  assert.equal(openErrorAction(undefined, true), 'note');
 });

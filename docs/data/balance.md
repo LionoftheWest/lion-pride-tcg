@@ -30,7 +30,7 @@ The triggers on `balance` check each change:
 
 ## Keys
 
-[ability_v2](#key-ability-v2), [achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [auto_v2](#key-auto-v2), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [card_level](#key-card-level), [combat](#key-combat), [combat_v2](#key-combat-v2), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [enemy_v2](#key-enemy-v2), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_labels](#key-stat-labels), [stat_points](#key-stat-points), [support](#key-support), [v2_asc](#key-v2-asc), [v2_card_hp](#key-v2-card-hp), [v2_charge](#key-v2-charge), [v2_control](#key-v2-control), [v2_convert](#key-v2-convert), [v2_dungeon](#key-v2-dungeon), [v2_enemy](#key-v2-enemy), [v2_hit](#key-v2-hit), [v2_hunt](#key-v2-hunt), [v2_level](#key-v2-level), [v2_power](#key-v2-power), [v2_pp](#key-v2-pp), [v2_roles](#key-v2-roles), [v2_speed](#key-v2-speed), [v2_stats](#key-v2-stats), [v2_status](#key-v2-status), [v2_support](#key-v2-support), [v2_synergy](#key-v2-synergy), [welcome_packs](#key-welcome-packs)
+[ability_v2](#key-ability-v2), [achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [auto_v2](#key-auto-v2), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [card_level](#key-card-level), [combat](#key-combat), [combat_v2](#key-combat-v2), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [enemy_v2](#key-enemy-v2), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_labels](#key-stat-labels), [stat_points](#key-stat-points), [support](#key-support), [v2_asc](#key-v2-asc), [v2_card_hp](#key-v2-card-hp), [v2_charge](#key-v2-charge), [v2_control](#key-v2-control), [v2_dungeon](#key-v2-dungeon), [v2_enemy](#key-v2-enemy), [v2_hit](#key-v2-hit), [v2_hunt](#key-v2-hunt), [v2_level](#key-v2-level), [v2_power](#key-v2-power), [v2_pp](#key-v2-pp), [v2_roles](#key-v2-roles), [v2_speed](#key-v2-speed), [v2_stats](#key-v2-stats), [v2_status](#key-v2-status), [v2_support](#key-v2-support), [v2_synergy](#key-v2-synergy), [welcome_packs](#key-welcome-packs)
 
 <a id="key-ability-v2"></a>
 
@@ -1887,7 +1887,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
           "x": 0
         }
       },
-      "hp_factor": 1.1,
+      "hp_factor": 0.99,
       "counter_share": 0.4
     },
     "zerg": {
@@ -1910,7 +1910,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
         }
       },
       "params": {},
-      "hp_factor": 0.64,
+      "hp_factor": 0.7,
       "counter_share": 0.55
     },
     "hydra": {
@@ -1949,7 +1949,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
         }
       },
       "params": {},
-      "hp_factor": 1.26,
+      "hp_factor": 1.01,
       "counter_share": 0.55
     },
     "banwave": {
@@ -1982,7 +1982,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
         }
       },
       "params": {},
-      "hp_factor": 0.87,
+      "hp_factor": 0.9,
       "counter_share": 0.4
     },
     "pumpkin": {
@@ -2006,7 +2006,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
           "every": 2
         }
       },
-      "hp_factor": 0.95,
+      "hp_factor": 0.77,
       "counter_share": 0.4
     },
     "vampire": {
@@ -2030,7 +2030,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
         }
       },
       "params": {},
-      "hp_factor": 0.92,
+      "hp_factor": 0.91,
       "counter_share": 0.55
     },
     "warlord": {
@@ -2055,7 +2055,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
           "crit_x": 0
         }
       },
-      "hp_factor": 0.71,
+      "hp_factor": 0.82,
       "counter_share": 0.4
     },
     "lagspike": {
@@ -2074,7 +2074,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
         "packet_loss": {}
       },
       "params": {},
-      "hp_factor": 0.88,
+      "hp_factor": 0.74,
       "counter_share": 0.4
     },
     "skeleton": {
@@ -2094,7 +2094,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
         }
       },
       "params": {},
-      "hp_factor": 0.79,
+      "hp_factor": 0.4,
       "counter_share": 0.55
     },
     "warzombie": {
@@ -2121,7 +2121,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
         }
       },
       "params": {},
-      "hp_factor": 1.08,
+      "hp_factor": 1.06,
       "counter_share": 0.4
     },
     "frost_lich": {
@@ -2169,7 +2169,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
         }
       },
       "params": {},
-      "hp_factor": 0.73,
+      "hp_factor": 0.7,
       "counter_share": 0.4
     },
     "salt_miner": {
@@ -2676,49 +2676,6 @@ Shape: `object { boss_immune: number, boss_max_dur: number, immune: number, immu
 }
 ```
 
-<a id="key-v2-convert"></a>
-
-### v2_convert
-
-Combat v2 M1e (plan 11, 20.11; SPEC ON 3.7): the conversion of the v1 stat points at the switch. ratios: v2 points per v1 point (attack -> ATK x1, vitality -> HP x1, precision -> CRT x1.25 = 0.05 / 0.04, potency -> ABL x2.4 = 0.12 / 0.05, haste -> SPD x3.33 = 0.10 / 0.03, the linear value). to: the v2 stat of each v1 stat. round: up (nobody loses part of a point). level_per_star: the level = this x the stars (Nathan N-7 option B and N-7b: the fight level = this x the CURRENT stars). dead_on_attacker: the v1 stats that did nothing on a v1 attacker (ledger reason dead_points). topup: the v1 value (card_combat key) that the v2 value (card_combat_v2 stats key) of the converted stat must reach (the smallest count that reaches the old value, plan 11 step 4). Limits in balance_v2_spec.
-
-Shape: `object { dead_on_attacker: array(2) of string, level_per_star: number, ratios: object { attack: number, haste: number, potency: number, precision: number, vitality: number }, round: string, to: object { attack: string, haste: string, potency: string, precision: string, vitality: string }, topup: object { attack: object { v1: string, v2: string }, vitality: object { v1: string, v2: string } } }`
-
-```json
-{
-  "to": {
-    "haste": "spd",
-    "attack": "atk",
-    "potency": "abl",
-    "vitality": "hp",
-    "precision": "crt"
-  },
-  "round": "up",
-  "topup": {
-    "attack": {
-      "v1": "cp",
-      "v2": "atk"
-    },
-    "vitality": {
-      "v1": "hp",
-      "v2": "hp"
-    }
-  },
-  "ratios": {
-    "haste": 3.33,
-    "attack": 1,
-    "potency": 2.4,
-    "vitality": 1,
-    "precision": 1.25
-  },
-  "level_per_star": 3,
-  "dead_on_attacker": [
-    "haste",
-    "potency"
-  ]
-}
-```
-
 <a id="key-v2-dungeon"></a>
 
 ### v2_dungeon
@@ -2881,7 +2838,7 @@ Shape: `object { atk_x: number, foe_evasion_max: number, foe_evasion_per_floor: 
 
 ### v2_enemy
 
-Combat v2: the Hunt boss and the enemy mechanics (plan 3.3, 8). hunt.<tier>: hp and atk (the live v1 values of 2026-10-18; v2 has its own copy because ASC-3 raises card CP and the Lab must set them again, plan 2.3), def (Defense), evasion, resolve (a debuff fails with this chance), keen (cuts card Dodge), speed (act_at = one action a step; Mythic 110 with atk_x 0.91), signatures (the number of signature mechanics). boss_heal_ref = the HP that boss heals are measured on (drain_heal, regenerate_heal, mechanics.regrowth.boss_heal). boss_moves = the v2 move table: the chances strike, slam, drain, stun, enrage, curse and regenerate add up to 1 (balance_check_combat_v2); *_x = x ATK; enrage_dur and curse_dur in steps; the Cataclysm every cycle-th boss turn after one Charging turn; rage below rage_at HP gives rage_x. signature_pool = the mechanics a boss can draw. mechanics.<name> = the numbers of each enemy mechanic (purify every Nth action; shatter x to shields; regrowth: a Dungeon foe heals heal x its max HP each step, the Hunt boss heals boss_heal x boss_heal_ref each step, x below_half_x below half HP (1 = no x2: Nathan approved 0.4% flat for the boss and 1% for foes, monsters-v2.md 9.4, 2026-10-19); frost_aura / venom / burning stacks a single hit applies; thick_hide caps Exposed; unstoppable control fail chance; sunder card Defense ignored; steadfast less damage until N different negative statuses; dispeller Empowered and Exposed at x; *_born immune lists). Their texts come with the passives rows (PR E7). asc3_hp_x: Hunt boss HP = hunt.<tier>.hp x asc3_hp_x x the hp_factor of the boss (the rule approved 2026-10-19, monsters-v2.md 9.3; 1.7 is a first proposal; hp_factor comes with the boss rows). weak_role_x: in a "Weak to: role" week the cards of that role deal +weak_role_x damage (approved, 9.6). weak_role_rules.<role> replaces that rule for one role: a Controller week gives damage_x more damage (0) and each control of a Controller on the boss lasts control_add more boss actions (Nathan 2026-10-19). Nothing reads this key until combat_v2 hunt is on. The E7 tuning (2026-10-21, combat_v2_monster_tuning.sql, the Lab set each number): mechanics.ironhide.crit_x = the crit chance factor of the cards against it unless it is Marked (0 = no crit); mechanics.venom.chance and mechanics.slowing.chance = the chance that a hit applies the status (1 = every hit); mechanics.regrowth.heal of a Dungeon foe 1% -> 0.7%. The E7 follow-up (2026-10-21, combat_v2_e7_followup.sql; Nathan chose the value from the Lab table of PR #463): weak_role_x 0.3 -> 0.5 (a Weak to week: cards of that role deal +50%).
+Combat v2: the Hunt boss and the enemy mechanics (plan 3.3, 8). hunt.<tier>: hp and atk (v2 has its own copy because ASC-3 raises card CP and the Lab sets them, plan 2.3; since D-223 they are not the v1 values), def (Defense), evasion, resolve (a debuff fails with this chance), keen (cuts card Dodge), speed (act_at = one action a step; Mythic 94 with atk_x 0.91 since D-223), signatures (the number of signature mechanics). boss_heal_ref = the HP that boss heals are measured on (drain_heal, regenerate_heal, mechanics.regrowth.boss_heal). boss_moves = the v2 move table: the chances strike, slam, drain, stun, enrage, curse and regenerate add up to 1 (balance_check_combat_v2); *_x = x ATK; enrage_dur and curse_dur in steps; the Cataclysm every cycle-th boss turn after one Charging turn; rage below rage_at HP gives rage_x. signature_pool = the mechanics a boss can draw. mechanics.<name> = the numbers of each enemy mechanic (purify every Nth action; shatter x to shields; regrowth: a Dungeon foe heals heal x its max HP each step, the Hunt boss heals boss_heal x boss_heal_ref each step, x below_half_x below half HP (1 = no x2: Nathan approved 0.4% flat for the boss and 1% for foes, monsters-v2.md 9.4, 2026-10-19); frost_aura / venom / burning stacks a single hit applies; thick_hide caps Exposed; unstoppable control fail chance; sunder card Defense ignored; steadfast less damage until N different negative statuses; dispeller Empowered and Exposed at x; *_born immune lists). Their texts come with the passives rows (PR E7). asc3_hp_x: Hunt boss HP = hunt.<tier>.hp x asc3_hp_x x the hp_factor of the boss (the rule approved 2026-10-19, monsters-v2.md 9.3; 1.7 is a first proposal; hp_factor comes with the boss rows). weak_role_x: in a "Weak to: role" week the cards of that role deal +weak_role_x damage (approved, 9.6). weak_role_rules.<role> replaces that rule for one role: a Controller week gives damage_x more damage (0) and each control of a Controller on the boss lasts control_add more boss actions (Nathan 2026-10-19). Nothing reads this key until combat_v2 hunt is on. The E7 tuning (2026-10-21, combat_v2_monster_tuning.sql, the Lab set each number): mechanics.ironhide.crit_x = the crit chance factor of the cards against it unless it is Marked (0 = no crit); mechanics.venom.chance and mechanics.slowing.chance = the chance that a hit applies the status (1 = every hit); mechanics.regrowth.heal of a Dungeon foe 1% -> 0.7%. The E7 follow-up (2026-10-21, combat_v2_e7_followup.sql; Nathan chose the value from the Lab table of PR #463): weak_role_x 0.3 -> 0.5 (a Weak to week: cards of that role deal +50%). M-H option C, decision D-223 (2026-11-04, combat_v2_hunt_balance_c.sql; the orchestrator for Nathan: the server must be able to win the event; measured on a local copy, 5 real squads): hunt.<tier> hp / atk / speed / def = Normal 35000 / 36 / 85 / 0.05, Heroic 32500 / 45 / 85 / 0.1, Mythic 28500 / 57 / 94 / 0.15 (before: 70000 / 58 / 100 / 0.1, 80000 / 73 / 100 / 0.15, 80000 / 93 / 110 / 0.2); the hp_factor of the 12 rotation bosses changed in enemy_v2 in the same file. Undo: combat_v2_hunt_balance_c_undo.sql.
 
 Shape: `object { asc3_hp_x: number, boss_heal_ref: number, boss_moves: object { cataclysm_x: number, curse: number, curse_dur: number, curse_weaken: number, cycle: number, drain: number, drain_heal: number, drain_x: number, enrage: number, enrage_dur: number, enrage_x: number, rage_at: number, rage_x: number, regenerate: number, regenerate_heal: number, regenerate_heal_rage: number, slam: number, slam_x: number, strike: number, strike_x: number, stun: number, stun_x: number }, hunt: object { Heroic: object { atk: number, atk_x: number, def: number, evasion: number, hp: number, keen: number, resolve: number, signatures: number, speed: number }, Mythic: object { atk: number, atk_x: number, def: number, evasion: number, hp: number, keen: number, resolve: number, signatures: number, speed: number }, Normal: object { atk: number, atk_x: number, def: number, evasion: number, hp: number, keen: number, resolve: number, signatures: number, speed: number } }, mechanics: object { burning: object { burn: number }, dispeller: object { x: number }, elusive: object {  }, fireborn: object { immune: array(1) of string }, frost_aura: object { chill: number }, frostborn: object { immune: array(2) of string }, ironhide: object { crit_x: number }, purify: object { every: number }, regrowth: object { below_half_x: number, boss_heal: number, heal: number }, shatter: object { shield_x: number }, slowing: object { chance: number }, steadfast: object { dr: number, kinds: number }, sunder: object { pierce: number }, thick_hide: object { expose_cap: number }, toxic_born: object { immune: array(1) of string }, true_strike: object {  }, unstoppable: object { control_fail: number }, venom: object { chance: number, poison: number } }, signature_pool: array(13) of string, weak_role_rules: object { controller: object { control_add: number, damage_x: number } }, weak_role_x: number }`
 
@@ -2889,34 +2846,34 @@ Shape: `object { asc3_hp_x: number, boss_heal_ref: number, boss_moves: object { 
 {
   "hunt": {
     "Heroic": {
-      "hp": 80000,
-      "atk": 73,
-      "def": 0.15,
+      "hp": 32500,
+      "atk": 45,
+      "def": 0.1,
       "keen": 0,
       "atk_x": 1,
-      "speed": 100,
+      "speed": 85,
       "evasion": 0.04,
       "resolve": 0.1,
       "signatures": 1
     },
     "Mythic": {
-      "hp": 80000,
-      "atk": 93,
-      "def": 0.2,
+      "hp": 28500,
+      "atk": 57,
+      "def": 0.15,
       "keen": 0.25,
       "atk_x": 0.91,
-      "speed": 110,
+      "speed": 94,
       "evasion": 0.08,
       "resolve": 0.2,
       "signatures": 2
     },
     "Normal": {
-      "hp": 70000,
-      "atk": 58,
-      "def": 0.1,
+      "hp": 35000,
+      "atk": 36,
+      "def": 0.05,
       "keen": 0,
       "atk_x": 1,
-      "speed": 100,
+      "speed": 85,
       "evasion": 0,
       "resolve": 0,
       "signatures": 1

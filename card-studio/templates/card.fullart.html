@@ -61,15 +61,109 @@
   .card.maskmode .art img { display:none !important; }
   /* Promo mask: white interior (holo art region), solid black border (platinum). */
   .card.promo.maskmode { background:#fff !important; border:16px solid #000 !important; }
+
+  /* ---- UI-68 (approved 2026-10-20, review-2 + confirm-1): the combat v2 face (only when the card has v2 data: class "v2") ---- */
+  .card:not(.v2) .v2-only { display:none !important; }
+  .card.v2 .v1-only { display:none !important; }
+  .v2-role { position:relative; flex:none; display:inline-block; }
+  .v2-role > svg { display:block; filter:drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
+  .v2-role-g { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:flex; }
+  .v2-el { flex:none; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(10,10,18,.72); box-sizing:border-box; }
+  .tb-mid { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:3px; }
+  .tb-sub { font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--accent-soft); white-space:nowrap; }
+  .v2-rolename { font-weight:800; margin-right:10px; }
+  .v2-panel {
+    position:relative; z-index:2; display:flex; flex-direction:column; gap:8px;
+    background:rgba(10,10,18,.78); border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:11px 14px 12px;
+  }
+  .v2-active { font-size:17px; line-height:1.36; color:#F5F2EC; }
+  .v2-aname { font-weight:800; color:#FFFFFF; }
+  .v2-aname::after { content:':'; }
+  /* Review-2 alignment (Nathan: the icons did not line up with the text). A status is an inline glyph: a 0.96em box whose
+     center sits on the middle of the capitals (Segoe UI cap height 0.70em = 0.35em above the baseline), so
+     vertical-align = 0.35em - 0.48em. One gap (0.22em) before the word. No flex, so the line height does not change. */
+  .v2-st { font-weight:700; white-space:nowrap; }
+  .v2-badge { display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; width:.96em; height:.96em;
+    margin-right:.22em; vertical-align:.04em; border:.08em solid; background:#20202F; border-radius:.24em; }
+  .v2-badge.circle { border-radius:50%; }
+  .v2-badge svg { display:block; width:70%; height:70%; }
+  .v2-silver { display:flex; align-items:baseline; gap:8px; font-size:15px; line-height:1.3; color:#C9D1DC; padding-top:8px; border-top:1px solid rgba(255,255,255,.09); }
+  .v2-stext { min-width:0; } /* review-2: a long Silver line wraps (style guide R12: the full sentence, up to 17 words) */
+  .v2-slabel { flex:none; display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase;
+    color:#0A0A12; background:#C9D1DC; padding:3px 9px; border-radius:999px; border:1px solid #C9D1DC; }
+  .card.v2:not(.silver-on) .v2-slabel { background:transparent; color:#C9D1DC; border-color:rgba(201,209,220,.55); }
+  .card.v2:not(.silver-on) .v2-stext { opacity:.5; filter:grayscale(1); }
+  .v2-chiprow { display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
+  .v2-chiprow:empty { display:none; }
+  .v2-chips { display:inline-flex; align-items:center; gap:6px; }
+  .v2-chips-l { font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:#AEABC0; }
+  .v2-chip { display:inline-block; font-size:13px; line-height:1; font-weight:700; padding:4px 9px 4px 4px; border-radius:999px; background:rgba(255,255,255,.07); white-space:nowrap; }
+  /* Review-2 (Nathan: "for the Lore part, we can't forget that part"): the lore line stays, in its italic serif, one short line. */
+  .v2-lore { position:relative; z-index:2; color:#cbd3e1; font-family:Georgia,'Times New Roman',serif; font-style:italic; font-size:14px; line-height:1.3; }
+  .v2-lore:empty { display:none; }
+
+  /* v2 parts in the holo mask: nothing (the holo regions stay as today). */
+  .card.maskmode svg { display:none !important; }
+  .card.maskmode .v2-panel, .card.maskmode .v2-badge, .card.maskmode .v2-el, .card.maskmode .v2-chip, .card.maskmode .v2-slabel { border-color:transparent !important; }
+  /* The text-safe mask for blender/card_scene.py, 2 channels. RED = no emboss (the block of the title row, the lore and the text).
+     GREEN = the face colors, no holo, flat light (the glyphs; on framed tiers the whole panel). */
+  .card.textmask { background:#000 !important; border-color:#000 !important; }
+  .card.textmask::before, .card.textmask::after { display:none !important; }
+  .card.textmask * { color:transparent !important; background:transparent !important; border-color:transparent !important; text-shadow:none !important; box-shadow:none !important; }
+  .card.textmask svg, .card.textmask img { visibility:hidden !important; }
+  .card.textmask .v2-safe { background:#f00 !important; filter:blur(2px); }
+  .card.textmask .v2-safe, .card.textmask .v2-safe * { color:#ff0 !important; }
+  .card.textmask .v2-safe .v2-badge, .card.textmask .v2-safe .v2-el, .card.textmask .v2-safe .v2-slabel { border-color:#ff0 !important; }
+  .card.textmask .v2-safe svg { visibility:visible !important; filter:brightness(0) invert(1); }
+  /* full art (review-2, Nathan: the art stays full across the whole card): no plate. A fade from the bottom and a text
+     shadow give the contrast. Nathan approved option C (the title row and the lore at the top edge, no box behind the text):
+     the base rules below + the fa-c rules. Option B (glass lines) was rejected and is not built. */
+  .fa-fade, .fa-top { display:none; }
+  .card.v2 .fa-fade { display:block; position:absolute; left:0; right:0; bottom:0; z-index:1; pointer-events:none; height:56%;
+    background:linear-gradient(to top, rgba(5,6,10,.90) 0%, rgba(5,6,10,.76) 30%, rgba(5,6,10,.42) 62%, rgba(5,6,10,0) 100%); }
+  .card.v2 .scrim { padding:16px 18px 14px; background:none; display:flex; flex-direction:column; gap:7px; }
+  .card.v2 .titlebar { display:flex; align-items:center; gap:12px; }
+  .card.v2 .name { font-size:26px; }
+  .card.v2 .fa-footer { margin-top:0; }
+  .card.v2 .v2-el { box-shadow:0 2px 8px rgba(0,0,0,.6); }
+  .card.v2 .name, .card.v2 .tb-sub, .card.v2 .v2-active, .card.v2 .v2-silver, .card.v2 .v2-chips-l, .card.v2 .brand, .card.v2 .v2-lore {
+    text-shadow:0 1px 2px rgba(0,0,0,.95), 0 0 8px rgba(0,0,0,.85); }
+  .card.v2 .v2-lore { color:#d8dee9; font-size:13.5px; }
+  .card.v2 .v2-panel { background:none; border:0; padding:0; gap:7px; }
+  .card.v2 .v2-silver { border-top:0; padding-top:0; }
+  .card.v2 .v2-chip { background:rgba(10,10,18,.6); }
+  .card.v2:not(.silver-on) .v2-slabel { background:rgba(10,10,18,.6); }
+  /* C: edge layout: the title row and the lore on a short top fade at the top edge; the ability compact on the bottom fade */
+  .card.v2.fa-c .fa-top { display:flex; flex-direction:column; gap:6px; position:absolute; left:0; right:0; top:0; z-index:2; padding:16px 18px 34px;
+    background:linear-gradient(to bottom, rgba(5,6,10,.80) 0%, rgba(5,6,10,.50) 60%, rgba(5,6,10,0) 100%); }
+  .card.v2.fa-c .scrim .titlebar, .card.v2.fa-c .scrim .v2-lore { display:none !important; }
+  .card.v2.fa-c .fa-fade { height:40%; background:linear-gradient(to top, rgba(5,6,10,.90) 0%, rgba(5,6,10,.70) 40%, rgba(5,6,10,0) 100%); }
+  .card.v2.fa-c .v2-active { font-size:16px; line-height:1.34; }
+  .card.v2:not(.silver-on) .v2-stext { opacity:.8; }
+  /* confirm-1, Gold (Nathan 2026-10-20: "the status words and icons ALSO become gold, the whole face goes gold").
+     Status words gold-hi, badge stroke and glyph gold (shared/tokens.json gold). The glyphs stay flat (text-safe mask). */
+  .card.gold.v2:not(.textmask) .v2-st, .card.gold.v2:not(.textmask) .v2-chip { color:#FFD76E !important; }
+  .card.gold.v2:not(.textmask) .v2-badge { border-color:#F4B73C !important; }
+  .card.gold.v2:not(.textmask) .v2-badge svg { stroke:#F4B73C; }
+  /* Gold text-safe mask: sharper (1 px blur, other tiers 2 px), and the whole badge box is a glyph (flat, not plated).
+     Review-2 measured a 9 px icon-to-word gap on Gold: the plate tinted the badge box and border into the gold, so only
+     the inner glyph read as the icon. With the box in the mask the gap is the CSS gap (0.22 em) as on the other tiers. */
+  .card.gold.textmask .v2-safe { filter:blur(1px); }
+  .card.gold.textmask .v2-safe .v2-badge { background:#ff0 !important; }
 </style>
 </head>
 <body>
   <div class="card %%CLASS%%">
     <div class="art placeholder">%%ART%%</div>
+    <div class="fa-fade v2-only"></div>
+    <div class="fa-top v2-only"><div class="titlebar v2-safe">%%ROLEBADGE%%<div class="tb-mid"><div class="name">%%NAME%%</div><div class="tb-sub">%%ROLENAME%%%%GENRE%%</div></div>%%ELEMENT%%</div><div class="v2-lore v2-safe v2-only">%%V2LORE%%</div></div>
     <div class="scrim">
-      <div class="subject">%%GENRE%%</div>
-      <div class="name">%%NAME%%</div>
-      <div class="lore">&ldquo;%%LORE%%&rdquo;</div>
+      <div class="subject v1-only">%%GENRE%%</div>
+      <div class="name v1-only">%%NAME%%</div>
+      <div class="lore v1-only">&ldquo;%%LORE%%&rdquo;</div>
+      <div class="titlebar v2-safe v2-only">%%ROLEBADGE%%<div class="tb-mid"><div class="name">%%NAME%%</div><div class="tb-sub">%%ROLENAME%%%%GENRE%%</div></div>%%ELEMENT%%</div>
+      <div class="v2-panel v2-safe v2-only">%%ACTIVE%%%%SILVER%%<div class="v2-chiprow">%%CHIPS%%</div></div>
+      <div class="v2-lore v2-safe v2-only">%%V2LORE%%</div>
       <div class="fa-footer">
         <span class="artist">%%ARTIST%%</span>
         <span class="brand">Lion Pride TCG</span>

@@ -14,6 +14,7 @@
  */
 import 'dotenv/config';
 import { createTradeRequestProbe } from './src/trade-request-probe.js';
+import { resolveOpenSet } from './src/open-set.js';
 import { measure as measureAchievements, achievementList, LEDGER, withRewards, setRewardFor, isSetKey } from './src/achievements.js';
 // The released (pullable) sets: each has a "<set name> Set Complete" achievement (src/achievements.js, D-190). card_sets changes
 // only when the owner edits it (pack_color: the set holo frames, D-191): a 60 s cache. A failed read keeps the last list (none yet: the achievements fall back to S1 only).
@@ -29,7 +30,9 @@ import { createClient } from '@supabase/supabase-js';
 import { EFFECTS_SCHEMA, registerEffectRoutes } from './effects.js';
 import { REPORTS_ON, registerReportRoutes } from './reports.js';
 import { createLogs, clientInfo, newTutorialSteps, registerLogRoutes } from './logs.js';
-import { createImgCache, normalizeImgUrl } from './img-cache.js';
+import { createImgCache } from './img-cache.js';
+import { createImgHandler } from './img-route.js';
+import { createBossFiles } from './boss-files.js';
 import { clientIp, createLimiter, createWhoAmI } from './guards.js';
 import { createBalance, ascendCost as costOf, dailyCardCap, publicBalance } from './balance.js';
 import { modelFor as bossModelFor } from './src/boss-models.js';
@@ -43,13 +46,15 @@ import { registerShopRoutes } from './src/shop-routes.js';
 import { registerEventsRoutes } from './src/events-routes.js';
 import { registerDungeonRoutes } from './src/dungeon-routes.js';
 import { registerGauntletV2Routes } from './src/gauntlet-v2-routes.js';
+import { registerHuntV2Routes } from './src/hunt-v2-routes.js';
+import { registerDungeonV2Routes } from './src/dungeon-v2-routes.js';
+import { sendV2Refusal } from './src/v2-refusals.js';
 import { makePingLimiter } from './src/trade-ping-limit.js';
 import { dailyExtras } from './src/dailies-pay.js';
 import { makeTtlCache } from './src/ttl-cache.js';
 import { createRouteTiming } from './src/route-timing.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
-import { Readable } from 'node:stream';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -255,35 +260,9 @@ if (imgCache) {
     console.log(`img-cache hits=${s.hits} upstream=${s.upstream} upstreamMB=${(s.upstreamBytes / 1e6).toFixed(1)} diskMB=${(imgCache.used() / 1e6).toFixed(1)}`);
   }, 3600_000).unref();
 }
-app.get(/^\/api\/img\/(.+)/, async (req, res) => {
-  if (!SUPA_HOST) return res.status(404).end();
-  const path = decodeURIComponent(req.params[0] || '');
-  const query = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
-  if (!path.startsWith('storage/v1/object/public/card-art/') || /\.\.|\\|\/\/|%/.test(path)) return res.status(400).end(); // no traversal, no double-encoding
-  // Only a short plain ?v (img-cache.js): every new v is a new Supabase fetch and disk copy.
-  const url = normalizeImgUrl(SUPA_HOST, path, query);
-  if (!url) return res.status(400).end();
-  if (imgCache) {
-    try {
-      // A miss costs Supabase egress, so misses are limited per IP (v=1,2,3... each miss).
-      const r = await imgCache.get(url, { allowMiss: () => imgMissLimit.take(clientIp(req)) });
-      if (r.status === 429) res.setHeader('Retry-After', '5');
-      if (r.status !== 200) return res.status(r.status).end();
-      res.setHeader('Content-Type', r.type);
-      res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
-      return res.end(r.buf);
-    } catch { return res.status(502).end(); }
-  }
-  try {
-    const r = await fetch(url);
-    if (!r.ok || !r.body) return res.status(r.ok ? 502 : r.status).end();
-    res.setHeader('Content-Type', r.headers.get('content-type') || 'image/png');
-    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
-    const len = r.headers.get('content-length');
-    if (len) res.setHeader('Content-Length', len);
-    Readable.fromWeb(r.body).on('error', () => res.destroy()).pipe(res);
-  } catch { if (!res.headersSent) res.status(502).end(); else res.destroy(); }
-});
+// The handler: img-route.js (moved unchanged). S1-FACE B11: the boss models and clips come from this server's disk when the
+// flag file /app/boss-files/ENABLED exists (boss-files.js; ops/deploy.sh mounts /srv/lptcg/boss-files); else today's path.
+app.get(/^\/api\/img\/(.+)/, createImgHandler({ supaHost: SUPA_HOST, imgCache, missLimit: imgMissLimit, clientIp, bossFiles: createBossFiles() }));
 
 // Discord avatar proxy: /api/avatar/<discord id>. The hash is saved at login
 // (players.avatar). Discord blocks unmapped fetches, so the picture comes through here.
@@ -995,6 +974,7 @@ app.post('/api/hunt/attack', async (req, res) => {
   if (!cardId) return res.status(400).json({ error: 'bad card' });
   const { data, error } = await huntRpcGate(() => supabase.rpc('hunt_attack', { p_player: me.id, p_hunt: hunt.id, p_card: cardId }));
   if (error) return res.status(500).json({ error: error.message });
+  if (sendV2Refusal(res, data)) return;   // ON-UI: v2_on / v2_today -> 409
   if (data?.defeated) activeHuntCache = null;
   else if (data?.ok && activeHuntCache?.data?.id === hunt.id) activeHuntCache.data = { ...activeHuntCache.data, hp_remaining: data.hp_remaining };
   // The RPC settles the killing blow inline and records the defeat + reward notification
@@ -1016,6 +996,7 @@ app.post('/api/hunt/support', async (req, res) => {
   if (!cardId) return res.status(400).json({ error: 'bad card' });
   const { data, error } = await huntRpcGate(() => supabase.rpc('hunt_support', { p_player: me.id, p_hunt: hunt.id, p_card: cardId, p_target: targetId }));
   if (error) return res.status(500).json({ error: error.message });
+  if (sendV2Refusal(res, data)) return;   // ON-UI: v2_on / v2_today -> 409
   res.json(data);
 });
 
@@ -1743,10 +1724,22 @@ app.post('/api/open', async (req, res) => {
   // 1, 5 or 10 packs at once (Nathan: "in increments of 1x, 5x, 10x"); the bot stops
   // early if the balance runs out. Cards the member did not own before get isNew.
   const count = [1, 5, 10].includes(Number(req.body?.count)) ? Number(req.body.count) : 1;
-  // The set the member chose (card_sets.sql, D-80): optional. No set = every pullable set, the same
-  // request to the bot as before; a set the bot refuses comes back as 400 set_not_pullable.
-  const set = req.body?.set == null ? undefined : String(req.body.set);
-  if (set !== undefined && !/^[A-Z0-9]{1,8}$/.test(set)) return res.status(400).json({ error: 'set_not_pullable' });
+  // The set the member chose (card_sets.sql, D-80); a set the bot refuses comes back as 400 set_not_pullable.
+  // PACK-SET-B (src/open-set.js): no set + 1 pullable set = that set by name; no set + 2 or more = 400 set_required
+  // with no bot call, so no pack is spent and no pack mixes sets. The no-set path reads card_sets fresh, not
+  // getReleasedSets (its 60 s cache can still hold 1 set just after a flip).
+  const bodySet = req.body?.set == null ? undefined : String(req.body.set);
+  if (bodySet !== undefined && !/^[A-Z0-9]{1,8}$/.test(bodySet)) return res.status(400).json({ error: 'set_not_pullable' });
+  let pullableIds = null;
+  if (bodySet === undefined) {
+    try {
+      const { data: rows, error: setsErr } = await supabase.from('card_sets').select('id').eq('pullable', true);
+      if (!setsErr && Array.isArray(rows)) pullableIds = rows.map((r) => r.id);
+    } catch { /* null: sets_unavailable */ }
+  }
+  const rule = resolveOpenSet(bodySet, pullableIds);
+  if (rule.error) return res.status(rule.status).json({ error: rule.error });
+  const set = rule.set;
   try {
     const { data: before } = await supabase.from('player_cards').select('card_id').eq('player_id', me.id);
     const had = new Set((before || []).map((r) => r.card_id));
@@ -1789,7 +1782,8 @@ app.get('/api/sets', async (req, res) => {
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const { data, error } = await supabase.rpc('pullable_sets', { p_player: String(me.id) });
   if (error) return res.status(500).json({ error: error.message });
-  const sets = (data?.sets || []).map((s) => ({ ...s, cover_image_url: s.cover_image_url ? toProxyImg(s.cover_image_url) : null }));
+  // D-208: pack_art_url through the image proxy, as cover_image_url (the tile shows the pack art first, open-window.js setPicture).
+  const sets = (data?.sets || []).map((s) => ({ ...s, cover_image_url: s.cover_image_url ? toProxyImg(s.cover_image_url) : null, pack_art_url: s.pack_art_url ? toProxyImg(s.pack_art_url) : null }));
   res.json({ sets, last_set: data?.last_set ?? null });
 });
 
@@ -1908,6 +1902,8 @@ registerShopRoutes(app, { supabase, caller, rateLimit, bustUser, getCatalogBase,
 registerEventsRoutes(app, { supabase, caller, eventsOn, sharedCache, artUrl: (u) => (SUPA_HOST && String(u).startsWith(SUPA_HOST + '/') ? toProxyImg(u) : null) });
 registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun: dungeonPing, userCache, sharedCache });
 registerGauntletV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, sharedCache });   // R1c: /api/gauntlet/v2/* for Combat v2 testers
+registerHuntV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, huntOn: () => FEATURE_HUNT, sharedCache });   // R3b: /api/hunt/v2/* the Hunt v2 practice of Combat v2 testers
+registerDungeonV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, sharedCache });   // R2b: /api/dungeon/v2/* for Combat v2 testers
 const cardShape = (c) => c && { id: c.id, name: c.name, rarity: c.rarity, image_url: toProxyImg(c.image_url) };
 
 // Another player's cards — for picking what to request/gift in a trade.

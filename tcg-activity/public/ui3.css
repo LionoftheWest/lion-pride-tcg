@@ -488,7 +488,7 @@ body:not([data-last-input="pointer"]) .u3-set:focus-visible, body:not([data-last
 .u3-set__cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .u3-set__slot { font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-secondary); }
 .u3-set__body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-2); min-width: 0; }
-.u3-set__name { font-family: var(--font-ui); font-size: var(--fs-stat); font-weight: var(--fw-heading); line-height: var(--lh-heading); overflow-wrap: anywhere; }
+.u3-set__name { font-family: var(--font-ui); font-size: var(--fs-stat); font-weight: var(--fw-heading); line-height: var(--lh-heading); overflow-wrap: normal; }   /* D-08: a set name wraps only at a space ("anywhere" broke "Origins" on 375x667, Nathan 2026-11-04) */
 .u3-set__meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); }
 .u3-set__code { padding: var(--sp-half) var(--sp-2); border-radius: var(--rad-pill); background: var(--surface-3); font-family: var(--font-num); font-size: var(--fs-caption); color: var(--text-secondary); }
 .u3-set__owned { font-family: var(--font-num); font-size: var(--fs-small); color: var(--text-secondary); font-variant-numeric: tabular-nums; }

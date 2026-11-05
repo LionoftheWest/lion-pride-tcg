@@ -33,7 +33,9 @@ const ONE_TIME = {
 };
 // The time limit of one test is 300 s. These long tests take most of that alone, and they reached it under load
 // (rehearsals of 2026-10-20 and 2026-10-21: golden-mutations about 214 s alone, studio-preview 246 s).
-const LIMIT_S = { 'test-golden-mutations.mjs': 900, 'test-studio-preview.mjs': 600 };
+// test-combat-v2-on-hunt.mjs (R3-ON): the full gate takes about 400 s alone (2026-11-05); a stop inside its H part leaves the flag and a planted
+// combat_v2_step on the copy until its next start, so it has its own limit.
+const LIMIT_S = { 'test-golden-mutations.mjs': 900, 'test-studio-preview.mjs': 600, 'test-combat-v2-on-hunt.mjs': 900 };
 const logDir = join(root, 'out', 'localdb-tests'); mkdirSync(logDir, { recursive: true });
 const run = (file) => new Promise((resolve) => {
   const t0 = Date.now();

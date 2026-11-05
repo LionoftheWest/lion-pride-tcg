@@ -140,11 +140,17 @@ export function packsPanel(d, qty, coin) {
 }
 
 export function resetPanel(d, coin, day) {
-  return `<section class="u3-spanel u3-spanel--reset"><header class="u3-spanel__head"><span class="u3-spanel__ico">${icon('rotate-ccw', { size: 'lg' })}</span>`
+  return `<section class="u3-spanel u3-spanel--reset${d.stat_reset_paused ? ' is-paused' : ''}"><header class="u3-spanel__head"><span class="u3-spanel__ico">${icon('rotate-ccw', { size: 'lg' })}</span>`
     + `<h3 class="u3-spanel__title">Stat reset</h3><span class="u3-spanel__price">${coin}<b>${fmt(d.stat_reset_price)}</b></span></header>`
-    + `<div class="u3-sfree${d.free_reset ? ' is-ok' : ''}">${icon('calendar-check')}<b>Free weekly reset</b><span>${d.free_reset ? 'Available' : `Used · back ${esc(day)}`}</span></div>`
-    + `<button type="button" class="u3-btn u3-btn--secondary u3-btn--md u3-schoose" data-choose><span class="u3-btn__label">Choose a card</span>${icon('arrow-right')}</button></section>`;
+    // N-10 (Nathan 2026-11-04): while the reset is paused the status reads "Paused" (not "Available")
+    + `<div class="u3-sfree${d.free_reset && !d.stat_reset_paused ? ' is-ok' : ''}">${icon('calendar-check')}<b>Free weekly reset</b><span>${d.stat_reset_paused ? 'Paused' : d.free_reset ? 'Available' : `Used · back ${esc(day)}`}</span></div>`
+    // UI-43 N-10 (Nathan 2026-11-04 "Sure do option 1"): while combat v2 progress is ON (shop_today.stat_reset_paused) the tab stays
+    // selectable, the button is disabled and the existing error line says why. The server refuses the reset in every case (ON SPEC CV12).
+    + (d.stat_reset_paused ? inlineMessage({ kind: 'error', text: RESET_PAUSED }) : '')
+    + `<button type="button" class="u3-btn u3-btn--secondary u3-btn--md u3-schoose" data-choose${d.stat_reset_paused ? ' disabled aria-disabled="true"' : ''}><span class="u3-btn__label">Choose a card</span>${icon('arrow-right')}</button></section>`;
 }
+/** The line of the paused stat reset (UI-43 N-10); shop-routes.js ERR.stat_reset_paused has the same text. */
+export const RESET_PAUSED = 'Stat reset returns with the v2 stats screen.';
 
 /** The Shop view. s = { d, tab, qty, size, left, coin, rarityLabel, day }. The stock area is fitted after paint (fitStock). */
 export function shopHTML(s) {

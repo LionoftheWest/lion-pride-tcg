@@ -154,11 +154,11 @@ async function readLocalDb() {
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   const args = process.argv.slice(2);
   const only = args.includes('--set') ? args[args.indexOf('--set') + 1] : null;
-  const cards = JSON.parse(readFileSync(join(root, 'cards.json'), 'utf8'));
+  const cards = JSON.parse(readFileSync(process.env.CARDS_FILE || join(root, 'cards.json'), 'utf8')); // CARDS_FILE: a copy (S2-PUB gate)
   const vocab = JSON.parse(readFileSync(join(root, 'tag-vocab.json'), 'utf8'));
   const inProgress = JSON.parse(readFileSync(join(root, 'sets-in-progress.json'), 'utf8')).sets;
   const db = process.env.LOCALDB === '1' ? await readLocalDb() : null;
   const res = checkSets({ cards, vocab, inProgress, art: artFinder(join(root, 'art')), only, db, strictAll: args.includes('--strict-all') });
   console.log(formatReport(res));
-  process.exit(res.failing ? 1 : 0);
+  process.exitCode = res.failing ? 1 : 0; // not process.exit: an exit while fetch sockets close crashes node on Windows (exit 127 in DB mode)
 }

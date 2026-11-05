@@ -9,6 +9,7 @@
 import { icon as ui3Icon } from './ui3/icons.js';
 import { TOKENS } from './tokens.js';
 import { fmtFull, fmtCompact } from './ui3/number.js';
+import { breakName } from './ui3/suggest.js';   // a name never breaks mid-word (D-08): break points at camelCase, _ . -
 
 // ---- The static tables (UI-67): status key -> Lucide icon, the family colors, role key -> Lucide icon ----
 export const STATUS_ICON = {
@@ -41,6 +42,51 @@ const num = (n) => (Number.isFinite(Number(n)) ? Number(n) : 0);
 const unitKey = (side, id) => `${side === 'enemy' ? 'enemy' : 'card'}:${id}`;
 // A number for the screen: whole numbers, no decimals (the engine HP can have decimals, R1b 3.2 item 4).
 export const fmtN = (n) => Math.round(num(n)).toLocaleString('en-US');
+// HP on the screen (R2b review L-3): with stars the HP can be a fraction (R2 QD3). A living unit never shows 0: its HP is rounded up; 0 only when
+// down. The max is rounded up too, so a full unit shows hp = max. A whole number (the Gauntlet) is unchanged. The text format stays the host's (H.fmt).
+export const hpShown = (hp, down = false) => (down || !(num(hp) > 0) ? 0 : Math.ceil(num(hp)));
+export const maxShown = (max) => Math.ceil(num(max));
+// The damage number of an HP change: the drop of the SHOWN HP (so the number and the HP text agree). 0 shows no number (Nathan 2026-11-04:
+// a "-0" floated over a downed support); a miss or a full block is shown by its own word, not by "-0".
+export const shownDrop = (x) => Math.max(0, hpShown(x?.before) - hpShown(x?.after, x?.down));
+/** The squad HP text: the sum of the shown values of the squad cards (whole numbers, as each card shows), else the server total rounded up. */
+export function squadShownOf(v) {
+  const F = fightOf(v);
+  if (F?.cards) {
+    let hp = 0, max = 0;
+    for (const id of stateOf(v)?.squad || []) { const u = F.cards[id] || F.cards[String(id)]; if (!u) continue; hp += hpShown(u.hp, u.down); max += maxShown(u.max); }
+    if (max > 0) return { hp, max };
+  }
+  return { hp: hpShown(v?.squad_hp?.hp), max: maxShown(v?.squad_hp?.max) };
+}
+/** The number of a card's hit on a foe: the drop of the foe's shown HP (its hp entry); BLOCKED when a guard took it all; else the rounded damage. */
+export function hitText(h, e) {
+  if (h?.miss) return 'MISS';
+  const x = (e?.hp || []).find((y) => y.side === h?.target?.side && Number(y.id) === Number(h?.target?.id));
+  if (!x) return dmgText(h?.dmg);
+  const d = shownDrop(x);
+  if (d > 0) return `-${fmtN(d)}`;
+  return maxShown(x.shield_before) > maxShown(x.shield_after) ? 'BLOCKED' : '';
+}
+/** The numbers of the status ticks of a clock entry (review L-1): each tick shows its part of the drop of the SHOWN HP of its unit (the unit's hp
+ *  entry), so the numbers of a unit add up to its shown HP drop and agree with the HP text. A tick with no hp entry shows its rounded damage. */
+export function tickTexts(e) {
+  const ticks = e?.ticks || []; const left = new Map(); const out = [];
+  for (const t of ticks) { const k = unitKey(t.side, t.id); left.set(k, (left.get(k) || 0) + 1); }
+  const cur = new Map();
+  for (const t of ticks) {
+    const x = (e?.hp || []).find((y) => unitKey(y.side, y.id) === unitKey(t.side, t.id));
+    if (!x) { out.push(dmgText(t.dmg)); continue; }
+    const k = unitKey(t.side, t.id); const n = left.get(k) - 1; left.set(k, n);
+    const from = cur.has(k) ? cur.get(k) : num(x.before);
+    const to = n === 0 ? num(x.after) : Math.max(num(x.after), from - num(t.dmg));
+    cur.set(k, to);
+    const d = Math.max(0, hpShown(from) - hpShown(to, n === 0 && x.down));
+    out.push(d > 0 ? `-${fmtN(d)}` : '');
+  }
+  return out;
+}
+export const dmgText = (n) => (Math.round(num(n)) > 0 ? `-${fmtN(n)}` : '');
 /** The power on the card chip: the full form, the compact form from 10,000 ("123.5M": a 9-digit power fits the chip, G3 long variant). */
 export const fmtPower = (n) => (Math.abs(num(n)) >= 10000 ? fmtCompact(n) : fmtFull(n));
 const pctOf = (n) => `${Math.round(num(n) * 100)}%`;
@@ -131,7 +177,8 @@ export function tapLine(v, side, id, key) {
   const val = {};
   leaves.forEach((k, i) => { if (!(k in val)) val[k] = amounts[i]; });
   if (amounts.length > leaves.length) val.value = amounts[amounts.length - 1];   // a status with a value: the unit's value comes last (R1b 3.2 item 3)
-  const fill = (t) => t.replace(/\{(\w+)(%?)\}/g, (_, k, p) => (val[k] == null ? '' : p ? pctOf(val[k]) : String(val[k])));
+  const hpVal = (k) => k === 'value' && (key === 'shielded' || key === 'guarded');   // a shield is HP: a whole number (rounded up)
+  const fill = (t) => t.replace(/\{(\w+)(%?)\}/g, (_, k, p) => (val[k] == null ? '' : p ? pctOf(val[k]) : hpVal(k) ? String(maxShown(val[k])) : String(val[k])));
   const text = fill(TAP_LINE[key] || s.rule || '');
   const label = `${s.label}${line.stacks >= 2 ? ` ${line.stacks}` : ''}`;
   return { key, label, text, left: line.left ?? null, line: `${label}: ${text}` };
@@ -146,17 +193,18 @@ export function logLines(v, log) {
   for (const e of log || []) {
     if (e.k === 'act' && e.actor?.side === 'card') {
       const who = nm('card', e.actor.id);
-      for (const h of e.hits || []) out.push({ kind: 'me', who, to: nm(h.target?.side, h.target?.id), txt: h.miss ? 'miss' : `-${fmtN(h.dmg)}` });
+      for (const h of e.hits || []) out.push({ kind: 'me', who, to: nm(h.target?.side, h.target?.id), txt: h.miss ? 'miss' : hitText(h, e).replace('BLOCKED', 'blocked') });
       if (!(e.hits || []).length && e.ally) out.push({ kind: 'sup', who, to: nm('card', e.ally.id), txt: '' });
       for (const x of e.hp || []) if (x.down) out.push({ kind: 'kill', who: nm(x.side, x.id), to: 'down', txt: '' });
     } else if (e.k === 'act' && e.actor?.side === 'enemy') {
       const who = `${nm('enemy', e.actor.id)} · ${moveLabel(e.move)}`;
       const hit = (e.hp || []).filter((x) => x.side !== 'enemy');
       if (!hit.length) out.push({ kind: 'foe', who, to: '', txt: '' });   // N4: a miss shows the move with no target
-      for (const x of hit) out.push({ kind: 'foe', who, to: nm(x.side, x.id), txt: x.after < x.before ? `-${fmtN(x.before - x.after)}` : '' });
+      for (const x of hit) out.push({ kind: 'foe', who, to: nm(x.side, x.id), txt: shownDrop(x) > 0 ? `-${fmtN(shownDrop(x))}` : '' });
       for (const x of e.hp || []) if (x.down) out.push({ kind: 'kill', who: nm(x.side, x.id), to: 'down', txt: '' });
     } else if (e.k === 'clock') {
-      for (const t of e.ticks || []) out.push({ kind: 'foe', who: refStatus(v?.ref, t.status)?.label || moveLabel(t.status), to: nm(t.side, t.id), txt: `-${fmtN(t.dmg)}` });
+      const tt = tickTexts(e);
+      (e.ticks || []).forEach((t, i) => { if (tt[i]) out.push({ kind: 'foe', who: refStatus(v?.ref, t.status)?.label || moveLabel(t.status), to: nm(t.side, t.id), txt: tt[i] }); });
       for (const x of e.hp || []) {
         if (x.before === x.after && num(x.shield_after) === 0 && num(x.shield_before) > 0) out.push({ kind: 'sup', who: nm(x.side, x.id), to: 'Shield ends', txt: '' });
         if (x.down) out.push({ kind: 'kill', who: nm(x.side, x.id), to: 'down', txt: '' });
@@ -165,6 +213,62 @@ export function logLines(v, log) {
   }
   return out;
 }
+
+// D-212b (Nathan 2026-11-04): the card info window explains the role. The role names come from the server (ref.roles); these lines are the
+// "purpose" of each role in the roles table (tcg-bot/supabase/combat_v2_statuses_roles.sql), display text with no number.
+export const ROLE_PURPOSE = {
+  breaker: 'Hit through defenses.', striker: 'Turn a weak point into a big hit.', flurry: 'Steady damage that outruns heals.',
+  finisher: 'End a fight before the enemy grows.', survivor: 'Stay up against enemies that hurt attackers.', cleaver: 'Hit many foes.',
+  warden: 'Absorb the big hits.', medic: 'Undo damage and clear statuses.', controller: 'Make the enemy weaker or slower.',
+  spotter: 'Make the enemy take more from everyone.', herald: 'Make the right attacker hit much harder.', artillery: 'Damage with no attack roll.',
+};
+/** The v2 part of the card info window (item 1, D-212b): the role (icon, name, purpose), the active (name, charge; the text when the server
+ *  sends it: info[id].text). Every value is a server value or a role text; the client computes nothing. */
+export function v2InfoOf(v, id) {
+  const c = squadOf(v).find((x) => x.id === Number(id));
+  if (!c) return null;
+  const inf = stateOf(v)?.info?.[c.id] || {};
+  const role = refRole(v?.ref, c.role);
+  const label = role?.label || (c.role ? c.role[0].toUpperCase() + c.role.slice(1) : '');
+  const text = typeof inf.text === 'string' ? inf.text : typeof inf.text?.text === 'string' ? inf.text.text : '';
+  const charge = c.ready ? 'Ready' : `Charge ${c.charge} of ${c.need}`;
+  return { id: c.id, maxHp: maxShown(c.max), power: c.power, role: c.role, cls: c.cls, roleLabel: label, purpose: ROLE_PURPOSE[c.role] || '', roleIcon: ic(ROLE_ICON[c.role] || 'circle', 'md'),
+    ability: { name: c.activeName, desc: text, kind: `${label}${label ? ' · ' : ''}${c.cls === 'support' ? 'Support' : 'Attacker'} active`, effect: charge } };
+}
+/** D-215: the callout of a step event: the name of an active when it fires (a card's active, or a foe's move); a basic attack has none. */
+export function calloutOf(v, e) {
+  if (e?.k !== 'act') return null;
+  if (e.actor?.side === 'card') {
+    if (e.action !== 'active') return null;
+    const name = stateOf(v)?.info?.[e.actor.id]?.name || '';
+    return name ? { side: 'card', id: e.actor.id, text: name } : null;
+  }
+  if (e.actor?.side === 'enemy' && e.move) return { side: 'enemy', id: e.actor.id, text: moveLabel(e.move) };
+  return null;
+}
+/** The v1 gain pops of a step entry: a heal (+n) and a new shield (+n shield / +n guard), from the hp entries (shown whole numbers). */
+export function gainsOf(e) {
+  const out = [];
+  for (const x of e?.hp || []) {
+    const heal = hpShown(x.after, x.down) - hpShown(x.before);
+    if (heal > 0) out.push({ side: x.side, id: x.id, text: `+${fmtN(heal)}` });
+    const sh = maxShown(x.shield_after) - maxShown(x.shield_before);
+    if (sh > 0) out.push({ side: x.side, id: x.id, text: `+${fmtN(sh)} ${x.side === 'enemy' ? 'guard' : 'shield'}` });
+  }
+  return out;
+}
+/** The statuses that a write answer added to a unit (the v1 status glyph pops): [{side, id, label}] from status_lines before and after. */
+export function newStatusesOf(before, after) {
+  const out = [];
+  for (const [unit, lines] of Object.entries(after?.status_lines || {})) {
+    const had = new Set((before?.status_lines?.[unit] || []).filter((l) => l.left == null || l.left >= 0).map((l) => l.key));
+    const [side, id] = unit.split(':');
+    for (const l of lines) if ((l.left == null || l.left >= 0) && !had.has(l.key)) out.push({ side: side === 'enemy' ? 'enemy' : 'card', id: Number(id), key: l.key, label: refStatus(after?.ref || before?.ref, l.key)?.label || l.key });
+  }
+  return out;
+}
+/** The card id of a Details magnifier (item 1): the card tile's id first (the v1 tile marks its magnifier data-info="1"), else the support's. */
+export const infoIdOf = (el) => Number(el?.closest?.('.dg-card')?.dataset?.id) || Number(el?.dataset?.info) || 0;
 
 /** Merge a write answer (act, auto, finish, choose) into the view: the run state and the screen fields of R1b 3.4. */
 export function mergeAnswer(v, r) {
@@ -187,10 +291,43 @@ export function v1RunOf(v) {
   if (!R) return null;
   const st = R.state || {};
   return { id: R.id, status: R.status, ended_by: R.ended_by ?? null, floor: R.floor, room: R.room, turns: R.turns ?? 0, rank: null, shards: 0,
-    squad: (st.squad || []).map(Number), state: { phase: st.phase, room_type: st.room_type, offers: st.offers || [], pend: { shards: 0, cards: [] }, bank: { shards: 0, cards: [] } } };
+    squad: (st.squad || []).map(Number), state: { phase: st.phase, room_type: st.room_type, offers: st.offers || [], ...lootOf(v, R, st) } };
+}
+/** ON-UI (ON SPEC 3.5): a live run (the view flag live and the row mark run.live) shows its loot chips; a test run (mark false) shows 0.
+ *  The loot is the v1 shape (state.pend / state.bank: shards, cards), written by the R2-ON loot rules for live runs only. */
+// The Hunt v2 day (R3-ON hunt_v2_days.live, to confirm against the SQL): the flag ON and the day row mark true; a missing mark is not live.
+export const huntLive = (v) => !!(v?.live === true && v?.day?.live === true);
+/** The Practice label of a Hunt v2 day: only on a test day (mark false); the member mode shows none (ON SPEC 3.5, G-UI (a)). */
+export const practiceLabel = (v) => (huntLive(v) ? null : (v?.label || 'Practice (v2 test): no rewards'));
+export const isLive = (v) => !!(v?.live === true && v.run && v.run.live === true);   // review L-3: a missing row mark is NOT live
+function lootOf(v, R, st) {
+  const z = () => ({ shards: 0, cards: [] });
+  if (!isLive(v)) return { pend: z(), bank: z() };
+  const one = (x) => ({ shards: Number(x?.shards) || 0, cards: Array.isArray(x?.cards) ? x.cards : [] });
+  return { pend: one(st.pend), bank: one(st.bank) };
 }
 /** Does this v2 answer take the screen? A tester's v2 run of today (active or just over); else the v1 screens stay (INV-E1). */
 export const v2Owns = (v) => !!(v?.ok && v.run && (v.active_mode === 'gauntlet_v2' || v.run.status === 'over'));
+/** The Dungeon test mode (R2b; dungeon_v2_view): the tester's active v2 run takes the screen; a v2 run that is over takes it only when the
+ *  v1 view (v1) has no active run (QD2: the v2 run is an extra run, so a v1 run of the same day keeps its screens). */
+export const v2OwnsDungeon = (v, v1) => !!(v?.ok && v.run && (v.run.status === 'active' || (v.run.status === 'over' && v1?.run?.status !== 'active')));
+/** The Dungeon test mode (R2b): the tester-only "Play v2 (test)" in the lobby. can_start is the server's (tester, no active v2 run, a run left). */
+export const v2CanStart = (v) => !!(v?.ok && (v.tester === true || v.live === true) && v.can_start === true);
+/** ON-UI screen rule (ON SPEC 3.5, review M-2): while the member has an active v1 run of today (dungeon_v2_view.v1_run), the Dungeon
+ *  opens the v1 run screen; else v2 when live is true or the member is a tester. */
+export const v1RunFirst = (v) => !!(v?.ok && v.v1_run);
+/** The Dungeon screen (ON SPEC 3.5): d = the v1 /api/dungeon answer, v = dungeon_v2_view, v1Active = the v1 run of today is active.
+ *  'v1-run': an active v1 run of today (v1_run) keeps the v1 screens, also with the flag ON (review M-2); 'v2': the v2 run takes the
+ *  screen; 'v2-start': the lobby with the v2 start (a tester's Play v2 (test), or Start run in the member mode); 'v2-lobby': the member
+ *  lobby with no run left; 'v1': the v1 screens (the flag OFF, not a tester). */
+export function dungeonScreen(d, v, v1Active) {
+  if (!d?.ok) return 'v1';
+  if (v1RunFirst(v)) return 'v1-run';
+  if (v2OwnsDungeon(v, d)) return 'v2';
+  if (v2CanStart(v) && !v1Active) return 'v2-start';
+  if (v?.ok && v.live === true && !v1Active) return 'v2-lobby';
+  return 'v1';
+}
 
 // ---- The view (DOM) -----------------------------------------------------------------------------------------------------------------
 const ic = (name, size = 'sm') => ui3Icon(name, { size, cls: 'g2-ico' });
@@ -233,16 +370,16 @@ export function fightHTML(v, H) {
       <span class="n">${f.element && H.elIcon(f.element) ? `<span class="el" title="${esc(f.element)}">${H.elIcon(f.element)}</span>` : ''}<b>${H.plateName({ name: f.name, element: f.element })}</b>${f.level != null ? `<small>LV ${esc(f.level)}</small>` : ''}<em class="hpn"></em></span>
       <span class="bar"><i></i></span>
       <span class="g2-fst"></span></div>`;
-  const unit = (c) => `<div class="dg-unit g2-unit" data-card="${c.id}">${roleHTML(c)}
+  const unit = (c) => `<div class="dg-unit g2-unit" data-card="${c.id}">
       ${H.cardTile({ id: c.id, name: c.name, image_url: c.image_url, rarity: c.rarity }, { top: `<span class="dg-pw">${H.bolt}${c.power != null ? esc(fmtPower(c.power)) : ''}</span>`, over: '<span class="dg-state"></span><span class="g2-pillbox"></span>' })}
       <span class="dg-fx g2-st"></span>
-      <span class="g2-hprow"><span class="dg-hp"><i></i></span><span class="g2-pipbox"></span></span><small class="dg-hpn"></small></div>`;
+      <span class="g2-hprow"><span class="dg-hp"><i></i></span><span class="g2-pipbox"></span></span><small class="dg-hpn"></small>${roleHTML(c)}</div>`;
   const sup = (c) => `<button class="dg-sup g2-sup" data-sup="${c.id}" type="button">
       ${c.image_url ? `<img src="${H.thumb(c.image_url)}" alt="">` : '<span></span>'}
-      <span class="t"><b>${roleHTML(c, true)}${esc(c.name)}</b><small>${esc(c.activeName)}</small></span>
+      <span class="t"><b>${roleHTML(c, true)}${breakName(c.name)}</b><small>${esc(c.activeName)}</small></span>
       <span class="g2-suprole">${roleHTML(c)}</span><span class="card-info g2-mag" data-info="${c.id}" aria-label="Details">${ic('search')}</span>
       <span class="g2-stline"><em></em><span class="g2-shp"><span class="g2-shpl"></span><span class="dg-hp"><i></i></span><small></small></span></span></button>`;
-  return `<div class="dg-fight g2" data-room="${esc(`${m.floor}-${m.room}`)}">
+  return `<div class="dg-fight g2${H.oneBoss ? ' g2-hunt' : ''}" data-room="${esc(`${m.floor}-${m.room}`)}">
     <div class="dg-ftop">${H.progressHTML()}${statsHTML(H)}</div>
     <div class="dg-meter g2-meter"><div class="g2-strip">${stripHTML(m, H)}</div></div>
     <div class="dg-arena">
@@ -261,6 +398,7 @@ export function fightHTML(v, H) {
 }
 // N2: the week best is the v1 value (v2 runs are off the board, D1). N3: the "+n% damage" place stays, empty (nothing moves).
 function statsHTML(H) {
+  if (H.stats) return H.stats();   // R2b: the Dungeon test mode shows the v1 Dungeon chips with v2 data (0 at risk, 0 banked; Nathan answer 4)
   const b = H.dg.data?.best;
   return `<div class="dg-stats"><span title="Your best run this week">${H.trophy}<b>${b ? `${b.floor}F R${b.room}` : '—'}</b><i>week best</i></span><span class="g2-empty" aria-hidden="true">${H.up}<b>+0%</b><i>damage</i></span></div>`;
 }
@@ -275,7 +413,7 @@ export function fightUpdate(F, v, s, H) {
     const p = F.querySelector(`.dg-plate[data-foe="${f.i}"]`); if (!p) continue;
     p.classList.toggle('on', f.i === s.target && !f.down && !s.picking);
     p.classList.toggle('dead', f.down);
-    p.querySelector('.hpn').textContent = `${H.fmt(f.hp)} / ${H.fmt(f.max)}`;
+    p.querySelector('.hpn').textContent = `${H.fmt(hpShown(f.hp, f.down))} / ${H.fmt(maxShown(f.max))}`;
     p.querySelector('.bar i').style.width = `${f.max ? Math.max(0, (f.hp / f.max) * 100) : 0}%`;
     const md = F.classList.contains('g2-wide');
     p.querySelector('.g2-fst').innerHTML = foeStatusHTML(f, md);
@@ -291,28 +429,30 @@ export function fightUpdate(F, v, s, H) {
     u.classList.toggle('g2-wait', !c.actor && !c.down && !s.picking && !s.finishing);
     u.classList.toggle('g2-lit', !!s.picking && allies.has(c.id));
     u.classList.toggle('g2-unlit', !!s.picking && !allies.has(c.id));
-    const shield = c.shield > 0 ? ` <em>+${H.fmt(c.shield)}</em>` : '';
-    const shieldS = c.shield > 0 ? ` <span class="g2-shn">+${H.fmt(c.shield)}</span>` : '';
+    const shield = c.shield > 0 ? ` <em>+${H.fmt(maxShown(c.shield))}</em>` : '';
+    const shieldS = c.shield > 0 ? ` <span class="g2-shn">+${H.fmt(maxShown(c.shield))}</span>` : '';
     if (u.classList.contains('dg-unit')) {
       u.querySelector('.dg-hp i').style.width = `${pct}%`;
-      u.querySelector('.dg-hpn').innerHTML = `${H.fmt(c.hp)}/${H.fmt(c.max)}${shield}`;
+      u.querySelector('.dg-hpn').innerHTML = `${H.fmt(hpShown(c.hp, c.down))}/${H.fmt(maxShown(c.max))}${shield}`;
       u.querySelector('.dg-state').textContent = c.down ? 'Down' : '';
       u.querySelector('.g2-st').innerHTML = c.down ? '<span class="g2-b is-empty"></span>' : cardStatusHTML(c);
       u.querySelector('.g2-pipbox').innerHTML = c.down ? '' : pipsHTML(c);
       // D-204 option A: the active is a pill on the acting card; tap the pill = the active, tap the card = the basic attack.
       const pill = u.querySelector('.g2-pillbox');
+      // D-216: the acting card shows "Your turn" on its art (below the power chip, above the pill)
       pill.innerHTML = c.actor && !c.down && !s.picking && !s.finishing
-        ? (c.ready ? `<button type="button" class="g2-pill" data-active="${c.id}"><b>${esc(c.activeName)}</b>${pipsHTML(c)}</button>`
-          : `<span class="g2-pill is-wait"><b>${esc(c.activeName)}</b>${pipsHTML(c)}<span>${H.fmt(c.charge)} of ${H.fmt(c.need)}</span></span>`) : '';
+        ? '<span class="g2-pillwrap"><span class="g2-turn">Your turn</span>' + (c.ready ? `<button type="button" class="g2-pill" data-active="${c.id}"><b>${esc(c.activeName)}</b>${pipsHTML(c)}</button>`
+          : `<span class="g2-pill is-wait"><b>${esc(c.activeName)}</b>${pipsHTML(c)}<span>${H.fmt(c.charge)} of ${H.fmt(c.need)}</span></span>`) + '</span>' : '';
     } else {
-      u.querySelector('.g2-stline em').innerHTML = c.down ? 'Down' : c.ready ? `${ic('check')}Ready` : `<span class="g2-waitc">${pipsHTML(c)}${H.fmt(c.charge)} of ${H.fmt(c.need)}</span>`;
+      u.querySelector('.g2-stline em').innerHTML = supStateHTML(c, H);
       u.querySelector('.g2-shpl').innerHTML = shieldPlace(c);
       u.querySelector('.g2-shp .dg-hp i').style.width = `${pct}%`;
-      u.querySelector('.g2-shp small').innerHTML = `${H.fmt(c.hp)}/${H.fmt(c.max)}${shieldS}`;
+      u.querySelector('.g2-shp small').innerHTML = `${H.fmt(hpShown(c.hp, c.down))}/${H.fmt(maxShown(c.max))}${shieldS}`;
       u.disabled = !!s.busy && !s.picking;
     }
   }
-  F.querySelector('.dg-shp .v').innerHTML = `${H.fmt(m.squadHp.hp)}<small> / ${H.fmt(m.squadHp.max)}</small>`;
+  const sq = squadShownOf(v);
+  F.querySelector('.dg-shp .v').innerHTML = `${H.fmt(sq.hp)}<small> / ${H.fmt(sq.max)}</small>`;
   F.querySelector('.dg-shp .dg-hp i').style.width = `${m.squadHp.max ? (m.squadHp.hp / m.squadHp.max) * 100 : 0}%`;
   F.querySelector('.g2-strip').innerHTML = stripHTML(m, H);
   F.querySelector('.dg-log').innerHTML = s.log.slice(-6).reverse().map((l) => `<li class="${l.kind}"><b>${esc(l.who)}</b>${l.to ? `<span>→ ${esc(l.to)}</span>` : ''}<em>${esc(l.txt)}</em></li>`).join('') || '<li class="none">The fight starts. Tap a card.</li>';
@@ -327,7 +467,8 @@ export function fightUpdate(F, v, s, H) {
   else if (s.notice) hint.innerHTML = `${H.timer}${esc(s.notice)}`;
   else if (s.tap) hint.innerHTML = `<span class="g2-tap">${badgeHTML(s.tap.badge)}<span><b>${esc(s.tap.label)}:</b> ${esc(s.tap.text)}</span></span>`;
   else if (s.busy) hint.innerHTML = `${H.timer}The monsters are acting…`;
-  else hint.innerHTML = `${H.hand}${m.targets.length > 1 ? 'Tap a monster to target it · tap a card to attack' : 'Tap a card to attack'}`;
+  // review L-4: a squad with no attacker (any Hunt mix) has no card to attack with: the room log's "Tap a card."
+  else hint.innerHTML = `${H.hand}${!m.attackers.length ? 'Tap a card.' : m.targets.length > 1 ? 'Tap a monster to target it · tap a card to attack' : 'Tap a card to attack'}`;
   // the steps left (server left) are in the tooltip: frame 11 draws one line, and the hint keeps one fixed height (nothing moves)
   const tl = hint.querySelector('.g2-tap'); if (tl && s.tap) tl.title = s.tap.left != null ? `${s.tap.line} ${H.fmt(s.tap.left)} steps left.` : s.tap.line;
   if (s.tap) F.querySelector(`.g2-b[data-unit="${s.tap.unit}"][data-st="${s.tap.key}"]`)?.classList.add('is-tapped');
@@ -340,6 +481,13 @@ export function fightUpdate(F, v, s, H) {
   placeFoeStatus(F);
 }
 // The foe status rows sit under the plates (phones) or under each plate on the wide classes (24 px badges, UI-52 review-5 frames 06-08).
+/** The state line of a support (items 7, 8): Down (the down colour of a downed card); READY (D-214: large, highlighted as the ready pill,
+ *  D-213; a tap uses the active when it is this support's turn); else the charge. */
+export function supStateHTML(c, H) {
+  if (c.down) return '<span class="g2-down">Down</span>';
+  if (c.ready) return `<span class="g2-ready${c.actor ? ' is-now' : ''}" data-active="${c.id}">${ic('check')}Ready</span>`;
+  return `<span class="g2-waitc">${pipsHTML(c)}${H.fmt(c.charge)} of ${H.fmt(c.need)}</span>`;
+}
 function placeFoeStatus(F) { F.classList.toggle('g2-wide', ['medium', 'expanded'].includes(document.body.dataset.size || '')); }
 
 // ---- The controller: taps, the ally pick, the status tap line, act / auto / finish, the replay of a write answer's log ----
@@ -381,7 +529,7 @@ export async function wireFight(main, v, host, keep) {
     try {
       const { mountStage } = await import('./dungeon-stage.js');
       if (!main.contains(canvas)) return;
-      H.dg.stage = mountStage(canvas, { onPick: (i) => target(i), onLayout: () => place(main), slotFill: () => (document.body.dataset.size === 'compact-port' ? SLOT_FILL : 0), slotTop: () => slotTop(canvas) });
+      H.dg.stage = mountStage(canvas, { onPick: (i) => target(i), onLayout: () => place(main), slotFill: () => (document.body.dataset.size === 'compact-port' || H.oneBoss ? SLOT_FILL : 0), fillOne: () => !!H.oneBoss, slotTop: () => slotTop(canvas) });   // N-3: the one Hunt boss fills the stage height on every size
       H.dg.stage.canvas = canvas; H.dg.roomKey = key;
       portraits(foesOf(V));   // the strip portraits: the same models (not awaited)
       await H.dg.stage.setFoes(foesOf(V));
@@ -420,9 +568,10 @@ function onTap(e) {
     upd(); place(); return;
   }
   const info = t.closest('.card-info');
-  if (info) { const id = Number(info.dataset.info) || Number(info.closest('.dg-card')?.dataset.id); if (id) H.openInfo(id); return; }
+  if (info) { const id = infoIdOf(info); if (id) H.openInfo(id, v2InfoOf(V, id)); return; }
   const p = t.closest('[data-foe]'); if (p) { target(Number(p.dataset.foe)); return; }
-  if (t.closest('[data-active]')) { useActive(); return; }
+  const act0 = t.closest('[data-active]');
+  if (act0) { useActive(Number(act0.dataset.active)); return; }
   const u = t.closest('.dg-unit, .dg-sup');
   if (!u) return;
   const id = Number(u.dataset.card || u.dataset.sup);
@@ -436,9 +585,9 @@ function target(i) {
   if (S.picking || !m.targets.includes(i) || i === S.target) return;
   S.target = i; H.sfx('click'); upd(); place();
 }
-function useActive() {
+function useActive(id) {
   const c = fightModel(V).squad.find((x) => x.actor);
-  if (!c || S.busy || !c.ready) return;
+  if (!c || S.busy || !c.ready || (id && id !== c.id)) return;   // only the card whose turn it is (D6); a charged support waits for its turn
   if (c.needsAlly) { S.picking = true; H.sfx('click'); upd(); place(); return; }
   act({ use: 'active', target: S.target });
 }
@@ -474,20 +623,35 @@ export function applyHp(step, hp) {
     if (Number(x.shield_after) > 0) u.status[sk] = { ...(u.status[sk] || {}), value: x.shield_after }; else delete u.status[sk];
   }
 }
+const POP_CAP = 8;   // the most numbers in the stage pops box at once
 function pop(i, txt, cls = '', dy = 0) {
   const box = document.querySelector('.dg-fight.g2 .dg-pops'); const l = H.dg.stage?.labels()[i]; const canvas = document.querySelector('.dg-fight.g2 .dg-canvas');
   if (!box || !l) return;
   const n = document.createElement('span');
+  while (box.children.length >= POP_CAP) box.firstElementChild.remove();
   n.className = `dg-pop ${cls}`; n.textContent = txt; n.style.left = `${l.x}px`; n.style.top = `${(canvas?.offsetTop || 0) + l.y + 40 + dy}px`;
   box.appendChild(n); setTimeout(() => n.remove(), 1500);
 }
 function popCard(id, txt, cls = '') {
   const u = document.querySelector(`.dg-fight.g2 .dg-unit[data-card="${id}"], .dg-fight.g2 .dg-sup[data-sup="${id}"]`);
-  if (!u) return;
+  if (!u || !txt) return;
+  for (const old of [...u.querySelectorAll(':scope > .dg-pop')].slice(0, -1)) old.remove();   // one number on a card at a time (the newest)
   const n = document.createElement('span');
   n.className = `dg-pop on-card ${cls}`; n.textContent = txt;
   u.appendChild(n); setTimeout(() => n.remove(), 1500);
+  // the v1 hit shake (ui-v2-dungeon.css .dg-unit.hurt): restart it on each hit
+  // not in the fast replay (H-1: the CI bisect, PR 507: the lunge and the shake restart, a forced reflow per hit, closed WebKit pages)
+  if (!lite()) { u.classList.remove('hurt'); void u.offsetWidth; if (cls === 'hurt') u.classList.add('hurt'); }
 }
+// D-215: the callout of an active (the v1 move label of the monsters, the same pop on a card)
+function gainPops(e) { for (const g of gainsOf(e)) { if (g.side === 'enemy') pop(g.id, g.text, 'heal', 10); else popCard(g.id, g.text, 'heal'); } }
+function callout(co) { if (!co) return; if (co.side === 'enemy') pop(co.id, co.text, 'act move', -30); else popCard(co.id, co.text, 'act move g2-callout'); }
+// H-1 (review of PR 503): the Finish Room replay plays many steps fast (3x). WebKit pages died in CI. A CI bisect (PR 507, run 41954780976:
+// 12 of 34 cells closed; 0 with the card lunge and the shake off) found the cause: the card lunge (.striking) and the shake restart (a forced
+// reflow per hit). The fast replay keeps the hit flash, the damage numbers and the monster lunge, and skips the lunge, the shake and the heavy
+// effects (the WebGL impact, the foe move effect, the voices, the status pops); a tap and Auto play every effect.
+export const liteReplay = (s) => !!s?.finishing;
+const lite = () => liteReplay(S);
 /** Replay the log of a write answer on the stage, then take the server's state. */
 async function play(r) {
   const step = clone(V);
@@ -496,31 +660,48 @@ async function play(r) {
     if (S.finishing && e.clock != null) S.notice = `Finishing the room · Round ${e.clock}`;
     const lines = logLines(step, [e]);
     if (e.k === 'act' && e.actor?.side === 'card') {
+      const me = document.querySelector(`.dg-fight.g2 .dg-unit[data-card="${e.actor.id}"], .dg-fight.g2 .dg-sup[data-sup="${e.actor.id}"]`);
+      if (!lite()) me?.classList.add('striking');   // the v1 card lunge (ui-v2-dungeon.css .striking); not in the fast replay (H-1)
+      callout(calloutOf(step, e));     // D-215: the active's name
+      const first = (e.hits || []).find((h) => h.target?.side === 'enemy');
+      if (first && H.dg.stage?.cast && !lite()) { const el = H.elementOf?.(e.actor.id) || 'physical'; H.snd?.(el, 0.6); H.dg.stage.cast(first.target.id, el); await nap(480); }   // the v1 element impact and its sound
       for (const h of e.hits || []) {
         if (h.target?.side !== 'enemy') continue;
         const down = (e.hp || []).some((x) => x.side === 'enemy' && x.id === h.target.id && x.down);
         H.dg.stage?.play(h.target.id, down ? 'death' : 'hit');
-        pop(h.target.id, h.miss ? 'MISS' : `-${fmtN(h.dmg)}`, h.miss ? 'miss' : h.crit ? 'crit' : '');
+        const foe = foesOf(step)[h.target.id];
+        if (lite()) { /* the fast replay: no voices */ } else if (down) { H.voice?.(foe, 'die', 0.6); if (foe?.boss) H.snd?.('boss:defeat', 0.6); } else if (hitText(h, e).startsWith('-')) H.voice?.(foe, 'hurt', 0.45);   // the v1 voices
+        pop(h.target.id, hitText(h, e), h.miss || hitText(h, e) === 'BLOCKED' ? 'miss' : h.crit ? 'crit' : '');
       }
       if (!(e.hits || []).length && e.ally) popCard(e.ally.id, step.run.state.info?.[e.actor.id]?.name || '', 'heal');
       if ((e.hits || []).length) H.sfx('hit');
+      gainPops(e);
       applyHp(step, e.hp); S.log.push(...lines); upd(step);
       await nap(700);
+      me?.classList.remove('striking');
     } else if (e.k === 'act' && e.actor?.side === 'enemy') {
-      pop(e.actor.id, moveLabel(e.move), 'act move', -30);
-      H.dg.stage?.play(e.actor.id, 'attack');
+      callout(calloutOf(step, e));     // the move name (as v1)
+      if (!lite()) H.dg.stage?.foeFx?.(e.actor.id, e.move);   // the v1 move effect (dungeon-stage.js MOVE_FX)
+      H.dg.stage?.play(e.actor.id, 'attack');    // the v1 monster lunge
+      if (!lite()) { H.voice?.(foesOf(step)[e.actor.id], 'atk', 0.55); const ms = H.moveSnd?.(e.move); if (ms) H.snd?.(ms, 0.4); }   // the v1 attack voice and move sound
       await nap(380);
-      for (const x of e.hp || []) if (x.side !== 'enemy' && x.after < x.before) popCard(x.id, `-${fmtN(x.before - x.after)}`, 'hurt');
+      for (const x of e.hp || []) if (x.side !== 'enemy' && shownDrop(x) > 0) popCard(x.id, `-${fmtN(shownDrop(x))}`, 'hurt');
+      if ((e.hp || []).some((x) => shownDrop(x) > 0)) H.sfx('hit');
+      gainPops(e);
       applyHp(step, e.hp); S.log.push(...lines); upd(step);
       await nap(600);
     } else if (e.k === 'clock' && ((e.ticks || []).length || (e.hp || []).length)) {
-      for (const t of e.ticks || []) { if (t.side === 'enemy') pop(t.id, `-${fmtN(t.dmg)}`, ''); else popCard(t.id, `-${fmtN(t.dmg)}`, 'hurt'); }
+      const tt = tickTexts(e);   // review L-1: the drop of the shown HP, as the hits
+      (e.ticks || []).forEach((t, i) => { const d = tt[i]; if (!d) return; if (t.side === 'enemy') pop(t.id, d, ''); else popCard(t.id, d, 'hurt'); });
       applyHp(step, e.hp); S.log.push(...lines); upd(step);
       await nap(300);
     }
   }
+  const before = V;
   V = mergeAnswer(V, r);
   H.setView(V);
+  // the v1 status glyphs: each status the answer added pops its name on the unit ("Poisoned", "Stunned" ...)
+  if (!S.skip && !lite() && alive()) for (const n of newStatusesOf(before, V)) { if (n.side === 'enemy') pop(n.id, n.label, 'act', 10); else popCard(n.id, n.label, 'debuff'); }
 }
 async function settle(r) {
   S.busy = false;
@@ -576,10 +757,109 @@ function place(main = document.getElementById('main')) {
 }
 // D-206: on the wide classes the control row goes beside the cards (Music and the hint at the left, Finish Room and Auto at the right), and
 // its grid row goes to the stage (CSS: .g2-side). D-205: on 375 px phones (is-narrow) the supports join the squad row as small cards.
+// D-211: the side column is too narrow when the hint (or the left part) is wider or taller than its box (G3 pokeOut / spill).
+// N-3: the Support panel (desktop: the right column; phones: the grid under Squad HP) runs past its box or past the fight.
+function supsTooTall(F) {
+  const p = F.querySelector('.dg-sups'); const right = F.querySelector('.dg-right');
+  if (!p || !p.querySelector('.dg-sup')) return false;
+  const fb = F.getBoundingClientRect().bottom;
+  // a tile too narrow for its name or its state line (a narrow side column with many supports)
+  const narrowTile = [...p.querySelectorAll('.dg-sup .t b, .dg-sup .g2-stline em')].some((n) => n.offsetParent && n.scrollWidth > n.clientWidth + 1)
+    // a text column narrower than the tile card step breaks names mid-word (a narrow side column with many supports)
+    || [...p.querySelectorAll('.dg-sup .t')].some((n) => n.offsetParent && n.clientWidth < TOKENS['card-tile'])
+    // the READY button (PR 503) past its state line
+    || [...p.querySelectorAll('.dg-sup .g2-stline em .g2-ready')].some((n) => n.offsetParent && n.getBoundingClientRect().right > n.closest('em').getBoundingClientRect().right + 1);
+  // D-225 (review M-3): on phones a support list taller than the squad row takes the boss stage height (1 attacker + 7 supports)
+  const units = F.querySelector('.dg-units');
+  const phone = /^compact/.test(document.body.dataset.size || '');
+  // D-61 (the Hunt boss stage): on phones the supports also leave the panel when the boss stage is below its floor
+  const lowStage = phone && F.classList.contains('g2-hunt') && stageHeight(F) < stageFloor();
+  return narrowTile || p.scrollHeight > p.clientHeight + 1 || (right && right.scrollHeight > right.clientHeight + 1) || p.getBoundingClientRect().bottom > fb + 1
+    || (phone && !!units && p.offsetHeight > units.offsetHeight + 1) || lowStage;
+}
+// N-3: the squad row of any size (a CSS grid of --g2-per columns of --g2-cell px; layout() measures, CSS draws). At the approved card
+// size while it fits on one line with nothing cut; else the largest card that puts every card on one line (at least the mini step,
+// TOKENS card-mini); else two lines (half the cards each, the HP bar row hidden as on 375 px phones, D-205). The cards are capped so the
+// lines keep the height of the one approved line, but never below the mini step (then the stage gives the height, down to its minimum). Kept until the fight size or the card count changes.
+function fitRow(F, units) {
+  const items = [...units.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')];
+  const key = `${F.clientWidth}x${F.clientHeight}:${items.length}`;
+  if (F.dataset.g2fit === key) return;
+  F.classList.remove('g2-fit', 'g2-wrap', 'g2-small'); ['--g2-cw', '--g2-per', '--g2-cell'].forEach((k) => F.style.removeProperty(k));
+  F.dataset.g2fit = key;
+  if (items.length < 2 || !rowTooCrowded(units)) return;
+  const n = items.length, gap = parseFloat(getComputedStyle(units).columnGap) || 0, ratio = TOKENS['card-ratio'];
+  const it = items.find((x) => x.classList.contains('dg-unit')) || items[0]; const card = () => it.querySelector('.dg-card, img') || it;
+  // the row may already be squeezed by the flex row: the squad card step (TOKENS card-squad) is the smallest natural size
+  // the padding from the style (a card picture not laid out yet measured 0 px: the padding was the whole card, CI 820x1180 0 + 8)
+  const cs = getComputedStyle(it); const padX = ['paddingLeft', 'paddingRight', 'borderLeftWidth', 'borderRightWidth'].reduce((t, k) => t + (parseFloat(cs[k]) || 0), 0);
+  const natural = Math.max(card().offsetWidth, TOKENS['card-squad']);
+  const lineH = Math.max(it.offsetHeight, natural * ratio);
+  const arena = F.querySelector('.dg-arena'); const W = Math.max(units.clientWidth, arena?.clientWidth || 0);
+  // an unusable measure (the row not laid out yet, CI run 41970678464: a 0 px card at 820x1180): no fit now, measure again next layout
+  if (W < n * TOKENS['card-mini'] / 2) { delete F.dataset.g2fit; F.classList.remove('g2-fit', 'g2-wrap'); return; }
+  const apply = (per) => {
+    const lines = Math.ceil(n / per);
+    const cell = Math.min(natural + padX, Math.floor((W - gap * (per - 1)) / per));
+    F.classList.add('g2-fit'); F.classList.toggle('g2-wrap', lines > 1);
+    F.style.setProperty('--g2-per', String(per)); F.style.setProperty('--g2-cell', `${cell}px`); F.style.setProperty('--g2-cw', `${cell - padX}px`);
+    // the height cap: every line at most (the approved line - the gaps) / lines high
+    const exH = it.offsetHeight - card().offsetHeight;
+    const capW = Math.floor(((lineH - gap * (lines - 1)) / lines - exH) / ratio);
+    const cw = Math.max(1, Math.min(cell - padX, Math.max(TOKENS['card-mini'], capW)));   // never below the mini step: the stage gives the height
+    F.style.setProperty('--g2-cw', `${cw}px`);
+    F.classList.toggle('g2-small', cw < TOKENS['card-squad']);   // D-216 narrow rule: the ring alone marks the acting card
+    return cw;
+  };
+  const cw1 = apply(n);
+  if (cw1 >= TOKENS['card-mini'] && !rowTooCrowded(units)) return;
+  // two lines only when they give wider cards than one line (a long ability name on a 5-card row is not a reason to make the cards smaller)
+  const cw2 = apply(Math.ceil(n / 2));
+  if (cw2 <= cw1 && cw1 >= TOKENS['card-mini']) apply(n);
+}
+// D-61: the Hunt boss stage under its plates, and its floor (TOKENS sp-7 + sp-6 + sp-5, the approved UI-47 stage floor; the G3 stageMin check)
+const stageFloor = () => TOKENS['sp-7'] + TOKENS['sp-6'] + TOKENS['sp-5'];
+function stageHeight(F) {
+  const a = F.querySelector('.dg-arena'), pl = F.querySelector('.dg-plates');
+  if (!a) return Infinity;
+  const ab = a.getBoundingClientRect();
+  return ab.bottom - Math.max(ab.top, pl ? pl.getBoundingClientRect().bottom : 0);
+}
+// N-3: a card of the squad row is cut (its content wider than its box) or the row is wider than its box.
+// more than one line of cards (the base row wraps by itself) also counts as crowded
+const lines = (units) => new Set([...units.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')].map((x) => Math.round(x.offsetTop))).size;
+const rowOver = (units) => {
+  const b = units.getBoundingClientRect(); let over = 0;
+  for (const x of units.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')) { const r = x.getBoundingClientRect(); over = Math.max(over, b.left - r.left, r.right - b.right); }
+  return Math.max(over, units.scrollWidth - units.clientWidth);
+};
+function rowTooCrowded(units) {
+  if (rowOver(units) > 1) return true;
+  if (!units.closest('.g2-wrap') && lines(units) > 1) return true;
+  // a state line or an HP number that no longer fits its small card (the cards share the width)
+  // "Your turn" (PR 503, D-216) past its card
+  if ([...units.querySelectorAll(':scope > .dg-unit .g2-turn')].some((n) => { if (!n.offsetParent) return false; const r = n.getBoundingClientRect(), c = n.closest('.dg-card')?.getBoundingClientRect(); return !!c && (r.left < c.left - 1 || r.right > c.right + 1); })) return true;
+  return [...units.querySelectorAll(':scope > .dg-sup.g2-plate .g2-stline em, :scope > .dg-unit .dg-hpn, :scope > .dg-unit .g2-pill b')].some((n) => n.offsetParent && n.scrollWidth > n.clientWidth + 1);
+}
+function ctlTooNarrow(F) {
+  const L = F.querySelector('.dg-ctl .g2-l'), hint = L?.querySelector('.dg-hint');
+  if (!L || !hint) return false;
+  return L.scrollWidth > L.clientWidth + 1 || hint.scrollWidth > hint.clientWidth + 1 || hint.scrollHeight > hint.clientHeight + 1;
+}
+function ctlToRow(F, ctl, units) {
+  const parts = ['.dg-music', '.dg-hint', '.dg-finish', '.dg-auto'].map((q) => F.querySelector(q)).filter((x) => x && (x.closest('.dg-ctl') === ctl));
+  ctl.replaceChildren(...parts);
+  F.insertBefore(ctl, units);
+  F.classList.add('g2-ctl-row'); F.classList.remove('g2-side');
+  F.style.gridTemplateAreas = ''; F.style.gridTemplateRows = '';
+  layout(F);
+}
 function layout(F) {
   if (!F?.isConnected) return;
   const units = F.querySelector('.dg-units'), ctl = F.querySelector('.dg-ctl');
-  const wide = ['medium', 'expanded'].includes(document.body.dataset.size || '') && !F.classList.contains('is-stack');
+  // D-211 (Nathan 2026-11-04): when the column beside the cards is too narrow for the hint (5 attackers and no support at 1280x720), the
+  // control row stays in its own row, as on phones (g2-ctl-row, kept for this fight); otherwise D-206.
+  const wide = ['medium', 'expanded'].includes(document.body.dataset.size || '') && !F.classList.contains('is-stack') && !F.classList.contains('g2-ctl-row');
   F.classList.toggle('g2-side', wide);
   if (wide && ctl && units && ctl.parentNode !== units) {
     const L = document.createElement('div'); L.className = 'g2-l';
@@ -601,13 +881,26 @@ function layout(F) {
     }
   }
   if (wide && units) {
-    const cards = [...units.querySelectorAll('.dg-unit')].map((x) => x.getBoundingClientRect());
+    const cards = [...units.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')].map((x) => x.getBoundingClientRect());
     if (cards.length) F.style.setProperty('--g2-cards', `${Math.max(...cards.map((q) => q.right)) - Math.min(...cards.map((q) => q.left))}px`);
   }
+  if (wide && ctl && units && ctlTooNarrow(F)) { ctlToRow(F, ctl, units); return; }
   // a wide support tile (the text column 200 px or more, review-5): the HP row sits on the state line
   F.querySelectorAll('.dg-sup.g2-sup').forEach((b) => { const t = b.querySelector('.t'); b.classList.toggle('g2-row', !!t && t.getBoundingClientRect().width >= 200); });
+  // D-205 + N-3 (Nathan 2026-11-04: "squads can be any combos"): the supports are small cards in the squad row on 375 px phones (is-narrow)
+  // and wherever the Support panel cannot hold them (g2-plates, kept for this fight); a squad row too crowded for its cards wraps to two
+  // rows (g2-wrap: --g2-per cards in each row). The Hunt squad is 1 to 8 cards of any mix; the Dungeon 5; the Gauntlet 3 + 2.
+  if (!F.ownerDocument || typeof F.getBoundingClientRect !== 'function') return;   // the measuring below needs a real DOM element (the node tests stub the fight)
   const narrow = F.classList.contains('is-narrow');
-  F.querySelectorAll('.dg-sup.g2-sup').forEach((b) => { const home = narrow ? units : F.querySelector('.dg-sups'); if (home && b.parentNode !== home) home.appendChild(b); b.classList.toggle('g2-plate', narrow); });
+  const plates = narrow || F.classList.contains('g2-plates');
+  F.querySelectorAll('.dg-sup.g2-sup').forEach((b) => { const home = plates ? units : F.querySelector('.dg-sups'); if (home && b.parentNode !== home) home.appendChild(b); b.classList.toggle('g2-plate', plates); });
+  if (!plates && supsTooTall(F)) { F.classList.add('g2-plates'); layout(F); return; }
+  // the top row (the room dots and the loot chips of a live Dungeon run) too wide: the chips take the narrow step of UI-47 (is-narrow)
+  const top = F.querySelector('.dg-ftop');
+  const topOver = () => [...top.querySelectorAll('.dg-stats > span > b, .dg-prog > .dg-dots')].some((n) => n.offsetParent && n.getBoundingClientRect().right > n.parentElement.getBoundingClientRect().right + 1);
+  if (top && !F.classList.contains('g2-tight-top') && topOver()) F.classList.add('g2-tight-top');
+  if (top && F.classList.contains('g2-tight-top') && !F.classList.contains('g2-top-wrap') && topOver()) F.classList.add('g2-top-wrap');
+  if (units) fitRow(F, units);
   place(F.closest('#main') || undefined);
 }
 
