@@ -8990,5 +8990,106 @@
       "duration": 1,
       "desc": "Skip the boss turn — themed around Community (Game) cards"
     }
+  },
+  {
+    "id": "the-forever-queue",
+    "name": "The Forever Queue",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "event"
+    ],
+    "updatedAt": 1793872800000,
+    "tierDetails": {
+      "event": {
+        "genre": "MMO",
+        "lore": "Some legends are forged in battle. Most are forged in line.",
+        "season": "Season 2",
+        "event": "November 2026"
+      }
+    },
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "party"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "ability": {
+      "name": "Estimated Queue",
+      "kind": "support",
+      "effect": "weaken",
+      "amount": 0.3,
+      "target": "boss",
+      "affinity": "origin:party",
+      "cooldown": 3,
+      "duration": 2,
+      "desc": "Boss hits softer — scales with your Party cards"
+    },
+    "effect": {
+      "primitive": "slow_motion",
+      "name": "Servers Full",
+      "cooldown_h": 12,
+      "desc": "The target's next pack opens in slow motion. The cards do not change."
+    },
+    "type": "Moment"
+  },
+  {
+    "id": "hand-me-down-hero",
+    "name": "Hand-Me-Down Hero",
+    "genre": "",
+    "lore": "",
+    "season": "Season 2",
+    "set": "S2",
+    "event": "",
+    "finishes": [
+      "event"
+    ],
+    "updatedAt": 1793872800000,
+    "tierDetails": {
+      "event": {
+        "genre": "Adventure",
+        "lore": "Same Hyrule. New hands on the controller.",
+        "season": "Season 2",
+        "event": "November 2026"
+      }
+    },
+    "tags": {
+      "class": "support",
+      "type": "moment",
+      "origin": [
+        "smash"
+      ],
+      "genre": [],
+      "realm": [],
+      "traits": []
+    },
+    "ability": {
+      "name": "Pass the Controller",
+      "kind": "support",
+      "effect": "empower",
+      "amount": 0.5,
+      "target": "ally",
+      "affinity": "origin:smash",
+      "cooldown": 2,
+      "duration": 1,
+      "desc": "Boost the next hit — extra strong on Smash cards"
+    },
+    "effect": {
+      "primitive": "lucky_pull",
+      "name": "It's Dangerous to Go Alone",
+      "base": {
+        "amount": 2
+      },
+      "cooldown_h": 24,
+      "desc": "The first card of the target's next pack is twice as likely to be rare."
+    },
+    "type": "Moment"
   }
 ]
