@@ -1,7 +1,8 @@
 -- evt2_event_triggers_undo.sql (2026-11-05, EVT-2 B2u): the undo of evt2_event_triggers.sql. It puts back the base text of
 -- event_recipients (md5 5247775127ebf8c582c710a705084e4a) and of the 4-argument event_shape_errors (md5 0fcac6e1d67c8d296f52f0d0b66ebd03), from db/schema/functions at the base
 -- commit 456c0e3d. Order on a live rollback: cancel the 2 EVT-2 events first (admin_event_status ... 'cancelled'), then this file.
--- Apply only on Nathan's word. A second run changes nothing.
+-- Apply only on Nathan's word: node scripts/apply-sql.mjs ../tcg-bot/supabase/evt2_event_triggers_undo.sql --live --force-superseded
+-- (find-superseded.mjs lists this file in SUPERSEDED.md because it reverts the live functions: that is its purpose). A second run changes nothing.
 
 -- GUARD (the combat_core.sql rule): each replaced function must be the live text this file was built from, or the text of
 -- evt2_event_triggers.sql (so a re-run and the undo are both allowed).
