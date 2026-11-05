@@ -19,3 +19,10 @@ body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-wrap .dg-unit .dg-hpn { 
 /* small cards: a long ability name, an HP number with its bonus and a support state wrap to the next line instead of running out */
 body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pill b { white-space: normal; overflow-wrap: normal; }
 body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-fit .dg-unit .dg-hpn, body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates .dg-sup.g2-plate .g2-stline em { white-space: normal; flex-wrap: wrap; }
+/* g2-tight-top: the top row is too wide (long loot numbers): the loot chips take the narrow step of UI-47 (is-narrow, 90-ui-47.css) */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-tight-top .dg-stats { flex: 1 1 auto; min-width: 0; margin: var(--u3-none); gap: var(--sp-1); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-tight-top .dg-stats span { padding: var(--u3-none) var(--sp-1-5); gap: var(--sp-1); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-tight-top .dg-stats i { display: none; }
+/* still too wide: the chips take their own line under the room dots (the stats row of the UI-47 stacked layout, is-stack) */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-tight-top.g2-top-wrap .dg-ftop { flex-wrap: wrap; row-gap: var(--sp-1); }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-tight-top.g2-top-wrap .dg-ftop > .dg-stats { flex: 1 1 100%; justify-content: flex-end; }

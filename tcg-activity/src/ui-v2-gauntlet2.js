@@ -747,7 +747,9 @@ function supsTooTall(F) {
   if (!p || !p.querySelector('.dg-sup')) return false;
   const fb = F.getBoundingClientRect().bottom;
   // a tile too narrow for its name or its state line (a narrow side column with many supports)
-  const narrowTile = [...p.querySelectorAll('.dg-sup .t b, .dg-sup .g2-stline em')].some((n) => n.offsetParent && n.scrollWidth > n.clientWidth + 1);
+  const narrowTile = [...p.querySelectorAll('.dg-sup .t b, .dg-sup .g2-stline em')].some((n) => n.offsetParent && n.scrollWidth > n.clientWidth + 1)
+    // a text column narrower than the tile card step breaks names mid-word (a narrow side column with many supports)
+    || [...p.querySelectorAll('.dg-sup .t')].some((n) => n.offsetParent && n.clientWidth < TOKENS['card-tile']);
   return narrowTile || p.scrollHeight > p.clientHeight + 1 || (right && right.scrollHeight > right.clientHeight + 1) || p.getBoundingClientRect().bottom > fb + 1;
 }
 // N-3: the squad row of any size (a CSS grid of --g2-per columns of --g2-cell px; layout() measures, CSS draws). At the approved card
@@ -850,6 +852,11 @@ function layout(F) {
   const plates = narrow || F.classList.contains('g2-plates');
   F.querySelectorAll('.dg-sup.g2-sup').forEach((b) => { const home = plates ? units : F.querySelector('.dg-sups'); if (home && b.parentNode !== home) home.appendChild(b); b.classList.toggle('g2-plate', plates); });
   if (!plates && supsTooTall(F)) { F.classList.add('g2-plates'); layout(F); return; }
+  // the top row (the room dots and the loot chips of a live Dungeon run) too wide: the chips take the narrow step of UI-47 (is-narrow)
+  const top = F.querySelector('.dg-ftop');
+  const topOver = () => [...top.querySelectorAll('.dg-stats > span > b, .dg-prog > .dg-dots')].some((n) => n.offsetParent && n.getBoundingClientRect().right > n.parentElement.getBoundingClientRect().right + 1);
+  if (top && !F.classList.contains('g2-tight-top') && topOver()) F.classList.add('g2-tight-top');
+  if (top && F.classList.contains('g2-tight-top') && !F.classList.contains('g2-top-wrap') && topOver()) F.classList.add('g2-top-wrap');
   if (units) fitRow(F, units);
   place(F.closest('#main') || undefined);
 }
