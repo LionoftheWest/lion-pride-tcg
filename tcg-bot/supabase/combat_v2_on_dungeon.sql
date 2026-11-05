@@ -14,8 +14,8 @@
 --     the flag is on and already when a live v2 run of today exists (also after a rollback, review H-2).
 --   dungeon_board: the v1 daily runs and the live v2 runs of the day, then one row per player (the best); dungeon_pay('daily') reads it.
 --   dailies_tasks: the dungeon task counts a live v2 run of today.
---   dungeon_v2_unit: with combat_v2_on('progress'), the live level (N-7b: v2_convert.level_per_star x the current stars, at most
---     v2_level.max_level), the points and the bonus of the card_progress_v2 row (none: 0).
+--   dungeon_v2_unit: with combat_v2_on('progress'), the level, the points and the bonus of card_progress_v2_fight (M1e, N-7b).
+--   dungeon_v2_info: + text (ability_v2_text of the class and the active blocks), for the Dungeon and the Hunt screens.
 -- NO CHANGE IN PLAY: the flags stay false. With all flags off every v1 answer and every tester answer is the R2a / v1 answer. Idempotent.
 -- Test: card-studio/scripts/test-combat-v2-on-dungeon.mjs (rolled back; MUTATE=all must catch every mutation).
 
@@ -24,7 +24,8 @@ do $g$
 declare m text; f record;
 begin
   for f in select * from (values
-    ('public.dungeon_v2_unit(text, bigint, jsonb)', '0477eca57b5b001075aae0213441d4a2', '6578aa1258c8efc73fa9749c1f68c964'),
+    ('public.dungeon_v2_unit(text, bigint, jsonb)', '0477eca57b5b001075aae0213441d4a2', '7c9f5fa622e2c7078b8710817115d400'),
+    ('public.dungeon_v2_info(bigint)', '5150b3857675b2c9de9c14722cf3a818', 'b85f391d98e85af29eea255fab063fa4'),
     ('public.dungeon_v2_end(bigint, text)', '5123880c61271af938f96c43467bc398', '279bd670f9ea98efcf1df1a7f95cf523'),
     ('public.dungeon_v2_start(text, bigint[])', 'e63a9f59d6cda733388d813a5c7eeca9', '30bf4ab022c0b01ca266658523527750'),
     ('public.dungeon_v2_retreat(text)', '42285e6fbb2e9af2a72649d99cf3d937', '122ed8f33b43442ce695727edeb0ce51'),
@@ -66,7 +67,7 @@ create or replace function public.dungeon_v2_unit(p_player text, p_card bigint, 
 language plpgsql stable set search_path = public as $fn$
 declare
   b jsonb := coalesce(p_b, combat_v2_numbers(array['v2_asc', 'v2_level', 'v2_stats', 'v2_card_hp', 'v2_support', 'v2_speed', 'v2_charge']));
-  u jsonb; r record; cc jsonb; g public.card_progress_v2%rowtype; lvl int;
+  u jsonb; r record; cc jsonb; fp jsonb;
 begin
   -- the R1a unit (after SYN it carries tags); a card with no usable ability_v2 raises no_data_found here (D2, QD4)
   u := combat_v2_card_unit(p_card, b);
@@ -75,14 +76,11 @@ begin
     left join public.player_cards pc on pc.card_id = c.id and pc.player_id = p_player
    where c.id = p_card;
   if combat_v2_on('progress') then
-    -- N-7b: the live level = v2_convert.level_per_star x the CURRENT stars, at most v2_level.max_level, read at each fight;
-    -- the points and the bonus points of the card_progress_v2 row of the card (no row: 0)
-    lvl := least(balance_num('v2_level', 'max_level'), balance_num('v2_convert', 'level_per_star') * r.stars)::int;
-    select * into g from public.card_progress_v2 where player_id = p_player and card_id = p_card;
-    cc := card_combat_v2(r.rarity, r.stars, r.cp_mod, lvl,
-      jsonb_build_object('atk', coalesce(g.atk_pts, 0), 'def', coalesce(g.def_pts, 0), 'hp', coalesce(g.hp_pts, 0), 'crd', coalesce(g.crd_pts, 0),
-        'crt', coalesce(g.crt_pts, 0), 'abl', coalesce(g.abl_pts, 0), 'ddg', coalesce(g.ddg_pts, 0), 'acc', coalesce(g.acc_pts, 0), 'spd', coalesce(g.spd_pts, 0)),
-      u->>'role', b, coalesce(g.bonus_points, 0));
+    -- N-7b (M1e rule 5b; M1e review X-1): the fight level, the points and the bonus come from card_progress_v2_fight (M1e), the one place of
+    -- the rule: level = v2_convert.level_per_star x the CURRENT stars (at most v2_level.max_level; a stored level above it is kept), the
+    -- points and the bonus of the card_progress_v2 row (no row: none)
+    fp := card_progress_v2_fight(p_player, p_card, b);
+    cc := card_combat_v2(r.rarity, r.stars, r.cp_mod, (fp->>'level')::int, fp->'points', u->>'role', b, (fp->>'bonus')::int);
   else
     -- QD3: the player's stars count, level 0, no points; only the star-dependent stat keys change
     cc := card_combat_v2(r.rarity, r.stars, r.cp_mod, 0, '{}'::jsonb, u->>'role', b);
@@ -90,6 +88,16 @@ begin
   return u || jsonb_build_object('atk', cc->'stats'->'atk', 'crt', cc->'stats'->'crt', 'crd', cc->'stats'->'crd', 'abl', cc->'stats'->'abl',
     'acc', cc->'stats'->'acc', 'def', cc->'stats'->'def', 'ddg', cc->'stats'->'ddg', 'max', cc->'stats'->'hp', 'hp', cc->'stats'->'hp',
     'spd', coalesce(cc->'points'->'spd', '0'::jsonb), 'power', cc->'power', 'extra_stack', cc->'extra_stack');
+end $fn$;
+
+-- the screen facts of a card (R2a) + text: the ability text of its class and blocks (ability_v2_text); the Dungeon and the Hunt screens read it
+create or replace function public.dungeon_v2_info(p_card bigint) returns jsonb
+language plpgsql stable set search_path = public as $fn$
+declare u jsonb := combat_v2_card_unit(p_card);
+begin
+  return jsonb_build_object('name', (select s.ability_v2->>'name' from public.cards c join public.subjects s on s.id = c.subject_id where c.id = p_card),
+    'role', u->'role', 'class', u->'class', 'needs_ally', dungeon_v2_needs_ally(u->'active'->'blocks'),
+    'text', ability_v2_text(u->>'class', u->'active'->'blocks')->>'text');
 end $fn$;
 
 -- ============================================================ 3. the settle: every end of a v2 run (review M-1)
@@ -539,7 +547,7 @@ end $fn$;
 do $gr$
 declare f text;
 begin
-  foreach f in array array['dungeon_v2_unit(text, bigint, jsonb)', 'dungeon_v2_settle(bigint, text, boolean)', 'dungeon_v2_end(bigint, text)',
+  foreach f in array array['dungeon_v2_unit(text, bigint, jsonb)', 'dungeon_v2_info(bigint)', 'dungeon_v2_settle(bigint, text, boolean)', 'dungeon_v2_end(bigint, text)',
       'dungeon_v2_loot(jsonb, jsonb, integer)', 'dungeon_v2_after(jsonb, jsonb, integer, integer)', 'dungeon_v2_room(jsonb, jsonb, integer, integer, text)',
       'dungeon_v2_pick(jsonb, jsonb, integer)', 'dungeon_v2_start(text, bigint[])', 'dungeon_v2_retreat(text)', 'dungeon_v2_view(text)',
       'dungeon_settle_stale()', 'dungeon_board(date, integer)', 'dailies_tasks(text)', 'dungeon_start(text, bigint[])'] loop
@@ -548,7 +556,8 @@ begin
   end loop;
 end $gr$;
 
-comment on function public.dungeon_v2_unit(text, bigint, jsonb) is $cm$[combat] Combat v2 Dungeon (20.19 R2, 20.19b R2-ON; R3 reuses it): the v2 unit of a player's card: combat_v2_card_unit (after SYN with tags) with the 12 star-dependent stat keys (atk, crt, crd, abl, acc, def, ddg, max, hp, spd, power, extra_stack) from card_combat_v2. With combat_v2_on('progress'): the live level (N-7b: v2_convert.level_per_star x the current stars, at most v2_level.max_level), the 9 points and the bonus points of the card_progress_v2 row (no row: 0). Else the player's stars, level 0, no points (QD3). Every other key stays. A card with no usable ability_v2 raises no_data_found. Reads only. combat_v2_on_dungeon.sql.$cm$;
+comment on function public.dungeon_v2_unit(text, bigint, jsonb) is $cm$[combat] Combat v2 Dungeon (20.19 R2, 20.19b R2-ON; R3 reuses it): the v2 unit of a player's card: combat_v2_card_unit (after SYN with tags) with the 12 star-dependent stat keys (atk, crt, crd, abl, acc, def, ddg, max, hp, spd, power, extra_stack) from card_combat_v2. With combat_v2_on('progress'): the level, the points and the bonus of card_progress_v2_fight (M1e, N-7b: v2_convert.level_per_star x the current stars, at most v2_level.max_level, a stored level above it kept; the points and the bonus of the card_progress_v2 row). Else the player's stars, level 0, no points (QD3). Every other key stays. A card with no usable ability_v2 raises no_data_found. Reads only. combat_v2_on_dungeon.sql.$cm$;
+comment on function public.dungeon_v2_info(bigint) is $cm$[combat] Combat v2 Dungeon (20.19 R2, 20.19b R2-ON; R3 reuses it): the screen facts of a card: name (subjects.ability_v2 name), role, class, needs_ally, and text = ability_v2_text(class, the active blocks).text (the Dungeon and the Hunt screens). Raises no_data_found for a card with no usable ability_v2. Reads only. combat_v2_on_dungeon.sql.$cm$;
 comment on function public.dungeon_v2_settle(bigint, text, boolean) is $cm$[combat] Combat v2 Dungeon (20.19b R2-ON): the end of a v2 Dungeon run (fell, cleared, retreat, abandoned), once: the row is locked; a settled or ended run returns its stored shards and cards (again true) and grants nothing. A live run grants the bank (and the pend when p_with_pend: cleared) with grant_shards (reason dungeon, ref run_v2 + id) and card_move per card (dungeon_loot, ref dungeon_v2_run + id); a tester run grants 0. Then status over, ended_by, ended_at, settled_at, shards, cards (and state.lost = the pend when it is lost). combat_v2_on_dungeon.sql.$cm$;
 comment on function public.dungeon_v2_end(bigint, text) is $cm$[combat] Combat v2 Dungeon (20.19 R2, 20.19b R2-ON): ends a v2 Dungeon run at fell or cleared through dungeon_v2_settle (the v1 flags: fell loses the pend, cleared keeps it). combat_v2_on_dungeon.sql.$cm$;
 comment on function public.dungeon_v2_loot(jsonb, jsonb, integer) is $cm$[combat] Combat v2 Dungeon (20.19b R2-ON): the v1 loot of a won fight room of a live run: one dungeon_after_kill per foe on a shim (mode daily, the carry as cards, bank, pend, last_pick, heal_floor, room_type; the run of the day state.day): the kill Shards and card chance, then at the last kill the guardian floor Shards and pend to bank (floor_done or cleared) or the v1 offers with shards and card (none: continue). Draws random numbers. combat_v2_on_dungeon.sql.$cm$;

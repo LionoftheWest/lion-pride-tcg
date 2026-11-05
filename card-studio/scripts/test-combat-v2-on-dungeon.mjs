@@ -5,8 +5,8 @@ import './localdb-guard.mjs';
  * RAISE. Each block runs the file first (its guard accepts the R2a text and its own text), so the test passes before and after the apply.
  * The copy must have R2a (combat_v2_dungeon_run.sql) and R1b (combat_v2_gauntlet_run.sql: the dailies_tasks text of the guard).
  * SYN (main b86dd7e2) must be on the copy: the v2 room calls combat_v2_synergy; a copy with no SYN makes every block raise (fail closed,
- * as the R2a gate). M1e: the live level reads balance v2_convert.level_per_star. When the copy has no v2_convert key, DO9 plants a stand-in
- * key { level_per_star: 3 } (the SPEC 3.7 value) with the balance triggers off in its block, and prints WAIT: DO9 is then NOT a gate result.
+ * as the R2a gate). M1e (combat_v2_convert.sql: v2_convert, card_progress_v2_fight) must be on the copy too: R2-ON is stacked on M1e, and
+ * DO9 raises without it (fail closed). No stand-in, no WAIT.
  * Nothing is printed about a real member (the test members are made in the block).
  *   LOCALDB=1 LOCALDB_ENV=... LOCALDB_LOCK_DIR=... node --import ./scripts/localdb-preload.mjs scripts/test-combat-v2-on-dungeon.mjs   must PASS
  *   MUTATE=<name> ...   must FAIL, for every name in MUT below
@@ -64,7 +64,13 @@ const MUT = {
   v1_start_ungated: ["  if combat_v2_on('dungeon') then return jsonb_build_object('ok', false, 'error', 'v2_on'); end if;\n", ''],
   // DO9
   unit_ignores_progress: ["  if combat_v2_on('progress') then", '  if false then'],
-  unit_bonus_dropped: ["      u->>'role', b, coalesce(g.bonus_points, 0));", "      u->>'role', b, 0);"],
+  unit_bonus_dropped: ["(fp->>'level')::int, fp->'points', u->>'role', b, (fp->>'bonus')::int);", "(fp->>'level')::int, fp->'points', u->>'role', b, 0);"],
+  // M1e review X-1: the level recomputed locally (the star rule only) in place of card_progress_v2_fight
+  unit_local_level: ['    fp := card_progress_v2_fight(p_player, p_card, b);',
+    "    fp := card_progress_v2_fight(p_player, p_card, b) || jsonb_build_object('level', least(balance_num('v2_level', 'max_level'), balance_num('v2_convert', 'level_per_star') * r.stars)::int);"],
+  // DO11 the info text
+  text_missing: ["'needs_ally', dungeon_v2_needs_ally(u->'active'->'blocks'),\n    'text', ability_v2_text(u->>'class', u->'active'->'blocks')->>'text');",
+    "'needs_ally', dungeon_v2_needs_ally(u->'active'->'blocks'));"],
   // DO10 (as GO7)
   guard_missing: [/do \$g\$\n[\s\S]*?-- GUARD-END\n/, ''],
   grant_anon: ["    execute format('grant execute on function public.%s to service_role', f);", "    execute format('grant execute on function public.%s to service_role, anon', f);"],
@@ -73,15 +79,13 @@ const MUT = {
 const NAMED = `loot_for_testers count_v2_only kill_loot_missing floor_not_banked chest_literal offer_pool_tester pend_kept_on_fell settle_twice_grants
   ledger_ref_v1 settle_grants_n_minus_1 start_abandon_no_settle stale_skips_v2 board_daily_only board_has_tester_run board_union_outside_dedup
   task_ignores_v2 task_counts_tester loot_reads_flag gate_reads_flag_only v1_start_ungated unit_ignores_progress unit_bonus_dropped guard_missing
-  grant_anon`.split(/\s+/).filter(Boolean);
+  grant_anon unit_local_level text_missing`.split(/\s+/).filter(Boolean);
 // the case that each mutation must make FAIL: a mutation counts as caught only when a case of its own id fails and no block raised
 const EXPECT = { loot_for_testers: 'DO1', count_v2_only: 'DO2', kill_loot_missing: 'DO3', floor_not_banked: 'DO3', chest_literal: 'DO3',
   offer_pool_tester: 'DO3', pend_kept_on_fell: 'DO4', settle_twice_grants: 'DO4', ledger_ref_v1: 'DO4', settle_grants_n_minus_1: 'DO4',
   start_abandon_no_settle: 'DO5', stale_skips_v2: 'DO5', board_daily_only: 'DO6', board_has_tester_run: 'DO6', board_union_outside_dedup: 'DO6',
   task_ignores_v2: 'DO7', task_counts_tester: 'DO7', loot_reads_flag: 'DO8', gate_reads_flag_only: 'DO8b', v1_start_ungated: 'DO8b',
-  unit_ignores_progress: 'DO9', unit_bonus_dropped: 'DO9', guard_missing: 'DO10', grant_anon: 'DO10' };
-// the mutations that only DO9 catches: WAIT while the copy has no M1e (v2_convert)
-const M1E_ONLY = ['unit_ignores_progress', 'unit_bonus_dropped'];
+  unit_ignores_progress: 'DO9', unit_bonus_dropped: 'DO9', guard_missing: 'DO10', grant_anon: 'DO10', unit_local_level: 'DO9', text_missing: 'DO11' };
 const pairs = (m) => (Array.isArray(m[0]) ? m : [m]);
 
 if (process.env.MUTATE === 'all') {
@@ -106,8 +110,7 @@ if (process.env.MUTATE === 'all') {
     const caught = r.status !== 0 && /FAILED/.test(line) && lines.some((l) => exp.test(l)) && raised.length === 0;
     const why = lines.find((l) => exp.test(l)) || raised[0] || lines.find((l) => /^FAIL/.test(l)) || (r.stderr || '').trim().split(/\r?\n/).pop() || '';
     let tag = caught ? `caught (${EXPECT[name]} FAILS)` : (raised.length ? 'NOT CAUGHT (a block raised)' : 'NOT CAUGHT');
-    if (!caught && !m1eOn && M1E_ONLY.includes(name)) { tag = 'WAIT (M1e not on the copy)'; waits.push(name); }
-    else if (!caught) ok = false;
+    if (!caught) ok = false;
     if (caught) ran.push(name);
     console.log(`mutation ${name.padEnd(26)} ${tag}  ${line.slice(0, 40)}  ${Math.round((Date.now() - t0) / 1000)}s  ${why.slice(0, 150)}`);
   }
@@ -136,7 +139,7 @@ const MD5 = `md5(replace(pg_get_functiondef(p.oid), chr(13), ''))`;
 const SIG = `replace(p.oid::regprocedure::text, ', ', ',')`;
 // the functions that the file makes or replaces (the new one: dungeon_v2_settle, dungeon_v2_loot)
 const NEWFN = ['dungeon_v2_settle(bigint,text,boolean)', 'dungeon_v2_loot(jsonb,jsonb,integer)'];
-const REPL = ['dungeon_v2_unit(text,bigint,jsonb)', 'dungeon_v2_end(bigint,text)', 'dungeon_v2_after(jsonb,jsonb,integer,integer)',
+const REPL = ['dungeon_v2_unit(text,bigint,jsonb)', 'dungeon_v2_info(bigint)', 'dungeon_v2_end(bigint,text)', 'dungeon_v2_after(jsonb,jsonb,integer,integer)',
   'dungeon_v2_room(jsonb,jsonb,integer,integer,text)', 'dungeon_v2_pick(jsonb,jsonb,integer)', 'dungeon_v2_start(text,bigint[])', 'dungeon_v2_retreat(text)',
   'dungeon_v2_view(text)'];
 const V1 = ['dungeon_settle_stale()', 'dungeon_board(date,integer)', 'dailies_tasks(text)', 'dungeon_start(text,bigint[])'];
@@ -257,7 +260,7 @@ begin
   exception when others then
     if sqlerrm like 'r2on_twice:%' then x := substr(sqlerrm, 12)::jsonb; md5_a := x->'a'; md5_b := x->'b'; else msg := sqlerrm; md5_a := null; end if;
   end;
-  ${add('DO10 the file (unmutated) runs a second time with no error, and every function that it makes or replaces keeps its md5 (14 functions)',
+  ${add('DO10 the file (unmutated) runs a second time with no error, and every function that it makes or replaces keeps its md5 (15 functions)',
     `md5_a = md5_b and (select count(*) from jsonb_object_keys(md5_a)) = ${NEWFN.length + REPL.length + V1.length}`, `jsonb_build_object('n', (select count(*) from jsonb_object_keys(md5_a)), 'err', msg)`)}
   -- the grants and the comments: the (mutated) file, once
   execute $m$${mig}$m$;
@@ -562,13 +565,9 @@ const B5 = block(String.raw`
 
 // ---------------------------------------------------------------------------------------------------------- B6: DO9 progress (N-7b)
 const B6 = block(String.raw`
-  m1e := exists (select 1 from balance where key = 'v2_convert' and value ? 'level_per_star');
-  if not m1e then
-    -- the stand-in of M1e (SPEC 3.7: level_per_star 3), with the balance triggers off in this rolled-back block
-    alter table public.balance disable trigger user;
-    insert into balance (key, value, note) values ('v2_convert', '{"level_per_star": 3}'::jsonb, 'r2on stand-in');
-    alter table public.balance enable trigger user;
-  end if;
+  -- M1e must be on the copy (R2-ON is stacked on M1e): its v2_convert key and card_progress_v2_fight. No stand-in (fail closed)
+  m1e := exists (select 1 from balance where key = 'v2_convert' and value ? 'level_per_star') and to_regprocedure('public.card_progress_v2_fight(text, bigint, jsonb)') is not null;
+  if not m1e then raise exception 'the copy has no M1e (combat_v2_convert.sql: v2_convert, card_progress_v2_fight): apply it first'; end if;
   -- the test cards: an attacker with 3 stars and a progress row at the stored level 9 (M1e rule 5: 3 x 3 stars) that needs its bonus (10 SPD + 2 ATK = 12 points: level 9 gives 9, bonus 10),
   -- a card with 2 stars and no row
   update player_cards set ascension = 3 where player_id = ${O(1)} and card_id = na[1];
@@ -606,7 +605,19 @@ const B6 = block(String.raw`
   ${add('DO9 N-7b: one more star (4) gives the live level 12 at the next unit (the stored row is not read for the level)',
     `pg_temp.keys12(x) = pg_temp.want(${O(1)}, na[1], least(balance_num('v2_level', 'max_level'), balance_num('v2_convert', 'level_per_star') * 4)::int,
        '{"atk": 2, "def": 0, "hp": 0, "crd": 0, "crt": 0, "abl": 0, "ddg": 0, "acc": 0, "spd": 10}'::jsonb, 10, true)`, 'x')}
-  if not m1e then ${wait('DO9 M1e: the live level reads the real v2_convert key of M1e (a stand-in key here)')} end if;
+  -- M1e review X-1: the level comes from card_progress_v2_fight, which keeps a STORED level above the star level (a row that M1e did not make):
+  -- a card with 2 stars (star level 6) and a stored row at level 9 with 9 points spent and no bonus fights at level 9
+  update player_cards set ascension = 2 where player_id = ${O(1)} and card_id = na[3];
+  insert into card_progress_v2 (player_id, card_id, level, xp, atk_pts, hp_pts, bonus_points) values (${O(1)}, na[3], 9, card_level_xp_at(9), 5, 4, 0);
+  x := pg_temp.call_unit(${O(1)}, na[3]);
+  ${add('DO9 X-1 a stored level (9) above the star level (2 stars: 6) is kept: the unit = card_combat_v2 with level 9, its 9 points, bonus 0 (= card_progress_v2_fight of M1e), by id',
+    `pg_temp.keys12(x) = pg_temp.want(${O(1)}, na[3], 9, '{"atk": 5, "def": 0, "hp": 4, "crd": 0, "crt": 0, "abl": 0, "ddg": 0, "acc": 0, "spd": 0}'::jsonb, 0, true)
+     and (card_progress_v2_fight(${O(1)}, na[3])->>'level')::int = 9`, 'x')}
+  -- DO11 (the info text): dungeon_v2_info carries text = ability_v2_text(class, the active blocks).text, for every card of the squad
+  ${add('DO11 dungeon_v2_info carries text = ability_v2_text(class, active blocks).text (not empty), for each card of the squad (attackers and the support)',
+    `(select pg_temp.all_true(dungeon_v2_info(z)->>'text' is not null and dungeon_v2_info(z)->>'text' <> ''
+        and dungeon_v2_info(z)->>'text' = ability_v2_text(combat_v2_card_unit(z)->>'class', combat_v2_card_unit(z)->'active'->'blocks')->>'text') from unnest(sq) z)`,
+    `(select jsonb_agg(jsonb_build_object('card', z, 'text', dungeon_v2_info(z)->'text')) from unnest(sq) z)`)}
 `, '').replace('  -- progress OFF: today', String.raw`  create function pg_temp.call_unit(p text, c bigint) returns jsonb language plpgsql as $x$
   begin return dungeon_v2_unit(p, c); exception when others then return jsonb_build_object('raised', sqlerrm); end $x$;
   -- progress OFF: today`);
