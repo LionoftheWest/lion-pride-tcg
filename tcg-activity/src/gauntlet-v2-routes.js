@@ -5,7 +5,8 @@
 // The member always comes from the verified token (caller), never from the body or the query.
 // The gate: combat_v2_on('gauntlet', member) (the tester list in SQL), else D4: a run that started in v2 finishes in v2.
 // The start stays POST /api/gauntlet/start (dungeon-routes.js): gauntlet_start builds a v2 run only for a tester.
-// No v1 route changes: this module registers only paths under /api/gauntlet/v2 and changes no shared object.
+// No v1 route changes: this module registers only paths under /api/gauntlet/v2 and changes no shared object. R1-ON: after a write it
+// calls onRunChange (dungeon-routes.js gauntletRunChanged, wired in server.js) to drop the member's cached v1 view and, at a run end, the board.
 
 import { AUTO_MAX } from './dungeon-routes.js';
 
@@ -47,7 +48,7 @@ const timeCache = (ttl) => {
 };
 const pick = (rows, keys) => (rows || []).map((r) => Object.fromEntries(keys.map((k) => [k, r[k] ?? null])));
 
-export function registerGauntletV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, sharedCache }) {
+export function registerGauntletV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, sharedCache, onRunChange }) {
   // The tester bit of each member, 60 s: a removal from the list takes effect in at most 60 s (D4 covers a running run).
   const testers = sharedCache ? sharedCache('gauntletV2Tester', { ttl: 60000 }) : timeCache(60000);
   // The texts of the fight screen: the same for everyone, 5 minutes.
@@ -109,6 +110,16 @@ export function registerGauntletV2Routes(app, { supabase, caller, rateLimit, get
     if (!data?.ok) return fail(res, data);
     res.json(after ? await after(data) : data);
   };
+  // R1-ON: a v2 write changes what GET /api/gauntlet and its board show (combat_v2_on_gauntlet.sql: they read member v2 runs). The v1
+  // caches (dungeon-routes.js: the 15 s view, the 5 s board) are dropped after the SQL answer: the member's view always, the board when
+  // the run ended (status over; a retreat always ends it). Dropped again when the response finishes (as dungeon-routes.js does), so a
+  // GET that loaded during the write is not kept.
+  const write = async (res, player, fn, args, after, ends = false) => {
+    let ended = ends;
+    const changed = () => { try { onRunChange?.(player, ended); } catch { /* a cache drop never fails a write */ } };
+    res.on?.('finish', changed);
+    await rpc(res, fn, args, async (data) => { if (data?.status === 'over') ended = true; changed(); return after ? after(data) : data; });
+  };
 
   app.get('/api/gauntlet/v2', async (req, res) => {
     const g = await gate(req, res); if (!g) return;
@@ -124,23 +135,23 @@ export function registerGauntletV2Routes(app, { supabase, caller, rateLimit, get
   });
   app.post('/api/gauntlet/v2/act', async (req, res) => {
     const g = await gate(req, res, true); if (!g) return;
-    await rpc(res, 'gauntlet_v2_act', { p_player: g.player, p_choice: choiceOf(req.body) }, withCards);
+    await write(res, g.player, 'gauntlet_v2_act', { p_player: g.player, p_choice: choiceOf(req.body) }, withCards);
   });
   app.post('/api/gauntlet/v2/auto', async (req, res) => {
     const g = await gate(req, res, true); if (!g) return;
-    await rpc(res, 'gauntlet_v2_auto', { p_player: g.player, p_max: autoMax(req.body?.max) }, withCards);
+    await write(res, g.player, 'gauntlet_v2_auto', { p_player: g.player, p_max: autoMax(req.body?.max) }, withCards);
   });
   // Finish Room: Auto to the end of the fight (the SQL stops at the end or at the round cap; FINISH_MAX is only the request bound).
   app.post('/api/gauntlet/v2/finish', async (req, res) => {
     const g = await gate(req, res, true); if (!g) return;
-    await rpc(res, 'gauntlet_v2_auto', { p_player: g.player, p_max: FINISH_MAX }, withCards);
+    await write(res, g.player, 'gauntlet_v2_auto', { p_player: g.player, p_max: FINISH_MAX }, withCards);
   });
   app.post('/api/gauntlet/v2/choose', async (req, res) => {
     const g = await gate(req, res, true); if (!g) return;
-    await rpc(res, 'gauntlet_v2_choose', { p_player: g.player, p_pick: idx(req.body?.pick) }, withCards);
+    await write(res, g.player, 'gauntlet_v2_choose', { p_player: g.player, p_pick: idx(req.body?.pick) }, withCards);
   });
   app.post('/api/gauntlet/v2/retreat', async (req, res) => {
     const g = await gate(req, res, true); if (!g) return;
-    await rpc(res, 'gauntlet_v2_retreat', { p_player: g.player });
+    await write(res, g.player, 'gauntlet_v2_retreat', { p_player: g.player }, null, true);
   });
 }
