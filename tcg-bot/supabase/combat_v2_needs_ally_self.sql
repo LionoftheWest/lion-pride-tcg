@@ -7,7 +7,7 @@
 -- After this file: gauntlet_v2_needs_ally = the R1b rule, and a block with "self": true never asks for an ally. Nothing else changes: the
 --   signature, IMMUTABLE, search_path, the grants (service_role only) and every other function stay. Only blocks with "self" change the answer
 --   (on live 2026-11-05: one block, subject 302).
--- NOT in this file: dungeon_v2_needs_ally (combat_v2_dungeon_run.sql) has the same rule and the same defect (see items/R1b/REPORT-needs-ally.md).
+-- Part 2 (the same rule in dungeon_v2_needs_ally, combat_v2_dungeon_run.sql): combat_v2_needs_ally_self_dungeon.sql.
 -- Idempotent. Server only. Undo: combat_v2_needs_ally_self_undo.sql.
 -- Test: card-studio/scripts/test-combat-v2-needs-ally-self.mjs (rolled back; MUTATE=all must catch every mutation).
 
