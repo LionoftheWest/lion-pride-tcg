@@ -241,7 +241,8 @@ begin
    where p.pronamespace = 'public'::regnamespace and ${SIG} <> all (mine) and p.prosrc ~ '(card_combat_v2|card_progress_v2_check)\s*\(';
   res := res || jsonb_build_object('case', 'T1 the callers of card_combat_v2 and of the trigger do not change (no v1 caller)', 'ok', callers_a = callers_b, 'now', callers_b);
   select coalesce(array_agg(${SIG} order by ${SIG}), '{}') into bad from pg_proc p
-   where p.pronamespace = 'public'::regnamespace and ${SIG} <> all (mine) and p.prosrc ~ 'card_level_(xp_at|of_xp|xp_award)\s*\(';
+   where p.pronamespace = 'public'::regnamespace and ${SIG} <> all (mine) and p.prosrc ~ 'card_level_(xp_at|of_xp|xp_award)\s*\('
+     and p.proname <> 'combat_v2_convert_expect';   -- M1e combat_v2_convert.sql: the XP of the converted level (card_level_xp_at)
   res := res || jsonb_build_object('case', 'T1 no other function calls a new card_level function', 'ok', cardinality(bad) = 0, 'callers', bad);
   select coalesce(array_agg(${SIG} order by ${SIG}), '{}') into on_b from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\s*\(';
   res := res || jsonb_build_object('case', 'T1 the readers of combat_v2_on do not change', 'ok', on_a = on_b, 'now', on_b);
