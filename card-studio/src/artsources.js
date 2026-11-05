@@ -3,12 +3,13 @@
  * so a tier can reuse another card/tier's illustration instead of its own upload.
  * Stored as { [cardId]: { [slot]: { fromId, fromSlot } } } in art/_sources.json.
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const FILE = join(here, '..', 'art', '_sources.json');
+const ART = join(here, '..', 'art');
+const FILE = join(ART, '_sources.json');
 
 function readAll() {
   try {
@@ -33,3 +34,15 @@ export function setSource(id, slot, fromId, fromSlot) {
   writeFileSync(FILE, JSON.stringify(all, null, 2), 'utf8');
   return all[id] ? all[id][slot] || null : null;
 }
+
+// The art file of a card's slot (art/<id>-<slot>.*), or null. Moved unchanged from server.js, so the studio and
+// scripts/push-set.mjs use one resolver (S2-PUB).
+export const artFile = (id, slot) => {
+  const f = readdirSync(ART).find((n) => n.startsWith(`${id}-${slot}.`));
+  return f ? join(ART, f) : null;
+};
+// The art file for a slot, following a "pull from another card" source if set.
+export const resolveArtFile = (id, slot) => {
+  const src = getSource(id, slot);
+  return src ? artFile(src.fromId, src.fromSlot) : artFile(id, slot);
+};
