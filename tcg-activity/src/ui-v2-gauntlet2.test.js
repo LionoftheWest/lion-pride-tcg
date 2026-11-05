@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, cardStatusHTML, squadOf, foesOf, portraitKey, fmtPower, wireFight, STRIP_N } from './ui-v2-gauntlet2.js';
+import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, cardStatusHTML, squadOf, foesOf, portraitKey, fmtPower, wireFight, infoIdOf, v2InfoOf, ROLE_PURPOSE, hpShown, maxShown, shownDrop, dmgText, supStateHTML, calloutOf, gainsOf, newStatusesOf, fightUpdate, squadShownOf, hitText, liteReplay, tickTexts, STRIP_N } from './ui-v2-gauntlet2.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIX = JSON.parse(readFileSync(join(here, '..', '..', 'ci', 'ui-check', 'fixtures', 'g2-fight.json'), 'utf8')).body;
@@ -215,8 +215,8 @@ test('the power chip: the full form, the compact form from 10,000 (a 9-digit pow
 // any other element: a stub that takes every property and call (fightUpdate writes text, widths and classes into many parts)
 const anyEl = () => new Proxy(function stub() {}, { get: (o, k) => (k === 'then' ? undefined : k === Symbol.toPrimitive ? () => '' : anyEl()), set: () => true, apply: () => anyEl() });
 function stubFight() {
-  const listeners = [];
-  const el = (name) => ({ name, addEventListener: (type) => listeners.push(`${name}:${type}`), classList: { toggle() {}, contains: () => false, add() {}, remove() {} }, setAttribute() {}, dataset: {}, closest: () => null });
+  const listeners = []; const handlers = [];
+  const el = (name) => ({ name, addEventListener: (type, fn) => { listeners.push(`${name}:${type}`); handlers.push({ name, type, fn }); }, classList: { toggle() {}, contains: () => false, add() {}, remove() {} }, setAttribute() {}, dataset: {}, closest: () => null });
   const auto = el('auto'), finish = el('finish');
   const canvas = { ...el('canvas'), replaceWith() {}, closest: () => null, getBoundingClientRect: () => ({ top: 0 }) };
   const F = { ...el('fight'), isConnected: true, style: { setProperty() {} }, querySelectorAll: () => [],
@@ -224,7 +224,7 @@ function stubFight() {
   const main = { querySelector: (s) => (s === '.dg-fight.g2' ? F : null), contains: () => true };
   const calls = { fitFight: 0 };
   const host = { dg: { auto: false, stage: null }, fitFight: () => { calls.fitFight += 1; }, placeArena() {}, currentView: () => 'dungeon', sfx() {}, setAuto() {}, setView() {}, toast() {}, fmt: String, esc: String, thumb: String, elIcon: () => '', hand: '', timer: '', finishButton: () => ({}), autoDisabled: () => false };
-  return { listeners, F, main, host, calls };
+  return { listeners, handlers, F, main, host, calls };
 }
 function withDocument(fightEl, fn) {
   const saved = { document: globalThis.document, raf: globalThis.requestAnimationFrame, gcs: globalThis.getComputedStyle, warn: console.warn };
@@ -256,4 +256,348 @@ test('L-4: when another fight opened while the stage loaded, the old wireFight s
   const t = stubFight();   // the same fight stays open: the layout runs
   await withDocument(() => t.F, () => wireFight(t.main, fresh(), t.host));
   assert.equal(t.calls.fitFight, 1);
+});
+
+// ---- Nathan's live test 2026-11-04 (the shared v2 fight of the Gauntlet, the Dungeon and the Hunt) ----
+test('item 1: the attacker magnifier opens its own card (the v1 tile marks its magnifier data-info="1"); the support magnifier its card', () => {
+  const card = { dataset: { id: '318' } };
+  const attackerMag = { dataset: { info: '1' }, closest: (s) => (s === '.dg-card' ? card : null) };
+  const supportMag = { dataset: { info: '312' }, closest: () => null };
+  assert.equal(infoIdOf(attackerMag), 318);
+  assert.equal(infoIdOf(supportMag), 312);
+});
+
+test('item 1, D-212b: the card info of a v2 card: the role (name, what it does) and the v2 active (name, charge)', () => {
+  const v = fresh();
+  const a = v2InfoOf(v, 124);
+  assert.equal(a.roleLabel, 'Finisher');
+  assert.equal(a.purpose, 'End a fight before the enemy grows.');
+  assert.equal(a.ability.name, 'Doubles Clutch');
+  assert.equal(a.ability.effect, 'Charge 1 of 2');
+  assert.match(a.ability.kind, /Finisher · Attacker active/);
+  assert.match(a.roleIcon, /<svg/);
+  assert.equal(v2InfoOf(v, 312).ability.effect, 'Ready');
+  assert.equal(v2InfoOf(v, 312).purpose, 'Undo damage and clear statuses.');
+  v.run.state.info[124].text = { text: 'Hit the target for 140%.' };   // when the server sends the text (request to R1b, REPORT-fix)
+  assert.equal(v2InfoOf(v, 124).ability.desc, 'Hit the target for 140%.');
+  for (const r of v.ref.roles) assert.ok(ROLE_PURPOSE[r.key], `a purpose line for ${r.key}`);
+});
+
+test('item 1: a tap on the attacker magnifier opens the info and sends no action; a tap on the card body attacks', async () => {
+  const s = stubFight();
+  const posts = []; const infos = [];
+  s.host.apiPost = async (p, b) => { posts.push([p, b]); return { ok: false }; };
+  s.host.base = '/api/gauntlet/v2';
+  s.host.openInfo = (id, v2) => infos.push([id, v2?.roleLabel]);
+  await withDocument(() => null, async () => {
+    await wireFight(s.main, fresh(), s.host);
+    const tap = s.handlers.find((h) => h.name === 'fight').fn;
+    const card = { dataset: { id: '318' } };
+    const mag = { dataset: { info: '1' }, closest: (q) => (q === '.card-info' ? mag : q === '.dg-card' ? card : null) };
+    tap({ target: mag });
+    assert.deepEqual(infos, [[318, 'Striker']]);
+    assert.equal(posts.length, 0, 'the magnifier never attacks');
+    const unit = { dataset: { card: '318' } };
+    const body = { closest: (q) => (q === '.dg-unit, .dg-sup' ? unit : null) };
+    await tap({ target: body });
+    assert.equal(posts.length, 1);
+    assert.equal(posts[0][0], '/api/gauntlet/v2/act');
+    assert.equal(posts[0][1].use, 'basic');
+  });
+});
+
+test('item 2: whole-number HP: a living unit shows its HP rounded up (never 0), a down unit 0, the max rounded up', () => {
+  assert.equal(hpShown(243.293), 244);
+  assert.equal(hpShown(0.2), 1);
+  assert.equal(hpShown(0.2, true), 0);
+  assert.equal(hpShown(0), 0);
+  assert.equal(hpShown(117.647), 118);
+  assert.equal(maxShown(647.5), 648);
+  assert.equal(maxShown(200), 200);
+});
+
+test('item 9: no "-0": a damage number is the drop of the shown HP; a 0 drop or a 0 tick shows nothing', () => {
+  const v = fresh();
+  assert.equal(shownDrop({ before: 81.992, after: 81.6 }), 0);
+  assert.equal(shownDrop({ before: 12, after: 0, down: true }), 12);
+  assert.equal(dmgText(0.3), '');
+  assert.equal(dmgText(42.4), '-42');
+  const log = [
+    { k: 'act', actor: { side: 'enemy', id: 0 }, move: 'strike', hp: [{ side: 'card', id: 312, before: 0, after: 0, down: true, shield_before: 0, shield_after: 0 }] },
+    { k: 'clock', clock: 7, ticks: [{ side: 'card', id: 312, status: 'poison', dmg: 0 }], hp: [] },
+  ];
+  const lines = logLines(v, log);
+  assert.ok(lines.every((l) => l.txt !== '-0'), JSON.stringify(lines));
+  assert.equal(lines.filter((l) => l.who === 'Poison').length, 0);
+});
+
+test('items 7, 8: the support state: Down in the down colour; READY (data-active) when charged; else the charge', () => {
+  const H = { fmt: String };
+  const down = supStateHTML({ down: true, ready: true, charge: 1, need: 1, id: 312 }, H);
+  assert.match(down, /class="g2-down">Down</);
+  assert.doesNotMatch(down, /Ready/);
+  const ready = supStateHTML({ down: false, ready: true, actor: true, charge: 1, need: 1, id: 312 }, H);
+  assert.match(ready, /class="g2-ready is-now" data-active="312"/);
+  assert.doesNotMatch(supStateHTML({ down: false, ready: true, actor: false, id: 145 }, H), /is-now/);
+  assert.match(supStateHTML({ down: false, ready: false, charge: 0, need: 1, id: 145 }, H), /0 of 1/);
+});
+
+test('D-215: an active shows a callout with its name; a basic attack shows none; a foe move shows its name', () => {
+  const v = fresh();
+  assert.deepEqual(calloutOf(v, { k: 'act', actor: { side: 'card', id: 318 }, action: 'active' }), { side: 'card', id: 318, text: 'Peaches Beam' });
+  assert.equal(calloutOf(v, { k: 'act', actor: { side: 'card', id: 318 }, action: 'basic' }), null);
+  assert.deepEqual(calloutOf(v, { k: 'act', actor: { side: 'enemy', id: 2 }, move: 'heavy_hit' }), { side: 'enemy', id: 2, text: 'Heavy hit' });
+  assert.equal(calloutOf(v, { k: 'clock', clock: 3 }), null);
+});
+
+test('item 3: the v1 gain pops (+n heal, +n shield / guard) and the status glyphs come from the step data', () => {
+  assert.deepEqual(gainsOf({ hp: [{ side: 'card', id: 124, before: 40.2, after: 52.7, shield_before: 0, shield_after: 12.5 }] }),
+    [{ side: 'card', id: 124, text: '+12' }, { side: 'card', id: 124, text: '+13 shield' }]);
+  assert.deepEqual(gainsOf({ hp: [{ side: 'enemy', id: 0, before: 50, after: 50, shield_before: 0, shield_after: 10 }] }), [{ side: 'enemy', id: 0, text: '+10 guard' }]);
+  const v = fresh(); const w = fresh();
+  w.status_lines['card:43'].push({ key: 'stunned', stacks: null, left: 1, amounts: [] });
+  assert.deepEqual(newStatusesOf(v, w), [{ side: 'card', id: 43, key: 'stunned', label: 'Stunned' }]);
+  assert.deepEqual(newStatusesOf(v, fresh()), []);
+});
+
+// ---- PR 503 round 2 (REVIEW-fix-mag): the reviewer's uncaught mutations, M-1, the lows ----
+// A recording DOM: every element that the view asks for exists and keeps what the view writes into it.
+function recDom(attackers = [124, 318, 43], supports = [312, 145]) {
+  const els = new Map(); const pops = []; const classes = [];
+  const mk = (key) => {
+    if (els.has(key)) return els.get(key);
+    const cls = new Set();
+    const e = { key, innerHTML: '', textContent: '', style: { setProperty() {} }, dataset: {}, disabled: false, title: '', children: [], isConnected: true, offsetWidth: 1,
+      classList: { add: (c) => { cls.add(c); classes.push(`${key} +${c}`); }, remove: (c) => cls.delete(c), toggle: (c, on) => (on === undefined ? (cls.has(c) ? cls.delete(c) : cls.add(c)) : on ? cls.add(c) : cls.delete(c)), contains: (c) => cls.has(c) || key.startsWith(`.${c}`) || key.includes(` .${c}[`) },
+      setAttribute() {}, removeAttribute() {}, addEventListener() {}, insertAdjacentHTML(_, h) { e.innerHTML += h; }, remove() {}, replaceWith() {}, closest: () => null,
+      getBoundingClientRect: () => ({ top: 0, left: 0, right: 1, bottom: 1, width: 1, height: 1 }),
+      querySelector: (q) => sub(key, q), querySelectorAll: () => [], appendChild: (n) => { pops.push({ in: key, text: n.textContent, cls: n.className }); e.children.push(n); }, firstElementChild: null };
+    els.set(key, e); return e;
+  };
+  const sub = (key, q) => {
+    const m = /\.dg-unit\[data-card="(\d+)"\]/.exec(q); if (m && supports.includes(Number(m[1])) && !q.includes('dg-sup')) return null;
+    const n = /\.dg-sup\[data-sup="(\d+)"\]/.exec(q); if (n && attackers.includes(Number(n[1])) && !q.includes('dg-unit')) return null;
+    return mk(`${key} ${q}`);
+  };
+  const F = mk('.dg-fight.g2');
+  return { F, mk, sub, pops, classes, els };
+}
+const recHost = (extra = {}) => ({ dg: { auto: false, stage: null }, fmt: (n) => String(n), esc: (x) => String(x), thumb: String, elIcon: () => '', hand: '', timer: '', finishButton: () => ({}), autoDisabled: () => false, ...extra });
+const withBody = (fn) => { const saved = globalThis.document; globalThis.document = { body: { dataset: {} } }; try { return fn(); } finally { globalThis.document = saved; } };
+const decimalFight = () => {
+  const v = fresh(); const F = v.run.state.fight;
+  Object.assign(F.cards[124], { hp: 47.3, max: 72.4, status: { shielded: { value: 12.2 } } });
+  Object.assign(F.cards[312], { hp: 50.4, max: 60 });
+  Object.assign(F.enemies[0], { hp: 8.2, max: 50.5 });
+  return v;
+};
+
+test('reviewer L-2: the HP texts of fightUpdate are whole numbers (foe plate, card, support, squad = the sum of the shown values)', () => {
+  const v = decimalFight(); const d = recDom();
+  withBody(() => fightUpdate(d.F, v, { target: 0, log: [] }, recHost()));
+  assert.equal(d.els.get('.dg-fight.g2 .dg-plate[data-foe="0"] .hpn').textContent, '9 / 51');
+  assert.match(d.els.get('.dg-fight.g2 .dg-unit[data-card="124"] .dg-hpn').innerHTML, /^48\/73 <em>\+13<\/em>$/);
+  assert.match(d.els.get('.dg-fight.g2 .dg-sup[data-sup="312"] .g2-shp small').innerHTML, /^51\/60/);
+  const sq = squadShownOf(v);
+  const F = v.run.state.fight;
+  assert.equal(sq.hp, [124, 318, 43, 312, 145].reduce((a, id) => a + hpShown(F.cards[id].hp, F.cards[id].down), 0));
+  assert.equal(d.els.get('.dg-fight.g2 .dg-shp .v').innerHTML, `${sq.hp}<small> / ${sq.max}</small>`);
+  assert.equal(maxShown(72.4), 73, 'the max rounds up, not to the nearest');
+});
+
+test('reviewer L-2: the shield value of the tap line is HP: rounded up', () => {
+  const v = fresh();
+  v.status_lines['card:124'].find((l) => l.key === 'shielded').amounts = [0.5, 12.2];
+  assert.equal(tapLine(v, 'card', 124, 'shielded').line, 'Shielded: Absorbs 13 damage before HP.');
+});
+
+test('M-1, D-216: "Your turn" is on the acting card, in one column with the pill and before it (never under it)', () => {
+  const v = fresh(); const d = recDom();
+  withBody(() => fightUpdate(d.F, v, { target: 0, log: [] }, recHost()));
+  const html = d.els.get('.dg-fight.g2 .dg-unit[data-card="318"] .g2-pillbox').innerHTML;
+  assert.match(html, /^<span class="g2-pillwrap"><span class="g2-turn">Your turn<\/span><button type="button" class="g2-pill"/);
+  assert.equal(d.els.get('.dg-fight.g2 .dg-unit[data-card="43"] .g2-pillbox').innerHTML, '', 'not on another card');
+  const c = fresh(); c.order[0] = { side: 'card', id: 43, clock: 6, ready: false }; c.run.state.fight.ext.turn = { side: 'card', id: 43 };
+  const e = recDom(); withBody(() => fightUpdate(e.F, c, { target: 0, log: [] }, recHost()));
+  assert.match(e.els.get('.dg-fight.g2 .dg-unit[data-card="43"] .g2-pillbox').innerHTML, /^<span class="g2-pillwrap"><span class="g2-turn">Your turn<\/span><span class="g2-pill is-wait">/);
+});
+
+test('reviewer L-2: a charged support READY on another card\'s turn sends nothing (the clock picks the card)', async () => {
+  const s = stubFight(); const posts = [];
+  s.host.apiPost = async (p, b) => { posts.push([p, b]); return { ok: false }; }; s.host.base = '/api/gauntlet/v2';
+  await withDocument(() => null, async () => {
+    await wireFight(s.main, fresh(), s.host);   // the actor is card 318 (ready)
+    const tap = s.handlers.find((h) => h.name === 'fight').fn;
+    const ready = { dataset: { active: '312' }, closest: (q) => (q === '[data-active]' ? ready : null) };
+    await tap({ target: ready });
+    assert.equal(posts.length, 0);
+    const own = { dataset: { active: '318' }, closest: (q) => (q === '[data-active]' ? own : null) };
+    await tap({ target: own });
+    assert.equal(posts.length, 1, 'the actor\'s own active is sent');
+  });
+});
+
+test('reviewer L-2: the damage number and the log of a hit are the shown HP drop; a guard that took it all is BLOCKED', () => {
+  const e = { hp: [{ side: 'enemy', id: 0, before: 50, after: 8.4, down: false, shield_before: 0, shield_after: 0 }] };
+  assert.equal(hitText({ target: { side: 'enemy', id: 0 }, dmg: 41.6 }, e), '-41', 'the shown HP goes 50 -> 9');
+  assert.equal(hitText({ target: { side: 'enemy', id: 0 }, dmg: 9 }, { hp: [{ side: 'enemy', id: 0, before: 50, after: 50, shield_before: 10, shield_after: 1 }] }), 'BLOCKED');
+  assert.equal(hitText({ target: { side: 'enemy', id: 0 }, miss: true }, e), 'MISS');
+  const v = fresh();
+  const lines = logLines(v, [{ k: 'act', actor: { side: 'enemy', id: 2 }, move: 'strike', hp: [{ side: 'card', id: 124, before: 48.2, after: 48.1, down: false, shield_before: 0, shield_after: 0 }] }]);
+  assert.equal(lines[0].txt, '', 'a drop that does not change the shown HP shows no number');
+});
+
+test('reviewer L-2, item 3: a card active plays the v1 lunge and impact, the callout, the hit, and the status glyphs', async () => {
+  const v = fresh(); const d = recDom();
+  const stage = { calls: [], cast(i, el) { this.calls.push(`cast ${i} ${el}`); }, play(i, k) { this.calls.push(`play ${i} ${k}`); }, foeFx(i, m) { this.calls.push(`foeFx ${i} ${m}`); },
+    labels: () => [0, 1, 2, 3, 4].map((x) => ({ x, y: 1, foot: 2, w: 1 })), setTarget() {}, dispose() {} };
+  const w = fresh(); w.run.state.fight.enemies[0].hp = 8.4;
+  w.status_lines['enemy:0'] = [...w.status_lines['enemy:0'], { key: 'mark', stacks: null, left: null, amounts: [] }];
+  let replayDone; const replayEnd = new Promise((ok) => { replayDone = ok; });
+  const answer = { ok: true, status: 'active', state: w.run.state, order: w.order, targets: w.targets, allies: w.allies, status_lines: w.status_lines, need: w.need, squad_hp: w.squad_hp,
+    log: [{ k: 'act', actor: { side: 'card', id: 318 }, action: 'active', target: { side: 'enemy', id: 0 }, hits: [{ target: { side: 'enemy', id: 0 }, dmg: 41.6, crit: false, miss: false }],
+      hp: [{ side: 'enemy', id: 0, before: 50, after: 8.4, down: false, shield_before: 0, shield_after: 0 }] }] };
+  const host = recHost({ dg: { auto: false, stage }, base: '/api/gauntlet/v2', apiPost: async () => answer, waitMs: () => 0, currentView: () => 'dungeon', sfx() {}, snd() {}, voice() {}, moveSnd: () => null,
+    elementOf: () => 'water', setView() { replayDone(); }, setAuto() {}, toast() {}, fitFight() {}, placeArena() {}, openInfo() {} });
+  const saved = { document: globalThis.document, raf: globalThis.requestAnimationFrame, gcs: globalThis.getComputedStyle };
+  globalThis.document = { querySelector: (q) => (q === '.dg-fight.g2' ? d.F : d.sub('', q)), querySelectorAll: () => [], getElementById: () => null, body: { dataset: {} },
+    createElement: () => ({ className: '', textContent: '', style: {}, remove() {} }) };
+  globalThis.requestAnimationFrame = () => 0; globalThis.getComputedStyle = () => ({ gridTemplateAreas: '', gridTemplateRows: '' });
+  try {
+    const main = { querySelector: (q) => (q === '.dg-fight.g2' ? d.F : null), contains: () => true };
+    const handlers = []; d.F.addEventListener = (type, fn) => handlers.push(fn);
+    await wireFight(main, v, host, { keep: true });
+    const pill = { dataset: { active: '318' }, closest: (q) => (q === '[data-active]' ? pill : null) };
+    await handlers[0]({ target: pill });
+    await Promise.race([replayEnd, new Promise((ok) => setTimeout(ok, 5000))]);   // the end of the replay (setView), not a fixed wait
+    await new Promise((ok) => setTimeout(ok, 30));   // settle() runs after it
+  } finally { globalThis.document = saved.document; globalThis.requestAnimationFrame = saved.raf; globalThis.getComputedStyle = saved.gcs; }
+  assert.ok(stage.calls.includes('cast 0 water'), `the element impact: ${stage.calls.join(', ')}`);
+  assert.ok(stage.calls.includes('play 0 hit'));
+  assert.ok(d.classes.some((c) => c.includes('data-card="318"') && c.endsWith('+striking')), 'the card lunge');
+  assert.ok(d.pops.some((p) => p.text === 'Peaches Beam'), 'the callout');
+  assert.ok(d.pops.some((p) => p.text === '-41'), `the damage number (the shown HP 50 -> 9): ${d.pops.map((p) => p.text).join(', ')}`);
+  assert.ok(d.pops.some((p) => p.text === 'Mark'), 'the status glyph');
+});
+
+test('H-1: the Finish Room fast replay plays the light v1 effects (hit, number, lunge) and no WebGL impact, voice or status glyph', async () => {
+  const v = fresh(); const d = recDom();
+  const stage = { calls: [], cast(i) { this.calls.push(`cast ${i}`); }, play(i, k) { this.calls.push(`play ${i} ${k}`); }, foeFx(i) { this.calls.push(`foeFx ${i}`); },
+    labels: () => [0, 1, 2, 3, 4].map((x) => ({ x, y: 1, foot: 2, w: 1 })), setTarget() {}, dispose() {} };
+  const w = fresh(); w.run.state.fight.enemies[0].hp = 8.4;
+  w.status_lines['enemy:0'] = [...w.status_lines['enemy:0'], { key: 'mark', stacks: null, left: null, amounts: [] }];
+  const log = [];
+  for (let k = 0; k < 3; k += 1) {
+    log.push({ k: 'act', actor: { side: 'card', id: 318 }, action: 'basic', target: { side: 'enemy', id: 0 }, hits: [{ target: { side: 'enemy', id: 0 }, dmg: 10, crit: false, miss: false }],
+      hp: [{ side: 'enemy', id: 0, before: 50 - k * 10, after: 40 - k * 10, down: false, shield_before: 0, shield_after: 0 }] });
+    log.push({ k: 'act', actor: { side: 'enemy', id: 2 }, move: 'strike', hp: [{ side: 'card', id: 124, before: 48 - k, after: 47 - k, down: false, shield_before: 0, shield_after: 0 }] });
+  }
+  const answer = { ok: true, status: 'active', state: w.run.state, order: w.order, targets: w.targets, allies: w.allies, status_lines: w.status_lines, need: w.need, squad_hp: w.squad_hp, log };
+  const voices = [];
+  let replayDone; const replayEnd = new Promise((ok) => { replayDone = ok; });
+  const host = recHost({ dg: { auto: false, stage }, base: '/api/gauntlet/v2', apiPost: async () => answer, waitMs: () => 0, currentView: () => 'dungeon', sfx() {}, snd: (k) => voices.push(k), voice: (f, k) => voices.push(k), moveSnd: () => 'boss:strike',
+    elementOf: () => 'water', setView() { replayDone(); }, setAuto() {}, toast() {}, fitFight() {}, placeArena() {}, openInfo() {} });
+  const saved = { document: globalThis.document, raf: globalThis.requestAnimationFrame, gcs: globalThis.getComputedStyle };
+  globalThis.document = { querySelector: (q) => (q === '.dg-fight.g2' ? d.F : d.sub('', q)), querySelectorAll: () => [], getElementById: () => null, body: { dataset: {} },
+    createElement: () => ({ className: '', textContent: '', style: {}, remove() {} }) };
+  globalThis.requestAnimationFrame = () => 0; globalThis.getComputedStyle = () => ({ gridTemplateAreas: '', gridTemplateRows: '' });
+  let finish = null;
+  try {
+    const main = { querySelector: (q) => (q === '.dg-fight.g2' ? d.F : null), contains: () => true };
+    d.F.addEventListener = () => {};
+    d.mk('.dg-fight.g2 .dg-finish').addEventListener = (t, fn) => { finish = fn; };
+    await wireFight(main, v, host, { keep: true });
+    await finish({ stopPropagation() {} });
+    await Promise.race([replayEnd, new Promise((ok) => setTimeout(ok, 5000))]);   // the end of the replay (setView), not a fixed wait
+    await new Promise((ok) => setTimeout(ok, 30));   // settle() runs after it
+  } finally { globalThis.document = saved.document; globalThis.requestAnimationFrame = saved.raf; globalThis.getComputedStyle = saved.gcs; }
+  assert.equal(stage.calls.filter((c) => c.startsWith('cast')).length, 0, `no WebGL impact in the fast replay: ${stage.calls.join(', ')}`);
+  assert.equal(stage.calls.filter((c) => c.startsWith('foeFx')).length, 0, 'no foe move effect');
+  assert.equal(stage.calls.filter((c) => c === 'play 0 hit').length, 3, 'the hit flash of each step');
+  assert.equal(stage.calls.filter((c) => c === 'play 2 attack').length, 3, 'the monster lunge of each step');
+  assert.equal(voices.length, 0, 'no voices or sounds');
+  assert.ok(!d.pops.some((p) => p.text === 'Mark'), 'no status glyph pops');
+  assert.ok(!d.classes.some((c) => c.endsWith('+striking') || c.endsWith('+hurt')), `no card lunge and no shake in the fast replay (H-1, the CI bisect): ${d.classes.filter((c) => /striking|hurt/.test(c)).join(', ')}`);
+  assert.ok(d.pops.some((p) => p.text === '-10'), 'the damage numbers');
+  assert.equal(liteReplay({ finishing: true }), true);
+  assert.equal(liteReplay({ finishing: false }), false);
+});
+
+// ---- PR 503 final review (REVIEW-PR503-final): M-2 the shake on a tap and an Auto hit, L-1 the tick numbers, L-2 the info max HP ----
+// One replay on the recording DOM: `trigger` starts it (a tap on the card body, or the Auto button); the answer carries `log`.
+async function replayRun(log, trigger) {
+  const v = fresh(); const d = recDom();
+  const stage = { calls: [], cast(i) { this.calls.push(`cast ${i}`); }, play(i, k) { this.calls.push(`play ${i} ${k}`); }, foeFx(i) { this.calls.push(`foeFx ${i}`); },
+    labels: () => [0, 1, 2, 3, 4].map((x) => ({ x, y: 1, foot: 2, w: 1 })), setTarget() {}, dispose() {} };
+  const w = fresh();
+  const answer = { ok: true, status: 'active', state: w.run.state, order: w.order, targets: w.targets, allies: w.allies, status_lines: w.status_lines, need: w.need, squad_hp: w.squad_hp, log };
+  const posts = [];
+  let replayDone; const replayEnd = new Promise((ok) => { replayDone = ok; });
+  const host = recHost({ dg: { auto: false, stage }, base: '/api/gauntlet/v2', AUTO_ROUNDS: 5, apiPost: async (p) => { posts.push(p); return answer; }, waitMs: () => 0, currentView: () => 'dungeon', sfx() {}, snd() {}, voice() {}, moveSnd: () => null,
+    elementOf: () => 'water', setView() { host.dg.auto = false; replayDone(); }, setAuto(on) { host.dg.auto = on; }, toast() {}, fitFight() {}, placeArena() {}, openInfo() {} });
+  const saved = { document: globalThis.document, raf: globalThis.requestAnimationFrame, gcs: globalThis.getComputedStyle };
+  globalThis.document = { querySelector: (q) => (q === '.dg-fight.g2' ? d.F : d.sub('', q)), querySelectorAll: () => [], getElementById: () => null, body: { dataset: {} },
+    createElement: () => ({ className: '', textContent: '', style: {}, remove() {} }) };
+  globalThis.requestAnimationFrame = () => 0; globalThis.getComputedStyle = () => ({ gridTemplateAreas: '', gridTemplateRows: '' });
+  try {
+    const main = { querySelector: (q) => (q === '.dg-fight.g2' ? d.F : null), contains: () => true };
+    const handlers = []; d.F.addEventListener = (type, fn) => handlers.push(fn);
+    let auto = null; d.mk('.dg-fight.g2 .dg-auto').addEventListener = (t, fn) => { auto = fn; };
+    await wireFight(main, v, host, { keep: true });
+    if (trigger === 'tap') {
+      const unit = { dataset: { card: '318' } };
+      await handlers[0]({ target: { closest: (q) => (q === '.dg-unit, .dg-sup' ? unit : null) } });
+    } else {
+      auto({ stopPropagation() {}, currentTarget: { classList: { toggle() {} }, setAttribute() {} } });
+    }
+    await Promise.race([replayEnd, new Promise((ok) => setTimeout(ok, 5000))]);   // the end of the replay (setView), not a fixed wait
+    await new Promise((ok) => setTimeout(ok, 30));   // settle() runs after it
+  } finally { globalThis.document = saved.document; globalThis.requestAnimationFrame = saved.raf; globalThis.getComputedStyle = saved.gcs; }
+  return { d, stage, posts };
+}
+const hurtLog = () => [
+  { k: 'act', actor: { side: 'card', id: 318 }, action: 'basic', target: { side: 'enemy', id: 0 }, hits: [{ target: { side: 'enemy', id: 0 }, dmg: 10, crit: false, miss: false }],
+    hp: [{ side: 'enemy', id: 0, before: 50, after: 40, down: false, shield_before: 0, shield_after: 0 }] },
+  { k: 'act', actor: { side: 'enemy', id: 2 }, move: 'strike', hp: [{ side: 'card', id: 124, before: 48, after: 41, down: false, shield_before: 0, shield_after: 0 },
+    { side: 'card', id: 312, before: 50, after: 44, down: false, shield_before: 0, shield_after: 0 }] },
+  // L-1: a 1.4 tick takes the shown HP 41 -> 39 (the number is -2, not the rounded damage -1); a 0.4 tick takes a foe 38 -> 37 (-1, not nothing)
+  { k: 'clock', clock: 7, ticks: [{ side: 'card', id: 43, status: 'poison', dmg: 1.4 }, { side: 'enemy', id: 1, status: 'burn', dmg: 0.4 }],
+    hp: [{ side: 'card', id: 43, before: 40.1, after: 38.7, down: false, shield_before: 0, shield_after: 0 }, { side: 'enemy', id: 1, before: 37.2, after: 36.8, down: false, shield_before: 0, shield_after: 0 }] },
+];
+for (const trigger of ['tap', 'auto']) {
+  test(`M-2 (final review): a ${trigger} hit on a card plays the v1 shake (.hurt) on the hit card and the hit support; the tick pop is the shown HP drop`, async () => {
+    const { d, posts } = await replayRun(hurtLog(), trigger);
+    assert.equal(posts[0], trigger === 'tap' ? '/api/gauntlet/v2/act' : '/api/gauntlet/v2/auto');
+    const hurt = d.classes.filter((c) => c.endsWith('+hurt'));
+    assert.ok(hurt.some((c) => c.includes('data-card="124"')), `the hit card shakes: ${hurt.join(', ')}`);
+    assert.ok(hurt.some((c) => c.includes('data-sup="312"')), `the hit support shakes: ${hurt.join(', ')}`);
+    assert.ok(d.classes.some((c) => c.includes('data-card="318"') && c.endsWith('+striking')), 'the card lunge');
+    const tick = d.pops.filter((p) => p.in.includes('data-card="43"'));
+    assert.deepEqual(tick.map((p) => p.text), ['-2'], 'the tick number is the drop of the shown HP 41 -> 39');
+    assert.ok(d.pops.some((p) => p.in.endsWith('.dg-pops') && p.text === '-1'), `the foe tick 38 -> 37 shows -1: ${d.pops.map((p) => p.text).join(', ')}`);
+    assert.ok(!d.pops.some((p) => p.text === '-0'), 'no -0');
+  });
+}
+
+test('L-1 (final review): a status tick shows the drop of the shown HP; several ticks of one unit add up to its shown drop', () => {
+  const e = (ticks, x) => ({ k: 'clock', clock: 3, ticks, hp: [x] });
+  assert.deepEqual(tickTexts(e([{ side: 'card', id: 1, dmg: 1.4 }], { side: 'card', id: 1, before: 40.1, after: 38.7 })), ['-2']);
+  assert.deepEqual(tickTexts(e([{ side: 'card', id: 1, dmg: 0.4 }], { side: 'card', id: 1, before: 37.2, after: 36.8 })), ['-1'], 'the shown HP 38 -> 37 (the rounded damage is 0)');
+  assert.deepEqual(tickTexts(e([{ side: 'card', id: 1, dmg: 0.4 }], { side: 'card', id: 1, before: 37.8, after: 37.4 })), [''], 'the shown HP stays 38');
+  assert.deepEqual(tickTexts(e([{ side: 'enemy', id: 0, dmg: 0.6 }, { side: 'enemy', id: 0, dmg: 0.6 }], { side: 'enemy', id: 0, before: 40.1, after: 38.9 })), ['-1', '-1']);
+  assert.deepEqual(tickTexts(e([{ side: 'card', id: 1, dmg: 2.2 }], { side: 'card', id: 1, before: 2.2, after: 0.3, down: true })), ['-3'], 'a down unit drops to 0 (its shown HP is 0)');
+  assert.deepEqual(tickTexts({ ticks: [{ side: 'enemy', id: 2, dmg: 3 }], hp: [] }), ['-3'], 'no hp entry: the rounded damage');
+  const v = fresh();
+  const log = [{ k: 'clock', clock: 3, ticks: [{ side: 'card', id: 124, status: 'poison', dmg: 1.4 }, { side: 'card', id: 318, status: 'burn', dmg: 0.4 }, { side: 'card', id: 43, status: 'burn', dmg: 0.4 }],
+    hp: [{ side: 'card', id: 124, before: 40.1, after: 38.7 }, { side: 'card', id: 318, before: 37.2, after: 36.8 }, { side: 'card', id: 43, before: 37.8, after: 37.4 }] }];
+  const ticks = logLines(v, log).filter((l) => l.who === 'Poison' || l.who === 'Burn');
+  assert.deepEqual(ticks.map((l) => [l.who, l.txt]), [['Poison', '-2'], ['Burn', '-1']], 'the log: -2 for 41 -> 39, -1 for 38 -> 37, no line for 38 -> 38');
+});
+
+test('L-2 (final review): the info window max HP is the shown max (rounded up)', () => {
+  const v = fresh();
+  v.run.state.fight.cards[124].max = 647.2;
+  assert.equal(v2InfoOf(v, 124).maxHp, 648);
+  v.run.state.fight.cards[124].max = 200;
+  assert.equal(v2InfoOf(v, 124).maxHp, 200);
 });

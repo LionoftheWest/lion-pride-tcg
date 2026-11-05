@@ -84,6 +84,7 @@ export function defectsOf(r, expanded) {
   for (const [w, why] of r.see || []) add('missing', w, why);   // UI-43 N-10: a 'see' selector of screens.mjs is absent or outside the view
   for (const [w, why] of r.extra?.iconNoName || []) add('icon-name', w, why);
   for (const [w, ratio, need] of r.extra?.contrast || []) add('contrast', w, `${ratio} < ${need}`);
+  for (const [w, why] of r.extra?.turnLabel || []) add('overlap', `Your turn: ${w}`, why);   // UI-52 D-216 (PR 503 review L-3)
   if (r.keyboard?.focused && r.keyboard.inputInView === false) add('keyboard', 'focused text box', `keyboard ${r.keyboard.height}px`);
   return d;
 }

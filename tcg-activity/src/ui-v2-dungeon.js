@@ -160,6 +160,8 @@ function v2Take(v) { dg.v2 = v; dg.data = { ...dg.data, run: g2.v1RunOf(v), room
 const g2Host = () => ({
   dg, base: V2_BASE(), stats: GA() ? null : statsHTML, esc, fmt, thumb, elIcon, plateName, cardTile, bolt: I.bolt, trophy: I.trophy, up: I.up, hand: I.hand, timer: I.timer,
   progressHTML, musicBtnHTML, finishHTML, finishButton, autoDisabled, waitMs, AUTO_ROUNDS, fitFight: fitFightV3, placeArena, openInfo, toast,
+  // the v1 fight effects for the v2 replay (Nathan 2026-11-04: "the old animations we had need to be there"): the card element, the monster voices, the move sounds
+  elementOf: (id) => cardElement(mine().get(Number(id))?.tags) || 'physical', voice: (f, kind, peak) => mvoice(f, kind, peak), snd: (k, peak) => snd(k, peak), moveSnd: (k) => MOVE_SND[k] || null,
   apiPost: (p, b) => ctx().apiPost(p, b), sfx: (k) => ctx().sfx?.(k), currentView: () => ctx().currentView(),
   setAuto: (on) => { dg.auto = !!on; localStorage.setItem(AUTO, on ? '1' : ''); }, setView: (v) => v2Take(v),
   reload: async () => { await load(); if (ctx().currentView() === 'dungeon') paint(); },
@@ -282,12 +284,12 @@ const cardTile = (c, opts = {}) => {
 };
 // The member's star level of a card (the collection cache) and the full card for the viewer.
 const ascOf = (id) => (ctx().cache.collection?.cards || []).find((x) => Number(x.id) === Number(id))?.ascension || 0;
-function openInfo(id) {
+function openInfo(id, v2 = null) {   // v2: the combat v2 part of the card info (ui-v2-gauntlet2.js v2InfoOf: the role and the active)
   // The viewer with the ability, the effect, the tags, and the squad numbers (power, HP, points).
   const row = cardsOf().find((x) => Number(x.id) === Number(id));
   const base = mergedCards().find((x) => Number(x.id) === Number(id));
   const full = base || row ? { ...(base || {}), ...(row || {}), image_url: base?.image_url || row?.image_url } : null;
-  if (full) ctx().openViewer(full, { squad: true });
+  if (full) ctx().openViewer(full, v2 ? { squad: true, v2 } : { squad: true });
 }
 
 // ---- Today's dungeon (the squad picker) --------------------------------------------------------

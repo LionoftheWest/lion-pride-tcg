@@ -266,6 +266,9 @@ export const SCREENS = {
   'gauntlet-v2-down':      { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g2-down', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 12]] },
   'gauntlet-v2-finishing': { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g2-fight', finish: 'ok', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 5], ['click', '.dg-finish'], ['pause', 2]] },
   'gauntlet-v2-choose':    { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g2-choose', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
+  // Nathan's live test 2026-11-04 (item 1): the attacker Details magnifier opens the card info with the v2 role and active (UI-08, D-212b). Only where the
+  // magnifiers show (D-155: none on phones); a missing attacker magnifier makes the step fail (not checked).
+  'gauntlet-v2-info':      { id: 'UI-52', notOn: ['tiny', 'compact-port', 'compact-land'], dungeon: 'g2-fight', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 5], ['js', '.dg-fight.g2 .dg-unit .dg-card > .card-info'], ['wait', 2]] },
   'gauntlet-v2-over':      { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g2-over', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
   'gauntlet-prizes':     { id: 'UI-52', long: true, safe: true, notOn: ['tiny', 'medium', 'expanded', 'compact-land'], steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5], ['js', '[data-seg="pane:prizes"]', [['wait', 0]]], ['wait', 1]] },
   'gauntlet-top':        { id: 'UI-52', long: true, safe: true, notOn: ['tiny', 'medium', 'expanded', 'compact-land'], steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5], ['js', '[data-seg="pane:top"]', [['wait', 0]]], ['wait', 1]] },

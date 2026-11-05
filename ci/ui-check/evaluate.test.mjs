@@ -41,6 +41,14 @@ test('each 12.6 item comes from its detector', () => {
   const rules = defectsOf(r, null).map((x) => x.rule).sort();
   assert.deepEqual(rules, ['bleed', 'bleed', 'contrast', 'corner-safe', 'covered', 'ellipsis', 'empty', 'icon-name', 'overlap', 'scroll', 'small-text', 'tap'].sort());
 });
+test('UI-52 D-216 (PR 503 review L-3): a "Your turn" label over its pill, outside its card or covered is an overlap defect', () => {
+  const r = clean('gauntlet-v2-fight');
+  assert.equal(defectsOf(r, null).length, 0);
+  r.extra.turnLabel = [['.dg-card > .g2-pillwrap > .g2-turn', 'overlaps the pill 120 px2'], ['.g2-turn', 'covered by .g2-pill']];
+  const d = defectsOf(r, null);
+  assert.deepEqual(d.map((x) => x.rule), ['overlap', 'overlap']);
+  assert.match(d[0].where, /^Your turn: /);
+});
 test('a window box in the corner zone is a corner-safe defect only on a screen that opts in (UI-36)', () => {
   const r = clean('dailies', '932x430'); r.checks.windowCorner = [50, 54]; r.checks.window = { sel: '#v2Dailies.u3-dl' };
   assert.deepEqual(defectsOf(r, null).map((x) => x.rule), ['corner-safe']);

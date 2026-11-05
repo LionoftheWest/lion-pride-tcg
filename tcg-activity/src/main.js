@@ -3297,6 +3297,7 @@ function openViewer(card, opts = {}) {
   fillViewerAbility(card.ability);
   fillViewerTags(card.tags);
   fillViewerEffect(card);
+  if (opts.v2) fillViewerV2(opts.v2);   // combat v2 (UI-08, D-212b): the role and the active of a v2 fight card
   el('card3d').classList.toggle('locked', locked);
   el('card3d').classList.toggle('holo-on', !locked && card.rarity !== 'normal'); // normal = no foil; locked = hidden
   renderAscension(card);
@@ -3354,9 +3355,24 @@ function fillRaidInfo(c) {
   box.classList.remove('hidden');
 }
 
+// UI-08 combat v2 (D-212b, Nathan 2026-11-04): the card info of a v2 fight card shows its role (icon, name, what it does) and its v2 active
+// (name, charge, the text when the server sends it) in place of the v1 ability. v2 = ui-v2-gauntlet2.js v2InfoOf.
+function fillViewerV2(v2) {
+  fillViewerAbility(v2.ability);
+  el('v-ability').classList.add('is-v2');   // sentence case: "Finisher · Attacker active · Charge 1 of 2"
+  const box = el('v-raid');
+  if (!box) return;
+  box.querySelector('.g2-vrole')?.remove();
+  if (v2.roleLabel) box.insertAdjacentHTML('afterbegin', `<div class="g2-vrole"><span class="g2-role ${v2.cls === 'support' ? 'is-sup' : 'is-att'}">${v2.roleIcon || ''}</span><span><b>${esc(v2.roleLabel)}</b><small>${esc(v2.purpose || '')}</small></span></div>`);
+  // the fight numbers of the v2 card (its v2 max HP and power), not the v1 card numbers
+  box.querySelectorAll('.vr-stat').forEach((st) => { const k = st.querySelector('span')?.textContent, b = st.querySelector('b'); if (!b) return; if (k === 'HP' && v2.maxHp != null) b.textContent = String(v2.maxHp); });
+  box.classList.remove('hidden');
+}
+
 // The Ability section of the card viewer (name, plain-words effect, meta).
 function fillViewerAbility(ab) {
   const box = el('v-ability');
+  box.classList.remove('is-v2');   // the v1 meta words are capitalized (style.css); a v2 card sets is-v2 (sentence case)
   if (!ab || !ab.name) { box.classList.add('hidden'); return; }
   el('v-ability-name').textContent = ab.name;
   el('v-ability-desc').textContent = ab.desc || '';
