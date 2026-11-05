@@ -47,6 +47,9 @@ if (!LATER3.includes('{weak_role_x}')) throw new Error('combat_v2_e7_followup.sq
 // so the values match config.json.
 const HBC = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/combat_v2_hunt_balance_c.sql', import.meta.url)), 'utf8').replace(/\r\n/g, '\n');
 if (!HBC.includes('decision D-223')) throw new Error('combat_v2_hunt_balance_c.sql has no D-223 balance change');
+// The Hunt v2 boss HP of decision D-223b (M-H option C-low: Heroic and Mythic hp) runs after it, as on live.
+const HBCL = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/combat_v2_hunt_balance_c_low.sql', import.meta.url)), 'utf8').replace(/\r\n/g, '\n');
+if (!HBCL.includes('decision D-223b')) throw new Error('combat_v2_hunt_balance_c_low.sql has no D-223b balance change');
 
 const MUT = {
   flag_on: ['\'{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}\',', '\'{"gauntlet": true, "dungeon": false, "hunt": false, "progress": false}\','],
@@ -174,6 +177,7 @@ begin
   execute $m$${LATER2}$m$;
   execute $m$${LATER3}$m$;
   execute $m$${HBC}$m$;
+  execute $m$${HBCL}$m$;
 
   -- 3. the keys, the notes and the values (the values go to the script, which compares them with config.json)
   for k in select unnest(keys) loop

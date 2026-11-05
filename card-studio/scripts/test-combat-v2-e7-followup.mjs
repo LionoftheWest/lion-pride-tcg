@@ -39,6 +39,9 @@ assertLocal('test-combat-v2-e7-followup.mjs');
 
 const read = (f) => readFileSync(fileURLToPath(new URL(`../../tcg-bot/supabase/${f}`, import.meta.url)), 'utf8').replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '');
 let tune = read('combat_v2_monster_tuning.sql');
+// the Hunt v2 boss numbers of decisions D-223 and D-223b run after the files in every block, as on live (review PR 512 r2 F5)
+const HBC = read('combat_v2_hunt_balance_c.sql');
+const HBCL = read('combat_v2_hunt_balance_c_low.sql');
 let fu = process.env.MIG ? readFileSync(process.env.MIG, 'utf8').replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '') : read('combat_v2_e7_followup.sql');
 const CONFIG = loadConfig();
 
@@ -157,6 +160,8 @@ begin
   execute $m$${tune}$m$;
   before := (select jsonb_object_agg(p.oid::regprocedure::text, md5(pg_get_functiondef(p.oid))) from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prokind = 'f');
   execute $m$${fu}$m$;
+  execute $m$${HBC}$m$;
+  execute $m$${HBCL}$m$;
   after := (select jsonb_object_agg(p.oid::regprocedure::text, md5(pg_get_functiondef(p.oid))) from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prokind = 'f');
   res := res || jsonb_build_object('case', 'no change in play: of the ' || (select count(*) from jsonb_object_keys(before)) || ' public functions only enemy_v2_spec has a new text (the md5 of every other is the same)', 'ok',
     (select count(*) from jsonb_object_keys(before)) > 400 and (select count(*) from jsonb_object_keys(after)) = (select count(*) from jsonb_object_keys(before))
@@ -223,6 +228,8 @@ function checkData(D) {
 const mechBlock = () => String.raw`do $t$ declare out jsonb := '[]'; b jsonb; u jsonb; k text; t text; begin
   ${SETUP}
   execute $m$${mig}$m$;
+  execute $m$${HBC}$m$;
+  execute $m$${HBCL}$m$;
   b := combat_v2_enemy_numbers();
   foreach k in array array[${q(BOSSES)}] loop foreach t in array array[${q(TIERS)}] loop
     u := combat_v2_hunt_boss(t, k, '{"start_frac": 1}'::jsonb, b);

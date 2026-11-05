@@ -49,6 +49,8 @@ const T1B = read('combat_v2_ability_prices.sql');
 const T1C = read('combat_v2_min_share.sql');
 // the Hunt v2 boss numbers of decision D-223 (combat_v2_hunt_balance_c.sql: v2_enemy.hunt tier stats, enemy_v2 hp_factor) run after the file, as on live
 const HBC = read('combat_v2_hunt_balance_c.sql');
+// and the Heroic and Mythic hp of decision D-223b (combat_v2_hunt_balance_c_low.sql) after it, as on live
+const HBCL = read('combat_v2_hunt_balance_c_low.sql');
 let mig = process.env.MIG ? readFileSync(process.env.MIG, 'utf8').replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '') : read('combat_v2_monsters.sql');
 
 const MUT = {
@@ -617,6 +619,7 @@ begin
    where p.pronamespace = 'public'::regnamespace and replace(p.oid::regprocedure::text, ' ', '') in (${q(REPLACED)});
   execute $m$${mig}$m$;
   execute $m$${HBC}$m$;
+  execute $m$${HBCL}$m$;
   after := ${md5s};
   select jsonb_object_agg(replace(p.oid::regprocedure::text, ' ', ''), md5(pg_get_functiondef(p.oid))) into t2 from pg_proc p
    where p.pronamespace = 'public'::regnamespace and replace(p.oid::regprocedure::text, ' ', '') in (${q(REPLACED)});
@@ -680,6 +683,7 @@ begin
   update public.enemy_mechanics set note = 'kept' where key = 'pack';
   execute $m$${mig}$m$;
   execute $m$${HBC}$m$;
+  execute $m$${HBCL}$m$;
   res := res || jsonb_build_object('case', 'the file runs twice: a second run keeps a changed balance value and a changed row', 'ok',
     (select (value->'rules'->'swarm'->>'x')::numeric = 3 from balance where key = 'enemy_v2') and (select note = 'kept' from public.enemy_mechanics where key = 'pack')
     and (select count(*) from public.enemy_mechanics) = 38 and (select count(*) from public.hunt_bosses_v2) = 16 and (select count(*) from public.dungeon_monsters_v2) = 10);
@@ -846,6 +850,7 @@ begin
   ${SETUP}
   execute $m$${mig}$m$;
   execute $m$${HBC}$m$;
+  execute $m$${HBCL}$m$;
   ${DRIVER}
   b := combat_v2_enemy_numbers();
   for x in select v from jsonb_array_elements(${sqlLit(cases)}::jsonb) v loop
@@ -1060,6 +1065,7 @@ const buildBlock = (items) => String.raw`do $t$ declare out jsonb := '[]'; x jso
   ${SETUP}
   execute $m$${mig}$m$;
   execute $m$${HBC}$m$;
+  execute $m$${HBCL}$m$;
   b := combat_v2_enemy_numbers();
   for x in select v from jsonb_array_elements(${sqlLit(items)}::jsonb) v loop
     out := out || jsonb_build_array(case x->>0 when 'boss' then combat_v2_hunt_boss(x->>1, x->>2, x->3, b)
@@ -1075,6 +1081,7 @@ begin
   ${SETUP}
   execute $m$${mig}$m$;
   execute $m$${HBC}$m$;
+  execute $m$${HBCL}$m$;
   b := combat_v2_enemy_numbers();
   perform setseed(0.77);
   for x in select v from jsonb_array_elements(${sqlLit(specs)}::jsonb) v loop
@@ -1130,6 +1137,7 @@ const NUMBERS = async () => JSON.parse(await runBlock(String.raw`do $t$ declare 
   ${SETUP}
   execute $m$${mig}$m$;
   execute $m$${HBC}$m$;
+  execute $m$${HBCL}$m$;
   b := combat_v2_enemy_numbers();
   raise exception 'RESULT:%', jsonb_build_object('b', b, 'ab', ability_v2_numbers())::text; end $t$;`));
 // the simulator config with the numbers of the database (the balance values replace config.json; ability_v2 as a whole)
@@ -1144,6 +1152,7 @@ export async function parity(FS, cfg) {
       ${SETUP}
       execute $m$${mig}$m$;
       execute $m$${HBC}$m$;
+      execute $m$${HBCL}$m$;
       ${FIGHT_DRIVER}
       b := combat_v2_enemy_numbers();
       for x in select v from jsonb_array_elements(${sqlLit(part)}::jsonb) v loop
