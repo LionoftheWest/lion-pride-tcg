@@ -32,7 +32,7 @@ const RUN_H3 = process.env.H3 !== '0';
 // the columns live/credited, the v1 refusal in hunt_attack/hunt_support) that removed R3-ON, and every later test of a rehearsal failed. The final
 // step now applies R3-ON again when it was on the copy before the run, and the cleanup check compares the objects before and after.
 const ON_FILE = read('../../tcg-bot/supabase/combat_v2_on_hunt.sql').replace(/notify pgrst[^\n]*\n/g, '');
-const SHAPE = `select coalesce((select string_agg(p.oid::regprocedure::text || '=' || md5(replace(pg_get_functiondef(p.oid), chr(13), '')), ' ' order by 1)
+const SHAPE = `select coalesce((select string_agg(p.oid::regprocedure::text || '=' || md5(replace(pg_get_functiondef(p.oid), chr(13), '')), ' ' order by p.oid::regprocedure::text)
     from pg_proc p where p.pronamespace = 'public'::regnamespace and (p.proname like 'hunt\\_v2\\_%' or p.proname in ('hunt_attack', 'hunt_support'))), '') ||
   ' | ' || coalesce((select string_agg(column_name || ':' || data_type, ' ' order by column_name) from information_schema.columns
     where table_schema = 'public' and table_name = 'hunt_v2_days'), '') as shape,

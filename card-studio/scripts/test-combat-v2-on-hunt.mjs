@@ -438,7 +438,10 @@ const hCleanup = String.raw`do $x$
 declare tb text;
 begin
   perform set_config('balance.by', '${HBY}', true);
-  update public.balance set value = jsonb_set(value, '{hunt}', 'false') where key = 'combat_v2' and value->'hunt' = 'true'::jsonb;
+  -- the flag back to OFF only when this harness set it (its balance_log row): a copy after the switch keeps its flag ON
+  if exists (select 1 from public.balance_log where changed_by = '${HBY}') then
+    update public.balance set value = jsonb_set(value, '{hunt}', 'false') where key = 'combat_v2' and value->'hunt' = 'true'::jsonb;
+  end if;
   delete from public.balance_log where changed_by = '${HBY}';
   for tb in select c.table_name from information_schema.columns c join information_schema.tables t on t.table_schema = c.table_schema and t.table_name = c.table_name
              where c.table_schema = 'public' and c.column_name = 'player_id' and t.table_type = 'BASE TABLE' and c.table_name <> 'players' loop
