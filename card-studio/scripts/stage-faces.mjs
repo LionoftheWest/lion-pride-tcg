@@ -1177,7 +1177,7 @@ async function swap(db, target) {
     const n = await newNames(m);
     const newPath = pathOfName(n.main, m.stamp);
     const names = [n.main, n.grid, n.reveal].filter(Boolean);
-    const { data: row, error } = await db.from('cards').select('id, image_url, set_id').eq('id', id).maybeSingle();
+    const { data: row, error } = await db.from('cards').select('id, rarity, image_url, set_id').eq('id', id).maybeSingle();
     if (error) throw new Error(`cards ${id}: ${error.message}`);
     if (!row) { nSkip += 1; console.log(`SKIP ${id} no row`); continue; }
     // the resume rules (every run)
