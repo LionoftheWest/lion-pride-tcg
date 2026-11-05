@@ -420,7 +420,8 @@ async function storage(db) {
   const full = nowBytes + delta.reduce((t, x) => t + x.d, 0);
   let end = full;
   const cut = [];
-  for (let i = delta.length - 1; i >= 0 && end > limit; i--) { end -= delta[i].d; cut.unshift(delta[i].id); }
+  // only a row that ADDS bytes is cut (a row whose swap frees bytes always helps)
+  for (let i = delta.length - 1; i >= 0 && end > limit; i--) if (delta[i].d > 0) { end -= delta[i].d; cut.unshift(delta[i].id); }
   if (!cut.length) { console.log(`STORAGE PASS now=${nowBytes} end=${end} limit=${limit} rows=${ids.length}`); return 0; }
   console.log(`refused: projected end over the limit: now=${nowBytes} end=${full} limit=${limit}`);
   console.log(end <= limit ? `WAIT storage rows=${cut.length} ids=${cut.join(',')} end-without-them=${end}` : `WAIT storage rows=${cut.length} (all) end-without-them=${end} > limit`);
@@ -541,7 +542,7 @@ async function exportFaces(db, target) {
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, JSON.stringify({ at: now(), target, set: SET, cards: sha(readFileSync(cardsFile)), faces }, null, 1));
   const v1 = Object.values(faces).filter((v) => !v).length;
-  console.log(`EXPORT-FACES ${bad || v1 ? 'FAIL' : 'PASS'} cards=${Object.keys(faces).length} keys_with_rows=${keys.size} v1=${v1} errors=${bad} out=${out} sha256=${sha(readFileSync(out))}`);
+  console.log(`FACE-EXPORT ${bad || v1 ? 'FAIL' : 'PASS'} cards=${Object.keys(faces).length} keys_with_rows=${keys.size} v1=${v1} errors=${bad} out=${out} sha256=${sha(readFileSync(out))}`);
   return bad || v1 ? 1 : 0;
 }
 

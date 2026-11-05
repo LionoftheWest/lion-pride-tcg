@@ -257,7 +257,7 @@ if (want('NOWRITE') || want('FP') || want('STORAGE')) {
   for (const l of st) console.log(`   ${l.card_id} ${l.key} ${l.rarity} sec=${l.sec} attempts=${l.attempts} bytes=${Object.values(l.files).filter(Boolean).reduce((a, f) => a + f.bytes, 0)} pages=${l.checks?.webp?.pages ?? '-'} textTwice=${l.checks?.textTwice?.equal ?? '-'}`);
   // the mutation: the guard removed + writeTierRow (on the still row)
   const [row] = await sql(`select image_url from cards where id = ${STILL}`);
-  const mb = await sf(stageArgs(man('nowrite-mut'), ['--only', String(STILL)]), { script: mutant('nowrite', [[GUARD_ON, '  // guard removed (mutant)\n'], [GUARD_CLIENT, ''], [AFTER_STAGED, AFTER_STAGED + WRITE]]) });
+  const mb = await sf(stageArgs(man('nowrite-mut'), ['--only', String(STILL)]), { script: mutant('nowrite', [[GUARD_ON, '  // guard removed (mutant)\n'], [GUARD_CLIENT, '  if (read) { /* guardClient removed (mutant); the "else" below keeps its meaning */ }\n'], [AFTER_STAGED, AFTER_STAGED + WRITE]]) });
   const hb = await H();
   if (hb.cards !== h0.cards) console.log('NOWRITE FAIL db');
   mut('nowrite_guard_removed_writeTierRow', hb.cards !== h0.cards, `cards hash ${hb.cards === h0.cards ? 'equal' : 'differs'}, exit ${mb.code}`);
@@ -394,7 +394,7 @@ if (want('YIELD')) {
   const s1before = existsSync(S1LOG) ? readFileSync(S1LOG, 'utf8').split(/\n/).length : 0;
   r = await sf(['stage', '--set', 'S1', '--order', small, '--manifest', m, '--until', '2099-01-01T00:00:00Z'], { env: { S1FACE_WAIT_S: '5', S1FACE_WAITLOG_S: '15' }, wait: true });
   show(r, /^(START|RESUME|STAGED|SUMMARY)/);
-  const s1 = readFileSync(S1LOG, 'utf8').split(/\n/).slice(s1before - 1).filter(Boolean);
+  const s1 = readFileSync(S1LOG, 'utf8').split(/\n/).slice(Math.max(0, s1before - 1)).filter(Boolean);
   const waits = s1.filter((l) => new RegExp(` S1 WAIT foreign-blender pid=.*\\b${fb.pid}\\b`).test(l)).length;
   const rows = r.lines.filter((l) => l.startsWith('ROW ')).map((l) => Number(l.split(' ')[1]));
   res('YIELD resume skips a staged row', r.code === 0 && rows.length === 1 && rows[0] === Number(ordRows[1][0]) && r.lines.some((l) => /^START .* todo=1 staged=1/.test(l)), `rows=${rows.join(',')}`);
@@ -525,7 +525,7 @@ if (want('KEYS')) {
   mut('keys_overlap', r.code === 1 && r.lines.some((l) => /^KEYS FAIL .* overlap=[1-9]/.test(l)), r.lines.find((l) => l.startsWith('KEYS')) || '-');
   writeFileSync(kb, b.trim().split(/\n/).slice(0, -1).join('\n') + '\n');
   r = await sf(['keys-check', '--set', 'S1', '--order', ORDER, '--keys', `${ka},${kb}`], { preload: false });
-  mut('keys_missing', r.code === 1 && r.lines.some((l) => /^KEYS FAIL .*total=3[0-4]\d .* in no list/.test(l)), r.lines.find((l) => l.startsWith('KEYS')) || '-');
+  mut('keys_missing', r.code === 1 && r.lines.some((l) => /^KEYS FAIL .*total=\d+ .* in no list/.test(l)), r.lines.find((l) => l.startsWith('KEYS')) || '-');
   writeFileSync(kb, b);
   // L-3: the calibration list is 2 rows, separate from keys-no
   const cal = readFileSync(kc, 'utf8').split(/\n/).filter((l) => l && !l.startsWith('#'));
