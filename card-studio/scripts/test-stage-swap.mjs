@@ -9,7 +9,7 @@
  * valid only with its baseline PASS in the same run (each block runs its baseline first).
  * The I-1 check of this test is its OWN code: SQL on the copy (storage.objects + cards), not the code under test.
  */
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, copyFileSync, readdirSync, appendFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
@@ -64,7 +64,10 @@ writeFileSync(BJ, ROWS.map((id) => JSON.stringify(backup.get(id))).join('\n') + 
 const ordAll = readFileSync(`${REAL}/work/order.txt`, 'utf8').split(/\r?\n/).filter((l) => l && !l.startsWith('#'));
 writeFileSync(ORDER, ordAll.filter((l) => ROWS.includes(Number(l.split('\t')[0]))).join('\n') + '\n');
 // the fresh log (the input that F2 "fresh" writes; here: its lines for the 5 rows)
-writeFileSync(FRESH, ROWS.map((id) => `FRESH ${staged.get(id).key} ${staged.get(id).rarity} ${id}`).join('\n') + `\nFRESH n=${ROWS.length} stale=0\n`);
+const HEAD = execFileSync('git', ['-C', ROOT, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+// the fresh log (as fresh prints it: FRESH-RUN head= at=, review swap r1 L-1)
+writeFileSync(FRESH, `FRESH-RUN head=${HEAD} at=${new Date().toISOString()} manifest=${MAN}
+` + ROWS.map((id) => `FRESH ${staged.get(id).key} ${staged.get(id).rarity} ${id}`).join('\n') + `\nFRESH n=${ROWS.length} stale=0\n`);
 const RID = ROWS.map((id) => `${id} ${staged.get(id).key} ${staged.get(id).rarity}`).join(', ');
 console.log(`   rows: ${RID}`);
 const ext = (m) => m.files.main.path.split('.').pop();
@@ -135,7 +138,7 @@ const ORIGIN = new URL(stub.url).origin;
 const WRITE_RE = /^(POST|PATCH|DELETE|PUT)$/;
 const writesFrom = (from) => stub.log.slice(from).filter((x) => WRITE_RE.test(x.method) && !(x.method === 'POST' && x.path.startsWith('/storage/v1/object/list/')));
 let held = [];
-function sf(args, { env: extra = {}, script = 'scripts/stage-faces.mjs', onHold = null, preload = true } = {}) {
+function sf(args, { env: extra = {}, script = 'scripts/stage-faces.mjs', onHold = null, preload = true, poll: doPoll = true } = {}) {
   return new Promise((resolve) => {
     const c = spawn(process.execPath, [...(preload ? ['--import', './scripts/localdb-preload.mjs'] : []), script, ...args], {
       cwd: ROOT,
@@ -147,7 +150,7 @@ function sf(args, { env: extra = {}, script = 'scripts/stage-faces.mjs', onHold 
     c.stdout.on('data', (d) => { out += d; }); c.stderr.on('data', (d) => { out += d; });
     let busy = false;
     const poll = setInterval(async () => {
-      if (busy) return; busy = true;
+      if (busy || !doPoll) return; busy = true;
       try {
         for (const f of readdirSync(WORK).filter((n) => n.startsWith('held-'))) {
           const tag = f.slice(5);
@@ -526,6 +529,102 @@ if (want('ARTREPORT')) {
   s1 = await sf([...swapArgs([D], ['--grace', '0']).map((x) => (x === ART ? artD : x)), '--swapped', newLog()]);
   res('SWAP the same row with "ART OK <id> Nathan" = UPDATED', s1.code === 0 && s1.lines.some((l) => l.startsWith(`UPDATED ${D} `)));
   await hardRestore();
+}
+
+// ---------------------------------------------------------------- RACE (review swap r1 M-1): two runs at one time
+// The reviewer's scenario (logs/swap-review-race-r1.txt): run A held at after-upload of 383, run B = the same command in a 2nd process.
+// Part 1 (the run lock): B is refused (and an unswap too) before any request; A ends: I-1, the row new, 0 orphans.
+// Part 2 (the row check before each cleanup delete): with the lock bypassed (S1FACE_TEST_NOLOCK, LOCAL only), B swaps the row while A is
+// held; A's compare-and-set = count 0, and A KEEPS the objects that the row now points at: I-1 PASS.
+if (want('RACE')) {
+  const t = Date.now();
+  const raceRun = async ({ script, envA = {}, envB = {}, unswapToo = false }) => {
+    await hardRestore();
+    const log = newLog();
+    let rB = null, rU = null, fromB = 0, reqB = 0;
+    const rA = await sf([...swapArgs([B]), '--swapped', log], { script, env: { ...envA, S1FACE_TEST_POINT: `hold:after-upload:${B}` }, onHold: async () => {
+      fromB = stub.log.length;
+      rB = await sf([...swapArgs([B]), '--swapped', log], { script, env: envB, poll: false });
+      reqB = stub.log.length - fromB;
+      if (unswapToo) rU = await sf(unswapArgs(['--only', String(B)], log), { script, env: envB, poll: false });
+    } });
+    const i = await I1(), lo = await leftovers(), on = await oldOrNew();
+    return { rA, rB, rU, reqB, i, lo, onNew: pathOf(on.now.get(B)) === newOf(B).path, log };
+  };
+  // part 1: the lock
+  let x = await raceRun({ unswapToo: true });
+  show(x.rB, /^(refused|LOCK|STALE|SWAP START)/); show(x.rU, /^(refused|LOCK)/);
+  res('RACE lock: run B (same swap) = refused: swap runs pid=, exit 1, 0 requests; an unswap at that time = refused',
+    x.rB.code === 1 && x.rB.lines.some((l) => /^refused: swap runs pid=\d+/.test(l)) && x.reqB === 0 && x.rU.code === 1 && x.rU.lines.some((l) => /^refused: swap runs pid=\d+/.test(l)),
+    `B exit=${x.rB.code} requests=${x.reqB} unswap exit=${x.rU.code}`);
+  res('RACE lock: run A ends with the row new, I-1 PASS, 0 orphans, old gone, lock released', x.rA.code === 0 && x.onNew && x.i.ok && !x.lo.orph.length && !x.lo.oldLeft.length && !existsSync(`${WORK}/.swap.lock`),
+    `A exit=${x.rA.code} I-1=${x.i.ok}`);
+  const noLock = mutant('nolock', [["  const release = takeRunLock(dirname(val('--swapped') || join(ITEM, 'work', 'swapped.jsonl')), cmd);\n", '  const release = () => {};\n']]);
+  x = await raceRun({ script: noLock });
+  mut('race_lock_removed', !(x.rB.code === 1 && x.rB.lines.some((l) => l.startsWith('refused: swap runs'))), `B exit=${x.rB.code} ${sum(x.rB, /^SWAP SUMMARY/)}`);
+  // part 2: the row check, with the lock bypassed
+  const NOLOCK = { S1FACE_TEST_NOLOCK: '1' };
+  x = await raceRun({ envA: NOLOCK, envB: NOLOCK });
+  show(x.rA, /^(KEEP-POINTED|SKIP|CLEAN|I-1)/);
+  res('RACE row check (lock bypassed): B swaps the row; A = SKIP changed, KEEP-POINTED x3, the row new, I-1 PASS, 0 orphans',
+    x.rB.lines.some((l) => l.startsWith(`UPDATED ${B} `)) && x.rA.lines.some((l) => l.startsWith(`SKIP ${B} changed`)) && x.rA.lines.filter((l) => l.startsWith(`KEEP-POINTED ${B} `)).length === 3 && x.onNew && x.i.ok && !x.lo.orph.length,
+    `I-1=${x.i.ok} ${x.i.bad.slice(0, 2).join(' ')}`);
+  const noCheck = mutant('norowcheck', [['  const keep = names.filter((n) => pointed.has(n)), del = names.filter((n) => !pointed.has(n));\n', '  const keep = [], del = names;\n']]);
+  x = await raceRun({ script: noCheck, envA: NOLOCK, envB: NOLOCK });
+  mut('race_row_check_removed (= the reviewer race, both parts off)', !x.i.ok, `I-1 ${x.i.ok ? 'PASS' : 'FAIL ' + x.i.bad.slice(0, 3).join(' ')}`);
+  // the stale lock: an owner pid that is dead = STALE-LOCK, then the run goes on
+  await hardRestore();
+  mkdirSync(`${WORK}/.swap.lock`, { recursive: true }); writeFileSync(`${WORK}/.swap.lock/owner`, '999999 swap 2026-11-05T00:00:00Z\n');
+  const rs = await sf([...swapArgs([B]), '--swapped', newLog()]);
+  res('RACE stale lock (owner pid dead) = STALE-LOCK, then the swap runs, lock released', rs.code === 0 && rs.lines.some((l) => l.startsWith('STALE-LOCK 999999 swap')) && rs.lines.some((l) => l.startsWith(`UPDATED ${B} `)) && !existsSync(`${WORK}/.swap.lock`));
+  cleanMutants();
+  await hardRestore();
+  res('RACE restored', (await restoredExact()).ok);
+  tlog('RACE', t);
+}
+
+// ---------------------------------------------------------------- LOWS r1: L-1 bound inputs, L-3 guard origin, L-4 clean at the run start
+if (want('LOWS')) {
+  await hardRestore();
+  const tmpF = (name, txt) => { const p = `${WORK}/${name}`; writeFileSync(p, txt); return p; };
+  const freshTxt = readFileSync(FRESH, 'utf8');
+  const old = new Date(Date.now() - 4 * 3600000).toISOString();
+  const fOld = tmpF('fresh-old.txt', freshTxt.replace(/^FRESH-RUN head=(\S+) at=\S+/m, `FRESH-RUN head=$1 at=${old}`));
+  const fHead = tmpF('fresh-head.txt', freshTxt.replace(/^FRESH-RUN head=\S+/m, `FRESH-RUN head=${'0'.repeat(40)}`));
+  const fNone = tmpF('fresh-none.txt', freshTxt.replace(/^FRESH-RUN .*\n/m, ''));
+  const aOld = tmpF('art-old.txt', readFileSync(ART, 'utf8').replace(/^# art-report head=(\S+) at=\S+/m, `# art-report head=$1 at=${old}`));
+  const sw = (fresh, art) => sf([...swapArgs([A]).map((x) => (x === FRESH ? fresh : x === ART ? art : x)), '--swapped', newLog()]);
+  let r = await sw(fOld, ART);
+  res('L-1 a fresh log older than 3 h = refused: stale', r.code === 1 && r.lines.some((l) => /^refused: --fresh .* is stale/.test(l)), r.lines.find((l) => l.startsWith('refused')) || '-');
+  r = await sw(fHead, ART);
+  res('L-1 a fresh log of another commit = refused', r.code === 1 && r.lines.some((l) => /^refused: --fresh .* was made at head 00000000/.test(l)));
+  r = await sw(fNone, ART);
+  res('L-1 a fresh log with no FRESH-RUN line = refused', r.code === 1 && r.lines.some((l) => /^refused: --fresh .* has no head= at= line/.test(l)));
+  r = await sw(FRESH, aOld);
+  res('L-1 an art report older than 3 h = refused: stale', r.code === 1 && r.lines.some((l) => /^refused: --art .* is stale/.test(l)));
+  res('L-1 nothing written by the refused runs', (await restoredExact()).ok);
+  // L-3: a new URL with another host and the named path = WRITE BLOCKED (the baseline: every swap of this run passes the guard)
+  r = await sf([...swapArgs([A]), '--swapped', newLog()], { script: mutant('otherhost', [['    const newUrl = originOf(row.image_url) + newPath;\n', "    const newUrl = 'https://x.example' + newPath;\n"]]) });
+  mut('guard_other_host_same_path', r.code === 5 && r.lines.some((l) => l.startsWith('WRITE BLOCKED PATCH')) && pathOf((await rowsNow()).get(A)) === backup.get(A).old_path, `${r.lines.find((l) => l.startsWith('WRITE BLOCKED')) || '-'} exit=${r.code}`);
+  await hardRestore();
+  // L-4: a crash after the upload, then a run that adds no row (--until in the past): the leftovers are cleaned at its start
+  const l4 = async (script) => {
+    await hardRestore();
+    const log = newLog();
+    const c = await sf([...swapArgs([B]), '--swapped', log], { env: { S1FACE_TEST_POINT: `crash:after-upload:${B}` } });
+    const before = (await leftovers()).orph.length;
+    const u = await sf([...swapArgs([B]).map((x) => (x === '2099-01-01T00:00:00Z' ? '2000-01-01T00:00:00Z' : x)), '--swapped', log], { script });
+    return { c, u, before, after: (await leftovers()).orph.length, i: await I1() };
+  };
+  let y = await l4();
+  res('L-4 crash after the upload, then a run with --until passed: CLEAN x3 at its start, 0 orphans, the row old, I-1',
+    y.c.code === 9 && y.before === newOf(B).names.length && y.u.lines.filter((l) => l.startsWith(`CLEAN ${B} `)).length === 3 && y.after === 0 && y.i.ok && pathOf((await rowsNow()).get(B)) === backup.get(B).old_path,
+    `orphans before=${y.before} after=${y.after}`);
+  y = await l4(mutant('cleanlate', [['    if (s.uploading && !s.cleaned) {\n', '    if (s.uploading && !s.cleaned && Date.now() < until) {\n']]));
+  mut('l4_clean_only_for_a_new_row', y.after > 0, `orphans after=${y.after}`);
+  cleanMutants();
+  await hardRestore();
+  res('LOWS restored', (await restoredExact()).ok);
 }
 
 // ---------------------------------------------------------------- RESTORE: the copy = the start state

@@ -73,7 +73,9 @@ export function namedWrite(method, url, body, headers, localOrigin, named, pathO
     try { b = JSON.parse(String(body)); } catch { return false; }
     if (!b || Object.keys(b).join() !== 'image_url') return false;
     const ok = named.patch.get(Number(id[1]));
-    return Boolean(ok && ok.has(pathOf(b.image_url)));
+    // review swap r1 L-3: the new URL keeps the origin (scheme + host) of the value it replaces
+    const origin = (x) => (String(x).match(/^https?:\/\/[^/]+/) || [''])[0];
+    return Boolean(ok && ok.has(pathOf(b.image_url)) && origin(b.image_url) !== '' && origin(b.image_url) === origin(cas.slice(3)));
   }
   return false;
 }

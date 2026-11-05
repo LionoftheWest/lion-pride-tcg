@@ -33,7 +33,7 @@ import './localdb-guard.mjs';
  *   A failed check renders the row again (max 2 times, "RETRY <id> <why>"), then FAIL; the run goes on. Exit 0 when every row is done.
  * It never writes cards.json.
  */
-import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync, rmSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync, rmSync, readdirSync, rmdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -394,6 +394,7 @@ async function fresh(db) {
   const { staged } = manifestState(readManifest(man));
   const v2s = new Map();
   let nf = 0, ns = 0;
+  console.log(`FRESH-RUN head=${git('rev-parse', 'HEAD')} at=${now()} manifest=${man}`); // swap --fresh needs this line (review swap r1 L-1)
   for (const m of staged.values()) {
     const card = cards.get(m.key);
     let why = null;
@@ -483,14 +484,15 @@ async function artReport(db, target) {
   const inp = swapInputs();
   if (inp.refused) { console.log(inp.refused); return 1; }
   const { artScore, ART_LIMIT } = await import('./art-diff.mjs');
+  const { ANIMATED } = await import('../src/rarity.js');
   const out = val('--out') || join(ITEM, 'work', 'art-report.txt');
   const ONLY = val('--only') ? new Set(val('--only').split(',').map(Number)) : null;
-  const lines = [`# art-report ${now()} target=${target} head=${git('rev-parse', 'HEAD').slice(0, 8)} limit=${ART_LIMIT}`];
+  const lines = [`# art-report head=${git('rev-parse', 'HEAD')} at=${now()} target=${target} limit=${ART_LIMIT}`];
   const say = (l) => { console.log(l); lines.push(l); };
   let same = 0, differ = 0, bad = 0;
   for (const o of inp.order) {
     const m = inp.staged.get(o.id), b = inp.backup.get(o.id);
-    if (!m || m.cls !== 'still' || (ONLY && !ONLY.has(o.id))) continue;
+    if (!m || ANIMATED.has(m.rarity) || (ONLY && !ONLY.has(o.id))) continue; // L-2: the rarity
     if (!b) { bad += 1; say(`ART BAD ${o.id} ${m.key} ${m.rarity} no backup`); continue; }
     const { data: row, error } = await db.from('cards').select('id, image_url').eq('id', o.id).maybeSingle();
     if (isBlocked()) return 5;
@@ -927,8 +929,9 @@ async function doPlant(sharp, plant, attempt, f) {
 // The STATIC test of scripts/test-stage-faces.mjs reads this file only up to the line above.
 async function writeCommand(cmd, db, target) {
   if (cmd === 'orphans') return orphans(db, target);
-  if (cmd === 'swap') return swap(db, target);
-  if (cmd === 'unswap') return unswap(db, target);
+  const release = takeRunLock(dirname(val('--swapped') || join(ITEM, 'work', 'swapped.jsonl')), cmd);
+  if (typeof release === 'string') { console.log(release); return 1; }
+  try { return cmd === 'swap' ? await swap(db, target) : await unswap(db, target); } finally { release(); }
   return 1;
 }
 
@@ -972,6 +975,53 @@ async function deleteObjects(db, names, point) {
     if (b.status !== 400 && b.status !== 404) return { ok: false, why: `still served ${n} http=${b.status}` };
   }
   return { ok: true };
+}
+
+/** The object names that a cards row points at NOW (main, grid, and reveal of an animated row). */
+async function pointedNames(db, id) {
+  const { ANIMATED } = await import('../src/rarity.js');
+  const { gridObject, revealObject } = await import('../src/thumbs.js');
+  const { data: r, error } = await db.from('cards').select('id, rarity, image_url').eq('id', id).maybeSingle();
+  if (error) throw new Error(`cards ${id}: ${error.message}`);
+  const main = r ? objectOf(r.image_url) : null;
+  return new Set(main ? [main, gridObject(main), ...(ANIMATED.has(r.rarity) ? [revealObject(main)] : [])] : []);
+}
+/** A cleanup delete (review swap r1 M-1 part 2): the row is read again first, and a name that the row points at is NEVER deleted
+ *  ("KEEP-POINTED <id> <name>"). Used by every cleanup of face2 objects (a resume CLEAN, a failed upload, a compare-and-set count 0,
+ *  the unswap CLEAN). */
+async function cleanupDelete(db, id, names) {
+  const pointed = await pointedNames(db, id);
+  const keep = names.filter((n) => pointed.has(n)), del = names.filter((n) => !pointed.has(n));
+  for (const n of keep) console.log(`KEEP-POINTED ${id} ${n} (the row points at it)`);
+  const d = del.length ? await deleteObjects(db, del) : { ok: true };
+  return { ...d, deleted: d.ok ? del : [], kept: keep };
+}
+const pidAlive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
+/** ONE run lock for swap AND unswap (review swap r1 M-1 part 1): <work>/.swap.lock (mkdir) + owner "<pid> <cmd> <time>".
+ *  A live owner pid = "refused: <cmd> runs pid=<p>" (before any request). A dead owner pid = "STALE-LOCK <owner>", then taken.
+ *  Returns a release function, or the refusal text. A crash leaves the lock with a dead pid (the next run takes it). */
+function takeRunLock(workDir, cmd) {
+  if (globalThis.__LOCALDB_API && process.env.S1FACE_TEST_NOLOCK === '1') { console.log('TEST no run lock'); return () => {}; }
+  const dir = join(workDir, '.swap.lock'), own = join(dir, 'owner');
+  mkdirSync(workDir, { recursive: true });
+  for (let i = 0; i < 2; i++) {
+    try {
+      mkdirSync(dir);
+      writeFileSync(own, `${process.pid} ${cmd} ${now()}\n`);
+      console.log(`LOCK ${dir.replace(/\\/g, '/')} pid=${process.pid}`);
+      return () => { try { if (readFileSync(own, 'utf8').startsWith(`${process.pid} `)) { rmSync(own, { force: true }); rmdirSync(dir); } } catch { /* gone */ } };
+    } catch (e) {
+      if (e.code !== 'EEXIST') throw e;
+      let o = '';
+      try { o = readFileSync(own, 'utf8').trim(); } catch { /* no owner yet */ }
+      const [pid, who] = o.split(' ');
+      if (Number(pid) && pidAlive(Number(pid))) return `refused: ${who || 'swap'} runs pid=${pid} (one swap or unswap at a time; ${dir.replace(/\\/g, '/')})`;
+      if (!o) { let age = 0; try { age = Date.now() - statSync(dir).mtimeMs; } catch { /* gone */ } if (age < 10000) return `refused: a run is starting (${dir} has no owner yet)`; }
+      console.log(`STALE-LOCK ${o || '(no owner)'}`);
+      try { rmSync(own, { force: true }); rmdirSync(dir); } catch { /* another run took it */ }
+    }
+  }
+  return `refused: the run lock ${dir}`;
 }
 
 // The LOCAL test points of swap/unswap (S1FACE_TEST_POINT="<hold|crash>:<point>:<id>[;...]"). hold = write <work>/held-<point>-<id>, then wait
@@ -1104,18 +1154,33 @@ async function swap(db, target) {
   if (!freshF || !existsSync(freshF)) { console.log('refused: --fresh <the log of "fresh"> (SPEC 4: STALE rows are not swapped)'); return 1; }
   const freshTxt = readFileSync(freshF, 'utf8');
   if (!/^FRESH n=\d+ stale=\d+$/m.test(freshTxt)) { console.log(`refused: ${freshF} has no "FRESH n=" line`); return 1; }
+  // review swap r1 L-1: each input file names its commit and time; another commit or older than 3 h = refused
+  const HEAD = git('rev-parse', 'HEAD');
+  const bound = (txt, re, what) => {
+    const mm = txt.match(re);
+    if (!mm) return `refused: ${what} has no head= at= line (made by an older stage-faces.mjs)`;
+    if (!HEAD.startsWith(mm[1])) return `refused: ${what} was made at head ${mm[1].slice(0, 8)}, this is ${HEAD.slice(0, 8)}`;
+    const age = Date.now() - Date.parse(mm[2]);
+    if (!(age >= -60000 && age <= 3 * 3600000)) return `refused: ${what} is stale (at=${mm[2]}, more than 3 h old)`;
+    return null;
+  };
+  const fb = bound(freshTxt, /^FRESH-RUN head=([0-9a-f]{8,40}) at=(\S+)/m, `--fresh ${freshF}`);
+  if (fb) { console.log(fb); return 1; }
   const freshIds = new Set([...freshTxt.matchAll(/^FRESH \S+ \S+ (\d+)$/gm)].map((m) => Number(m[1])));
   // the art report (SPEC 4, R-5): a still row needs "ART SAME <id>" or Nathan's "ART OK <id> <who>" (an ART DIFFER row waits)
   const artF = val('--art');
   if (!artF || !existsSync(artF)) { console.log('refused: --art <the art-report file> (SPEC 4: an art difference waits for Nathan)'); return 1; }
   const artTxt = readFileSync(artF, 'utf8');
   if (!/^ART-REPORT rows=/m.test(artTxt)) { console.log(`refused: ${artF} has no "ART-REPORT rows=" line`); return 1; }
+  const ab = bound(artTxt, /^# art-report head=([0-9a-f]{8,40}) at=(\S+)/m, `--art ${artF}`);
+  if (ab) { console.log(ab); return 1; }
   const artOk = new Set([...artTxt.matchAll(/^ART (?:SAME|OK) (\d+)\b/gm)].map((m) => Number(m[1])));
   const GRACE = Number(val('--grace') ?? 20);
   const EVERY = Number((globalThis.__LOCALDB_API && val('--storage-every')) || 25);
   const FINAL_WAIT = Number((globalThis.__LOCALDB_API && process.env.S1FACE_FINAL_WAIT_S) || 120) * 1000;
   const PROXY = process.env.S1FACE_PROXY || 'https://play.lionpridetcg.com/app/api/img';
   const ONLY = val('--only') ? new Set(val('--only').split(',').map(Number)) : null;
+  const { ANIMATED } = await import('../src/rarity.js');
   const point = testPoints(dirname(log));
   const ev = (o) => appendFileSync(log, JSON.stringify({ ...o, at: now() }) + '\n');
   const est = eventState(events);
@@ -1188,6 +1253,16 @@ async function swap(db, target) {
       continue;
     }
     if (s.updated) { nSkip += 1; console.log(`SKIP ${id} changed after its update now=${pathOf(row.image_url)}`); continue; }
+    // a crash after the upload, before the update (UPLOADING, the old path live): delete the new objects (also when this run adds no row:
+    // review swap r1 L-4), never one that the row points at (M-1)
+    if (s.uploading && !s.cleaned) {
+      const present = [];
+      for (const x of names) if ((await objectState(db, x)).present) present.push(x);
+      const d = present.length ? await cleanupDelete(db, id, present) : { ok: true, deleted: [] };
+      if (!d.ok) { console.log(`ERROR clean ${id} ${d.why}`); stop = 'error'; continue; }
+      if (d.deleted.length) { ev({ ev: 'CLEAN', card_id: id, names: d.deleted }); for (const x of d.deleted) console.log(`CLEAN ${id} ${x}`); }
+      s.cleaned = true;
+    }
     if (stop) continue;
     if (cut.has(id)) { console.log(`WAIT ${id} storage`); continue; }
     if (Date.now() >= until) { stop = 'until'; console.log('UNTIL reached (no new row)'); continue; }
@@ -1195,7 +1270,7 @@ async function swap(db, target) {
     const why = [];
     if (row.set_id !== SET) why.push(`set ${row.set_id}`);
     if (!freshIds.has(id)) why.push('not-fresh');
-    if (m.cls === 'still' && !artOk.has(id)) why.push('art');
+    if (!ANIMATED.has(m.rarity) && !artOk.has(id)) why.push('art'); // L-2: the rarity, not the manifest cls
     if (!b) why.push('no backup');
     else if (pathOf(row.image_url) !== b.old_path || pathOf(m.old) !== b.old_path) why.push(`changed now=${pathOf(row.image_url)}`);
     else {
@@ -1208,17 +1283,6 @@ async function swap(db, target) {
     }
     const local = {};
     for (const [k, f] of Object.entries(m.files)) if (f) { const buf = existsSync(f.path) ? readFileSync(f.path) : null; if (!buf || sha(buf) !== f.sha256) why.push(`staged sha ${k}`); local[k] = buf; }
-    // a crash after the upload, before the update (UPLOADING, the old path live): delete the new objects, then the row again
-    for (const x of s.uploading ? names : []) {
-      const st = await objectState(db, x);
-      if (st.present) {
-        const d = await deleteObjects(db, [x]);
-        if (!d.ok) { console.log(`ERROR clean ${id} ${d.why}`); stop = 'error'; break; }
-        ev({ ev: 'CLEAN', card_id: id, names: [x] });
-        console.log(`CLEAN ${id} ${x}`);
-      }
-    }
-    if (stop) continue;
     if (why.length) { nSkip += 1; console.log(`SKIP ${id} ${why.join(',')}`); continue; }
     await point('after-read', id);
     // 2. upload
@@ -1236,7 +1300,7 @@ async function swap(db, target) {
       }
     }
     if (!upOk) {
-      const d = await deleteObjects(db, (await Promise.all(names.map(async (x) => ((await objectState(db, x)).present ? x : null)))).filter(Boolean));
+      const d = await cleanupDelete(db, id, (await Promise.all(names.map(async (x) => ((await objectState(db, x)).present ? x : null)))).filter(Boolean));
       ev({ ev: 'CLEAN', card_id: id, names, why: 'upload failed' });
       console.log(`SKIP ${id} upload ${d.ok ? 'cleaned' : d.why}`); nSkip += 1; stop = 'upload'; continue;
     }
@@ -1247,7 +1311,7 @@ async function swap(db, target) {
     if (isBlocked()) return 5;
     if (we) throw new Error(`update ${id}: ${we.message}`);
     if ((upd || []).length !== 1) {
-      const d = await deleteObjects(db, names);
+      const d = await cleanupDelete(db, id, names); // M-1: another run may have put the row on these names
       ev({ ev: 'CLEAN', card_id: id, names, why: 'changed' });
       nSkip += 1; console.log(`SKIP ${id} changed${d.ok ? '' : ` (clean: ${d.why})`}`); continue;
     }
@@ -1323,7 +1387,7 @@ async function unswap(db, target) {
         // a crash after the compare-and-set: the face2 objects of this row are left (the row does not point at them)
         const left = [];
         for (const x of face2) if ((await objectState(db, x)).present) left.push(x);
-        if (left.length) { const d = await deleteObjects(db, left); ev({ ev: 'CLEAN', card_id: id, names: left }); console.log(`CLEAN ${id} ${left.join(',')} ${d.ok ? '' : d.why}`); }
+        if (left.length) { const d = await cleanupDelete(db, id, left); if (d.deleted.length) ev({ ev: 'CLEAN', card_id: id, names: d.deleted }); console.log(`CLEAN ${id} ${d.deleted.join(',') || '-'} ${d.ok ? '' : d.why}`); }
       } else { skipU += 1; console.log(`SKIP ${id} now=${p}`); }
       continue;
     }
