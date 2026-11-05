@@ -746,39 +746,45 @@ function supsTooTall(F) {
   const p = F.querySelector('.dg-sups'); const right = F.querySelector('.dg-right');
   if (!p || !p.querySelector('.dg-sup')) return false;
   const fb = F.getBoundingClientRect().bottom;
-  return p.scrollHeight > p.clientHeight + 1 || (right && right.scrollHeight > right.clientHeight + 1) || p.getBoundingClientRect().bottom > fb + 1;
+  // a tile too narrow for its name or its state line (a narrow side column with many supports)
+  const narrowTile = [...p.querySelectorAll('.dg-sup .t b, .dg-sup .g2-stline em')].some((n) => n.offsetParent && n.scrollWidth > n.clientWidth + 1);
+  return narrowTile || p.scrollHeight > p.clientHeight + 1 || (right && right.scrollHeight > right.clientHeight + 1) || p.getBoundingClientRect().bottom > fb + 1;
 }
-// N-3: the squad row of any size. Measured at the approved card size first; when that row does not fit, the cards take the largest
-// width that puts all of them in one row (at least the mini step, TOKENS card-mini), else two rows (half the cards in each) with cards
-// small enough that both rows keep the height of the one approved row (so the stage keeps its size). Kept until the fight size changes.
+// N-3: the squad row of any size (a CSS grid of --g2-per columns of --g2-cell px; layout() measures, CSS draws). At the approved card
+// size while it fits on one line with nothing cut; else the largest card that puts every card on one line (at least the mini step,
+// TOKENS card-mini); else two lines (half the cards each, the HP bar row hidden as on 375 px phones, D-205). The cards are capped so the
+// lines keep the height of the one approved line, but never below the mini step (then the stage gives the height, down to its minimum). Kept until the fight size or the card count changes.
 function fitRow(F, units) {
-  const key = `${F.clientWidth}x${F.clientHeight}:${units.children.length}`;
-  if (F.dataset.g2fit === key) return;
-  F.classList.remove('g2-fit', 'g2-wrap'); ['--g2-cw', '--g2-per', '--g2-ex'].forEach((k) => F.style.removeProperty(k));
   const items = [...units.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')];
+  const key = `${F.clientWidth}x${F.clientHeight}:${items.length}`;
+  if (F.dataset.g2fit === key) return;
+  F.classList.remove('g2-fit', 'g2-wrap'); ['--g2-cw', '--g2-per', '--g2-cell'].forEach((k) => F.style.removeProperty(k));
   F.dataset.g2fit = key;
   if (items.length < 2 || !rowTooCrowded(units)) return;
-  const n = items.length, gap = parseFloat(getComputedStyle(units).columnGap) || 0;
-  const it = items[0], card = it.querySelector('.dg-card, img') || it;
-  const exW = it.offsetWidth - card.offsetWidth, exH = it.offsetHeight - card.offsetHeight;
-  const arena = F.querySelector('.dg-arena');
-  const natural = card.offsetWidth, rowH = units.clientHeight, W = Math.max(units.clientWidth, arena?.clientWidth || 0), ratio = TOKENS['card-ratio'];
-  const fitW = (per) => Math.floor((W - gap * (per - 1)) / per - exW);
-  const two = () => Math.min(natural, fitW(Math.ceil(n / 2)), Math.floor(((rowH - gap) / 2 - exH) / ratio));
-  const set = (per, w) => {
-    F.classList.add('g2-fit'); F.classList.toggle('g2-wrap', per < n);
-    F.style.setProperty('--g2-cw', `${Math.max(TOKENS['card-mini'], w)}px`); F.style.setProperty('--g2-per', String(per)); F.style.setProperty('--g2-ex', `${exW}px`);
-    // what the estimate missed (borders, a wider card): shrink the cards by the overflow that is left, once
-    const over = rowOver(units);
-    if (over > 0) F.style.setProperty('--g2-cw', `${Math.max(TOKENS['card-mini'], w - Math.ceil((2 * over) / per))}px`);
-    return !rowTooCrowded(units);
+  const n = items.length, gap = parseFloat(getComputedStyle(units).columnGap) || 0, ratio = TOKENS['card-ratio'];
+  const it = items.find((x) => x.classList.contains('dg-unit')) || items[0]; const card = () => it.querySelector('.dg-card, img') || it;
+  // the row may already be squeezed by the flex row: the squad card step (TOKENS card-squad) is the smallest natural size
+  const padX = Math.max(0, it.offsetWidth - card().offsetWidth), natural = Math.max(card().offsetWidth, TOKENS['card-squad']);
+  const lineH = Math.max(it.offsetHeight, natural * ratio);
+  const arena = F.querySelector('.dg-arena'); const W = Math.max(units.clientWidth, arena?.clientWidth || 0);
+  const apply = (per) => {
+    const lines = Math.ceil(n / per);
+    const cell = Math.min(natural + padX, Math.floor((W - gap * (per - 1)) / per));
+    F.classList.add('g2-fit'); F.classList.toggle('g2-wrap', lines > 1);
+    F.style.setProperty('--g2-per', String(per)); F.style.setProperty('--g2-cell', `${cell}px`); F.style.setProperty('--g2-cw', `${cell - padX}px`);
+    // the height cap: every line at most (the approved line - the gaps) / lines high
+    const exH = it.offsetHeight - card().offsetHeight;
+    const capW = Math.floor(((lineH - gap * (lines - 1)) / lines - exH) / ratio);
+    const cw = Math.max(1, Math.min(cell - padX, Math.max(TOKENS['card-mini'], capW)));   // never below the mini step: the stage gives the height
+    F.style.setProperty('--g2-cw', `${cw}px`);
+    return cw;
   };
-  // one row while the cards stay at or above the mini step and nothing is cut; else two rows
-  const one = Math.min(natural, fitW(n));
-  if (one >= TOKENS['card-mini'] && set(n, one)) return;
-  set(Math.ceil(n / 2), two());
+  if (apply(n) >= TOKENS['card-mini'] && !rowTooCrowded(units)) return;
+  apply(Math.ceil(n / 2));
 }
 // N-3: a card of the squad row is cut (its content wider than its box) or the row is wider than its box.
+// more than one line of cards (the base row wraps by itself) also counts as crowded
+const lines = (units) => new Set([...units.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')].map((x) => Math.round(x.offsetTop))).size;
 const rowOver = (units) => {
   const b = units.getBoundingClientRect(); let over = 0;
   for (const x of units.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')) { const r = x.getBoundingClientRect(); over = Math.max(over, b.left - r.left, r.right - b.right); }
@@ -786,8 +792,9 @@ const rowOver = (units) => {
 };
 function rowTooCrowded(units) {
   if (rowOver(units) > 1) return true;
+  if (!units.closest('.g2-wrap') && lines(units) > 1) return true;
   // a state line or an HP number that no longer fits its small card (the cards share the width)
-  return [...units.querySelectorAll(':scope > .dg-sup.g2-plate .g2-stline em, :scope > .dg-unit .dg-hpn')].some((n) => n.offsetParent && n.scrollWidth > n.clientWidth + 1);
+  return [...units.querySelectorAll(':scope > .dg-sup.g2-plate .g2-stline em, :scope > .dg-unit .dg-hpn, :scope > .dg-unit .g2-pill b')].some((n) => n.offsetParent && n.scrollWidth > n.clientWidth + 1);
 }
 function ctlTooNarrow(F) {
   const L = F.querySelector('.dg-ctl .g2-l'), hint = L?.querySelector('.dg-hint');

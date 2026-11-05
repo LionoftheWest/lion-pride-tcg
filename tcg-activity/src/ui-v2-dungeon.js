@@ -799,7 +799,7 @@ function statsHTML() {
   }
   const pend = st.pend || {}, bank = st.bank || {};
   const pc = (pend.cards || []).length, bc = (bank.cards || []).length;
-  return `<div class="dg-stats"><span class="risk" title="This floor's loot: lost if the squad falls. The floor guardian banks it.">${COIN}<b>${fmtN(pend.shards)}${pc ? ` +${pc}${I.cards}` : ''}</b><i>at risk</i></span><span class="bank" title="Banked loot: safe. Yours when the run ends.">${I.lock}<b>${fmtN(bank.shards)}${bc ? ` +${bc}${I.cards}` : ''}</b><i>banked</i></span><span${dg.v2 ? ' class="g2-empty" aria-hidden="true"' : ''} title="The run damage bonus">${I.up}<b>+${buff}%</b><i>damage</i></span></div>`;   // R2b N3: the v2 damage place stays empty
+  return `<div class="dg-stats"><span class="risk" title="This floor's loot: lost if the squad falls. The floor guardian banks it.">${COIN}<b>${fmtN(pend.shards)}${pc ? ` +${pc}${I.cards}` : ''}</b><i>at risk</i></span><span class="bank" title="Banked loot: safe. Yours when the run ends.">${I.lock}<b>${fmtN(bank.shards)}${bc ? ` +${bc}${I.cards}` : ''}</b><i>banked</i></span>${dg.v2 && g2.isLive(dg.v2) ? '' : `<span${dg.v2 ? ' class="g2-empty" aria-hidden="true"' : ''} title="The run damage bonus">${I.up}<b>+${buff}%</b><i>damage</i></span>`}</div>`;   // R2b N3: the v2 damage place stays empty
 }
 // A weakness / resistance as an icon: an element icon, or a short word (melee, beast ...).
 const traitIcon = (v) => {

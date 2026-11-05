@@ -9,9 +9,13 @@ body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates .dg-sup.g2-plate 
 body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates .dg-sup.g2-plate .g2-stline em { justify-content: center; font-size: var(--fs-caption); }
 body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates .dg-sup.g2-plate .g2-shp small { display: none; }
 body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates .dg-sups { display: none; }
-/* g2-fit: the measured card width (--g2-cw, a card step from TOKENS set by layout()); g2-wrap: two rows of --g2-per cards */
-body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-fit .dg-units > .dg-unit, body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-fit .dg-units > .dg-sup.g2-plate { flex: 0 0 auto; width: auto; max-width: none; min-width: 0; }
-body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-fit .dg-units > .dg-unit > .dg-card, body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-fit .dg-units > .dg-sup.g2-plate img { width: var(--g2-cw); }
-body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-fit .dg-units > .dg-sup.g2-plate { width: calc(var(--g2-cw) + var(--sp-1) * 2); }
-body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-wrap .dg-units { flex-wrap: wrap; row-gap: var(--sp-1); align-content: center; justify-content: center;
-  width: calc((var(--g2-cw) + var(--g2-ex)) * var(--g2-per) + var(--sp-1) * (var(--g2-per) - 1)); max-width: 100%; margin-inline: auto; }
+/* g2-fit: the squad row as a grid of --g2-per columns of --g2-cell px, the card --g2-cw px wide (layout() measures: card steps from TOKENS) */
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-fit .dg-units { display: grid; grid-template-columns: repeat(var(--g2-per), var(--g2-cell)); justify-content: center; align-content: center; gap: var(--sp-1); }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-fit .dg-units > .dg-unit, body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-fit .dg-units > .dg-sup.g2-plate { box-sizing: border-box; width: var(--g2-cell); min-width: 0; max-width: none; flex: none; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-fit .dg-units > .dg-unit > .dg-card, body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-fit .dg-units > .dg-sup.g2-plate img { width: var(--g2-cw); justify-self: center; margin-inline: auto; }
+/* two lines: the HP bar row is hidden and the HP number stays (as D-205 on 375 px phones) */
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-wrap .dg-unit .g2-hprow { display: none; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-wrap .dg-unit .dg-hpn { grid-column: 1 / -1; text-align: center; }
+/* small cards: a long ability name, an HP number with its bonus and a support state wrap to the next line instead of running out */
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pill b { white-space: normal; overflow-wrap: normal; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-fit .dg-unit .dg-hpn, body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates .dg-sup.g2-plate .g2-stline em { white-space: normal; flex-wrap: wrap; }
