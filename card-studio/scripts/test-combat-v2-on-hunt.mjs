@@ -10,7 +10,7 @@ import './localdb-guard.mjs';
  *   MUTATE=<name> ...   must FAIL; MUTATE=all ...   the baseline, then every mutation (each must FAIL)
  *   DAYS=<n>            the seeded live days of HO2 (default 20, the spec number); STARTS=<n> the seeded starts of HO2b (default 50)
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, appendFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { runBlock, assertLocal } from './lab-lib.mjs';
@@ -487,6 +487,19 @@ async function runH() {
   const mutated = hm.includes(process.env.MUTATE);
   const Q = '$' + 'm' + '$';
   let pn = 0; const nextP = () => HP[++pn];   // HP[0] owns the cards of the squad query; every member owns them
+  // A setup start can end the day in its start step (squad_down before any card turn: observed once in about 120 actor starts,
+  // 2026-11-05, ho7e-r5-run2). Such a member has no live day, so the round could not test the lock cycle. The harness then takes the next
+  // member (at most 3 tries) and records the skip. This changes only the set-up, never a check of a round.
+  const skips = [];
+  const liveP = async (where) => {
+    for (let t = 0; t < 3; t++) {
+      const p = nextP(); const s = await hStart(p);
+      if (s?.ok === true && s.status === 'active') { await hq(hTough(p)); return { p, s }; }
+      const sk = { skip: where, at: new Date().toISOString(), p: HP.indexOf(p), start: s ? { ok: s.ok, error: s.error ?? null, status: s.status ?? null } : null };
+      skips.push(sk); if (process.env.HO7E_LOG) appendFileSync(process.env.HO7E_LOG, JSON.stringify(sk) + '\n');
+    }
+    throw new Error('3 set-up starts in a row gave no active day: ' + JSON.stringify(skips.slice(-3)));
+  };
   try {
     const pre = await hq(hCleanup); if (pre.error) throw new Error('cleanup: ' + pre.error);
     const st = await hq(`select to_regprocedure('public.hunt_v2_shared(bigint, text, date, jsonb)') is not null as applied;`);
@@ -506,9 +519,11 @@ async function runH() {
       update public.balance set value = jsonb_set(value, '{hunt}', 'true') where key = 'combat_v2';
     end $x$; select 1 as ok;`);
     if (setup.error) throw new Error('setup: ' + setup.error);
+    const onlyE = process.env.ONLY === 'HO7e';
+    if (!onlyE) {
     // ---- (a), (b), (c): a big boss, members with tough days
     let H = (await hq(hNewHunt(80000))).rows?.[0]?.hunt;
-    const tough = async () => { const p = nextP(); const s = await hStart(p); await hq(hTough(p)); return { p, s }; };
+    const tough = () => liveP('tough');
     let aOK = 0, aBad = []; let bOK = 0, bBad = []; let cOK = 0, cBad = [];
     let A = await tough();
     for (let k = 0, tries = 0; k < ROUNDS && tries < 3 * ROUNDS; tries++) {
@@ -555,9 +570,9 @@ async function runH() {
     let dOK = 0, dBad = [];
     for (let k = 0; k < ROUNDS; k++) {
       H = (await hq(hNewHunt(5))).rows?.[0]?.hunt;
-      const Ap = nextP(), P = nextP();
+      const P = nextP();
       await hq(`insert into public.hunt_hits (hunt_id, player_id, card_id, hit_date, damage) values (${H}, ${HL(P)}, (${SQ_SQL})[1], hunt_v2_today(), 100);`);
-      await hStart(Ap); await hq(hTough(Ap));
+      const Ap = (await liveP('d')).p;
       const Ar = hq(hLockThen(`perform 1 from public.hunts where id = ${H} for update;`, `hunt_v2_auto(${HL(Ap)}, 1000)`));
       const seen = await hq(hSeenA);
       const B = await hq(hTimed(`hunt_v2_start(${HL(P)}, ${SQ_SQL})`, false));
@@ -569,13 +584,23 @@ async function runH() {
       if (good) dOK++; else dBad.push({ k, a_err: a.error ? String(a.error).slice(0, 160) : null, b_err: B.error ? String(B.error).slice(0, 160) : rb?.error, ck, after });
     }
     add3(`HO7 (d) ${ROUNDS} rounds: A's defeat call (settle_hunt, grant_packs) while B starts for the prize winner P (not the actor): no deadlock error, B completes after A, one defeat event`, dOK === ROUNDS, { ok: dOK, bad: dBad.slice(0, 3) });
+    }
+    let H;
     // ---- (e) the two cycles of 3.4; the harness repeats a call once after a 40P01 (the route rule)
-    const retry = async (sql) => { let r = await hq(sql); let n = 0; if (r.code === '40P01' || r.code === '40001') { n = 1; r = await hq(sql); } return { r, n }; };
+    const retry = async (sql) => { let r = await hq(sql); const first = r.error ? { code: r.code || null, msg: String(r.error).slice(0, 200) } : null; let n = 0; if (r.code === '40P01' || r.code === '40001') { n = 1; r = await hq(sql); } return { r, n, first }; };
+    // HO7E_LOG=<file>: one JSON line per round (both connections, which aborted, the final rows) (orchestrator 2026-11-04: explain the flake)
+    const recs = []; const rec = (o) => { o = { at: new Date().toISOString(), pn, ...o }; recs.push(o); if (process.env.HO7E_LOG) appendFileSync(process.env.HO7E_LOG, JSON.stringify(o) + '\n'); };
+    const rowsOf = async (H) => (await hq(`select (select status from public.hunts where id = ${H}) st, (select hp_remaining from public.hunts where id = ${H}) hp, (select settled_at is not null from public.hunts where id = ${H}) settled,
+        (select coalesce(jsonb_agg(jsonb_build_object('p', player_id, 'status', status, 'ended_by', ended_by, 'credited', credited, 'live', live) order by player_id), '[]'::jsonb) from public.hunt_v2_days where hunt_id = ${H}) days,
+        (select coalesce(jsonb_agg(jsonb_build_object('p', player_id, 'd', s) order by player_id), '[]'::jsonb) from (select player_id, sum(damage) s from public.hunt_hits where hunt_id = ${H} group by 1) z) hits;`)).rows?.[0];
+    const dayOf = async (p) => (await hq(`select hunt_v2_today() today, (select jsonb_agg(jsonb_build_object('hunt', hunt_id, 'day', day, 'status', status, 'ended_by', ended_by, 'steps', steps, 'last', state->'last'->>'kind', 'credited', credited)) from public.hunt_v2_days where player_id = ${HL(p)}) rows;`)).rows?.[0];
+    const ans = (r) => r ? { ok: r.ok, error: r.error ?? null, status: r.status ?? null, credit: r.credit?.total ?? null } : null;
+    const conn = (x) => ({ answer: ans(x.r.rows?.[0]?.r), first: x.first, retried: x.n, final_err: x.r.error ? { code: x.r.code || null, msg: String(x.r.error).slice(0, 200) } : null });
     let eOK = 0, eBad = [];
     for (let k = 0; k < ROUNDS; k++) {
       // (e-a) A = the defeat call of actor P, B = a new start of the same P
       H = (await hq(hNewHunt(5))).rows?.[0]?.hunt;
-      const P = nextP(); await hStart(P); await hq(hTough(P));
+      const { p: P, s: sP } = await liveP('e-a'); const dP0 = await dayOf(P);
       const Ar = (async () => retry(hLockThen(`perform 1 from public.hunts where id = ${H} for no key update;`, `hunt_v2_auto(${HL(P)}, 1000)`)))();
       const seen = await hq(hSeenA);
       const B = await retry(hTimed(`hunt_v2_start(${HL(P)}, ${SQ_SQL})`, false));
@@ -585,12 +610,13 @@ async function runH() {
           (select coalesce(sum(damage), 0)::bigint from public.hunt_hits where hunt_id = ${H} and player_id = ${HL(P)}) hits,
           (select coalesce(sum(credited), 0)::bigint from public.hunt_v2_days where hunt_id = ${H} and player_id = ${HL(P)}) cred;`)).rows?.[0];
       const good = !seen.error && !a.r.error && !B.r.error && a.n + B.n <= 1 && rb && (rb.ok === true || rb.error === 'already' || rb.error === 'no_hunt') && chk?.ev === 1 && Number(chk.hits) === Number(chk.cred);
+      rec({ k, case: 'e-a', good, seen_err: seen.error ? String(seen.error).slice(0, 160) : null, A: conn(a), B: { ...conn(B), answer: rb ? (rb.ok ? 'ok' : rb.error) : null, credit: rb?.credit ?? null }, chk, rows: await rowsOf(H), P: HP.indexOf(P), P_start: ans(sP), P_day_before: dP0, P_day_after: await dayOf(P) });
       if (good) eOK++; else eBad.push({ k, case: 'e-a', retries: a.n + B.n, a_err: a.r.error && String(a.r.error).slice(0, 120), b: B.r.error ? String(B.r.error).slice(0, 120) : rb?.error, chk });
       // (e-b) A = a defeat call, B = a start whose first step decreases the boss HP (B is a prize winner: its players row is in the settle)
       H = (await hq(hNewHunt(5))).rows?.[0]?.hunt;
-      const Ap = nextP(), Bq = nextP();
+      const Bq = nextP();
       await hq(`insert into public.hunt_hits (hunt_id, player_id, card_id, hit_date, damage) values (${H}, ${HL(Bq)}, (${SQ_SQL})[1], hunt_v2_today(), 100);`);
-      await hStart(Ap); await hq(hTough(Ap));
+      const { p: Ap, s: sA } = await liveP('e-b'); const dA0 = await dayOf(Ap);
       // the plant (committed for this round, removed after): the first step of a start decreases the boss HP by 1
       await hq(String.raw`do $x$ begin
         alter function public.combat_v2_step(jsonb, jsonb, jsonb) rename to r3on_h_real_step;
@@ -616,13 +642,15 @@ async function runH() {
           (select coalesce(sum(credited), 0)::bigint from public.hunt_v2_days where hunt_id = ${H} and player_id = ${HL(Ap)}) acred;`)).rows?.[0];
       const good2 = !seen2.error && !a2.r.error && !B2.r.error && a2.n + B2.n <= 1 && rb2 && (rb2.ok === true || rb2.error === 'no_hunt') && chk2?.ev === 1
         && Number(chk2.hits) === Number(chk2.cred) && Number(chk2.ahits) === Number(chk2.acred);
+      rec({ k, case: 'e-b', good: good2, seen_err: seen2.error ? String(seen2.error).slice(0, 160) : null, A: conn(a2), B: { ...conn(B2), answer: rb2 ? (rb2.ok ? 'ok' : rb2.error) : null, credit: rb2?.credit ?? null }, chk: chk2, rows: await rowsOf(H), Ap: HP.indexOf(Ap), Ap_start: ans(sA), Ap_day_before: dA0, Ap_day_after: await dayOf(Ap), Bq_day_after: await dayOf(Bq) });
       if (good2) eOK++; else eBad.push({ k, case: 'e-b', retries: a2.n + B2.n, a_err: a2.r.error && String(a2.r.error).slice(0, 120), b: B2.r.error ? String(B2.r.error).slice(0, 120) : rb2?.error, chk: chk2 });
     }
-    add3(`HO7 (e) ${ROUNDS} rounds of each cycle of 3.4 ((a) the defeat call of P + a new start of P; (b) a defeat call + a start with a start decrease of a prize winner): at most one 40P01 per round, the retry completes (or already / no_hunt), the credits written once, exactly one defeat event`, eOK === 2 * ROUNDS, { ok: eOK, bad: eBad.slice(0, 3) });
+    add3(`HO7 (e) ${ROUNDS} rounds of each cycle of 3.4 ((a) the defeat call of P + a new start of P; (b) a defeat call + a start with a start decrease of a prize winner): at most one 40P01 per round, the retry completes (or already / no_hunt), the credits written once, exactly one defeat event`, eOK === 2 * ROUNDS, { ok: eOK, setup_skips: skips.length, bad: recs.filter((r) => !r.good).slice(0, 3) });
+    if (!onlyE) {
     // ---- HO4b the race: A sets defeated + settles under FOR UPDATE and commits; B, a live call started before, completes after it
     for (const kind of ['defeat', 'close']) {
       H = (await hq(hNewHunt(30000))).rows?.[0]?.hunt;
-      const Bp = nextP(); await hStart(Bp); await hq(hTough(Bp));
+      const Bp = (await liveP('HO4b')).p;
       const aBody = kind === 'defeat'
         ? `perform 1 from public.hunts where id = ${H} for update; update public.hunts set hp_remaining = 0, status = 'defeated', defeated_at = now() where id = ${H}; perform settle_hunt(${H}); insert into public.hunt_events (hunt_id, kind, payload) values (${H}, 'defeat', '{}'::jsonb);`
         : `perform 1 from public.hunts where id = ${H} for update; perform close_hunt(${H});`;
@@ -637,6 +665,7 @@ async function runH() {
         && (kind === 'defeat' ? chk?.ev === 1 && chk?.st === 'defeated' : chk?.st === 'expired' && chk?.ev === 0);
       add3(`HO4b race (${kind === 'defeat' ? 'A defeats and settles' : 'A = close_hunt'}): B's live call, started before, completes after A: ${kind === 'defeat' ? 'one defeat event' : 'status stays expired'}, no hunt_hits row written after, B's day ends hunt_over`,
         good, { a_err: a.error && String(a.error).slice(0, 160), b_err: B.error && String(B.error).slice(0, 160), b: rb?.error ?? rb?.credit, chk });
+    }
     }
   } catch (err) {
     add3(`H the test ran (${String(err.message).slice(0, 300)})`, false, null);
@@ -662,6 +691,7 @@ const run = async (label, sql) => {
   try { const j = JSON.parse(await runBlock(sql)); if (synOn === null) synOn = j.syn; return j.rows; }
   catch (e) { say(false, `${label}: the test block raised (the file did not apply?)`, String(e.message).slice(0, 1500)); return null; }
 };
+if (process.env.ONLY !== 'HO7e') {
 const r1 = await run('B1', B1); if (r1) show(r1);
 console.log(`     SYN on the copy: ${synOn ? 'yes' : 'no (a stand-in combat_v2_synergy that returns the state)'}`);
 const rows2 = [];
@@ -678,6 +708,7 @@ for (let a = 1; a <= STARTS; a += 10) { const r = await run(`B4 ${a}`, B4(a, Mat
 say(rows4.length === STARTS && rows4.every((r) => !r.raised && r.ok),
   `HO2b ${rows4.length} seeded live starts: a start with a boss HP decrease writes its scaled credit (${rows4.filter((r) => r.dec).length} had one); a start with none changes no shared row (only the bridge rows)`,
   JSON.stringify(rows4.filter((r) => r.raised || !r.ok).slice(0, 2)).slice(0, 900));
+}
 if (process.env.H !== '0') { for (const r of await runH()) say(r.ok, r.name, String(JSON.stringify(r.got ?? null)).slice(0, 900)); }
 else console.log('SKIP H (H=0): NOT a gate result');
 console.log(fail ? `${fail} of ${total} FAILED` : `PASS all ${total}`);
