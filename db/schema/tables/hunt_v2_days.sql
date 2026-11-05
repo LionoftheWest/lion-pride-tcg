@@ -18,7 +18,9 @@ create table public.hunt_v2_days (
   status text default 'active'::text not null,
   ended_by text,
   started_at timestamp with time zone default now() not null,
-  ended_at timestamp with time zone
+  ended_at timestamp with time zone,
+  live boolean default false not null,
+  credited bigint default 0 not null
 );
 
 -- @constraints
