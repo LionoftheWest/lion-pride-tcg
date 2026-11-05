@@ -41,6 +41,10 @@ const num = (n) => (Number.isFinite(Number(n)) ? Number(n) : 0);
 const unitKey = (side, id) => `${side === 'enemy' ? 'enemy' : 'card'}:${id}`;
 // A number for the screen: whole numbers, no decimals (the engine HP can have decimals, R1b 3.2 item 4).
 export const fmtN = (n) => Math.round(num(n)).toLocaleString('en-US');
+// HP on the screen (R2b review L-3): with stars the HP can be a fraction (R2 QD3). A living unit never shows 0: its HP is rounded up; 0 only when
+// down. The max is rounded up too, so a full unit shows hp = max. A whole number (the Gauntlet) is unchanged. The text format stays the host's (H.fmt).
+export const hpShown = (hp, down = false) => (down || !(num(hp) > 0) ? 0 : Math.ceil(num(hp)));
+export const maxShown = (max) => Math.ceil(num(max));
 /** The power on the card chip: the full form, the compact form from 10,000 ("123.5M": a 9-digit power fits the chip, G3 long variant). */
 export const fmtPower = (n) => (Math.abs(num(n)) >= 10000 ? fmtCompact(n) : fmtFull(n));
 const pctOf = (n) => `${Math.round(num(n) * 100)}%`;
@@ -191,6 +195,11 @@ export function v1RunOf(v) {
 }
 /** Does this v2 answer take the screen? A tester's v2 run of today (active or just over); else the v1 screens stay (INV-E1). */
 export const v2Owns = (v) => !!(v?.ok && v.run && (v.active_mode === 'gauntlet_v2' || v.run.status === 'over'));
+/** The Dungeon test mode (R2b; dungeon_v2_view): the tester's active v2 run takes the screen; a v2 run that is over takes it only when the
+ *  v1 view (v1) has no active run (QD2: the v2 run is an extra run, so a v1 run of the same day keeps its screens). */
+export const v2OwnsDungeon = (v, v1) => !!(v?.ok && v.run && (v.run.status === 'active' || (v.run.status === 'over' && v1?.run?.status !== 'active')));
+/** The Dungeon test mode (R2b): the tester-only "Play v2 (test)" in the lobby. can_start is the server's (tester, no active v2 run, a run left). */
+export const v2CanStart = (v) => !!(v?.ok && v.tester === true && v.can_start === true);
 
 // ---- The view (DOM) -----------------------------------------------------------------------------------------------------------------
 const ic = (name, size = 'sm') => ui3Icon(name, { size, cls: 'g2-ico' });
@@ -261,6 +270,7 @@ export function fightHTML(v, H) {
 }
 // N2: the week best is the v1 value (v2 runs are off the board, D1). N3: the "+n% damage" place stays, empty (nothing moves).
 function statsHTML(H) {
+  if (H.stats) return H.stats();   // R2b: the Dungeon test mode shows the v1 Dungeon chips with v2 data (0 at risk, 0 banked; Nathan answer 4)
   const b = H.dg.data?.best;
   return `<div class="dg-stats"><span title="Your best run this week">${H.trophy}<b>${b ? `${b.floor}F R${b.room}` : '—'}</b><i>week best</i></span><span class="g2-empty" aria-hidden="true">${H.up}<b>+0%</b><i>damage</i></span></div>`;
 }
@@ -275,7 +285,7 @@ export function fightUpdate(F, v, s, H) {
     const p = F.querySelector(`.dg-plate[data-foe="${f.i}"]`); if (!p) continue;
     p.classList.toggle('on', f.i === s.target && !f.down && !s.picking);
     p.classList.toggle('dead', f.down);
-    p.querySelector('.hpn').textContent = `${H.fmt(f.hp)} / ${H.fmt(f.max)}`;
+    p.querySelector('.hpn').textContent = `${H.fmt(hpShown(f.hp, f.down))} / ${H.fmt(maxShown(f.max))}`;
     p.querySelector('.bar i').style.width = `${f.max ? Math.max(0, (f.hp / f.max) * 100) : 0}%`;
     const md = F.classList.contains('g2-wide');
     p.querySelector('.g2-fst').innerHTML = foeStatusHTML(f, md);
@@ -295,7 +305,7 @@ export function fightUpdate(F, v, s, H) {
     const shieldS = c.shield > 0 ? ` <span class="g2-shn">+${H.fmt(c.shield)}</span>` : '';
     if (u.classList.contains('dg-unit')) {
       u.querySelector('.dg-hp i').style.width = `${pct}%`;
-      u.querySelector('.dg-hpn').innerHTML = `${H.fmt(c.hp)}/${H.fmt(c.max)}${shield}`;
+      u.querySelector('.dg-hpn').innerHTML = `${H.fmt(hpShown(c.hp, c.down))}/${H.fmt(maxShown(c.max))}${shield}`;
       u.querySelector('.dg-state').textContent = c.down ? 'Down' : '';
       u.querySelector('.g2-st').innerHTML = c.down ? '<span class="g2-b is-empty"></span>' : cardStatusHTML(c);
       u.querySelector('.g2-pipbox').innerHTML = c.down ? '' : pipsHTML(c);
@@ -308,11 +318,11 @@ export function fightUpdate(F, v, s, H) {
       u.querySelector('.g2-stline em').innerHTML = c.down ? 'Down' : c.ready ? `${ic('check')}Ready` : `<span class="g2-waitc">${pipsHTML(c)}${H.fmt(c.charge)} of ${H.fmt(c.need)}</span>`;
       u.querySelector('.g2-shpl').innerHTML = shieldPlace(c);
       u.querySelector('.g2-shp .dg-hp i').style.width = `${pct}%`;
-      u.querySelector('.g2-shp small').innerHTML = `${H.fmt(c.hp)}/${H.fmt(c.max)}${shieldS}`;
+      u.querySelector('.g2-shp small').innerHTML = `${H.fmt(hpShown(c.hp, c.down))}/${H.fmt(maxShown(c.max))}${shieldS}`;
       u.disabled = !!s.busy && !s.picking;
     }
   }
-  F.querySelector('.dg-shp .v').innerHTML = `${H.fmt(m.squadHp.hp)}<small> / ${H.fmt(m.squadHp.max)}</small>`;
+  F.querySelector('.dg-shp .v').innerHTML = `${H.fmt(hpShown(m.squadHp.hp))}<small> / ${H.fmt(maxShown(m.squadHp.max))}</small>`;
   F.querySelector('.dg-shp .dg-hp i').style.width = `${m.squadHp.max ? (m.squadHp.hp / m.squadHp.max) * 100 : 0}%`;
   F.querySelector('.g2-strip').innerHTML = stripHTML(m, H);
   F.querySelector('.dg-log').innerHTML = s.log.slice(-6).reverse().map((l) => `<li class="${l.kind}"><b>${esc(l.who)}</b>${l.to ? `<span>→ ${esc(l.to)}</span>` : ''}<em>${esc(l.txt)}</em></li>`).join('') || '<li class="none">The fight starts. Tap a card.</li>';
