@@ -182,7 +182,7 @@ A file runs as one transaction, so an error rolls the whole file back.
 
 - `fix_search_path.sql`: a re-run stops at an error today: function public.combat_support_value(text, numeric, numeric, integer) does not exist
 
-## No structure change, but a re-run writes rows (44)
+## No structure change, but a re-run writes rows (46)
 
 Not refused (a data statement can be safe to run again, for example "on conflict do nothing"). Read the file first:
 a one-time grant or a settings value would run again.
@@ -196,6 +196,8 @@ a one-time grant or a settings value would run again.
 - `combat_v2_convert.sql`: balance, set_config()
 - `combat_v2_e7_followup.sql`: balance, set_config()
 - `combat_v2_hunt_balance_c.sql`: balance (DO block)
+- `combat_v2_hunt_balance_c_low.sql`: balance (DO block)
+- `combat_v2_hunt_balance_c_low_undo.sql`: balance (DO block)
 - `combat_v2_hunt_balance_c_undo.sql`: balance (DO block)
 - `combat_v2_switch_off.sql`: balance, combat_v2_switch_log (DO block)
 - `combat_v2_switch_on.sql`: balance, combat_v2_switch_log (DO block)
