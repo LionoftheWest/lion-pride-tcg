@@ -2593,3 +2593,29 @@ changes: `combat_v2` is OFF, and no v1 function changes. Nathan's 9 answers of 2
   the last set only. Today there is one set (`forbidden_pride`), so nothing changes. A second set must give `set_n` per set.
 - **Go-live order**: after R1a and R1b (the file replaces R1a and R1b functions). `rehearse-sql.mjs` on copy 1, `apply-sql.mjs --live` (grants OK),
   `check-schema-drift.mjs --live` = 0 differences. The Lab is the local card studio (no deploy). No Activity or bot change. The flag stays OFF.
+
+### 20.19 R2a: the v2 Dungeon run for testers (`tcg-bot/supabase/combat_v2_dungeon_run.sql`)
+
+R2a is the SQL part of plan row 14.1 phase 7 for testers only (pipeline item R2, SPEC v3). Nothing in play changes: `combat_v2.dungeon` stays
+false, and only a player on `balance combat_v2.testers` can start a v2 Dungeon run. The section number is 20.19 because SYN (merged before R2)
+writes 20.18.
+
+- **Own table, no v1 change.** The runs go to the new table `dungeon_v2_runs` (RLS on, no policy, service_role only). No v1 function, table,
+  constraint or grant changes. The 38 readers of `dungeon_runs`, Admin, the bot and the feed never see a v2 Dungeon run (INV-3). A v2 run
+  writes only its row (and `dungeon_days` through `dungeon_generate`, a shared v1 row).
+- **The start** (`dungeon_v2_start`): `disabled`, `locked`, `not_tester`, the player lock, a stale v2 run of an earlier day ends as `abandoned`,
+  `already` (the v2 runs of today only: QD2, an extra run), then the squad checks of `dungeon_start` in its order with its codes and keys
+  (`squad_size`, `not_owned`, `rule`, `no_attacker`, `budget`), then `no_v2` + `cards` for cards with no usable `ability_v2` (QD4).
+- **The unit** (`dungeon_v2_unit`): `combat_v2_card_unit` (after SYN with `tags`) with the 12 star-dependent stat keys from `card_combat_v2` with
+  the player's stars, level 0, no points (QD3).
+- **The rooms** copy the R1b rules (no R1b function is called): the carry of HP, down, charge and held; statuses and meters reset; meters
+  `round(random() x act_at, 2)`; the pending buff (Empowered on standing attackers) and ward (Shielded on standing cards); then
+  `combat_v2_synergy` once per fight room (SYN), then the first `combat_v2_step`. Rest = the v1 numbers. Choice = the v1 daily doors (a shim
+  of `dungeon_enter`). Treasure = an empty pass room (QD1). The gamble door = `dungeon_rewards.door.gamble_rare` the empty room, else an
+  elite fight with the v1 door foes. Offers = the v1 daily offers minus `shards` and `card` (QD1).
+- **The end**: `fell`, `cleared`, `retreat`, `abandoned` set `status` over. No grant, no ledger row, no XP, no `dungeon_log` row (its FK points
+  to `dungeon_runs`); the row keeps `state.last`.
+- **The helpers for R3** (fixed signatures): `dungeon_v2_unit`, `dungeon_v2_info`, `dungeon_v2_play` (no table: card turns on a fight state,
+  `steps_left` of the last step, `hp_changes`), `dungeon_v2_screen`; and `dungeon_v2_room`.
+- **Proof**: `card-studio/scripts/test-combat-v2-dungeon-run.mjs` (cases D1-D12, rolled back, `MUTATE=all`). The REPORT of item R2 has the runs.
+  D4b (the unit `tags`) and D5b (the synergy at each fight room) need SYN on the copy: until then they print WAIT.
