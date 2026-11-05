@@ -30,7 +30,9 @@ import { createClient } from '@supabase/supabase-js';
 import { EFFECTS_SCHEMA, registerEffectRoutes } from './effects.js';
 import { REPORTS_ON, registerReportRoutes } from './reports.js';
 import { createLogs, clientInfo, newTutorialSteps, registerLogRoutes } from './logs.js';
-import { createImgCache, normalizeImgUrl } from './img-cache.js';
+import { createImgCache } from './img-cache.js';
+import { createImgHandler } from './img-route.js';
+import { createBossFiles } from './boss-files.js';
 import { clientIp, createLimiter, createWhoAmI } from './guards.js';
 import { createBalance, ascendCost as costOf, dailyCardCap, publicBalance } from './balance.js';
 import { modelFor as bossModelFor } from './src/boss-models.js';
@@ -51,7 +53,6 @@ import { makeTtlCache } from './src/ttl-cache.js';
 import { createRouteTiming } from './src/route-timing.js';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
-import { Readable } from 'node:stream';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -257,35 +258,9 @@ if (imgCache) {
     console.log(`img-cache hits=${s.hits} upstream=${s.upstream} upstreamMB=${(s.upstreamBytes / 1e6).toFixed(1)} diskMB=${(imgCache.used() / 1e6).toFixed(1)}`);
   }, 3600_000).unref();
 }
-app.get(/^\/api\/img\/(.+)/, async (req, res) => {
-  if (!SUPA_HOST) return res.status(404).end();
-  const path = decodeURIComponent(req.params[0] || '');
-  const query = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
-  if (!path.startsWith('storage/v1/object/public/card-art/') || /\.\.|\\|\/\/|%/.test(path)) return res.status(400).end(); // no traversal, no double-encoding
-  // Only a short plain ?v (img-cache.js): every new v is a new Supabase fetch and disk copy.
-  const url = normalizeImgUrl(SUPA_HOST, path, query);
-  if (!url) return res.status(400).end();
-  if (imgCache) {
-    try {
-      // A miss costs Supabase egress, so misses are limited per IP (v=1,2,3... each miss).
-      const r = await imgCache.get(url, { allowMiss: () => imgMissLimit.take(clientIp(req)) });
-      if (r.status === 429) res.setHeader('Retry-After', '5');
-      if (r.status !== 200) return res.status(r.status).end();
-      res.setHeader('Content-Type', r.type);
-      res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
-      return res.end(r.buf);
-    } catch { return res.status(502).end(); }
-  }
-  try {
-    const r = await fetch(url);
-    if (!r.ok || !r.body) return res.status(r.ok ? 502 : r.status).end();
-    res.setHeader('Content-Type', r.headers.get('content-type') || 'image/png');
-    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
-    const len = r.headers.get('content-length');
-    if (len) res.setHeader('Content-Length', len);
-    Readable.fromWeb(r.body).on('error', () => res.destroy()).pipe(res);
-  } catch { if (!res.headersSent) res.status(502).end(); else res.destroy(); }
-});
+// The handler: img-route.js (moved unchanged). S1-FACE B11: the boss models and clips come from this server's disk when the
+// flag file /app/boss-files/ENABLED exists (boss-files.js; ops/deploy.sh mounts /srv/lptcg/boss-files); else today's path.
+app.get(/^\/api\/img\/(.+)/, createImgHandler({ supaHost: SUPA_HOST, imgCache, missLimit: imgMissLimit, clientIp, bossFiles: createBossFiles() }));
 
 // Discord avatar proxy: /api/avatar/<discord id>. The hash is saved at login
 // (players.avatar). Discord blocks unmapped fetches, so the picture comes through here.
