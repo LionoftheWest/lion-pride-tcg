@@ -195,7 +195,7 @@ begin
   select coalesce(jsonb_agg(p.proname order by p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace
     and p.prosrc ~ '\m(${NEWNAMES.join('|')})\M' and replace(p.oid::regprocedure::text, ' ', '') <> all (array[${q(NEWSIG)}])
     and p.proname <> all (array['card_power_v2_numbers', 'card_power_v2_families', 'card_power_v2', 'combat_v2_squad_value', 'gauntlet_v2_play'])   -- + R1b combat_v2_gauntlet_run.sql: Auto v2 of the tester run (gauntlet_v2_play)   -- the E9 squad value (combat_v2_power.sql) uses the E8 pair rule by design (no v1 caller)
-    and p.proname <> all (array['dungeon_v2_play']);   -- R2a combat_v2_dungeon_run.sql: the v2 Dungeon play helper runs Auto v2 (tester only, no v1 caller)
+    and p.proname <> all (array['dungeon_v2_play', 'hunt_v2_start']);   -- R2a combat_v2_dungeon_run.sql: the v2 Dungeon play helper runs Auto v2 (tester only, no v1 caller)   -- + R3a combat_v2_hunt_practice.sql: the v2 Hunt practice start runs the auto-pick (tester only)
   res := res || jsonb_build_object('case', 'no other function calls a new function (no v1 caller, nothing in play)', 'ok', o = '[]'::jsonb, 'got', o);
   select value into o from balance where key = 'combat_v2';
   res := res || jsonb_build_object('case', 'the flag combat_v2 is OFF for every capability', 'ok', (o - 'testers') = '{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}'::jsonb, 'got', o);

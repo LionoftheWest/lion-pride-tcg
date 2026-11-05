@@ -200,7 +200,7 @@ begin
     and (select count(*) from jsonb_object_keys(ra)) = (select count(*) from jsonb_object_keys(rb)),
     'got', (select jsonb_agg(k2) from jsonb_object_keys(ra) k2 where rb->k2 is distinct from ra->k2));
   res := res || jsonb_build_object('case', 'the callers of the replaced functions are the same before and after the file, and none is a v1 function', 'ok',
-    cb = ca and not exists (select 1 from jsonb_each(ca) c, jsonb_array_elements_text(c.value) f where f !~ '^(combat_v2_|auto_v2_|balance_check_auto_v2|card_power_v2)'), 'got', ca);
+    cb = ca and not exists (select 1 from jsonb_each(ca) c, jsonb_array_elements_text(c.value) f where f !~ '^(combat_v2_|auto_v2_|balance_check_auto_v2|card_power_v2|hunt_v2_start$)'), 'got', ca);   -- + R3a combat_v2_hunt_practice.sql: the v2 Hunt practice start runs the auto-pick (tester only)
   res := res || jsonb_build_object('case', 'the trigger subjects_ability_v2_check is still on subjects (before insert or update of ability_v2)', 'ok',
     exists (select 1 from pg_trigger t where t.tgrelid = 'public.subjects'::regclass and t.tgname = 'subjects_ability_v2_check' and t.tgfoid = 'public.subjects_ability_v2_check()'::regprocedure and not t.tgisinternal));
   select value into o from balance where key = 'combat_v2';
