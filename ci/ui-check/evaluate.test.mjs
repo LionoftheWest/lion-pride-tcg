@@ -398,3 +398,14 @@ test('D-217 seeOnly verdict: a missing see item on the v2 Shop fails a UI-43 PR;
   const bad = verdict(cells([['.sh-reset .sh-err', 'outside the view']]), REG, opts).fails;
   assert.deepEqual(bad.map((x) => [x.rule, x.owner, x.size, x.where]), [['missing', 'UI-43', '430x932', '.sh-reset .sh-err']]);
 });
+test('D-217 exceptions: only the v3 paused Shop spec, only the empty rule, only the 5 measured sizes (the band is on origin/main)', async () => {
+  const ex = JSON.parse((await import('node:fs')).readFileSync(new URL('./exceptions.json', import.meta.url), 'utf8'));
+  const mine = ex.filter((e) => e.decision === 'D-217');
+  assert.deepEqual(mine.map((e) => [e.id, e.screen, e.rule, e.size]).sort(),
+    ['412x915', '430x822', '430x932', '692x917', '820x1180'].map((s) => ['UI-43', 'shop-reset-paused', 'empty', s]).sort());
+  const cell = (size, rule) => ({ rule, owner: 'UI-43', screen: 'shop-reset-paused', size });
+  assert.ok(mine.some((e) => accepts(e, cell('430x932', 'empty'))));
+  assert.ok(!mine.some((e) => accepts(e, cell('430x932', 'missing'))), 'a missing see item is never accepted');
+  assert.ok(!mine.some((e) => accepts(e, cell('1280x720', 'empty'))), 'not at another size');
+  assert.ok(!mine.some((e) => accepts(e, { ...cell('430x932', 'empty'), screen: 'shop' })), 'not on another Shop spec');
+});
