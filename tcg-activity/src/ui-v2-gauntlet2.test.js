@@ -517,6 +517,7 @@ test('H-1: the Finish Room fast replay plays the light v1 effects (hit, number, 
   assert.equal(stage.calls.filter((c) => c === 'play 2 attack').length, 3, 'the monster lunge of each step');
   assert.equal(voices.length, 0, 'no voices or sounds');
   assert.ok(!d.pops.some((p) => p.text === 'Mark'), 'no status glyph pops');
+  assert.ok(!d.classes.some((c) => c.endsWith('+striking') || c.endsWith('+hurt')), `no card lunge and no shake in the fast replay (H-1, the CI bisect): ${d.classes.filter((c) => /striking|hurt/.test(c)).join(', ')}`);
   assert.ok(d.pops.some((p) => p.text === '-10'), 'the damage numbers');
   assert.equal(liteReplay({ finishing: true }), true);
   assert.equal(liteReplay({ finishing: false }), false);
