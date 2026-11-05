@@ -433,20 +433,23 @@ if (want('STORAGE')) {
   r = await sf([...swapArgs(S3, ['--grace', '20', '--storage-every', '1']), '--swapped', newLog()], { script: mutant('noflush', [['    if (tot > 940000000 && queue.length) {', '    if (false) {']]) });
   mut('storage_flush_removed', !r.lines.some((l) => l.startsWith('GRACE FLUSH')), sum(r, /^SWAP SUMMARY/));
   await hardRestore();
-  stub.mode = { cdn: true, forwardDelete: true, inflate: 965000000 - now0 };
+  stub.mode = { cdn: true, forwardDelete: true }; // the inflate comes AFTER the start (the start projection would refuse it): at the read of row 1
+  const late = { env: { S1FACE_TEST_POINT: `hold:after-read:${A}` }, onHold: async () => { stub.mode = { cdn: true, forwardDelete: true, inflate: 965000000 - now0 }; } };
   const log2 = newLog();
-  r = await sf([...swapArgs(S3, ['--grace', '20', '--storage-every', '1']), '--swapped', log2]);
+  r = await sf([...swapArgs(S3, ['--grace', '20', '--storage-every', '1']), '--swapped', log2], late);
   show(r, /^(STORAGE|GRACE|SWAP SUMMARY)/);
   const on = await oldOrNew();
   res('STORAGE > 960,000,000 with an empty queue = STORAGE STOP after row 1, rows 2-3 old, I-1, exit 1',
     r.code === 1 && r.lines.some((l) => l.startsWith('STORAGE STOP')) && /updated=1 /.test(sum(r, /^SWAP SUMMARY/)) && pathOf(on.now.get(B)) === backup.get(B).old_path && (await I1()).ok, sum(r, /^SWAP SUMMARY/));
-  await sf(unswapArgs(['--all'], log2)); await hardRestore();
-  r = await sf([...swapArgs(S3, ['--grace', '20', '--storage-every', '1']), '--swapped', newLog()], { script: mutant('nostop', [["    } else if (tot > 960000000) return `storage now=${tot} > 960000000 with an empty queue`;\n", '    }\n'], ['      if (t2 > 960000000) return `storage now=${t2} > 960000000 with an empty queue`;\n', '']]) });
+  stub.mode = { cdn: true, forwardDelete: true }; await sf(unswapArgs(['--all'], log2)); await hardRestore();
+  r = await sf([...swapArgs(S3, ['--grace', '20', '--storage-every', '1']), '--swapped', newLog()], { ...late, script: mutant('nostop', [["    } else if (tot > 960000000) return `storage now=${tot} > 960000000 with an empty queue`;\n", '    }\n'], ['      if (t2 > 960000000) return `storage now=${t2} > 960000000 with an empty queue`;\n', '']]) });
   mut('storage_stop_removed', !r.lines.some((l) => l.startsWith('STORAGE STOP')) && /updated=3 /.test(sum(r, /^SWAP SUMMARY/)), sum(r, /^SWAP SUMMARY/));
   stub.mode = { cdn: true, forwardDelete: true };
   await hardRestore();
   // the start projection: a limit just above now = the rows that add bytes are cut (WAIT storage), none swapped
-  r = await sf([...swapArgs(S3), '--swapped', newLog()], { env: { S1FACE_LIMIT: String(now0 + 1000) } });
+  // the 3 rows together free bytes (O: deltas 174 +12,670, 383 -102,334, 346 -315,280); a limit 1 B under their projected end = cut 174
+  const dsum = S3.reduce((t, id) => t + Object.values(staged.get(id).files).filter(Boolean).reduce((a, x) => a + x.bytes, 0) - backup.get(id).objects.reduce((a, o) => a + o.bytes, 0), 0);
+  r = await sf([...swapArgs(S3), '--swapped', newLog()], { env: { S1FACE_LIMIT: String(now0 + dsum - 1) } });
   show(r, /^(WAIT|refused|SWAP)/);
   const cutIds = ((r.lines.find((l) => l.startsWith('WAIT storage rows=')) || '').match(/ids=([\d,]+)/)?.[1] || '').split(',').filter(Boolean).map(Number);
   res('STORAGE start projection over the limit = WAIT storage: the adding rows are cut and not swapped', cutIds.length > 0 && cutIds.every((id) => !r.lines.some((l) => l.startsWith(`UPDATED ${id} `)) && r.lines.some((l) => l.startsWith(`WAIT ${id} storage`))), `cut=${cutIds.join(',')}`);
@@ -478,7 +481,7 @@ if (want('ORPHANS')) {
     stub.mode = { extra: list17.map(([n, b]) => ({ name: n, size: Number(b) })), fake, cdn: true };
     for (const [n] of list17) await fetch(`${ORIGIN}/storage/v1/object/public/card-art/${n}`).then((x) => x.arrayBuffer()); // a member's GET: a cached 200
     // the stub's fake answer goes before the CDN cache: put the cached 200s in place by hand (the fake path does not reach the cache code)
-    for (const [n, b] of list17) stub.cdnCache.set(`GET /storage/v1/object/public/card-art/${n}`, { h: { 'content-type': 'image/png', 'content-length': String(b) }, body: Buffer.alloc(b, 7) });
+    for (const [n, b] of list17) stub.cdnCache.set(`GET /storage/v1/object/public/card-art/${n}`, { h: { 'content-type': 'image/png', 'content-length': String(b) }, body: Buffer.alloc(Number(b), 7) });
     const from = stub.log.length;
     const r = await sf(['orphans', '--set', 'S1', '--out', `${WORK}/orphans-backup-${Date.now()}`, '--list', `${REAL}/gate/orphans-17.txt`], { script });
     const dels = stub.log.slice(from).filter((x) => x.method === 'DELETE').flatMap((x) => JSON.parse(x.body).prefixes);
