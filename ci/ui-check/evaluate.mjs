@@ -34,6 +34,17 @@ export function defectsOf(r, expanded) {
   if (!r.checks || !r.fit || !r.cut || !r.extra) { add('not-checked', 'runner', 'a check returned no data'); return d; }
   for (const m of r.miss || []) if (!/fallback used/.test(m)) add('not-checked', `step ${m}`, 'the step found no control');
   for (const k of r.noFixture || []) add('not-checked', `no fixture ${k}`, 'record the fixtures again (record.mjs)');
+  // see (screens.mjs): each selector must be on the page and in the view. A spec with a see list whose result has no see
+  // array was not checked (a silent skip would pass every mutation).
+  const spec = SCREENS[r.screen] || {};
+  if (spec.see && !Array.isArray(r.see)) add('not-checked', 'see', 'the see check returned nothing');
+  if (spec.seeOnly) {
+    // D-217: a legacy v2 screen (seeOnly, for example ui-v2-shop.js) is not held to the v3 standard. Only its see list is
+    // enforced. A runner error, a missing step or fixture, and a missing see result above still fail as "not checked".
+    if (!spec.see?.length) add('not-checked', 'see', 'a seeOnly spec needs a see list');
+    for (const [w, why] of r.see || []) add('missing', w, why);
+    return d;
+  }
   const c = r.checks || {};
   if ((c.pageScroll?.x || 0) > 0 || (c.pageScroll?.y || 0) > 0) add('scroll', 'page', `${c.pageScroll.x}x${c.pageScroll.y}`);
   for (const [kind, where, v] of r.fit || []) {

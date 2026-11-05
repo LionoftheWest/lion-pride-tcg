@@ -279,7 +279,8 @@ export const SCREENS = {
   'shop-reset-paused':   { id: 'UI-43', long: true, safe: true, shop: 'paused', notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-tab="reset"]', [['wait', 0]]], ['wait', 0.5]],
     see: ['.u3-spanel--reset .u3-msg--error', '.u3-spanel--reset [data-choose]:disabled', '.u3-spanel--reset .u3-sfree:not(.is-ok)'] },
   // The same in the v2 Shop file (ui-v2-shop.js, members without ui_v3: cookie ci_v3=off). Portrait has tabs; landscape a side nav; desktop shows all.
-  'shop-reset-paused-v2': { id: 'UI-43', long: true, safe: true, shop: 'paused', v3: 'off', notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-tab="reset"]', [['wait', 0]]], ['wait', 0.5]],
+  // D-217: the legacy v2 shell is not held to the v3 standard: seeOnly enforces only the see list (evaluate.mjs defectsOf).
+  'shop-reset-paused-v2': { id: 'UI-43', long: true, safe: true, seeOnly: true, shop: 'paused', v3: 'off', notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-tab="reset"]', [['wait', 0]]], ['wait', 0.5]],
     see: ['.sh-reset .sh-err', '.sh-reset .sh-choose:disabled', '.sh-reset .sh-free:not(.ok)'] },
   'shop-confirm':        { id: 'UI-43', safe: true, notOn: ['tiny'], steps: [['js', '#shopBtn'], ['wait', 2], ['js', '[data-buy]:not([disabled])']] },
   // Convert extra copies (UI-44): the window over the card detail (UI-08); minus = one copy less; error = the refused write (no fixture for POST).
