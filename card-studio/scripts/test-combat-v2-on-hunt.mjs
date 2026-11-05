@@ -711,5 +711,8 @@ say(rows4.length === STARTS && rows4.every((r) => !r.raised && r.ok),
 }
 if (process.env.H !== '0') { for (const r of await runH()) say(r.ok, r.name, String(JSON.stringify(r.got ?? null)).slice(0, 900)); }
 else console.log('SKIP H (H=0): NOT a gate result');
-console.log(fail ? `${fail} of ${total} FAILED` : `PASS all ${total}`);
+// Review r1 F-3: only the full gate prints "PASS all 30". ONLY, H=0, or fewer DAYS / STARTS / ROUNDS than the spec print PARTIAL (not a gate result).
+const GATE_N = 30;
+const partial = !!process.env.ONLY || process.env.H === '0' || DAYS < 20 || STARTS < 50 || ROUNDS < 20 || total !== GATE_N;
+console.log(fail ? `${fail} of ${total} FAILED` : partial ? `PARTIAL ${total} of ${GATE_N} passed (ONLY=${process.env.ONLY || '-'}, H=${process.env.H ?? '1'}, DAYS ${DAYS}, STARTS ${STARTS}, ROUNDS ${ROUNDS}): NOT a gate result` : `PASS all ${total}`);
 process.exitCode = fail ? 1 : 0;

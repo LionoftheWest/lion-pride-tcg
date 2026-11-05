@@ -28,6 +28,15 @@ const CLEAN = (process.env.MIG ? readFileSync(process.env.MIG, 'utf8').replace(/
 let mig = CLEAN;
 const FIGHTS = Number(process.env.FIGHTS || 20);
 const RUN_H3 = process.env.H3 !== '0';
+// Review R3-ON r1 F-1: H3 drops every hunt_v2_ object and applies the R3a file again. On a copy with R3-ON (combat_v2_on_hunt.sql: hunt_v2_shared,
+// the columns live/credited, the v1 refusal in hunt_attack/hunt_support) that removed R3-ON, and every later test of a rehearsal failed. The final
+// step now applies R3-ON again when it was on the copy before the run, and the cleanup check compares the objects before and after.
+const ON_FILE = read('../../tcg-bot/supabase/combat_v2_on_hunt.sql').replace(/notify pgrst[^\n]*\n/g, '');
+const SHAPE = `select coalesce((select string_agg(p.oid::regprocedure::text || '=' || md5(replace(pg_get_functiondef(p.oid), chr(13), '')), ' ' order by 1)
+    from pg_proc p where p.pronamespace = 'public'::regnamespace and (p.proname like 'hunt\\_v2\\_%' or p.proname in ('hunt_attack', 'hunt_support'))), '') ||
+  ' | ' || coalesce((select string_agg(column_name || ':' || data_type, ' ' order by column_name) from information_schema.columns
+    where table_schema = 'public' and table_name = 'hunt_v2_days'), '') as shape,
+  to_regprocedure('public.hunt_v2_shared(bigint, text, date, jsonb)') is not null as on_applied;`;
 // H3 COMMITS the file on the copy. Only these mutations (each changes only hunt_v2_ objects, which the finally step drops) go into the H3
 // file; every other mutation is caught in the rolled-back blocks, and H3 then commits the CLEAN file. (Run 1 committed flag_on, v1_touched and
 // tags_dropped, which changed the copy outside R3: REPORT-r1 section 'Test defects'.)
@@ -688,7 +697,10 @@ async function runH3() {
   if (rr.error) { add3(`H3 the practice rows could be counted (${String(rr.error).slice(0, 200)})`, false, null); return out; }
   const realRows = Number(rr.rows[0].n);
   if (realRows > 0) { add3('H3 the copy has no practice row of a real player (the run drops the table)', false, { realRows }); return out; }
-  const restore = applied ? CLEAN : null;
+  const sh0 = await q(SHAPE);
+  if (sh0.error) { add3(`H3 the hunt_v2_ objects could be read (${String(sh0.error).slice(0, 200)})`, false, null); return out; }
+  const onApplied = sh0.rows[0].on_applied;
+  const restore = applied ? CLEAN + (onApplied ? '\n' + ON_FILE : '') : null;
   const T3 = (i) => lit(H3P[i - 1]);
   let squad;
   try {
@@ -823,6 +835,9 @@ select 1 as locked from public.hunts where id = ${H} for update nowait;`);
       + (select count(*) from public.balance_log where changed_by = '${BY}') + (select count(*) from public.balance where key = 'combat_v2' and value->'testers' ?| array[${H3P.map(lit).join(', ')}])
       + (select count(*) from pg_proc where proname = 'r3a_h3_synstub') n,
       to_regclass('public.hunt_v2_days') is not null as applied_after;`);
+    const sh1 = await q(SHAPE);
+    add3(`H3 the copy keeps its hunt_v2_ objects, hunt_attack and hunt_support (the md5 of every function, the hunt_v2_days columns) as before the run${onApplied ? ' (R3-ON was applied: applied again)' : ''}`,
+      !sh1.error && sh1.rows?.[0]?.shape === sh0.rows[0].shape, sh1.error || { on_before: onApplied, on_after: sh1.rows?.[0]?.on_applied, same: sh1.rows?.[0]?.shape === sh0.rows[0].shape });
     add3(`H3 the cleanup removed every sample row (players, cards, the Hunt row, balance_log, the tester entries) and left the file ${applied ? 'applied (the clean file again)' : 'not applied'} as before`,
       !c.error && Number(left.rows?.[0]?.n) === 0 && left.rows?.[0]?.applied_after === applied, c.error || left.rows?.[0]);
   }
