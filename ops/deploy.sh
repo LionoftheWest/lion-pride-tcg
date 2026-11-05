@@ -118,7 +118,32 @@ fi
 # The Activity's /api/img disk cache (IMG_CACHE=1) lives on the host, so a deploy does
 # not empty it (each refill was 100-300 MB of Supabase egress).
 VOL=""
-if [ "$SVC" = activity ]; then mkdir -p /home/ubuntu/img-cache; VOL="-v /home/ubuntu/img-cache:/tmp/img-cache"; fi
+# BOSS_VOL_BEGIN (S1-FACE B11; test: ops/boss-files.test.sh extracts this block)
+# boss_vol <dir>: the read-only mount of the boss-files folder at /app/boss-files, or nothing when the folder does not exist.
+# With the flag file <dir>/ENABLED: refused unless models/ has 36 files and behemoth/ has 30 (a partial folder would serve some
+# bosses from the VM and miss others). The flag is set on the VM (touch / rm ENABLED); no deploy for a flag change.
+BOSS_MODELS_N=${BOSS_MODELS_N:-36}
+BOSS_CLIPS_N=${BOSS_CLIPS_N:-30}
+boss_vol() {
+  local dir="$1" m c
+  [ -d "$dir" ] || return 0
+  if [ -e "$dir/ENABLED" ]; then
+    m=$(find "$dir/models" -maxdepth 1 -type f 2>/dev/null | wc -l | tr -d ' ')
+    c=$(find "$dir/behemoth" -maxdepth 1 -type f 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$m" != "$BOSS_MODELS_N" ] || [ "$c" != "$BOSS_CLIPS_N" ]; then
+      echo "REFUSED boss-files ENABLED with models=$m (need $BOSS_MODELS_N) behemoth=$c (need $BOSS_CLIPS_N): remove $dir/ENABLED or complete the folder" >&2
+      return 1
+    fi
+  fi
+  echo "-v $dir:/app/boss-files:ro"
+}
+# BOSS_VOL_END
+if [ "$SVC" = activity ]; then
+  mkdir -p /home/ubuntu/img-cache; VOL="-v /home/ubuntu/img-cache:/tmp/img-cache"
+  # the same VOL serves the new container and the rollback (run "$NAME:prev")
+  BVOL=$(boss_vol /srv/lptcg/boss-files) || { echo "-- deploy refused (boss-files), nothing changed"; rm -rf "$DIR.new"; sudo docker rmi -f "$NAME:$SHORT" >/dev/null 2>&1 || true; exit 1; }
+  VOL="$VOL $BVOL"
+fi
 # Swap the container:
 # - docker stop sends SIGTERM, so the Activity finishes the requests in flight (server.js);
 #   rm -f was a SIGKILL that cut a pack open. --init forwards the signal (node is not PID 1).
