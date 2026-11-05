@@ -167,7 +167,7 @@ const V2_BASE = () => (HU() ? H2_API : GA() ? G2_API : D2_API);
 const V2_GET = () => (GA() ? G2_API : `${D2_API}/view`);
 function v2Take(v) { dg.v2 = v; dg.data = { ...dg.data, run: g2.v1RunOf(v), rooms: v.rooms || dg.data.rooms }; }
 const g2Host = () => ({
-  dg, base: V2_BASE(), stats: HU() ? huntStatsHTML : GA() ? null : statsHTML, esc, fmt, thumb, elIcon, plateName, cardTile, bolt: I.bolt, trophy: I.trophy, up: I.up, hand: I.hand, timer: I.timer,
+  dg, oneBoss: HU(), base: V2_BASE(), stats: HU() ? huntStatsHTML : GA() ? null : statsHTML, esc, fmt, thumb, elIcon, plateName, cardTile, bolt: I.bolt, trophy: I.trophy, up: I.up, hand: I.hand, timer: I.timer,
   progressHTML: HU() ? huntProgHTML : progressHTML, musicBtnHTML, finishHTML: HU() ? () => '' : finishHTML, finishButton, autoDisabled, waitMs, AUTO_ROUNDS, fitFight: fitFightV3, placeArena, openInfo, toast,
   // the v1 fight effects for the v2 replay (Nathan 2026-11-04: "the old animations we had need to be there"): the card element, the monster voices, the move sounds
   elementOf: (id) => cardElement(mine().get(Number(id))?.tags) || 'physical', voice: (f, kind, peak) => mvoice(f, kind, peak), snd: (k, peak) => snd(k, peak), moveSnd: (k) => MOVE_SND[k] || null,

@@ -512,7 +512,7 @@ export async function wireFight(main, v, host, keep) {
     try {
       const { mountStage } = await import('./dungeon-stage.js');
       if (!main.contains(canvas)) return;
-      H.dg.stage = mountStage(canvas, { onPick: (i) => target(i), onLayout: () => place(main), slotFill: () => (document.body.dataset.size === 'compact-port' ? SLOT_FILL : 0), slotTop: () => slotTop(canvas) });
+      H.dg.stage = mountStage(canvas, { onPick: (i) => target(i), onLayout: () => place(main), slotFill: () => (document.body.dataset.size === 'compact-port' || H.oneBoss ? SLOT_FILL : 0), fillOne: () => !!H.oneBoss, slotTop: () => slotTop(canvas) });   // N-3: the one Hunt boss fills the stage height on every size
       H.dg.stage.canvas = canvas; H.dg.roomKey = key;
       portraits(foesOf(V));   // the strip portraits: the same models (not awaited)
       await H.dg.stage.setFoes(foesOf(V));
@@ -741,6 +741,45 @@ function place(main = document.getElementById('main')) {
 // D-206: on the wide classes the control row goes beside the cards (Music and the hint at the left, Finish Room and Auto at the right), and
 // its grid row goes to the stage (CSS: .g2-side). D-205: on 375 px phones (is-narrow) the supports join the squad row as small cards.
 // D-211: the side column is too narrow when the hint (or the left part) is wider or taller than its box (G3 pokeOut / spill).
+// N-3: the Support panel (desktop: the right column; phones: the grid under Squad HP) runs past its box or past the fight.
+function supsTooTall(F) {
+  const p = F.querySelector('.dg-sups'); const right = F.querySelector('.dg-right');
+  if (!p || !p.querySelector('.dg-sup')) return false;
+  const fb = F.getBoundingClientRect().bottom;
+  // phones (the list under Squad HP): a list taller than the squad row takes the stage height (1 attacker + 7 supports)
+  const units = F.querySelector('.dg-units');
+  const phone = /^compact/.test(document.body.dataset.size || '');
+  return p.scrollHeight > p.clientHeight + 1 || (right && right.scrollHeight > right.clientHeight + 1) || p.getBoundingClientRect().bottom > fb + 1
+    || (phone && !!units && p.offsetHeight > units.offsetHeight + 1);
+}
+// N-3: the squad row of any size. Measured at the approved card size first; when that row does not fit, the cards take the largest
+// width that puts all of them in one row (at least the mini step, TOKENS card-mini), else two rows (half the cards in each) with cards
+// small enough that both rows keep the height of the one approved row (so the stage keeps its size). Kept until the fight size changes.
+function fitRow(F, units) {
+  const key = `${F.clientWidth}x${F.clientHeight}:${units.children.length}`;
+  if (F.dataset.g2fit === key) return;
+  F.classList.remove('g2-fit', 'g2-wrap'); ['--g2-cw', '--g2-per', '--g2-ex'].forEach((k) => F.style.removeProperty(k));
+  const items = [...units.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')];
+  F.dataset.g2fit = key;
+  if (items.length < 2 || !rowTooCrowded(units)) return;
+  const n = items.length, gap = parseFloat(getComputedStyle(units).columnGap) || 0;
+  const it = items[0], card = it.querySelector('.dg-card, img') || it;
+  const exW = it.offsetWidth - card.offsetWidth, exH = it.offsetHeight - card.offsetHeight;
+  const arena = F.querySelector('.dg-arena');
+  const natural = card.offsetWidth, rowH = units.clientHeight, W = Math.max(units.clientWidth, arena?.clientWidth || 0), ratio = TOKENS['card-ratio'];
+  const fitW = (per) => Math.floor((W - gap * (per - 1)) / per - exW);
+  let per = n, cw = Math.min(natural, fitW(n));
+  if (cw < TOKENS['card-mini']) { per = Math.ceil(n / 2); cw = Math.min(natural, fitW(per), Math.floor(((rowH - gap) / 2 - exH) / ratio)); }
+  F.classList.add('g2-fit'); F.classList.toggle('g2-wrap', per < n);
+  F.style.setProperty('--g2-cw', `${Math.max(TOKENS['card-mini'], cw)}px`); F.style.setProperty('--g2-per', String(per)); F.style.setProperty('--g2-ex', `${exW}px`);
+}
+// N-3: a card of the squad row is cut (its content wider than its box) or the row is wider than its box.
+function rowTooCrowded(units) {
+  if (units.scrollWidth > units.clientWidth + 1) return true;
+  // 375 px phones (is-narrow: the cards share the width): a state line or an HP number that no longer fits its small card
+  if (!units.closest('.is-narrow')) return false;
+  return [...units.querySelectorAll(':scope > .dg-sup.g2-plate .g2-stline em, :scope > .dg-unit .dg-hpn')].some((n) => n.offsetParent && n.scrollWidth > n.clientWidth + 1);
+}
 function ctlTooNarrow(F) {
   const L = F.querySelector('.dg-ctl .g2-l'), hint = L?.querySelector('.dg-hint');
   if (!L || !hint) return false;
@@ -781,14 +820,20 @@ function layout(F) {
     }
   }
   if (wide && units) {
-    const cards = [...units.querySelectorAll('.dg-unit')].map((x) => x.getBoundingClientRect());
+    const cards = [...units.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')].map((x) => x.getBoundingClientRect());
     if (cards.length) F.style.setProperty('--g2-cards', `${Math.max(...cards.map((q) => q.right)) - Math.min(...cards.map((q) => q.left))}px`);
   }
   if (wide && ctl && units && ctlTooNarrow(F)) { ctlToRow(F, ctl, units); return; }
   // a wide support tile (the text column 200 px or more, review-5): the HP row sits on the state line
   F.querySelectorAll('.dg-sup.g2-sup').forEach((b) => { const t = b.querySelector('.t'); b.classList.toggle('g2-row', !!t && t.getBoundingClientRect().width >= 200); });
+  // D-205 + N-3 (Nathan 2026-11-04: "squads can be any combos"): the supports are small cards in the squad row on 375 px phones (is-narrow)
+  // and wherever the Support panel cannot hold them (g2-plates, kept for this fight); a squad row too crowded for its cards wraps to two
+  // rows (g2-wrap: --g2-per cards in each row). The Hunt squad is 1 to 8 cards of any mix; the Dungeon 5; the Gauntlet 3 + 2.
   const narrow = F.classList.contains('is-narrow');
-  F.querySelectorAll('.dg-sup.g2-sup').forEach((b) => { const home = narrow ? units : F.querySelector('.dg-sups'); if (home && b.parentNode !== home) home.appendChild(b); b.classList.toggle('g2-plate', narrow); });
+  const plates = narrow || F.classList.contains('g2-plates');
+  F.querySelectorAll('.dg-sup.g2-sup').forEach((b) => { const home = plates ? units : F.querySelector('.dg-sups'); if (home && b.parentNode !== home) home.appendChild(b); b.classList.toggle('g2-plate', plates); });
+  if (!plates && supsTooTall(F)) { F.classList.add('g2-plates'); layout(F); return; }
+  if (units) fitRow(F, units);
   place(F.closest('#main') || undefined);
 }
 

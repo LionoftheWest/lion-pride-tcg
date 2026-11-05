@@ -83,7 +83,7 @@ export function mountStage(canvas, opts = {}) {
     const rowW = (n - 1) * spread + tallest * 1.3;
     // opts.slotFill() (the v2 fight on phones only, R1e / UI-52 review-5): one monster under each plate slot, slotFill x the slot width high,
     // standing on the floor of the stage, below opts.slotTop() px (the plates and their status rows). 0 or no option (every v1 screen): unchanged.
-    const fill = n > 1 ? opts.slotFill?.() || 0 : 0;
+    const fill = n > 1 || opts.fillOne?.() ? opts.slotFill?.() || 0 : 0;   // N-3: one Hunt boss fills its slot too (opts.fillOne)
     const free = fill ? Math.max(1, h - (opts.slotTop?.() || 0)) : h;
     const vh = fill ? Math.max((tallest * h) / free, (tallest * n) / (fill * camera.aspect)) : Math.max(tallest * 1.12, rowW / camera.aspect);
     // A wide, short arena (a landscape phone): spread the monsters over the width (they bunched in the middle).

@@ -288,7 +288,9 @@ DERIVED.push({ when: (p, c) => p === '/api/dungeon/v2/view' && M2_KINDS.includes
 // the practice: live false) or m2h-<state> (the flag ON, a member who is not a tester: live true). lobby: no day, can_start (the button);
 // fight: an active day (the R1e fight answer of fixtures/g2-fight.json in the asRun shape of hunt-v2-routes.js); over: the day ended.
 // The member fields (ON SPEC 3.4/3.5, to confirm against the R3-ON SQL): hunt.live_frac (0.62), day.credited (1,840), live.
-const H2_KINDS = ['h2-lobby', 'h2-fight', 'h2-over', 'm2h-lobby', 'm2h-fight', 'm2h-over'];
+// the squad mixes (attackers + supports) of the member fight: m2h-fight = 5 + 3; the extremes for G3 (Nathan N-3)
+const MIX = { 'm2h-mix80': [8, 0], 'm2h-mix17': [1, 7], 'm2h-mix44': [4, 4], 'm2h-mix08': [0, 8] };
+const H2_KINDS = ['h2-lobby', 'h2-fight', 'h2-over', 'm2h-lobby', 'm2h-fight', 'm2h-over', ...Object.keys(MIX)];
 // A Hunt fight has ONE target: the live boss (R3 SPEC 3.5). The fixture keeps the recorded squad and turns the 5-monster horde into the
 // boss of the recorded /api/hunt (its name, its model key from boss-models.js: "boss:<key>", the Hunt view's own file).
 const H2_MODEL = { 'the ban-wave demon': 'demon' };
@@ -303,34 +305,39 @@ function oneBoss(v, name) {
   for (const k of Object.keys(v.status_lines)) if (/^enemy:[1-9]/.test(k)) delete v.status_lines[k];
   return v;
 }
-// N-3 (Nathan 2026-11-04: "How does it look with 8 cards, not 5?"): a Hunt squad has up to 8 cards (dailyCap). The fight fixture adds 3
-// real cards of the recorded roster to the 5 of the R1e answer: 5 attackers (Character, Creature) and 3 supports (Item, Place, Moment).
-const H2_EXTRA = [[57, 'attacker', 'striker'], [115, 'attacker', 'finisher'], [242, 'support', 'medic']];
-function eightCards(v) {
-  const F = v.run.state.fight; const roster = FIX.routes['/api/hunt']?.body?.roster || [];
-  for (const [id, cls, role] of H2_EXTRA) {
-    const c = roster.find((x) => Number(x.id) === id); if (!c) continue;
-    const src = F.cards[cls === 'support' ? 145 : 43];
-    F.cards[id] = { ...JSON.parse(JSON.stringify(src)), role, class: cls, hp: src.max, charge: 0, status: {} };
+// N-3 (Nathan 2026-11-04: "squads can be any combos now"): a Hunt squad is 1 to daily_card_cap (8) cards of any class mix
+// (hunt_v2_start: no class limit). mixCards(v, a, s) builds a squad of a attackers and s supports from real cards of the recorded
+// roster (Character/Creature as attackers, Item/Place/Moment as supports), on the R1e card numbers. The default Hunt fight is 5 + 3.
+const ROSTER = () => FIX.routes['/api/hunt']?.body?.roster || [];
+function mixCards(v, nAtt, nSup) {
+  const F = v.run.state.fight;
+  const att = ROSTER().filter((c) => ['Character', 'Creature'].includes(c.type)).slice(0, nAtt);
+  const sup = ROSTER().filter((c) => !['Character', 'Creature'].includes(c.type)).slice(0, nSup);
+  const A = F.cards[43], S = F.cards[145];
+  for (const k of Object.keys(F.cards)) { delete F.cards[k]; delete v.status_lines[`card:${k}`]; delete v.need[k]; }
+  v.cards = {};
+  v.order = v.order.filter((o) => o.side !== 'card');
+  const ids = [];
+  [...att.map((c) => [c, 'attacker', 'striker', A]), ...sup.map((c) => [c, 'support', 'medic', S])].forEach(([c, cls, role, src], i) => {
+    const id = Number(c.id); ids.push(id);
+    F.cards[id] = { ...JSON.parse(JSON.stringify(src)), role, class: cls, hp: src.max - (i % 3) * 7, charge: i % 3, status: i % 2 ? { shielded: { value: 12 } } : {} };
     v.cards[id] = { id, name: c.name, rarity: c.rarity, image_url: c.image_url, type: c.type };
-    v.status_lines[`card:${id}`] = [];
-    v.need[id] = cls === 'support' ? 1 : 2;
-    v.order.push({ side: 'card', id, clock: 10 + v.order.length, ready: false });
-  }
-  const atk = [124, 318, 43, 57, 115], sup = [312, 145, 242];
-  F.squad = [...atk, ...sup].filter((id) => F.cards[id]);
-  v.run.state.squad = F.squad; v.allies = F.squad;
-  v.squad_hp = { hp: v.squad_hp.hp + 72 + 72 + 60, max: v.squad_hp.max + 72 + 72 + 60 };
+    v.status_lines[`card:${id}`] = []; v.need[id] = cls === 'support' ? 1 : 2;
+    v.order.splice(Math.min(v.order.length, i * 2), 0, { side: 'card', id, clock: 6 + i, ready: i === 0 });
+  });
+  F.squad = ids; v.run.state.squad = ids; v.allies = ids;
+  const hp = ids.reduce((t, id) => t + F.cards[id].hp, 0), max = ids.reduce((t, id) => t + F.cards[id].max, 0);
+  v.squad_hp = { hp, max };
   return v;
 }
 function derivedH2(kind) {
-  const live = kind.startsWith('m2h'); const st = kind.split('-')[1];
+  const live = kind.startsWith('m2h'); const st = MIX[kind] ? 'fight' : kind.split('-')[1];
   const name = FIX.routes['/api/hunt']?.body?.hunt?.name || 'The boss';
   const base = { ok: true, tester: !live, live, label: 'Practice (v2 test): no rewards', hunt: { name, ...(live ? { live_frac: 0.62 } : {}) } };
   if (st === 'lobby') return { ...base, can_start: true, day: null };
   const v = derivedG2(st === 'over' ? 'g2-over' : 'g2-fight');
   delete v.active_mode; delete v.run.mode;
-  if (v.run?.state?.fight?.enemies?.length) { oneBoss(v, name); eightCards(v); }
+  if (v.run?.state?.fight?.enemies?.length) { oneBoss(v, name); const mx = MIX[kind] || [5, 3]; mixCards(v, mx[0], mx[1]); }
   const over = st === 'over';
   Object.assign(v.run, { status: over ? 'over' : 'active', ended_by: over ? 'fell' : null });
   v.run.state = { ...v.run.state, engine: 2, phase: over ? 'over' : 'fight' };

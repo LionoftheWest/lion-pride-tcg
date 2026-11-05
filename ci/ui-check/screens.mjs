@@ -254,6 +254,11 @@ export const SCREENS = {
   'hunt-v2-over':   { id: 'UI-18', long: true, safe: true, notOn: ['tiny'], hunt: 'h2-over', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
   'hunt-m2-lobby':  { id: 'UI-17', long: true, notOn: ['tiny'], hunt: 'm2h-lobby', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
   'hunt-m2-fight':  { id: 'UI-18', long: true, safe: true, notOn: ['tiny'], hunt: 'm2h-fight', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 25]] },
+  // N-3: any squad mix (Hunt: 1 to 8 cards, any class). The extremes: 8 attackers + 0 supports, 1 + 7, 4 + 4, 0 + 8.
+  'hunt-m2-mix80':  { id: 'UI-18', long: true, safe: true, notOn: ['tiny'], hunt: 'm2h-mix80', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 25]] },
+  'hunt-m2-mix17':  { id: 'UI-18', long: true, safe: true, notOn: ['tiny'], hunt: 'm2h-mix17', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 25]] },
+  'hunt-m2-mix44':  { id: 'UI-18', long: true, safe: true, notOn: ['tiny'], hunt: 'm2h-mix44', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 25]] },
+  'hunt-m2-mix08':  { id: 'UI-18', long: true, safe: true, notOn: ['tiny'], hunt: 'm2h-mix08', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 25]] },
   'hunt-m2-over':   { id: 'UI-18', long: true, safe: true, notOn: ['tiny'], hunt: 'm2h-over', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
   'dungeon-v2-over': { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-over':        { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },

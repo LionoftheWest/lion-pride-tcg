@@ -1,0 +1,17 @@
+/* UI-52 view, UI-18 N-3 (this file loads after 90-ui-52-v2.css: name order, css-parts.js) (Nathan 2026-11-04: "squads can be any combos now"): the v2 fight with any squad mix (Hunt: 1 to 8 cards of any class).
+   Existing patterns only (ui-v2-gauntlet2.js layout()):
+   - g2-plates: the supports are the small cards of D-205 in the squad row, where the Support panel cannot hold them (desktop and phones).
+   - g2-wrap: a squad row too crowded for its cards wraps to two rows, --g2-per cards in each (the smaller card steps of UI-47 stay). */
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates .dg-sup.g2-plate { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-1); padding: var(--sp-1); border-radius: var(--rad-md); flex: 0 1 var(--card-squad); min-width: 0; max-width: var(--card-squad); width: auto; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates .dg-sup.g2-plate img { width: 100%; height: auto; aspect-ratio: 1 / var(--card-ratio); object-fit: cover; border-radius: var(--rad-sm); }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates .dg-sup.g2-plate .t { display: none; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates .dg-sup.g2-plate .g2-suprole { display: block; position: absolute; top: calc(-1 * var(--sp-2)); right: calc(-1 * var(--sp-2)); }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates .dg-sup.g2-plate .g2-stline em { justify-content: center; font-size: var(--fs-caption); }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates .dg-sup.g2-plate .g2-shp small { display: none; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates .dg-sups { display: none; }
+/* g2-fit: the measured card width (--g2-cw, a card step from TOKENS set by layout()); g2-wrap: two rows of --g2-per cards */
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-fit .dg-units > .dg-unit, body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-fit .dg-units > .dg-sup.g2-plate { flex: 0 0 auto; width: auto; max-width: none; min-width: 0; }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-fit .dg-units > .dg-unit > .dg-card, body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-fit .dg-units > .dg-sup.g2-plate img { width: var(--g2-cw); }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-fit .dg-units > .dg-sup.g2-plate { width: calc(var(--g2-cw) + var(--sp-1) * 2); }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-wrap .dg-units { flex-wrap: wrap; row-gap: var(--sp-1); align-content: center; justify-content: center;
+  width: calc((var(--g2-cw) + var(--g2-ex)) * var(--g2-per) + var(--sp-1) * (var(--g2-per) - 1)); max-width: 100%; margin-inline: auto; }
