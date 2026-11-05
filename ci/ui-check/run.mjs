@@ -92,6 +92,8 @@ async function runCell([s, screen, variant], ref = {}) {
         if (spec.board) cookies.push({ name: 'ci_board', value: spec.board, url: BASE });   // UI-66: the Leaderboard board states (rows | empty | error)
         if (spec.ach) cookies.push({ name: 'ci_ach', value: spec.ach, url: BASE });
         if (spec.frames) cookies.push({ name: 'ci_frames', value: spec.frames, url: BASE });   // UI-13 D-191: the set holo frames (sets)
+        if (spec.shop) cookies.push({ name: 'ci_shop', value: spec.shop, url: BASE });   // UI-43 N-10: the paused stat reset (serve.mjs)
+        if (spec.v3) cookies.push({ name: 'ci_v3', value: spec.v3, url: BASE });   // UI-43 N-10: off = the v2 screens (serve.mjs)
         if (spec.stats) cookies.push({ name: 'ci_stats', value: spec.stats, url: BASE });
         if (spec.loader) {   // UI-56: the sign-in never answers (loading, timeout) or fails (error); the hint says "v3 member" (the loader cannot read the flag)
           cookies.push({ name: 'ci_loader', value: spec.loader === 'error' ? 'error' : 'wait', url: BASE });
@@ -157,6 +159,13 @@ async function runCell([s, screen, variant], ref = {}) {
           res.cut = await call(pg, CUT, 'body');
           res.cutWin = await call(pg, CUT, '[data-audit-win]');
           res.extra = await call(pg, EXTRA);
+          // see (screens.mjs): each selector must exist and be in the view (UI-43 N-10: the paused line and the disabled button)
+          if (spec.see) res.see = await pg.evaluate((sels) => sels.map((q) => {
+            const e = document.querySelector(q); if (!e) return [q, 'absent'];
+            const b = e.getBoundingClientRect(); const st = getComputedStyle(e);
+            const ok = b.width > 0 && b.height > 0 && st.visibility !== 'hidden' && b.top >= -1 && b.left >= -1 && b.bottom <= innerHeight + 1 && b.right <= innerWidth + 1;
+            return ok ? null : [q, 'outside the view'];
+          }).filter(Boolean), spec.see);
           if (spec.walk) res.walk = await call(pg, WALK, { touch });   // UI-37: the walkthrough card (the other checks skip #tutLayer)
           if (!res.checks || !res.fit || !res.cut || !res.extra) throw new Error('a check returned nothing');
           // A loaded runner (software WebGL, the 3D chest) timed out on page.screenshot (PR #290, three runs). On a TimeoutError wait 2 s
