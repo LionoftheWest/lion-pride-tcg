@@ -43,7 +43,48 @@ function block(what) {
 }
 export const isBlocked = () => blocked;
 
-/** Wrap globalThis.fetch (call it before the Supabase client is made). */
+/** The NAMED writes of swap / unswap (S1-FACE swap build). Everything else stays blocked. named = {
+ *    uploads: Set of object names that may be uploaded (POST /storage/v1/object/card-art/<name>, never x-upsert: true),
+ *    deletes: Set of object names that may be deleted (DELETE /storage/v1/object/card-art, every name of the body),
+ *    patch:   Map card id -> Set of allowed image_url PATHS (PATCH /rest/v1/cards?id=eq.<id>&image_url=eq.<value>: a compare-and-set,
+ *             the body = { image_url } only) }
+ * A project host only (a Supabase host or the local copy origin). */
+export function namedWrite(method, url, body, headers, localOrigin, named, pathOf) {
+  if (!named) return false;
+  const u = new URL(url);
+  const project = /(^|\.)supabase\.(co|in)$/i.test(u.hostname) || (localOrigin !== null && u.origin === localOrigin);
+  if (!project) return false;
+  const p = u.pathname;
+  const up = p.match(new RegExp(`^/storage/v1/object/${BUCKET}/(.+)$`));
+  if (method === 'POST' && up) {
+    const name = decodeURIComponent(up[1]);
+    return named.uploads.has(name) && String(headerOf(headers, 'x-upsert') || 'false') !== 'true' && !name.includes('..');
+  }
+  if (method === 'DELETE' && p === `/storage/v1/object/${BUCKET}`) {
+    let names = null;
+    try { names = JSON.parse(String(body)).prefixes; } catch { return false; }
+    return Array.isArray(names) && names.length > 0 && names.every((n) => named.deletes.has(n));
+  }
+  if (method === 'PATCH' && p === '/rest/v1/cards') {
+    const id = (u.searchParams.get('id') || '').match(/^eq\.(\d+)$/);
+    const cas = u.searchParams.get('image_url');
+    if (!id || !cas || !cas.startsWith('eq.')) return false; // a compare-and-set only
+    let b = null;
+    try { b = JSON.parse(String(body)); } catch { return false; }
+    if (!b || Object.keys(b).join() !== 'image_url') return false;
+    const ok = named.patch.get(Number(id[1]));
+    return Boolean(ok && ok.has(pathOf(b.image_url)));
+  }
+  return false;
+}
+function headerOf(h, k) {
+  if (!h) return null;
+  if (typeof h.get === 'function') return h.get(k);
+  const key = Object.keys(h).find((x) => x.toLowerCase() === k);
+  return key ? h[key] : null;
+}
+
+/** Wrap globalThis.fetch (call it before the Supabase client is made). opts.named (+ opts.pathOf): the named writes of swap/unswap. */
 export function installFetchGuard(localApi = globalThis.__LOCALDB_API, opts = {}) {
   const inner = globalThis.fetch;
   const localOrigin = localApi ? new URL(localApi).origin : null;
@@ -51,7 +92,8 @@ export function installFetchGuard(localApi = globalThis.__LOCALDB_API, opts = {}
     const isReq = typeof input === 'object' && !(input instanceof URL);
     const url = isReq ? input.url : String(input);
     const method = String(init.method || (isReq ? input.method : '') || 'GET').toUpperCase();
-    if (!allowed(method, url, localOrigin, opts)) block(`${method} ${new URL(url).host}${new URL(url).pathname}`);
+    const headers = init.headers || (isReq ? input.headers : null);
+    if (!allowed(method, url, localOrigin, opts) && !namedWrite(method, url, init.body, headers, localOrigin, opts.named, opts.pathOf)) block(`${method} ${new URL(url).host}${new URL(url).pathname}`);
     return inner(input, init);
   };
 }

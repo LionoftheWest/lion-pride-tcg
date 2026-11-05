@@ -12,7 +12,9 @@ import './localdb-guard.mjs';
  *   face-export --set S1 [--out <file>]                 the loadFaceV2 output of every S1 card (the input of the render-only machine)
  *   ingest  --set S1 --from <dir> --manifest <ours> [--tools-ref <f>]   take the rows of the render-only machine (checks, see the function)
  * FILE commands (no database): tools [--save <f>] (the tools print, fp-code, scripts sha), keys / keys-check (the two machines' lists).
- * WRITE commands (no guard; each prints its write list first): orphans (B10). swap, unswap: not built yet (SPEC B4/B5, before Friday).
+ *   art-report --set S1 [--only ids] [--out <f>]          each staged still: the art of the new face = the art of the old live face
+ * WRITE commands (each prints its write list first): orphans (B10, no guard). swap, unswap (SPEC 2.4, 2.5): the guard stays on with ONLY
+ *   their named writes (stage-guard.mjs namedWrite); a clean tree (--live: HEAD = origin/main). See the head of swap() and unswap().
  * Every database command: --live, or a local copy (LOCALDB=1 with the localdb preload). Without both: refused (the push-set.mjs target rule).
  * --render-only (SPEC 2.8, a second machine, with --import ./scripts/render-only-preload.mjs --cards <f> --face-export <f>): stage with no
  * project and no keys, exempt from the target rule.
@@ -230,7 +232,7 @@ const failedOf = (c, mask, lim) => {
 };
 
 // ---------------------------------------------------------------- main
-const READ_CMDS = ['stage', 'order', 'before', 'verify', 'fresh', 'storage', 'backup', 'face-export', 'ingest'];
+const READ_CMDS = ['stage', 'order', 'before', 'verify', 'fresh', 'storage', 'backup', 'face-export', 'ingest', 'art-report'];
 const WRITE_CMDS = ['orphans', 'swap', 'unswap'];
 const FILE_CMDS = ['tools', 'keys', 'keys-check']; // no database, no target: local files only
 async function main() {
@@ -260,15 +262,27 @@ async function main() {
     installFetchGuard(null, { offline: true });
     return stage(null, `RENDER-ONLY ${hostname()}`);
   }
+  // review r1 L-4: the B10 list is FIXED on live (orphans-17.txt); another list file is for a local test only
+  if (CMD === 'orphans' && LIVE && val('--list')) { console.log('refused: --list with --live (the B10 list is fixed)'); return 1; }
   const refused = targetCheck();
   if (refused) { console.log(refused); return 1; }
   const target = globalThis.__LOCALDB_API ? `LOCAL ${globalThis.__LOCALDB_API}` : `LIVE ${LIVE_REF}`;
   const read = READ_CMDS.includes(CMD);
   if (read) installFetchGuard(); // before the client is made
+  if (CMD === 'swap' || CMD === 'unswap') {
+    // review r1 L-3: a write run names a clean commit (live: origin/main)
+    const tree = treeCheck();
+    if (tree) { console.log(tree); return 1; }
+    // the guard stays on: the read allow-list + ONLY the named writes of this command (the face2 objects, the old objects, the rows)
+    const named = await namedWrites(CMD);
+    if (named.refused) { console.log(named.refused); return 1; }
+    installFetchGuard(undefined, { named, pathOf });
+    console.log(`GUARD named uploads=${named.uploads.size} deletes=${named.deletes.size} rows=${named.patch.size}`);
+  }
   const { supabase } = await import('../src/supabase.js');
   if (read) guardClient(supabase);
   else return writeCommand(CMD, supabase, target);
-  return { stage, order, before, verify, fresh, storage, backup, 'face-export': exportFaces, ingest: importStaged }[CMD](supabase, target);
+  return { stage, order, before, verify, fresh, storage, backup, 'face-export': exportFaces, ingest: importStaged, 'art-report': artReport }[CMD](supabase, target);
 }
 
 async function order(db, target) {
@@ -458,6 +472,44 @@ async function backup(db, target) {
   writeFileSync(jl, lines.join('\n') + '\n');
   console.log(bad ? `BACKUP FAIL objects=${n} bytes=${bytes} bad=${bad} target=${target}` : `BACKUP PASS objects=${n} bytes=${bytes} target=${target}`);
   return bad ? 1 : 0;
+}
+
+/** art-report (SPEC 4, R-5; Fri before F2, read only, under the guard): for each staged STILL row, is the art of the new face the art of
+ *  the old live face? The old face = the backup file (its sha = backup.jsonl: the live bytes of the backup), and the live row must still
+ *  be on that old path. scripts/art-diff.mjs gives a score; <= ART_LIMIT = "ART SAME", else "ART DIFFER" (a line to Nathan: the row waits;
+ *  swap skips it until Nathan's word is added to the report as "ART OK <id> <who>"). Animated rows: not checked (the spec names the stills).
+ *  art-report --set S1 [--manifest] [--backup] [--backup-dir] [--order] [--only ids] [--out <file>]   -> "ART-REPORT rows= same= differ= bad=" */
+async function artReport(db, target) {
+  const inp = swapInputs();
+  if (inp.refused) { console.log(inp.refused); return 1; }
+  const { artScore, ART_LIMIT } = await import('./art-diff.mjs');
+  const out = val('--out') || join(ITEM, 'work', 'art-report.txt');
+  const ONLY = val('--only') ? new Set(val('--only').split(',').map(Number)) : null;
+  const lines = [`# art-report ${now()} target=${target} head=${git('rev-parse', 'HEAD').slice(0, 8)} limit=${ART_LIMIT}`];
+  const say = (l) => { console.log(l); lines.push(l); };
+  let same = 0, differ = 0, bad = 0;
+  for (const o of inp.order) {
+    const m = inp.staged.get(o.id), b = inp.backup.get(o.id);
+    if (!m || m.cls !== 'still' || (ONLY && !ONLY.has(o.id))) continue;
+    if (!b) { bad += 1; say(`ART BAD ${o.id} ${m.key} ${m.rarity} no backup`); continue; }
+    const { data: row, error } = await db.from('cards').select('id, image_url').eq('id', o.id).maybeSingle();
+    if (isBlocked()) return 5;
+    if (error) throw new Error(`cards ${o.id}: ${error.message}`);
+    const main = b.objects.find((x) => x.name === objectOf(b.old_path));
+    if (!row || pathOf(row.image_url) !== b.old_path) { bad += 1; say(`ART BAD ${o.id} ${m.key} ${m.rarity} row not on the old path`); continue; }
+    const f = main ? join(inp.bdir, main.name) : null;
+    const oldBuf = f && existsSync(f) ? readFileSync(f) : null;
+    if (!oldBuf || sha(oldBuf) !== main.sha256) { bad += 1; say(`ART BAD ${o.id} ${m.key} ${m.rarity} backup sha`); continue; }
+    const newBuf = readFileSync(m.files.main.path);
+    if (sha(newBuf) !== m.files.main.sha256) { bad += 1; say(`ART BAD ${o.id} ${m.key} ${m.rarity} staged sha`); continue; }
+    const s = await artScore(newBuf, oldBuf);
+    if (s.score <= ART_LIMIT) { same += 1; say(`ART SAME ${o.id} ${m.key} ${m.rarity} score=${s.score}`); }
+    else { differ += 1; say(`ART DIFFER ${o.id} ${m.key} ${m.rarity} score=${s.score} new=${m.files.main.path} old=${f.replace(/\\/g, '/')}`); }
+  }
+  say(`ART-REPORT rows=${same + differ + bad} same=${same} differ=${differ} bad=${bad} limit=${ART_LIMIT} target=${target}`);
+  writeFileSync(out, lines.join('\n') + '\n');
+  console.log(`ART-REPORT out=${out}`);
+  return differ + bad ? 1 : 0;
 }
 
 /** The key lists of the two machines, from ONE order file (SPEC v2.4 2.8 P-2, r5 L-3). No database.
@@ -875,8 +927,450 @@ async function doPlant(sharp, plant, attempt, f) {
 // The STATIC test of scripts/test-stage-faces.mjs reads this file only up to the line above.
 async function writeCommand(cmd, db, target) {
   if (cmd === 'orphans') return orphans(db, target);
-  console.log(`refused: ${cmd} is not built yet (S1-FACE B4/B5, before Friday)`);
+  if (cmd === 'swap') return swap(db, target);
+  if (cmd === 'unswap') return unswap(db, target);
   return 1;
+}
+
+// ---------------------------------------------------------------- object state: the storage LIST, never a plain public GET/HEAD
+// BOARD 2026-11-04 22:15: Cloudflare cached a 200 for 17 deleted objects (cf-cache-status HIT), so a plain public GET said "present".
+// Present / absent / size = the LIST call (the origin). Bytes = a cache-busted public GET (a new query = a cache MISS).
+const cacheBust = () => `cb=${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+/** { present, size } of one object, from the storage LIST call of its folder (search by the file name, exact match). */
+export async function objectState(db, name) {
+  const i = name.lastIndexOf('/');
+  const dir = i < 0 ? '' : name.slice(0, i), file = name.slice(i + 1);
+  const { data, error } = await db.storage.from(BUCKET).list(dir, { limit: 100, offset: 0, search: file });
+  if (error) throw new Error(`storage list ${dir} ${file}: ${error.message}`);
+  const e = (data || []).find((x) => x.name === file && x.id !== null);
+  return e ? { present: true, size: Number(e.metadata?.size ?? -1) } : { present: false, size: null };
+}
+/** The bytes of one object: a cache-busted public GET (status, buf). */
+async function objectBytes(db, name) {
+  const { publicUrl } = await import('../src/storage-url.js');
+  const r = await fetch(`${publicUrl(db, BUCKET, name)}?${cacheBust()}`);
+  return { status: r.status, buf: r.ok ? Buffer.from(await r.arrayBuffer()) : null, type: r.headers.get('content-type') };
+}
+/** A cache-busted public HEAD: { status, length }. */
+async function objectHead(db, name) {
+  const { publicUrl } = await import('../src/storage-url.js');
+  const r = await fetch(`${publicUrl(db, BUCKET, name)}?${cacheBust()}`, { method: 'HEAD' });
+  return { status: r.status, length: r.headers.get('content-length') === null ? null : Number(r.headers.get('content-length')) };
+}
+/** Delete names (one request each, in the given order) and prove each is gone: LIST absent AND a cache-busted GET = 400/404. */
+async function deleteObjects(db, names, point) {
+  for (const n of names) {
+    const { error } = await db.storage.from(BUCKET).remove([n]);
+    if (isBlocked()) return { ok: false, why: 'blocked' };
+    if (error) return { ok: false, why: `delete ${n}: ${error.message}` };
+    if (point) await point(n);
+  }
+  for (const n of names) {
+    const s = await objectState(db, n);
+    if (s.present) return { ok: false, why: `still listed ${n}` };
+    const b = await objectBytes(db, n);
+    if (b.status !== 400 && b.status !== 404) return { ok: false, why: `still served ${n} http=${b.status}` };
+  }
+  return { ok: true };
+}
+
+// The LOCAL test points of swap/unswap (S1FACE_TEST_POINT="<hold|crash>:<point>:<id>[;...]"). hold = write <work>/held-<point>-<id>, then wait
+// for <work>/release-<point>-<id> (the test checks I-1 at that moment); crash = exit 9 at once (no line, no cleanup). LOCAL copy only.
+function testPoints(workDir) {
+  const spec = globalThis.__LOCALDB_API ? process.env.S1FACE_TEST_POINT || '' : '';
+  const pts = spec.split(';').filter(Boolean).map((s) => { const [mode, point, id] = s.split(':'); return { mode, point, id: Number(id) }; });
+  return async (point, id) => {
+    for (const p of pts.filter((x) => x.point === point && x.id === id)) {
+      if (p.mode === 'crash') { console.log(`TEST crash ${point} ${id}`); process.exit(9); }
+      const held = join(workDir, `held-${point}-${id}`), rel = join(workDir, `release-${point}-${id}`);
+      writeFileSync(held, now());
+      console.log(`TEST hold ${point} ${id}`);
+      while (!existsSync(rel)) await new Promise((r) => setTimeout(r, 100));
+      rmSync(held, { force: true }); rmSync(rel, { force: true });
+    }
+  };
+}
+
+/** The tree rule of the write commands (review r1 L-3): a --live run needs a clean tracked tree at origin/main. */
+function treeCheck() {
+  const dirty = git('status', '--porcelain', '--untracked-files=no');
+  if (dirty === '?') return 'refused: git status failed';
+  if (dirty) return `refused: the tree is dirty (${dirty.split(/\r?\n/).length} tracked files changed)`;
+  if (LIVE) {
+    const head = git('rev-parse', 'HEAD'), main = git('rev-parse', 'origin/main');
+    if (head !== main) return `refused: HEAD ${head.slice(0, 8)} is not origin/main ${main.slice(0, 8)}`;
+  }
+  return null;
+}
+
+/** The named writes of swap / unswap (stage-guard.mjs namedWrite), from the local files only (before the client exists).
+ *  swap:   uploads = the face2 names; deletes = the old names + the face2 names (a clean); patch = each row -> its new path.
+ *  unswap: uploads = the old names (from the backup); deletes = the face2 names; patch = each row -> its old path. */
+async function namedWrites(cmd) {
+  const inp = swapInputs();
+  if (inp.refused) return inp;
+  const only = val('--only') ? val('--only').split(',').map((x) => x.trim()) : null;
+  const named = { uploads: new Set(), deletes: new Set(), patch: new Map() };
+  for (const m of inp.staged.values()) {
+    const b = inp.backup.get(m.card_id);
+    if (!b || (only && !only.includes(String(m.card_id)) && !only.includes(m.key))) continue;
+    const n = await newNames(m);
+    const face2 = [n.main, n.grid, n.reveal].filter(Boolean), old = b.objects.map((o) => o.name);
+    if (cmd === 'swap') {
+      face2.forEach((x) => named.uploads.add(x)); [...old, ...face2].forEach((x) => named.deletes.add(x));
+      named.patch.set(m.card_id, new Set([pathOfName(n.main, m.stamp)]));
+    } else {
+      old.forEach((x) => named.uploads.add(x)); face2.forEach((x) => named.deletes.add(x));
+      named.patch.set(m.card_id, new Set([b.old_path]));
+    }
+  }
+  return named;
+}
+
+/** The swap inputs: the manifest (newest STAGED line of each row), backup.jsonl, the order, swapped.jsonl (the event log). */
+function swapInputs() {
+  const man = val('--manifest') || join(ITEM, 'work', 'staged.jsonl');
+  const bj = val('--backup') || join(ITEM, 'work', 'backup.jsonl');
+  const bdir = val('--backup-dir') || join(dirname(bj), 'backup');
+  const ordf = val('--order') || join(ITEM, 'work', 'order.txt');
+  const log = val('--swapped') || join(ITEM, 'work', 'swapped.jsonl');
+  for (const f of [man, bj, ordf]) if (!existsSync(f)) return { refused: `refused: no ${f}` };
+  const { staged } = manifestState(readManifest(man));
+  const backup = new Map(readManifest(bj).map((b) => [b.card_id, b]));
+  const order = readOrder(ordf);
+  const events = readManifest(log);
+  return { man, bj, bdir, ordf, log, staged, backup, order, events };
+}
+/** The new object names of a staged row (SPEC 2.4 step 2): cards/face2/<key>-<rarity>-<stamp>.<ext> + its grid and reveal. */
+async function newNames(m) {
+  const { gridObject, revealObject } = await import('../src/thumbs.js');
+  const ext = m.files.main.path.split('.').pop();
+  const main = `cards/face2/${m.key}-${m.rarity}-${m.stamp}.${ext}`;
+  return { main, grid: gridObject(main), reveal: m.files.reveal ? revealObject(main) : null };
+}
+const typeOf = (n) => (n.endsWith('.png') ? 'image/png' : 'image/webp');
+const pathOfName = (name, v) => `/storage/v1/object/public/${BUCKET}/${name}?v=${v}`;
+const originOf = (u) => (String(u).match(/^https?:\/\/[^/]+/) || [''])[0];
+/** The newest event of each row in swapped.jsonl (UPLOADING, UPDATED, DELETED, UNSWAPPED, CLEAN). */
+function eventState(events) {
+  const st = new Map();
+  for (const e of events) {
+    const s = st.get(e.card_id) || {};
+    s.last = e.ev;
+    if (e.ev === 'UPLOADING') s.uploading = e;
+    if (e.ev === 'UPDATED') s.updated = e;
+    if (e.ev === 'DELETED') s.deleted = e;
+    if (e.ev === 'UNSWAPPED') s.unswapped = e;
+    st.set(e.card_id, s);
+  }
+  return st;
+}
+/** I-1: every S1 row's image_url object (main, grid, reveal of an animated row) is in the LIST. */
+async function i1(db) {
+  const { ANIMATED } = await import('../src/rarity.js');
+  const { gridObject, revealObject } = await import('../src/thumbs.js');
+  const rows = await setRows(db, 'id, rarity, image_url');
+  const all = new Set((await listAll(db)).map((o) => o.name));
+  const bad = [];
+  for (const r of rows) {
+    const main = objectOf(r.image_url);
+    const names = main ? [main, gridObject(main), ...(ANIMATED.has(r.rarity) ? [revealObject(main)] : [])] : [];
+    const miss = main ? names.filter((n) => !all.has(n)) : ['image_url'];
+    if (miss.length) bad.push(`${r.id}:${miss.join('+')}`);
+  }
+  console.log(bad.length ? `I-1 FAIL rows=${rows.length} missing=${bad.length} ${bad.slice(0, 10).join(' ')}` : `I-1 PASS rows=${rows.length}`);
+  return !bad.length;
+}
+
+/** swap (SPEC 2.4, B4). swap --set S1 --until <ISO> --fresh <fresh log> [--live] [--only ids] [--grace 20] [--manifest] [--backup] [--order]
+ *  [--swapped] [--resume]. Per row, in the order of section 5:
+ *   1. the row: path(image_url) = path(old) = the backup old_path, and its backup files have their sha. Else SKIP.
+ *   2. upload main, grid, reveal to the face2 names (upsert false); each: LIST size = local size, a cache-busted HEAD = 200 + content-length.
+ *   3. compare-and-set image_url (count 1); count 0: delete the step 2 objects, "SKIP <id> changed".
+ *   4. read again: path = the new path; "UPDATED <id>" (swapped.jsonl).
+ *   5. delete grace: after row n+<grace> is UPDATED, delete the old main, grid, reveal of row n (backup.jsonl names), each proven gone by the
+ *      LIST and a cache-busted GET; "DELETED <id>". After the last row: wait 2 min, then delete the rest.
+ *  Every 25 rows: "STORAGE now=" (LIST); > 940,000,000: delete the whole grace queue ("GRACE FLUSH <n>"); > 960,000,000 with an empty queue:
+ *  stop. One proxy HEAD per 25 rows. Every run is a resume (swapped.jsonl): a DELETED row is done; an UPDATED row with the new path live
+ *  goes back into the grace queue; an UPLOADING row with the old path live: its new objects are deleted and the row starts again.
+ *  An UNSWAPPED row is never swapped again. Writes only the named objects and rows (the guard, opts.named). */
+async function swap(db, target) {
+  const untilS = val('--until'), until = Date.parse(untilS || '');
+  if (!Number.isFinite(until)) { console.log('usage: swap --set S1 --until <ISO> --fresh <fresh log> --art <art report> [--live] [--only ids] (see the head of swap())'); return 1; }
+  const inp = swapInputs();
+  if (inp.refused) { console.log(inp.refused); return 1; }
+  const { staged, backup, order, events, log } = inp;
+  const freshF = val('--fresh');
+  if (!freshF || !existsSync(freshF)) { console.log('refused: --fresh <the log of "fresh"> (SPEC 4: STALE rows are not swapped)'); return 1; }
+  const freshTxt = readFileSync(freshF, 'utf8');
+  if (!/^FRESH n=\d+ stale=\d+$/m.test(freshTxt)) { console.log(`refused: ${freshF} has no "FRESH n=" line`); return 1; }
+  const freshIds = new Set([...freshTxt.matchAll(/^FRESH \S+ \S+ (\d+)$/gm)].map((m) => Number(m[1])));
+  // the art report (SPEC 4, R-5): a still row needs "ART SAME <id>" or Nathan's "ART OK <id> <who>" (an ART DIFFER row waits)
+  const artF = val('--art');
+  if (!artF || !existsSync(artF)) { console.log('refused: --art <the art-report file> (SPEC 4: an art difference waits for Nathan)'); return 1; }
+  const artTxt = readFileSync(artF, 'utf8');
+  if (!/^ART-REPORT rows=/m.test(artTxt)) { console.log(`refused: ${artF} has no "ART-REPORT rows=" line`); return 1; }
+  const artOk = new Set([...artTxt.matchAll(/^ART (?:SAME|OK) (\d+)\b/gm)].map((m) => Number(m[1])));
+  const GRACE = Number(val('--grace') ?? 20);
+  const EVERY = Number((globalThis.__LOCALDB_API && val('--storage-every')) || 25);
+  const FINAL_WAIT = Number((globalThis.__LOCALDB_API && process.env.S1FACE_FINAL_WAIT_S) || 120) * 1000;
+  const PROXY = process.env.S1FACE_PROXY || 'https://play.lionpridetcg.com/app/api/img';
+  const ONLY = val('--only') ? new Set(val('--only').split(',').map(Number)) : null;
+  const point = testPoints(dirname(log));
+  const ev = (o) => appendFileSync(log, JSON.stringify({ ...o, at: now() }) + '\n');
+  const est = eventState(events);
+  const ids = order.map((o) => o.id).filter((id) => staged.has(id) && (!ONLY || ONLY.has(id)));
+
+  // the start projection (SPEC 4 storage): over the limit = the rows at the END of the order are cut (WAIT storage), never swapped now
+  const all0 = await listAll(db);
+  const now0 = all0.reduce((t, o) => t + o.size, 0);
+  const todoRows = ids.filter((id) => !(est.get(id)?.deleted || est.get(id)?.updated || est.get(id)?.unswapped));
+  const delta = todoRows.map((id) => ({ id, d: stagedBytes(staged.get(id)) - (backup.get(id)?.objects || []).reduce((t, o) => t + o.bytes, 0) }));
+  let end = now0 + delta.reduce((t, x) => t + x.d, 0);
+  const cut = new Set();
+  for (let i = delta.length - 1; i >= 0 && end > LIMIT; i--) if (delta[i].d > 0) { end -= delta[i].d; cut.add(delta[i].id); }
+  if (end > LIMIT) { console.log(`refused: projected end over the limit even without the adding rows: now=${now0} end=${end} limit=${LIMIT}`); return 1; }
+  if (cut.size) console.log(`WAIT storage rows=${cut.size} ids=${[...cut].join(',')} end-without-them=${end}`);
+  console.log(`SWAP START head=${git('rev-parse', 'HEAD').slice(0, 8)} tree=clean target=${target} rows=${ids.length} todo=${todoRows.length - cut.size} grace=${GRACE} now=${now0} projected-end=${end} limit=${LIMIT} until=${new Date(until).toISOString()}`);
+  for (const id of ids) {
+    const m = staged.get(id), b = backup.get(id);
+    if (!m || !b) { console.log(`PLAN ${id} -`); continue; }
+    const n = await newNames(m);
+    console.log(`PLAN ${id} ${m.key} ${m.rarity} new=${n.main} old=${b.objects.map((o) => o.name).join(',')}`);
+  }
+
+  const queue = []; // { id, names }: UPDATED rows whose old objects wait for the delete
+  let nUpd = 0, nDel = 0, nSkip = 0, nDone = 0, sinceStorage = 0, stop = null, flushes = 0;
+  const oldNamesOf = (id) => (backup.get(id)?.objects || []).map((o) => o.name);
+  const delOld = async (q, why) => {
+    // never delete an object that a row points at: the row must still have its new path
+    const { data: r, error } = await db.from('cards').select('id, image_url').eq('id', q.id).maybeSingle();
+    if (error) throw new Error(`cards ${q.id}: ${error.message}`);
+    if (!r || pathOf(r.image_url) !== q.newPath) { console.log(`KEEP ${q.id} old objects (the row is not on the new path: ${r ? pathOf(r.image_url) : 'no row'})`); return true; }
+    const d = await deleteObjects(db, q.names, (x) => (x === q.names[0] ? point('after-delete-main', q.id) : null));
+    if (!d.ok) { console.log(`ERROR delete ${q.id} ${d.why}`); return false; }
+    ev({ ev: 'DELETED', card_id: q.id, names: q.names, why });
+    nDel += 1;
+    console.log(`DELETED ${q.id} ${why}`);
+    return true;
+  };
+  const storageCheck = async () => {
+    const tot = (await listAll(db)).reduce((t, o) => t + o.size, 0);
+    console.log(`STORAGE now=${tot} queue=${queue.length}`);
+    if (tot > 940000000 && queue.length) {
+      const k = queue.length;
+      while (queue.length) if (!(await delOld(queue.shift(), 'grace-flush'))) return 'delete';
+      flushes += 1;
+      console.log(`GRACE FLUSH ${k}`);
+      const t2 = (await listAll(db)).reduce((t, o) => t + o.size, 0);
+      console.log(`STORAGE now=${t2} queue=0`);
+      if (t2 > 960000000) return `storage now=${t2} > 960000000 with an empty queue`;
+    } else if (tot > 960000000) return `storage now=${tot} > 960000000 with an empty queue`;
+    return null;
+  };
+
+  for (const id of ids) {
+    if (isBlocked()) return 5;
+    const m = staged.get(id), b = backup.get(id), s = est.get(id) || {};
+    if (s.deleted) { nDone += 1; console.log(`DONE ${id}`); continue; }
+    if (s.last === 'UNSWAPPED') { nSkip += 1; console.log(`SKIP ${id} unswapped`); continue; }
+    const n = await newNames(m);
+    const newPath = pathOfName(n.main, m.stamp);
+    const names = [n.main, n.grid, n.reveal].filter(Boolean);
+    const { data: row, error } = await db.from('cards').select('id, image_url, set_id').eq('id', id).maybeSingle();
+    if (error) throw new Error(`cards ${id}: ${error.message}`);
+    if (!row) { nSkip += 1; console.log(`SKIP ${id} no row`); continue; }
+    // the resume rules (every run)
+    if (pathOf(row.image_url) === newPath) {
+      if (!s.updated) { ev({ ev: 'UPDATED', card_id: id, newPath, oldUrl: m.old, recovered: true }); console.log(`UPDATED ${id} recovered`); }
+      queue.push({ id, names: oldNamesOf(id), newPath });
+      console.log(`RESUME ${id} on the new path: back in the grace queue`);
+      continue;
+    }
+    if (s.updated) { nSkip += 1; console.log(`SKIP ${id} changed after its update now=${pathOf(row.image_url)}`); continue; }
+    if (stop) continue;
+    if (cut.has(id)) { console.log(`WAIT ${id} storage`); continue; }
+    if (Date.now() >= until) { stop = 'until'; console.log('UNTIL reached (no new row)'); continue; }
+    if (existsSync(join(ITEM, 'work', 'PAUSE'))) { stop = 'PAUSE'; console.log('PAUSE (no new row)'); continue; }
+    // 1. the row and its backup
+    const why = [];
+    if (row.set_id !== SET) why.push(`set ${row.set_id}`);
+    if (!freshIds.has(id)) why.push('not-fresh');
+    if (m.cls === 'still' && !artOk.has(id)) why.push('art');
+    if (!b) why.push('no backup');
+    else if (pathOf(row.image_url) !== b.old_path || pathOf(m.old) !== b.old_path) why.push(`changed now=${pathOf(row.image_url)}`);
+    else {
+      for (const o of b.objects) {
+        const f = join(inp.bdir, o.name);
+        if (!existsSync(f) || sha(readFileSync(f)) !== o.sha256) why.push(`backup sha ${o.name}`);
+      }
+      const want = await oldObjects(row);
+      if (canon([...want].sort()) !== canon(b.objects.map((o) => o.name).sort())) why.push('backup names');
+    }
+    const local = {};
+    for (const [k, f] of Object.entries(m.files)) if (f) { const buf = existsSync(f.path) ? readFileSync(f.path) : null; if (!buf || sha(buf) !== f.sha256) why.push(`staged sha ${k}`); local[k] = buf; }
+    // a crash after the upload, before the update (UPLOADING, the old path live): delete the new objects, then the row again
+    for (const x of s.uploading ? names : []) {
+      const st = await objectState(db, x);
+      if (st.present) {
+        const d = await deleteObjects(db, [x]);
+        if (!d.ok) { console.log(`ERROR clean ${id} ${d.why}`); stop = 'error'; break; }
+        ev({ ev: 'CLEAN', card_id: id, names: [x] });
+        console.log(`CLEAN ${id} ${x}`);
+      }
+    }
+    if (stop) continue;
+    if (why.length) { nSkip += 1; console.log(`SKIP ${id} ${why.join(',')}`); continue; }
+    await point('after-read', id);
+    // 2. upload
+    ev({ ev: 'UPLOADING', card_id: id, names, newPath, oldUrl: row.image_url });
+    let upOk = true;
+    for (const [k, x] of [['main', n.main], ['grid', n.grid], ['reveal', n.reveal]]) {
+      if (!x) continue;
+      const { error: ue } = await db.storage.from(BUCKET).upload(x, local[k], { upsert: false, contentType: typeOf(x), cacheControl: '31536000' });
+      if (isBlocked()) return 5;
+      if (ue) { console.log(`ERROR upload ${id} ${x}: ${ue.message}`); upOk = false; break; }
+      const st = await objectState(db, x), h = await objectHead(db, x);
+      if (!st.present || st.size !== local[k].length || h.status !== 200 || h.length !== local[k].length) {
+        console.log(`ERROR upload check ${id} ${x} listed=${st.present ? st.size : 'no'} head=${h.status} length=${h.length} local=${local[k].length}`); upOk = false; break;
+      }
+    }
+    if (!upOk) {
+      const d = await deleteObjects(db, (await Promise.all(names.map(async (x) => ((await objectState(db, x)).present ? x : null)))).filter(Boolean));
+      ev({ ev: 'CLEAN', card_id: id, names, why: 'upload failed' });
+      console.log(`SKIP ${id} upload ${d.ok ? 'cleaned' : d.why}`); nSkip += 1; stop = 'upload'; continue;
+    }
+    await point('after-upload', id);
+    // 3. compare-and-set
+    const newUrl = originOf(row.image_url) + newPath;
+    const { data: upd, error: we } = await db.from('cards').update({ image_url: newUrl }).eq('id', id).eq('image_url', row.image_url).select('id');
+    if (isBlocked()) return 5;
+    if (we) throw new Error(`update ${id}: ${we.message}`);
+    if ((upd || []).length !== 1) {
+      const d = await deleteObjects(db, names);
+      ev({ ev: 'CLEAN', card_id: id, names, why: 'changed' });
+      nSkip += 1; console.log(`SKIP ${id} changed${d.ok ? '' : ` (clean: ${d.why})`}`); continue;
+    }
+    await point('after-update', id);
+    // 4. read again
+    const { data: r2 } = await db.from('cards').select('image_url').eq('id', id).maybeSingle();
+    if (!r2 || pathOf(r2.image_url) !== newPath) { console.log(`ERROR ${id} read-again ${r2 ? pathOf(r2.image_url) : 'no row'}`); stop = 'error'; continue; }
+    ev({ ev: 'UPDATED', card_id: id, newPath, newUrl, oldUrl: row.image_url });
+    nUpd += 1;
+    console.log(`UPDATED ${id} ${m.key} ${m.rarity} ${newPath}`);
+    // 5. the delete grace
+    queue.push({ id, names: oldNamesOf(id), newPath });
+    while (queue.length > GRACE) if (!(await delOld(queue.shift(), `grace after ${id}`))) { stop = 'delete'; break; }
+    sinceStorage += 1;
+    if (sinceStorage >= EVERY) {
+      sinceStorage = 0;
+      const sc = await storageCheck();
+      if (sc) { stop = sc; console.log(`STORAGE STOP ${sc}`); }
+      const ph = PROXY === 'off' ? { status: 'off' } : await fetch(`${PROXY}/storage/v1/object/public/${BUCKET}/${n.main}?v=${m.stamp}`, { method: 'HEAD' }).then((x) => ({ status: x.status })).catch((e) => ({ status: e.message }));
+      console.log(`PROXY ${id} ${ph.status}`);
+      if (ph.status !== 200 && ph.status !== 'off') { stop = 'proxy'; console.log('PROXY FAIL (no new row; the grace queue is kept: --resume deletes it)'); }
+    }
+  }
+  // the rest of the queue: 2 min after the last update (a proxy failure keeps the old objects)
+  if (queue.length && stop !== 'proxy' && stop !== 'delete' && stop !== 'error') {
+    console.log(`GRACE WAIT ${FINAL_WAIT / 1000} s queue=${queue.length}`);
+    await new Promise((r) => setTimeout(r, FINAL_WAIT));
+    while (queue.length) if (!(await delOld(queue.shift(), 'final'))) { stop = 'delete'; break; }
+  }
+  const ok = await i1(db);
+  const tot = (await listAll(db)).reduce((t, o) => t + o.size, 0);
+  console.log(`STORAGE now=${tot} queue=${queue.length}`);
+  console.log(`SWAP SUMMARY updated=${nUpd} deleted=${nDel} done=${nDone} skip=${nSkip} wait-storage=${cut.size} grace-flush=${flushes} stop=${stop || '-'} target=${target}`);
+  return ok && (!stop || stop === 'until' || stop === 'PAUSE') ? 0 : 1;
+}
+
+/** unswap (SPEC 2.5, B5). unswap --set S1 (--only <key|id,...> | --all) [--live] [--manifest] [--backup] [--swapped]. Each row on its own:
+ *  the live path = its new path: for each old object: in the LIST with the backup sha = kept (L-h); in the LIST with another sha =
+ *  "refused: <name> differs" (that row only); not in the LIST = uploaded from the backup file (its sha checked first: "refused: sha <name>").
+ *  Then the compare-and-set image_url = <the origin> + <the old path> (the old ?v), then the face2 objects are deleted: "UNSWAPPED <id>".
+ *  The live path = the old path: "SKIP <id> now=<path>" (skip-expected; left face2 objects are deleted: CLEAN). Another path: skip-unexpected.
+ *  --all = every row with a swap event. "UNSWAP SUMMARY done= skip-expected= skip-unexpected= refused=", exit 1 if skip-unexpected + refused > 0. */
+async function unswap(db, target) {
+  const inp = swapInputs();
+  if (inp.refused) { console.log(inp.refused); return 1; }
+  const { staged, backup, events, log, bdir } = inp;
+  const est = eventState(events);
+  const point = testPoints(dirname(log));
+  const ev = (o) => appendFileSync(log, JSON.stringify({ ...o, at: now() }) + '\n');
+  let ids;
+  if (flag('--all')) ids = [...est.keys()];
+  else if (val('--only')) {
+    const want = val('--only').split(',').map((x) => x.trim()).filter(Boolean);
+    ids = [...staged.values()].filter((m) => want.includes(String(m.card_id)) || want.includes(m.key)).map((m) => m.card_id);
+    const miss = want.filter((w) => ![...staged.values()].some((m) => String(m.card_id) === w || m.key === w));
+    if (miss.length) { console.log(`refused: not staged: ${miss.join(',')}`); return 1; }
+  } else { console.log('usage: unswap --set S1 --only <key|id,...> | --all [--live]'); return 1; }
+  console.log(`UNSWAP START head=${git('rev-parse', 'HEAD').slice(0, 8)} target=${target} rows=${ids.length}`);
+  let done = 0, skipE = 0, skipU = 0, refused = 0;
+  for (const id of ids) {
+    const m = staged.get(id), b = backup.get(id);
+    if (isBlocked()) return 5;
+    if (!m || !b) { refused += 1; console.log(`refused: ${id} no manifest or backup line`); continue; }
+    const n = await newNames(m);
+    const newPath = pathOfName(n.main, m.stamp);
+    const face2 = [n.main, n.grid, n.reveal].filter(Boolean);
+    const { data: row, error } = await db.from('cards').select('id, image_url').eq('id', id).maybeSingle();
+    if (error) throw new Error(`cards ${id}: ${error.message}`);
+    const p = row ? pathOf(row.image_url) : null;
+    if (p !== newPath) {
+      if (p === b.old_path) {
+        skipE += 1; console.log(`SKIP ${id} now=${p}`);
+        // a crash after the compare-and-set: the face2 objects of this row are left (the row does not point at them)
+        const left = [];
+        for (const x of face2) if ((await objectState(db, x)).present) left.push(x);
+        if (left.length) { const d = await deleteObjects(db, left); ev({ ev: 'CLEAN', card_id: id, names: left }); console.log(`CLEAN ${id} ${left.join(',')} ${d.ok ? '' : d.why}`); }
+      } else { skipU += 1; console.log(`SKIP ${id} now=${p}`); }
+      continue;
+    }
+    // the old objects: keep (same sha), refuse (another sha), or upload from the backup
+    const plan = [];
+    let bad = null;
+    for (const o of b.objects) {
+      const st = await objectState(db, o.name);
+      if (st.present) {
+        const got = await objectBytes(db, o.name);
+        if (got.status !== 200 || sha(got.buf) !== o.sha256) { bad = `refused: ${o.name} differs`; break; }
+        plan.push({ o, act: 'keep' });
+      } else {
+        const f = join(bdir, o.name);
+        const buf = existsSync(f) ? readFileSync(f) : null;
+        if (!buf || sha(buf) !== o.sha256 || buf.length !== o.bytes) { bad = `refused: sha ${o.name}`; break; }
+        plan.push({ o, act: 'upload', buf });
+      }
+    }
+    if (bad) { refused += 1; console.log(`${bad} (row ${id})`); continue; }
+    let upOk = true;
+    for (const x of plan) {
+      console.log(`${x.act === 'keep' ? 'KEEP' : 'UPLOAD'} ${id} ${x.o.name}`);
+      if (x.act !== 'upload') continue;
+      const { error: ue } = await db.storage.from(BUCKET).upload(x.o.name, x.buf, { upsert: false, contentType: x.o.contentType || typeOf(x.o.name), cacheControl: '31536000' });
+      if (isBlocked()) return 5;
+      const got = ue ? null : await objectBytes(db, x.o.name);
+      if (ue || !got || got.status !== 200 || sha(got.buf) !== x.o.sha256) { console.log(`ERROR upload ${id} ${x.o.name} ${ue ? ue.message : `http=${got?.status}`}`); upOk = false; break; }
+    }
+    if (!upOk) { refused += 1; continue; }
+    await point('unswap-after-upload', id);
+    const oldUrl = originOf(row.image_url) + b.old_path;
+    const { data: upd, error: we } = await db.from('cards').update({ image_url: oldUrl }).eq('id', id).eq('image_url', row.image_url).select('id');
+    if (isBlocked()) return 5;
+    if (we) throw new Error(`update ${id}: ${we.message}`);
+    if ((upd || []).length !== 1) { skipU += 1; console.log(`SKIP ${id} changed during the unswap`); continue; }
+    await point('unswap-after-update', id);
+    const d = await deleteObjects(db, face2);
+    if (!d.ok) console.log(`WARN ${id} face2 delete ${d.why}`);
+    ev({ ev: 'UNSWAPPED', card_id: id, oldUrl, face2Deleted: d.ok });
+    done += 1;
+    // information: the exact old URL (a CDN may still hold an old answer for it)
+    const h = await fetch(oldUrl, { method: 'HEAD' }).then((x) => `${x.status} cf=${x.headers.get('cf-cache-status') || '-'}`).catch((e) => e.message);
+    console.log(`UNSWAPPED ${id} ${m.key} ${m.rarity} url-head=${h}`);
+  }
+  console.log(`UNSWAP SUMMARY done=${done} skip-expected=${skipE} skip-unexpected=${skipU} refused=${refused} target=${target}`);
+  return skipU + refused > 0 ? 1 : 0;
 }
 
 /** B10 (Nathan (1), SPEC v2.2 2.7): back up, re-check and delete ONLY the fixed list <item>/gate/orphans-17.txt (<name><TAB><bytes>).
@@ -930,7 +1424,11 @@ async function orphans(db, target) {
   const { error } = await db.storage.from(BUCKET).remove(list.map((o) => o.name));
   if (error) { console.log(`ERROR delete: ${error.message}`); return 1; }
   let gone = 0;
-  for (const o of list) { const r = await fetch(publicUrl(db, BUCKET, o.name)); if (r.status === 400 || r.status === 404) gone += 1; else console.log(`STILL THERE ${o.name} http=${r.status}`); }
+  // the delete proof: the LIST (the origin) AND a cache-busted GET. A plain public GET hit a CDN copy (BOARD 2026-11-04 22:15: a false FAIL).
+  for (const o of list) {
+    const st = await objectState(db, o.name), r = await objectBytes(db, o.name);
+    if (!st.present && (r.status === 400 || r.status === 404)) gone += 1; else console.log(`STILL THERE ${o.name} listed=${st.present} http=${r.status}`);
+  }
   const ok = gone === list.length;
   console.log(`ORPHANS ${ok ? 'PASS' : 'FAIL'} deleted=${gone} bytes=${total} backup=${bl.length}`);
   return ok ? 0 : 1;
