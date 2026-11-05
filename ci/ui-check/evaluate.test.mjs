@@ -13,7 +13,7 @@ const clean = (screen, size = '430x932', browser = 'chromium', variant = 'base')
   const s = SIZES.find((x) => sizeKey(x) === size);
   return { browser, size, class: s[2], touch: s[3], screen, id: SCREENS[screen].id, variant, miss: [], fit: [], cut: [],
     checks: { pageScroll: { x: 0, y: 0 }, tinyText: {}, tapSmall: [], tapTiny: [], coveredBtns: [], covered: [], corner: [], windowOutside: 0, keys: {}, emptyBandX: 0, emptyBandY: 0 },
-    extra: { iconNoName: [], contrast: [] }, ...(SCREENS[screen].walk ? { walk: [] } : {}) };
+    extra: { iconNoName: [], contrast: [] }, ...(SCREENS[screen].walk ? { walk: [] } : {}), ...(SCREENS[screen].see ? { see: [] } : {}) };
 };
 test('UI-37 walk specs: no walk result or a missing card is "not checked"; the card rows become defects of UI-37', () => {
   const r = clean('walk-5'); delete r.walk;
@@ -352,4 +352,60 @@ test('PACK-SET-B: open-chooser-sets is enforced at 375x667 (enforceAt); every ot
   assert.equal(reportOnly({ ...midword, screen: 'open-chooser' }), true, 'D-154 unchanged for the other screens');
   assert.equal(reportOnly({ ...midword, screen: 'open-chooser-sets', size: '667x375' }), true, 'only the listed size');
   for (const [k, s] of Object.entries(SCREENS)) if (s.enforceAt) assert.ok(s.enforceAt.every((z) => REPORT_ONLY_SIZES.includes(z)), k + ': enforceAt lists report-only sizes only');
+});
+
+// D-217 (UI-43 r2): the legacy v2 Shop file (seeOnly) is judged only by its see list.
+const v2Noise = (r) => {   // the v3-standard defects that CI measured on the v2 shell (run 41927229208): contrast, tap, empty, bleed, missing vs expanded
+  r.extra = { iconNoName: [['#v2Nav button', 'no name']], contrast: [['.sh-tab "Stat reset"', 3.49, 4.5]] };
+  r.checks.tapSmall = [['.sh-tab "Stat reset"', '136x36']]; r.checks.emptyBandY = 0.5; r.checks.corner = [['#bellBtn', '1,2,3,4']];
+  r.checks.tinyText = { '10': ['.sh-free "x"'] }; r.fit = [['pokeOut', '.sh-reset', 9]]; r.cut = [['ellipsis', '.sh-name', 'x']]; r.checks.keys = {};
+  return r;
+};
+const expAll = () => { const e = clean('shop-reset-paused-v2', '1990x830'); e.checks.keys = { '#boardBtn': { inView: true }, '#bellBtn': { inView: true } }; return e; };
+test('D-217 seeOnly: the v2 Shop spec enforces only its see list; the v3 spec keeps every rule', () => {
+  const spec = SCREENS['shop-reset-paused-v2'];
+  assert.equal(spec.seeOnly, true);
+  assert.deepEqual(spec.see, ['.sh-reset .sh-err', '.sh-reset .sh-choose:disabled', '.sh-reset .sh-free:not(.ok)']);
+  assert.deepEqual(Object.keys(SCREENS).filter((k) => SCREENS[k].seeOnly), ['shop-reset-paused-v2'], 'only the v2 Shop file is seeOnly (D-217)');
+  // every see item present and in view: the v3-standard noise of the v2 shell is not a defect
+  const ok = v2Noise({ ...clean('shop-reset-paused-v2', '430x932'), see: [] });
+  assert.deepEqual(defectsOf(ok, expAll()), []);
+  // the same noise on the v3 spec is still a defect (seeOnly does not leak to other specs)
+  const v3 = v2Noise({ ...clean('shop-reset-paused', '430x932'), see: [] });
+  assert.ok(defectsOf(v3, expAll()).length >= 8, 'the v3 spec keeps the full 12.6 list');
+});
+test('D-217 seeOnly: each missing see item fails (absent, outside the view); no see result is "not checked"', () => {
+  for (const [i, sel] of SCREENS['shop-reset-paused-v2'].see.entries()) {
+    for (const why of ['absent', 'outside the view']) {
+      const r = v2Noise({ ...clean('shop-reset-paused-v2', '430x932'), see: [[sel, why]] });
+      assert.deepEqual(defectsOf(r, expAll()).map((x) => [x.rule, x.where, x.value]), [['missing', sel, why]], `see item ${i} ${why}`);
+    }
+  }
+  const none = clean('shop-reset-paused-v2', '430x932'); delete none.see;   // the see check did not run
+  assert.deepEqual(defectsOf(none).map((x) => x.rule), ['not-checked']);
+  const v3none = clean('shop-reset-paused', '430x932'); delete v3none.see;
+  assert.deepEqual(defectsOf(v3none).map((x) => x.rule), ['not-checked'], 'the v3 spec: no see result is "not checked" too');
+  const err = { ...clean('shop-reset-paused-v2', '430x932'), error: 'boom' };
+  assert.deepEqual(defectsOf(err).map((x) => x.rule), ['not-checked']);
+  const step = { ...clean('shop-reset-paused-v2', '430x932'), see: [], miss: ['js #shopBtn'] };
+  assert.deepEqual(defectsOf(step).map((x) => x.rule), ['not-checked'], 'a step with no control still fails');
+});
+test('D-217 seeOnly verdict: a missing see item on the v2 Shop fails a UI-43 PR; the v2 noise alone passes', () => {
+  const cells = (see) => SIZES.filter((s) => !SCREENS['shop-reset-paused-v2'].notOn.includes(s[2]))
+    .map((s) => v2Noise({ ...clean('shop-reset-paused-v2', sizeKey(s)), see: sizeKey(s) === '430x932' ? see : [] }));
+  const opts = { title: 'UI-43 Shop: stat reset paused', browsers: ['chromium'], screens: ['shop-reset-paused-v2'] };
+  assert.equal(verdict(cells([]), REG, opts).fails.length, 0);
+  const bad = verdict(cells([['.sh-reset .sh-err', 'outside the view']]), REG, opts).fails;
+  assert.deepEqual(bad.map((x) => [x.rule, x.owner, x.size, x.where]), [['missing', 'UI-43', '430x932', '.sh-reset .sh-err']]);
+});
+test('D-217 exceptions: only the v3 paused Shop spec, only the empty rule, only the 5 measured sizes (the band is on origin/main)', async () => {
+  const ex = JSON.parse((await import('node:fs')).readFileSync(new URL('./exceptions.json', import.meta.url), 'utf8'));
+  const mine = ex.filter((e) => e.decision === 'D-217');
+  assert.deepEqual(mine.map((e) => [e.id, e.screen, e.rule, e.size]).sort(),
+    ['412x915', '430x822', '430x932', '692x917', '820x1180'].map((s) => ['UI-43', 'shop-reset-paused', 'empty', s]).sort());
+  const cell = (size, rule) => ({ rule, owner: 'UI-43', screen: 'shop-reset-paused', size });
+  assert.ok(mine.some((e) => accepts(e, cell('430x932', 'empty'))));
+  assert.ok(!mine.some((e) => accepts(e, cell('430x932', 'missing'))), 'a missing see item is never accepted');
+  assert.ok(!mine.some((e) => accepts(e, cell('1280x720', 'empty'))), 'not at another size');
+  assert.ok(!mine.some((e) => accepts(e, { ...cell('430x932', 'empty'), screen: 'shop' })), 'not on another Shop spec');
 });
