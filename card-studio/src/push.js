@@ -8,6 +8,7 @@ const execFileP = promisify(execFile);
 const FRAMES = 24; // frames Blender renders per animated tier (for progress)
 import { supabase } from './supabase.js';
 import { renderPng } from './render.js';
+import { loadFaceV2 } from './face-data.js';
 import { artKeyFor, ANIMATED, inDrawPool, needsPeriod } from './rarity.js';
 import { getFrame } from './frames.js';
 import { makeThumbs, gridObject, revealObject } from './thumbs.js';
@@ -67,6 +68,9 @@ function animate(facePng, rarity, framesDir, webpOut, maskPng, onFrame, textMask
  * The push and the studio's "Render real look" preview both use this, so the preview is the pushed image.
  */
 export async function renderTier(card, rarity, artFor, outDir, onFrame) {
+  // UI-68: the combat v2 face data from the target database (src/face-data.js). card.v2 given (also null) = use it as it is
+  // (tests, design renders). null = no v2 data: the face renders exactly as before UI-68.
+  if (card.v2 === undefined) card = { ...card, v2: await loadFaceV2(supabase, card) };
   const slot = artKeyFor(rarity);
   const facePng = join(outDir, `${card.id}-${rarity}.png`);
   const eff = { ...card, ...slotDetails(card, slot) };
@@ -81,11 +85,14 @@ export async function renderTier(card, rarity, artFor, outDir, onFrame) {
   let maskPng = null;
   if (rarity !== 'gold') {
     maskPng = join(outDir, `${card.id}-${rarity}-mask.png`);
-    await renderPng(card, rarity, artFor(rarity), maskPng, 2, true);
+    // UI-68: a v2 face has the lore line in its layout, so its mask uses the same tier lore as the face (eff). A card with no
+    // v2 data keeps the mask of before UI-68 (card).
+    await renderPng(card.v2 ? eff : card, rarity, artFor(rarity), maskPng, 2, true);
   }
-  // UI-68: a v2 face also gets the text-safe mask (white = its title row and text panel): no emboss, holo or gold there.
+  // UI-68: a v2 face also gets the text-safe mask (red = the text block: no emboss; green = the glyphs: face colors, no holo,
+  // flat light). blender/card_scene.py reads it. No v2 data = no text mask = the Blender scene of before UI-68.
   let textMask = null;
-  if (card.v2 && process.env.UI68_TEXT_MASK !== '0') {
+  if (card.v2) {
     textMask = join(outDir, `${card.id}-${rarity}-textmask.png`);
     await renderPng(eff, rarity, artFor(rarity), textMask, 2, 'text');
   }

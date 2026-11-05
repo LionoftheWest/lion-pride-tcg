@@ -1,6 +1,8 @@
-// UI-68 PROTOTYPE: the combat v2 parts of the card face (role icon, element mark, unique active, Silver line, Makes / Uses
+// UI-68 (approved 2026-10-20): the combat v2 parts of the card face (role icon, element mark, unique active, Silver line, Makes / Uses
 // chips). Pure HTML builders for templates/card.template.html and card.fullart.html. The card text is DATA (card.v2),
-// never in a template: card.v2 = { role, element, active: { name, text }, silver, makes: [], uses: [], stars }.
+// never in a template: card.v2 = { role, element, active: { name, text }, silver, makes: [], uses: [], stars } (src/face-data.js
+// reads it from the database). stars: the pushed image is one image for every owner, so a push renders stars 0 (the Silver
+// mark of confirm-1); stars >= 3 = the Silver unlocked state (approved image 14, a preview only).
 // Inline statuses in a text: "{poison:Poisoned}" = the UI-67 status icon + the word in its family color.
 // Every color is a shared/tokens.json value or a UI-67 color (role-attack, role-support: the 3 UI-67 tokens go into UI-00).
 import { LUCIDE } from './face-icons.js';
@@ -106,7 +108,7 @@ export function faceParts(card) {
   const on = (v.stars || 0) >= 3;
   const lock = on ? '' : svg(LUCIDE.lock, 12, C.tierSilver, 2.5);
   return {
-    V2CLASS: `v2 ${r ? r[1] : ''}${on ? ' silver-on' : ''}${v.faOption ? ' fa-' + v.faOption : ''}`,
+    V2CLASS: `v2 ${r ? r[1] : ''}${on ? ' silver-on' : ''} fa-c` /* full art tiers: option C (the framed template has no fa- rules) */,
     ROLEBADGE: roleBadge(v.role),
     ROLENAME: r ? `<span class="v2-rolename" style="color:${r[1] === 'attacker' ? C.roleAttack : C.roleSupport}">${esc(r[0])}</span>` : '',
     ELEMENT: elementMark(v.element),
