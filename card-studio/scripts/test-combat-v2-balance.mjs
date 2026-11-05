@@ -43,6 +43,10 @@ if (!LATER2.includes('create or replace function public.balance_v2_spec')) throw
 const FU = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/combat_v2_e7_followup.sql', import.meta.url)), 'utf8').replace(/\r\n/g, '\n');
 const LATER3 = FU.slice(FU.indexOf('-- @balance-begin'), FU.indexOf('-- @balance-end'));
 if (!LATER3.includes('{weak_role_x}')) throw new Error('combat_v2_e7_followup.sql has no balance part with weak_role_x');
+// The Hunt v2 boss numbers of decision D-223 (M-H option C: v2_enemy.hunt tier stats, enemy_v2 hp_factor and the v2_enemy note) run last, as on live,
+// so the values match config.json.
+const HBC = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/combat_v2_hunt_balance_c.sql', import.meta.url)), 'utf8').replace(/\r\n/g, '\n');
+if (!HBC.includes('decision D-223')) throw new Error('combat_v2_hunt_balance_c.sql has no D-223 balance change');
 
 const MUT = {
   flag_on: ['\'{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}\',', '\'{"gauntlet": true, "dungeon": false, "hunt": false, "progress": false}\','],
@@ -146,6 +150,13 @@ const NEW_FNS = ['balance_shape_errors', 'balance_v2_spec', 'balance_check_comba
   'gauntlet_v2_begin', 'gauntlet_pool',   // R1-ON combat_v2_on_gauntlet.sql: the member mark of a v2 run and the v2 pool rule read combat_v2 (combat_v2_on gauntlet)
   'card_progress_v2_view', 'spend_card_points_v2', 'reset_card_points_v2',   // M1c combat_v2_progress_spend.sql: a player spends and resets v2 points (combat_v2_on progress, v2_stats, v2_level); no fight reads it
   'combat_v2_card_tags', 'combat_v2_synergy',   // SYN combat_v2_synergy.sql: the rule tags and the squad factors (they read v2_synergy; combat_v2 is OFF)
+  'combat_v2_convert_expect', 'combat_v2_convert_write', 'combat_v2_convert', 'combat_v2_convert_undo', 'combat_v2_convert_check', 'combat_v2_convert_fix',
+  'card_progress_v2_fight',   // M1e combat_v2_convert.sql: the stat conversion at the switch (v2_convert, v2_stats, v2_level, card_level) and the fight level (N-7b); called by the switch file and dungeon_v2_unit (R2-ON)
+  'dungeon_v2_unit', 'dungeon_v2_needs_ally', 'dungeon_v2_info', 'dungeon_v2_hp', 'dungeon_v2_play', 'dungeon_v2_amounts', 'dungeon_v2_screen', 'dungeon_v2_fight',
+  'dungeon_v2_after', 'dungeon_v2_room', 'dungeon_v2_pick', 'dungeon_v2_rooms', 'dungeon_v2_out', 'dungeon_v2_end', 'dungeon_v2_start', 'dungeon_v2_turns', 'dungeon_v2_act',
+  'dungeon_v2_auto', 'dungeon_v2_choose', 'dungeon_v2_retreat', 'dungeon_v2_view',   // R2a combat_v2_dungeon_run.sql: the v2 Dungeon run of testers (combat_v2_on dungeon, the engine keys); no v1 function calls them
+  'hunt_v2_start', 'hunt_v2_view', 'hunt_v2_end_of',   // R3a combat_v2_hunt_practice.sql: the v2 Hunt practice of testers (combat_v2_on hunt, the engine and enemy numbers); no v1 function calls them
+  'hunt_attack', 'hunt_support',   // R3-ON combat_v2_on_hunt.sql: the v1 Hunt attack and support refuse v2_on with the flag hunt ON (combat_v2_on hunt) and v2_today after a live v2 day
   'balance_check'];   // combat_v2_testers.sql: the generic balance trigger names combat_v2 only to let a tester id go (it reads no mode)
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
 
@@ -162,6 +173,7 @@ begin
   execute $m$${LATER}$m$;
   execute $m$${LATER2}$m$;
   execute $m$${LATER3}$m$;
+  execute $m$${HBC}$m$;
 
   -- 3. the keys, the notes and the values (the values go to the script, which compares them with config.json)
   for k in select unnest(keys) loop

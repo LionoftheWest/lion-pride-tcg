@@ -81,6 +81,31 @@ What the command does:
 The full-length trailer (4.8 s, 1000 x 1400, 30 fps) is not part of the command. Make it with:
 `blender --factory-startup -b --python blender/pack_open.py -- <outDir> diffuse=<pack_DIFFUSE.png>`.
 
+## 3a. The standard pack opening (D-209)
+
+Nathan decided on 2026-11-04, after the Double Team clips: "thats how all packs should be
+opened, so make sure thats documented". So every set uses the same pack opening.
+
+- Use the pack model `cardpack2.fbx` and `blender/pack_open.py` (the approved v4) for every set.
+- Render `game` (idle 25 frames, open 39 frames) and `game rare` (open 39 frames).
+- Encode with `encode/encode_game.py`: `idle_loop.webp`, `open.webp`, `open_rare.webp`, 800 x 1120.
+- Change only the pack front texture (`front/pack_DIFFUSE.png`) from set to set.
+- Do not make a set animation, model, camera or timing of its own.
+- Put the clips in `tcg-activity/public/packs/<set_id>/`. The game reads them from there (`src/ui3/pack-reveal.js`).
+
+Reference sets: Origins (`packs/S1/`) and Double Team (`packs/S2/`, version B, approved 2026-11-04).
+
+Lessons from the Double Team run (2026-11-03 and 2026-11-04):
+
+1. `title/check.py` fails on a title of two words ("DOUBLE TEAM" is two shapes). Then make
+   the front with `front/make_front.py` directly, with the chosen theme title, and run the
+   Blender and encode steps by hand (step 4 and step 5 of the table).
+2. Give Blender absolute paths (`C:/...`). Relative paths fail.
+3. The encode of one set took 331 s on this PC (2026-11-04).
+   If the encode stops, run only the encode again. The frames stay in `frames/` and `frames_rare/`.
+4. The tile picture in the Open window is the set pack art image (D-208), not a 3D still.
+   It goes in `card_sets.pack_art_url` (PACK-SET-B). This replaces "the clip folder" in step 13.
+
 ## 4. The design rules from Nathan
 
 | ID | Rule | Nathan's words |

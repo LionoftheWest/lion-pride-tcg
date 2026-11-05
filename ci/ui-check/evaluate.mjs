@@ -23,6 +23,8 @@ export const RULES = {   // 12.6 item -> [name, design.md section]
   overlap: ['Overlapping sections', '3.3'], empty: ['Empty space above 25%', '3.4'], 'icon-name': ['Icon-only control without a name', '5.3'],
   contrast: ['Contrast below the threshold', '9.4'], keyboard: ['Keyboard covers the focused text box', '2.3'],
   'not-checked': ['Not checked (runner error, missing step, missing fixture or missing result)', '12.6'],
+  // ON-UI (ON SPEC G-UI, review r1 M-1 M-2 M-3): a screen's content rule of screens.mjs (see, noText, squad, stageMin)
+  content: ['Screen content (shown and hidden parts, the squad row, the stage height)', '12.6, ON SPEC G-UI'],
 };
 const BLEED_FIT = new Set(['clipX', 'cutBtn', 'cutText', 'spill', 'squashed', 'pokeOut', 'offscreen']);
 const BLEED_CUT = new Set(['clipped', 'midword', 'offscreen', 'placeholder']);
@@ -34,6 +36,17 @@ export function defectsOf(r, expanded) {
   if (!r.checks || !r.fit || !r.cut || !r.extra) { add('not-checked', 'runner', 'a check returned no data'); return d; }
   for (const m of r.miss || []) if (!/fallback used/.test(m)) add('not-checked', `step ${m}`, 'the step found no control');
   for (const k of r.noFixture || []) add('not-checked', `no fixture ${k}`, 'record the fixtures again (record.mjs)');
+  // see (screens.mjs): each selector must be on the page and in the view. A spec with a see list whose result has no see
+  // array was not checked (a silent skip would pass every mutation).
+  const spec = SCREENS[r.screen] || {};
+  if (spec.see && !Array.isArray(r.see)) add('not-checked', 'see', 'the see check returned nothing');
+  if (spec.seeOnly) {
+    // D-217: a legacy v2 screen (seeOnly, for example ui-v2-shop.js) is not held to the v3 standard. Only its see list is
+    // enforced. A runner error, a missing step or fixture, and a missing see result above still fail as "not checked".
+    if (!spec.see?.length) add('not-checked', 'see', 'a seeOnly spec needs a see list');
+    for (const [w, why] of r.see || []) add('missing', w, why);
+    return d;
+  }
   const c = r.checks || {};
   if ((c.pageScroll?.x || 0) > 0 || (c.pageScroll?.y || 0) > 0) add('scroll', 'page', `${c.pageScroll.x}x${c.pageScroll.y}`);
   for (const [kind, where, v] of r.fit || []) {
@@ -70,8 +83,11 @@ export function defectsOf(r, expanded) {
     if (!Array.isArray(r.walk)) add('not-checked', 'walkthrough', 'the walkthrough check returned nothing');
     for (const [rule, where, value] of r.walk || []) { if (rule === 'missing') add('not-checked', where, value); else add(rule, where, value); }
   }
+  for (const [w, why] of r.see || []) add('missing', w, why);   // UI-43 N-10: a 'see' selector of screens.mjs is absent or outside the view
+  for (const [w, why] of r.content || []) add('content', w, why);   // ON-UI: noText / squad / stageMin (screens.mjs)
   for (const [w, why] of r.extra?.iconNoName || []) add('icon-name', w, why);
   for (const [w, ratio, need] of r.extra?.contrast || []) add('contrast', w, `${ratio} < ${need}`);
+  for (const [w, why] of r.extra?.turnLabel || []) add('overlap', `Your turn: ${w}`, why);   // UI-52 D-216 (PR 503 review L-3)
   if (r.keyboard?.focused && r.keyboard.inputInView === false) add('keyboard', 'focused text box', `keyboard ${r.keyboard.height}px`);
   return d;
 }
@@ -90,8 +106,9 @@ export function checkExceptions(list) {
 }
 export const accepts = (e, x) => e.id === x.owner && e.screen === x.screen && e.size === x.size && e.rule === x.rule;
 
-/** D-136: a defect at a report-only size is listed but never fails. A cell that produced no result still fails (the run is broken). */
-export const reportOnly = (x) => REPORT_ONLY_SIZES.includes(x.size) && x.where !== 'no result';
+/** D-136: a defect at a report-only size is listed but never fails. A cell that produced no result still fails (the run is broken).
+ *  A screen with `enforceAt: [size]` (screens.mjs) is enforced at those sizes (Nathan 2026-11-04: "Fix the Origins word break", 375x667). */
+export const reportOnly = (x) => REPORT_ONLY_SIZES.includes(x.size) && x.where !== 'no result' && !(SCREENS[x.screen]?.enforceAt || []).includes(x.size);
 
 /** The verdict: { enforced, isEnforced, defects, fails }. */
 // screens = the screens that the run planned (plan.mjs): each of them must have a result in each browser and size.

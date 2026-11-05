@@ -63,8 +63,14 @@ const FN_MUT = {
   httpany: ['public.admin_set_save(text,jsonb,jsonb,text)', String.raw`'^(https://[^[:space:]/]+(/[^[:space:]]*)?|http://(localhost|127\.0\.0\.1)(:[0-9]{1,5})?/[^[:space:]]*)$'`, String.raw`'^https?://[^[:space:]]+$'`],
   poolnolog: ['public.admin_set_pool(text,text,bigint[],boolean,text)', "v_aid := admin_log_action(p_actor, case when p_add then 'set_pool_add' else 'set_pool_remove' end, 'card_set', p_set,", 'v_aid := 0; perform (null::text, null::text,'],
 };
+// S2-PUB (Set 2 launch): this test checks the S1-only state, but from 2026-11-06 a second real set (S2) is pullable on live and on
+// every fresh copy of it. So inside the rolled-back block every real pullable set except S1 is made not pullable first (the rollback
+// restores it). MUTATE=nofixture leaves it out: with a second real set pullable, the S1-only cases must FAIL.
+const NOFIX = process.env.MUTATE === 'nofixture';
+const FIX = NOFIX ? '-- MUTATE=nofixture: no fixture' : "update card_sets set pullable = false where pullable and id <> 'S1';";
 let MUT = '';
 if (process.env.MUTATE && SQL_MUT[process.env.MUTATE]) { console.log(`MUTATE=${process.env.MUTATE}`); MUT = SQL_MUT[process.env.MUTATE]; }
+else if (NOFIX) console.log('MUTATE=nofixture');
 else MUT = mutation(FN_MUT);
 
 const P = 'tst_spool';
@@ -84,6 +90,7 @@ declare res jsonb := '[]'; ok boolean; n int; m int; x bigint; v jsonb; w jsonb;
   pool_before bigint[]; s1_before jsonb; psets_before jsonb; badges_before jsonb; spawn_before jsonb; spawn_after jsonb;
   s2 bigint[]; five bigint[]; five_nums jsonb; subj bigint; aid0 bigint; fields jsonb;
 begin
+  ${FIX}
   select player_id into top from player_cards group by player_id order by count(*) desc, player_id limit 1;
   select array_agg(id order by id) into pool_before from draw_pool;
   select jsonb_agg(jsonb_build_object('id', id, 'n', set_number) order by id) into s1_before from cards where set_id = 'S1';

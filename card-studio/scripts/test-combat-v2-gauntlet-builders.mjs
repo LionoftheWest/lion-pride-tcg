@@ -237,7 +237,7 @@ begin
   res := res || jsonb_build_object('case', 'T1 exactly the 3 new functions are added', 'ok', bad @> mine and mine @> bad and cardinality(bad) = 3, 'got', bad);
   select coalesce(array_agg(${SIG} order by ${SIG}), '{}') into bad from pg_proc p
    where p.pronamespace = 'public'::regnamespace and ${SIG} <> all (mine) and p.prosrc ~ '(combat_v2_card_unit|gauntlet_v2_foes|combat_v2_step)\s*\('
-     and p.proname <> all (array['gauntlet_start', 'gauntlet_v2_fight', 'gauntlet_v2_enter', 'gauntlet_v2_play']);   -- + R1b combat_v2_gauntlet_run.sql: the tester run calls the builders (gauntlet_start: the tester branch)
+     and p.proname <> all (array['gauntlet_start', 'gauntlet_v2_fight', 'gauntlet_v2_enter', 'gauntlet_v2_play', 'dungeon_v2_fight', 'dungeon_v2_info', 'dungeon_v2_play', 'dungeon_v2_room', 'dungeon_v2_unit', 'hunt_v2_start']);   -- + R1b combat_v2_gauntlet_run.sql: the tester run calls the builders (gauntlet_start: the tester branch)   -- + R2a combat_v2_dungeon_run.sql: the v2 Dungeon run of testers builds its fights with the R1a builders (no caller in play)   -- + R3a combat_v2_hunt_practice.sql: the v2 Hunt practice start calls the engine step (tester only)
   res := res || jsonb_build_object('case', 'T1 no other function calls a new function (no caller in play)', 'ok', cardinality(bad) = 0, 'callers', bad);
   select coalesce(array_agg(${SIG} order by ${SIG}), '{}') into on_b from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\s*\(';
   res := res || jsonb_build_object('case', 'T1 the readers of combat_v2_on do not change (R1a reads no flag)', 'ok', on_a = on_b, 'now', on_b);

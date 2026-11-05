@@ -24,7 +24,7 @@ import { initV2, closeMemberOnShell, renderHomeV2, renderCollectionV2, disposeHo
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
 import { initDailies } from './ui-v2-dailies.js';
 import { initShop, renderShopV2, disposeShop, repaintShards } from './ui-v2-shop.js';
-import { initDungeon, renderDungeonV2, disposeDungeon, advTabs, dg } from './ui-v2-dungeon.js';
+import { initDungeon, renderDungeonV2, disposeDungeon, advTabs, dg, showHuntV2, huntV2Active, huntLive } from './ui-v2-dungeon.js';
 import { gateHTML, wireGate } from './ui-v2-gate.js';
 import { initSubtabs } from './subtabs.js';
 import { initTutorial } from './ui-v2-tutorial.js';
@@ -44,7 +44,7 @@ import { initSettingsWindow, reduceEffects } from './ui3/settings.js';
 import { startAvatarFx } from './ui3/avatarfx.js';
 import { initLeaderboardWindow, openLeaderboardWindow } from './ui3/leaderboard.js';
 import { initEventsWindow } from './ui3/events.js';
-import { openOpenWindow, prefetchSets, knownLastSet } from './ui3/open-window.js';
+import { openOpenWindow, prefetchSets, knownLastSet, openErrorAction } from './ui3/open-window.js';
 import { bestLast, bestIndex, revealOrder, clipUrl, clipSource, clipBlob, packSet, releaseClips, fitCards, rarePacks, newMark, PACK_RATIO, PACK_GAP_MS, STACK_LAYERS, stackTimeline, stackDepth } from './ui3/pack-reveal.js';
 import { counter as u3Counter } from './ui3/components.js';
 import { initExplain, explainBtn, maybeExplain, placeExplain } from './ui-v2-explain.js';
@@ -456,7 +456,7 @@ function startV2() {
   // 5+ packs: the chooser (x1 / x5 / x10); fewer: open one, as before.
   el('dockOpen').addEventListener('click', () => {
     // v3 (UI-33): the Open window, from 1 pack (D-87): the set, then the count. It opens the packs from that set.
-    if (uiV3) { if (packsAvailable >= 1) openOpenWindow({ api, packs: () => packsAvailable, onPick: (n, set) => openPacks(n, set) }); return; }
+    if (uiV3) { if (packsAvailable >= 1) openOpenWindow(openWindowDeps); return; }
     if (packsAvailable >= 5) openChooser(openDeps(), packsAvailable, (n) => openPacks(n));
     else openPacks(1);
   });
@@ -750,6 +750,8 @@ const openDeps = () => ({
   el, esc, SFX, RARITY_LABEL, cardBack: () => cardBack, openViewer,
   onClose: () => { if (uiV3) { releaseClips(); multiRun = null; } sendViewStatus(currentView); releaseFeed(); refreshOwned(); refreshPackStatus(); show(currentView); },
 });
+// The Open window deps (UI-33): the dock OPEN and the set_required fallback of openPacks use this one object.
+const openWindowDeps = { api, packs: () => packsAvailable, onPick: (n, set) => openPacks(n, set) };
 async function openPacks(count, set) {
   const n = [1, 5, 10].includes(count) ? count : 1; // a click handler passes an event
   // The set of the v3 Open window (UI-33). The v2 callers pass none: the request stays { instanceId, count }.
@@ -759,7 +761,9 @@ async function openPacks(count, set) {
   try {
     sendStatus('opening');
     const data = await apiPost('/api/open', s ? { instanceId, count: n, set: s } : { instanceId, count: n });
-    if (data.error) note('Could not open right now.');
+    // PACK-SET-B INV-B6: 2 or more sets and no set named (a notification "Open"): a v3 member chooses in the Open window.
+    if (data.error && openErrorAction(data.error, uiV3) === 'window') openOpenWindow(openWindowDeps);
+    else if (data.error) note('Could not open right now.');
     else if (!data.cards || !data.cards.length)
       note('No unopened packs. Post in the server to earn one — 25 messages gets a bonus pack. Resets at midnight MT.');
     else {
@@ -1364,9 +1368,36 @@ async function renderHunt() {
   if (huntCache) { paintHuntView(huntCache); backgroundRefreshHunt(); return; }
   el('main').innerHTML = '<div class="main-body"><div class="loading">Summoning the hunt…</div></div>';
   let d;
+  const v2q = loadHuntV2();
   try { d = await api('/api/hunt'); } catch { d = null; }
+  await v2q;
   huntCache = d;
   paintHuntView(d);
+}
+// R3b / ON-UI: the Hunt v2 answer (/api/hunt/v2/view). A tester (practice) or, with the flag ON, every member (live). A member who is not
+// a tester while the flag is OFF gets 403 not_tester: huntV2 stays null and the v1 Hunt is unchanged.
+let huntV2 = null;
+async function loadHuntV2() {
+  try { const v = await api('/api/hunt/v2/view'); huntV2 = v?.ok ? v : null; } catch { huntV2 = null; }
+  return huntV2;
+}
+const huntV2Owns = (v) => !!(v?.ok && v.run && v.run.status === 'active' && v.fight);
+// The v2 day of today is over: the Hunt view shows the approved "squad down" state (UI-17 ko, the UI-19 hunt-down path) with the v2 squad;
+// the member's damage is in the approved "Your hunt · Damage" tile (live: day.credited, to confirm against the R3-ON SQL).
+const huntV2Over = (v) => !!(v?.ok && (v.run?.status === 'over' || v.day?.status === 'over'));
+const huntV2CanStart = (v) => !!(v?.ok && (v.tester === true || v.live === true) && v.can_start === true);
+async function startHuntV2(btn) {
+  if (btn.disabled) return;
+  btn.disabled = true; btn.setAttribute('aria-busy', 'true');
+  const ids = [...squad.sel].map(Number).filter(Boolean);
+  let r = null;
+  try { r = await apiPost('/api/hunt/v2/start', ids.length ? { cards: ids } : {}); } catch (e) { r = e?.body || null; }
+  if (!r?.ok) { btn.disabled = false; btn.removeAttribute('aria-busy'); toast(r?.message || 'The fight did not start.'); return; }
+  SFX?.play?.('reveal'); huntV2 = r; paintHuntV2();
+}
+function paintHuntV2() {
+  disposeBoss();
+  showHuntV2(huntV2, () => { renderHunt(); });
 }
 
 // Render the whole battle view from a data object (boss + phase + boss canvas + feed).
@@ -1408,6 +1439,10 @@ function paintHuntView(d) {
     advTabs();
     return;
   }
+  // R3b / ON-UI: a v2 fight of today (practice or live) takes the Hunt view; a repaint of the poll keeps the fight that is on screen
+  if (huntV2Owns(huntV2)) { if (!(huntV2Active() && el('main').querySelector('.dg-fight'))) paintHuntV2(); return; }
+  const v2over = huntV2Over(huntV2);
+  if (v2over && huntLive(huntV2)) d = { ...d, myDamage: Number(huntV2.day?.credited) || 0 };
   huntState = d;
   huntDay = utcToday(); // remember the day so the ticker can detect the daily reset
   // The squad locked on the server (hunt_squads.sql) is the truth; this device's copy is the fallback.
@@ -1442,6 +1477,7 @@ function paintHuntView(d) {
     squad.phase = 'select'; squad.ko = false; squad.locked = false; squad.page = 0;
     squad.sel = new Set((d.roster || []).filter((c) => c.used).map((c) => c.id));
   }
+  if (v2over) { squad.phase = 'select'; squad.ko = true; squad.locked = false; squad.page = 0; squad.sel = new Set((huntV2.day?.squad || []).map(Number)); }
   el('main').innerHTML = huntHTML(d); // no "Battling" head — more room for the picker/arena
   wireHunt();
   mountBossFor(d.hunt); // spawn the live creature into the boss canvas (squad box or arena)
@@ -1454,8 +1490,10 @@ function paintHuntView(d) {
 // Background refresh after an instant open: full repaint only if the boss/cooldown state
 // changed; otherwise a light in-place update (HP, roster) with no boss re-mount flash.
 async function backgroundRefreshHunt() {
-  let d; try { d = await api('/api/hunt'); } catch { return; }
+  let d; const v2q = loadHuntV2(); try { d = await api('/api/hunt'); } catch { return; }
+  const had = huntV2Owns(huntV2); await v2q;
   if (currentView !== 'battling') return;
+  if (huntV2Owns(huntV2) || had) { huntCache = d; paintHuntView(d); return; }   // R3b / ON-UI: the v2 answer decides the screen
   const prev = huntCache; huntCache = d;
   const bossChanged = !d || !d.hunt || !prev || !prev.hunt || d.hunt.id !== prev.hunt.id || (d.gate?.ok !== prev.gate?.ok);
   if (bossChanged) { disposeBoss(); paintHuntView(d); return; }
@@ -2160,6 +2198,10 @@ function huntSelectV3HTML(d) {
     + `<p class="u3-hs-ko" id="u3HsKo"><span>Squad locked until tomorrow</span><span>${ui3Icon('skull', { size: 'sm' })}Your squad is down for today.</span></p>`;
   else if (squad.locked && picks.length) act = `${ui3Button({ label: 'Edit', data: { hpick: '1' } })}${ui3Button({ label: 'Enter battle', icon: 'swords', variant: 'primary', data: { henter: '1' } })}`;
   else act = ui3Button({ label: 'Select your squad', variant: 'primary', data: { hpick: '1' } });
+  // R3b: the tester "Practice v2" button; ON-UI member mode (live): the v2 fight is THE Hunt fight of the day, so Start replaces Enter battle
+  // (the same two states as v1: Select your squad, then Edit + Enter battle; only the Enter battle target changes)
+  if (huntV2?.ok && huntLive(huntV2) && !squad.ko && squad.locked && picks.length) act = `${ui3Button({ label: 'Edit', data: { hpick: '1' } })}${ui3Button({ label: 'Enter battle', icon: 'swords', variant: 'primary', disabled: !huntV2CanStart(huntV2), data: { h2start: '1' } })}`;
+  else if (huntV2CanStart(huntV2) && !huntLive(huntV2)) act += ui3IconButton({ icon: 'swords', label: 'Practice v2', data: { h2start: '1' } });   // tester only: an icon button keeps the approved row width
   return `<div class="u3-hunt">${stage}
     <section class="u3-hs-squad">
       <div class="u3-hs-info">
@@ -2241,6 +2283,7 @@ function wireHuntV3() {
   main.querySelector('[data-boss]')?.addEventListener('click', openBossModal);
   main.querySelector('[data-boss]')?.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBossModal(); } });
   main.querySelectorAll('[data-hpick]').forEach((b) => b.addEventListener('click', () => openHuntPicker(b)));
+  main.querySelector('[data-h2start]')?.addEventListener('click', (e) => startHuntV2(e.currentTarget));   // R3b / ON-UI
   main.querySelector('[data-henter]')?.addEventListener('click', () => {
     if (!squad.locked || squad.sel.size < 1) return;
     disposeBoss(); squadDownShown = false; squad.phase = 'battle'; SFX?.play?.('reveal');
@@ -3293,6 +3336,7 @@ function openViewer(card, opts = {}) {
   fillViewerAbility(card.ability);
   fillViewerTags(card.tags);
   fillViewerEffect(card);
+  if (opts.v2) fillViewerV2(opts.v2);   // combat v2 (UI-08, D-212b): the role and the active of a v2 fight card
   el('card3d').classList.toggle('locked', locked);
   el('card3d').classList.toggle('holo-on', !locked && card.rarity !== 'normal'); // normal = no foil; locked = hidden
   renderAscension(card);
@@ -3350,9 +3394,24 @@ function fillRaidInfo(c) {
   box.classList.remove('hidden');
 }
 
+// UI-08 combat v2 (D-212b, Nathan 2026-11-04): the card info of a v2 fight card shows its role (icon, name, what it does) and its v2 active
+// (name, charge, the text when the server sends it) in place of the v1 ability. v2 = ui-v2-gauntlet2.js v2InfoOf.
+function fillViewerV2(v2) {
+  fillViewerAbility(v2.ability);
+  el('v-ability').classList.add('is-v2');   // sentence case: "Finisher · Attacker active · Charge 1 of 2"
+  const box = el('v-raid');
+  if (!box) return;
+  box.querySelector('.g2-vrole')?.remove();
+  if (v2.roleLabel) box.insertAdjacentHTML('afterbegin', `<div class="g2-vrole"><span class="g2-role ${v2.cls === 'support' ? 'is-sup' : 'is-att'}">${v2.roleIcon || ''}</span><span><b>${esc(v2.roleLabel)}</b><small>${esc(v2.purpose || '')}</small></span></div>`);
+  // the fight numbers of the v2 card (its v2 max HP and power), not the v1 card numbers
+  box.querySelectorAll('.vr-stat').forEach((st) => { const k = st.querySelector('span')?.textContent, b = st.querySelector('b'); if (!b) return; if (k === 'HP' && v2.maxHp != null) b.textContent = String(v2.maxHp); });
+  box.classList.remove('hidden');
+}
+
 // The Ability section of the card viewer (name, plain-words effect, meta).
 function fillViewerAbility(ab) {
   const box = el('v-ability');
+  box.classList.remove('is-v2');   // the v1 meta words are capitalized (style.css); a v2 card sets is-v2 (sentence case)
   if (!ab || !ab.name) { box.classList.add('hidden'); return; }
   el('v-ability-name').textContent = ab.name;
   el('v-ability-desc').textContent = ab.desc || '';

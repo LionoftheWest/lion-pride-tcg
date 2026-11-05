@@ -120,3 +120,16 @@ test('convertible: the count from SQL and the Shards for each copy from balance 
   assert.deepEqual(r.json, { cardId: 7, count: 2, each: SHARD_CFG.dupe_values.normal });
   assert.deepEqual(calls.find((c) => c.name === 'convertible_copies'), { name: 'convertible_copies', args: { p_player: '111111111111111111', p_card: 7 } });
 });
+
+test('UI-43 N-10: stat_reset_paused (combat v2 progress ON) becomes a 400 with the paused line as message', async () => {
+  const routes = {};
+  registerShopRoutes({ get: (p, h) => { routes[p] = h; }, post: (p, h) => { routes[p] = h; } }, {
+    supabase: { rpc: async () => ({ data: { ok: false, error: 'stat_reset_paused' } }) },
+    caller: async () => ({ id: '1' }), rateLimit: () => true, bustUser: () => {}, getCatalogBase: async () => [], shardsOn: () => true,
+  });
+  let status = 0, json = null;
+  await routes['/api/shop/buy']({ body: { kind: 'stat_reset', cardId: 7 } }, { status(s) { status = s; return this; }, json(j) { json = j; return this; } });
+  assert.equal(status, 400);
+  assert.equal(json.error, 'stat_reset_paused');
+  assert.equal(json.message, 'Stat reset returns with the v2 stats screen.');
+});

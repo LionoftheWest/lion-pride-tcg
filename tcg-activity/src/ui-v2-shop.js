@@ -11,6 +11,7 @@ import { every } from './poll.js';
 import { fmtFor } from './ui3/number.js';
 import { statLabel, statShort } from './stat-labels.js';
 import { shopHTML, stockBlocks, fitStock, confirmHTML } from './ui3/shop.js';
+import { resetHTMLv2, resetOpen } from './ui-v2-shop-reset.js';
 import { openCardPicker } from './ui3/card-picker.js';
 import { stepCount, convertTotals, keepNote, convertControl, convertState } from './ui3/convert.js';
 
@@ -181,14 +182,8 @@ function packsHTML() {
     </section>`;
 }
 
-function resetHTML() {
-  const d = shop.data;
-  return `<section class="sh-panel sh-reset">
-      <div class="sh-ph"><span class="sh-ico prank">${ICON.reset}</span><b>Stat reset</b><span class="grow"></span>${price(d.stat_reset_price, 'sm')}</div>
-      <div class="sh-free${d.free_reset ? ' ok' : ''}">${ICON.cal}<b>Free weekly reset</b><span class="grow"></span><span>${d.free_reset ? 'Available' : `Used · back ${esc(nextDay(d.free_reset_next))}`}</span></div>
-      <span class="grow"></span>
-      <button class="v2-btn sh-choose">Choose a card ${ICON.arrow}</button>
-    </section>`;
+function resetHTML() {   // UI-43 r2: the markup is in ui-v2-shop-reset.js (pure, unit-tested)
+  return resetHTMLv2(shop.data, { esc, price, icon: ICON, nextDay });
 }
 
 function paint() {
@@ -256,13 +251,13 @@ function wire(hosts) {
     const pg = t.closest('[data-page]');
     if (pg && !pg.disabled) { shop.page = Math.min(shop.pages || 1, Math.max(1, shop.page + (pg.dataset.page === 'next' ? 1 : -1))); paint(); return; }
     if (t.closest('[data-buypacks]')) { openConfirm({ kind: 'pack', qty: shop.qty }); return; }
-    if (t.closest('[data-choose]')) { openPicker(); return; }
+    if (t.closest('[data-choose]')) { if (resetOpen(shop.data)) openPicker(); return; }
     const np = t.closest('[data-np]');
     if (np && !np.disabled) { shop.nmPage = (shop.nmPage || 0) + Number(np.dataset.np); paint(); return; }
     const q = t.closest('[data-q]');
     if (q && !q.disabled) { shop.qty += Number(q.dataset.q); paint(); return; }
     if (t.closest('.sh-buypacks')) { openConfirm({ kind: 'pack', qty: shop.qty }); return; }
-    if (t.closest('.sh-choose')) { openPicker(); return; }
+    if (t.closest('.sh-choose')) { if (resetOpen(shop.data)) openPicker(); return; }
     const buyBtn = t.closest('[data-buy]');
     if (buyBtn) {
       const s = shop.data.stock.find((x) => String(x.slot) === buyBtn.dataset.buy);

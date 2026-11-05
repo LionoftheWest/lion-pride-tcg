@@ -245,6 +245,9 @@ declare res jsonb := '[]'; o jsonb; o2 jsonb; md5_a jsonb; md5_b jsonb; b jsonb;
   mine text[] := ${arr([...REPLACED, ...NEW])}; blk jsonb; pieces bigint[] := '{}'; fam_ids bigint[];
   wk record; un jsonb; st0 jsonb; f1 jsonb; f0 jsonb; nread int;
 begin
+  -- M1e (combat_v2_convert.sql) adds ONE line (mark "-- M1e") to balance_v2_spec in place. The guard of this file knows the SYN text without it:
+  -- put that text back first (rolled back with the block), as docs/foundations.md says for a guard that refuses a newer function
+  execute regexp_replace(replace(pg_get_functiondef('public.balance_v2_spec(text)'::regprocedure), chr(13), ''), E'\n[^\n]*-- M1e[^\n]*', '', 'g');
   select jsonb_object_agg(${SIG}, ${MD5}) into md5_a from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prokind in ('f', 'p') and ${SIG} <> all (mine);
   -- C3a M3a: a planted proposal pair (fire beats a target that it does not beat in the rows of the table)
   select x2.key into tel from public.elements x2 where x2.key <> 'fire' and not exists (select 1 from public.element_counters z where z.beater = 'fire' and z.target = x2.key) order by x2.key limit 1;

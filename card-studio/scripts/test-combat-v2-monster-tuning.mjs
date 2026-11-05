@@ -49,6 +49,8 @@ const T1 = read('combat_v2_ability_builder.sql');
 const T1B = read('combat_v2_ability_prices.sql');
 const T1C = read('combat_v2_min_share.sql');
 const E7 = read('combat_v2_monsters.sql');
+// the Hunt v2 boss numbers of decision D-223 (combat_v2_hunt_balance_c.sql: v2_enemy.hunt tier stats, enemy_v2 hp_factor) run after the file, as on live
+const HBC = read('combat_v2_hunt_balance_c.sql');
 let mig = process.env.MIG ? readFileSync(process.env.MIG, 'utf8').replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '') : read('combat_v2_monster_tuning.sql');
 // the E7 follow-up test (test-combat-v2-e7-followup.mjs) imports the blocks below and runs them with this file + combat_v2_e7_followup.sql
 export const setMig = (s) => { mig = s; };
@@ -538,6 +540,7 @@ begin
   select jsonb_object_agg(replace(p.oid::regprocedure::text, ' ', ''), md5(pg_get_functiondef(p.oid))) into t1 from pg_proc p
    where p.pronamespace = 'public'::regnamespace and replace(p.oid::regprocedure::text, ' ', '') in (${q(TUNED)});
   execute $m$${mig}$m$;
+  execute $m$${HBC}$m$;
   after := ${md5s}; c2 := ${CALLERS};
   select jsonb_object_agg(replace(p.oid::regprocedure::text, ' ', ''), md5(pg_get_functiondef(p.oid))) into t2 from pg_proc p
    where p.pronamespace = 'public'::regnamespace and replace(p.oid::regprocedure::text, ' ', '') in (${q(TUNED)});
@@ -546,7 +549,7 @@ begin
   res := res || jsonb_build_object('case', 'the ${TUNED.length} replaced functions each have a new text', 'ok',
     (select count(*) from jsonb_object_keys(t1)) = ${TUNED.length} and (select bool_and(t1->>k2 <> t2->>k2) from jsonb_object_keys(t1) k2), 'got', jsonb_build_object('before', t1, 'after', t2));
   res := res || jsonb_build_object('case', 'the callers of the replaced functions are the same before and after, and each is a combat v2 function or a balance trigger (no v1 caller)', 'ok',   -- + R1a combat_v2_gauntlet_builders.sql: the v2 Gauntlet builders call the engine (no caller in play)
-    c1 = c2 and (select bool_and((x ~ '^(combat_v2_|combat_effect_v2_|balance_check_|hunt_bosses_v2_check|fight_state_check_v2)' or x = 'gauntlet_v2_foes')) from jsonb_array_elements_text(c2) x), 'got', jsonb_build_object('before', c1, 'after', c2));
+    c1 = c2 and (select bool_and((x ~ '^(combat_v2_|combat_effect_v2_|balance_check_|hunt_bosses_v2_check|fight_state_check_v2)' or x in ('gauntlet_v2_foes', 'hunt_v2_start'))) from jsonb_array_elements_text(c2) x), 'got', jsonb_build_object('before', c1, 'after', c2));   -- + R3a combat_v2_hunt_practice.sql: the v2 Hunt practice start calls combat_v2_hunt_boss (tester only)
   select jsonb_object_agg(p.proname, p.provolatile) into o from pg_proc p where p.pronamespace = 'public'::regnamespace and replace(p.oid::regprocedure::text, ' ', '') in (${q(TUNED)});
   res := res || jsonb_build_object('case', 'volatility: the hits VOLATILE (draws), the spec IMMUTABLE, the builders STABLE', 'ok', o = ${sqlLit(VOL)}::jsonb, 'got', o);
   select coalesce(jsonb_agg(p.oid::regprocedure::text || ' ' || r2x), '[]') into o
@@ -561,7 +564,9 @@ begin
     coalesce(col_description('public.hunt_bosses_v2'::regclass, (select attnum from pg_attribute where attrelid = 'public.hunt_bosses_v2'::regclass and attname = 'weak_to')), '') like '%combat_v2_monster_tuning.sql%');
   select coalesce(jsonb_agg(p.proname), '[]') into o from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\(' and p.proname <> 'combat_v2_on'
     and p.proname <> all (array['spend_card_points_v2', 'reset_card_points_v2'])   -- M1c combat_v2_progress_spend.sql: the v2 spend and reset are gated by the flag (progress)
-    and p.proname <> all (array['spend_stat_points', 'reset_stat_points', 'buy_shop_item', 'shop_today', 'gauntlet_start', 'gauntlet_v2_view', 'gauntlet_v2_begin', 'gauntlet_pool']);   -- + R1-ON combat_v2_on_gauntlet.sql: the member mark of a v2 run (gauntlet_v2_begin) and the v2 pool rule (gauntlet_pool) read combat_v2_on(gauntlet)   -- M1d combat_v2_progress_freeze_v1.sql: the v1 spend and reset refuse, the Shop reset routes to v2 and shop_today shows its free reset, when progress is ON (2-argument form)   -- + R1b combat_v2_gauntlet_run.sql: the tester branch of gauntlet_start and gauntlet_v2_view read combat_v2_on gauntlet (2-argument form)
+    and p.proname <> all (array['spend_stat_points', 'reset_stat_points', 'buy_shop_item', 'shop_today', 'gauntlet_start', 'gauntlet_v2_view', 'gauntlet_v2_begin', 'gauntlet_pool'])   -- M1d combat_v2_progress_freeze_v1.sql: the v1 spend and reset refuse, the Shop reset routes to v2 and shop_today shows its free reset, when progress is ON (2-argument form)   -- + R1b combat_v2_gauntlet_run.sql: the tester branch of gauntlet_start and gauntlet_v2_view read combat_v2_on gauntlet (2-argument form)   -- + R1-ON combat_v2_on_gauntlet.sql: the member mark of a v2 run (gauntlet_v2_begin) and the v2 pool rule (gauntlet_pool) read combat_v2_on(gauntlet)
+    and p.proname <> all (array['dungeon_v2_start', 'dungeon_v2_view', 'hunt_v2_start', 'hunt_v2_view', 'hunt_attack', 'hunt_support'])   -- R2a combat_v2_dungeon_run.sql: the tester gate of the v2 Dungeon run (combat_v2_on dungeon, 2-argument form)   -- + R3a combat_v2_hunt_practice.sql: the tester gate of the v2 Hunt practice (combat_v2_on hunt)   -- + R3-ON combat_v2_on_hunt.sql: the v1 Hunt attack and support refuse with the flag hunt ON (one-argument form)
+    and p.proname <> all (array['combat_v2_convert', 'card_progress_v2_fight']);   -- M1e combat_v2_convert.sql: the conversion runs only with progress ON (1-argument form) and the fight level is 0 with progress OFF
   res := res || jsonb_build_object('case', 'the flag combat_v2 has no reader but combat_v2_on (flag OFF changes nothing)', 'ok', o = '[]'::jsonb, 'got', o);
   select value into o from balance where key = 'combat_v2';
   res := res || jsonb_build_object('case', 'the flag combat_v2 is OFF for every capability', 'ok', (o - 'testers') = '{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}'::jsonb, 'got', o);   -- the tester list (combat_v2_testers.sql) is not a mode
@@ -594,6 +599,7 @@ begin
   update public.balance set value = jsonb_set(value, '{passive_params,bulwark,guard}', '0.19') where key = 'v2_dungeon';
   update public.hunt_bosses_v2 set weak_to = '{role:striker}' where key = 'zerg';
   execute $m$${mig}$m$;
+  execute $m$${HBC}$m$;
   res := res || jsonb_build_object('case', 'the file runs twice: a second run keeps a changed balance value, a changed tag, and the notes once', 'ok',
     (select (value->'mechanics'->'ironhide'->>'crit_x')::numeric = 0.65 from balance where key = 'v2_enemy') and (select (value->'passive_params'->'bulwark'->>'guard')::numeric = 0.19 from balance where key = 'v2_dungeon')
     and (select weak_to = '{role:striker}' from public.hunt_bosses_v2 where key = 'zerg')
@@ -685,6 +691,7 @@ declare out jsonb := '[]'; x jsonb; b jsonb;
 begin
   ${SETUP}
   execute $m$${mig}$m$;
+  execute $m$${HBC}$m$;
   ${DRIVER}
   b := combat_v2_enemy_numbers();
   for x in select v from jsonb_array_elements(${sqlLit(cases)}::jsonb) v loop
@@ -751,6 +758,7 @@ function fixedCases() {
 export const buildBlock = (items) => String.raw`do $t$ declare out jsonb := '[]'; x jsonb; b jsonb; u jsonb; c jsonb; ctx jsonb; h1 jsonb; h2 jsonb; begin
   ${SETUP}
   execute $m$${mig}$m$;
+  execute $m$${HBC}$m$;
   b := combat_v2_enemy_numbers();
   for x in select v from jsonb_array_elements(${sqlLit(items)}::jsonb) v loop
     if x->>0 = 'agree' then
@@ -774,6 +782,7 @@ declare b jsonb; s jsonb; r jsonb; x jsonb; ac jsonb; f int := 0; j int; bad jso
 begin
   ${SETUP}
   execute $m$${mig}$m$;
+  execute $m$${HBC}$m$;
   b := combat_v2_enemy_numbers();
   perform setseed(0.77);
   for x in select v from jsonb_array_elements(${sqlLit(specs)}::jsonb) v loop
@@ -828,6 +837,7 @@ const say = (ok, name, extra = '') => { total++; if (!ok) fail++; console.log(`$
 const NUMBERS = async () => JSON.parse(await runBlock(String.raw`do $t$ declare b jsonb; begin
   ${SETUP}
   execute $m$${mig}$m$;
+  execute $m$${HBC}$m$;
   b := combat_v2_enemy_numbers();
   raise exception 'RESULT:%', jsonb_build_object('b', b, 'ab', ability_v2_numbers())::text; end $t$;`));
 // the simulator config with the numbers of the database (the balance values replace config.json; ability_v2 as a whole)
@@ -839,6 +849,7 @@ export async function parity(FS, cfg) {
     const out = JSON.parse(await runBlock(String.raw`do $t$ declare out jsonb := '[]'; x jsonb; b jsonb; begin
       ${SETUP}
       execute $m$${mig}$m$;
+      execute $m$${HBC}$m$;
       ${FIGHT_DRIVER}
       b := combat_v2_enemy_numbers();
       for x in select v from jsonb_array_elements(${sqlLit(part)}::jsonb) v loop

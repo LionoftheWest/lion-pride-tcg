@@ -7,9 +7,9 @@ The weekly Hunt (raid boss), squads, the combat rules, the logs of each fight, p
 
 ## Contents
 
-Tables (19): [ability_blocks](#table-ability-blocks), [ability_kinds](#table-ability-kinds), [card_effect_cooldowns](#table-card-effect-cooldowns), [card_plays](#table-card-plays), [combat_actions](#table-combat-actions), [discord_effects](#table-discord-effects), [effect_primitives](#table-effect-primitives), [hunt_adjustments](#table-hunt-adjustments), [hunt_bosses_v2](#table-hunt-bosses-v2), [hunt_card_hp](#table-hunt-card-hp), [hunt_combat_log](#table-hunt-combat-log), [hunt_combat_state](#table-hunt-combat-state), [hunt_events](#table-hunt-events), [hunt_hits](#table-hunt-hits), [hunt_squads](#table-hunt-squads), [hunts](#table-hunts), [player_effects](#table-player-effects), [roles](#table-roles), [statuses](#table-statuses)
+Tables (22): [ability_blocks](#table-ability-blocks), [ability_kinds](#table-ability-kinds), [card_effect_cooldowns](#table-card-effect-cooldowns), [card_plays](#table-card-plays), [combat_actions](#table-combat-actions), [combat_v2_convert_input](#table-combat-v2-convert-input), [combat_v2_switch_log](#table-combat-v2-switch-log), [discord_effects](#table-discord-effects), [effect_primitives](#table-effect-primitives), [hunt_adjustments](#table-hunt-adjustments), [hunt_bosses_v2](#table-hunt-bosses-v2), [hunt_card_hp](#table-hunt-card-hp), [hunt_combat_log](#table-hunt-combat-log), [hunt_combat_state](#table-hunt-combat-state), [hunt_events](#table-hunt-events), [hunt_hits](#table-hunt-hits), [hunt_squads](#table-hunt-squads), [hunt_v2_days](#table-hunt-v2-days), [hunts](#table-hunts), [player_effects](#table-player-effects), [roles](#table-roles), [statuses](#table-statuses)
 
-Functions (221): [ability_blocks_check()](#fn-ability-blocks-check), [ability_check(jsonb)](#fn-ability-check-jsonb), [ability_cond_check(jsonb,jsonb)](#fn-ability-cond-check-jsonb-jsonb), [ability_fields_check(jsonb)](#fn-ability-fields-check-jsonb), [ability_kinds_check()](#fn-ability-kinds-check), [ability_kinds_recheck()](#fn-ability-kinds-recheck), [ability_ok(jsonb)](#fn-ability-ok-jsonb), [ability_power(jsonb)](#fn-ability-power-jsonb), [ability_ref_check(text,jsonb)](#fn-ability-ref-check-text-jsonb), [ability_step_check(text,jsonb,jsonb)](#fn-ability-step-check-text-jsonb-jsonb), [ability_v2_ally_word(text)](#fn-ability-v2-ally-word-text), [ability_v2_block_pp(jsonb,text,numeric,jsonb)](#fn-ability-v2-block-pp-jsonb-text-numeric-jsonb), [ability_v2_cap(text)](#fn-ability-v2-cap-text), [ability_v2_check(text,jsonb,jsonb)](#fn-ability-v2-check-text-jsonb-jsonb), [ability_v2_clause(text,text)](#fn-ability-v2-clause-text-text), [ability_v2_coin(text,jsonb,jsonb,jsonb)](#fn-ability-v2-coin-text-jsonb-jsonb-jsonb), [ability_v2_field_error(text,jsonb,jsonb)](#fn-ability-v2-field-error-text-jsonb-jsonb), [ability_v2_field_types()](#fn-ability-v2-field-types), [ability_v2_fill(text,jsonb)](#fn-ability-v2-fill-text-jsonb), [ability_v2_numbers()](#fn-ability-v2-numbers), [ability_v2_options(jsonb,jsonb)](#fn-ability-v2-options-jsonb-jsonb), [ability_v2_or(text[])](#fn-ability-v2-or-text), [ability_v2_pct(numeric)](#fn-ability-v2-pct-numeric), [ability_v2_pp(text,jsonb,jsonb)](#fn-ability-v2-pp-text-jsonb-jsonb), [ability_v2_pps(text,jsonb,jsonb)](#fn-ability-v2-pps-text-jsonb-jsonb), [ability_v2_silver_text(text,jsonb,jsonb,jsonb)](#fn-ability-v2-silver-text-text-jsonb-jsonb-jsonb), [ability_v2_spec()](#fn-ability-v2-spec), [ability_v2_text(text,jsonb,jsonb)](#fn-ability-v2-text-text-jsonb-jsonb), [ability_v2_vals(jsonb)](#fn-ability-v2-vals-jsonb), [ability_v2_verb(jsonb,jsonb,text,boolean)](#fn-ability-v2-verb-jsonb-jsonb-text-boolean), [ability_v2_words(text)](#fn-ability-v2-words-text), [ability_value_check(jsonb,jsonb)](#fn-ability-value-check-jsonb-jsonb), [adventure_gate(text)](#fn-adventure-gate-text), [arm_on_open()](#fn-arm-on-open), [arm_player_effects(text)](#fn-arm-player-effects-text), [card_combat(text,integer,numeric,jsonb,jsonb)](#fn-card-combat-text-integer-numeric-jsonb-jsonb), [card_combat(text,integer,numeric,jsonb)](#fn-card-combat-text-integer-numeric-jsonb), [card_effect_active(text,text)](#fn-card-effect-active-text-text), [card_element(text[])](#fn-card-element-text), [card_max_hp(integer,numeric,numeric)](#fn-card-max-hp-integer-numeric-numeric), [card_max_hp(integer)](#fn-card-max-hp-integer), [close_due_hunts()](#fn-close-due-hunts), [close_hunt(bigint)](#fn-close-hunt-bigint), [combat_absorb(integer,integer)](#fn-combat-absorb-integer-integer), [combat_aff_scale(integer)](#fn-combat-aff-scale-integer), [combat_area_roll(numeric,numeric,numeric)](#fn-combat-area-roll-numeric-numeric-numeric), [combat_burn(numeric)](#fn-combat-burn-numeric), [combat_card_facts(text[],text[])](#fn-combat-card-facts-text-text), [combat_cooldown(integer,numeric)](#fn-combat-cooldown-integer-numeric), [combat_crit_chance(boolean,text,numeric,jsonb)](#fn-combat-crit-chance-boolean-text-numeric-jsonb), [combat_crit_chance_mods(boolean,jsonb,jsonb)](#fn-combat-crit-chance-mods-boolean-jsonb-jsonb), [combat_effect(jsonb,bigint,text,jsonb)](#fn-combat-effect-jsonb-bigint-text-jsonb), [combat_effect_changes(jsonb,jsonb,jsonb)](#fn-combat-effect-changes-jsonb-jsonb-jsonb), [combat_effect_count(jsonb,jsonb)](#fn-combat-effect-count-jsonb-jsonb), [combat_effect_hit(jsonb,bigint,text,jsonb)](#fn-combat-effect-hit-jsonb-bigint-text-jsonb), [combat_effect_mark(jsonb,text,jsonb)](#fn-combat-effect-mark-jsonb-text-jsonb), [combat_effect_num(jsonb)](#fn-combat-effect-num-jsonb), [combat_effect_set(jsonb,text,text,jsonb)](#fn-combat-effect-set-jsonb-text-text-jsonb), [combat_effect_use(jsonb,bigint,jsonb)](#fn-combat-effect-use-jsonb-bigint-jsonb), [combat_effect_v2_active(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb)](#fn-combat-effect-v2-active-jsonb-jsonb-jsonb-jsonb-jsonb-jsonb), [combat_effect_v2_ally_to(jsonb,text)](#fn-combat-effect-v2-ally-to-jsonb-text), [combat_effect_v2_amount(jsonb,jsonb,jsonb,jsonb,integer,jsonb,jsonb)](#fn-combat-effect-v2-amount-jsonb-jsonb-jsonb-jsonb-integer-jsonb-jsonb), [combat_effect_v2_basic(jsonb,jsonb,jsonb,jsonb,jsonb)](#fn-combat-effect-v2-basic-jsonb-jsonb-jsonb-jsonb-jsonb), [combat_effect_v2_blocks(jsonb,jsonb)](#fn-combat-effect-v2-blocks-jsonb-jsonb), [combat_effect_v2_count(jsonb,text,text,integer,jsonb)](#fn-combat-effect-v2-count-jsonb-text-text-integer-jsonb), [combat_effect_v2_gate(jsonb,jsonb,jsonb,jsonb)](#fn-combat-effect-v2-gate-jsonb-jsonb-jsonb-jsonb), [combat_effect_v2_has(jsonb,jsonb,integer)](#fn-combat-effect-v2-has-jsonb-jsonb-integer), [combat_effect_v2_hit(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb)](#fn-combat-effect-v2-hit-jsonb-jsonb-jsonb-jsonb-jsonb-jsonb), [combat_effect_v2_holds(jsonb,jsonb,integer,jsonb)](#fn-combat-effect-v2-holds-jsonb-jsonb-integer-jsonb), [combat_effect_value(jsonb,jsonb)](#fn-combat-effect-value-jsonb-jsonb), [combat_effect_when(jsonb,jsonb,jsonb)](#fn-combat-effect-when-jsonb-jsonb-jsonb), [combat_element(text,text)](#fn-combat-element-text-text), [combat_element_map()](#fn-combat-element-map), [combat_enemy_act(numeric,numeric,integer,integer,numeric,bigint)](#fn-combat-enemy-act-numeric-numeric-integer-integer-numeric-bigint), [combat_enemy_mult(numeric,integer,numeric,integer,integer,boolean,numeric,boolean)](#fn-combat-enemy-mult-numeric-integer-numeric-integer-integer-boolean-numeric-boolean), [combat_hit(integer,numeric,numeric,numeric,numeric,numeric,numeric,text,numeric,numeric,boolean,numeric,bigint,bigint)](#fn-combat-hit-integer-numeric-numeric-numeric-numeric-numeric-numeric-text-numeric-numeric-boolean-numeric-bigint-bigint), [combat_hit_core(integer,numeric,numeric,numeric,numeric,numeric,numeric,boolean,numeric,jsonb,jsonb)](#fn-combat-hit-core-integer-numeric-numeric-numeric-numeric-numeric-numeric-boolean-numeric-jsonb-jsonb), [combat_hit_elem(integer,numeric,numeric,numeric,numeric,numeric,numeric,text,numeric,numeric,boolean,numeric,bigint,bigint,text,text)](#fn-combat-hit-elem-integer-numeric-numeric-numeric-numeric-numeric-numeric-text-numeric-numeric-boolean-numeric-bigint-bigint-text-text), [combat_lifesteal(integer,numeric,integer)](#fn-combat-lifesteal-integer-numeric-integer), [combat_miss(boolean)](#fn-combat-miss-boolean), [combat_pool_act(numeric,numeric,integer,integer,numeric,integer,jsonb,boolean)](#fn-combat-pool-act-numeric-numeric-integer-integer-numeric-integer-jsonb-boolean), [combat_regen(bigint)](#fn-combat-regen-bigint), [combat_squad(text[],boolean,jsonb,jsonb)](#fn-combat-squad-text-boolean-jsonb-jsonb), [combat_squad_core(jsonb,boolean,jsonb,jsonb)](#fn-combat-squad-core-jsonb-boolean-jsonb-jsonb), [combat_squad_value(jsonb,integer,jsonb)](#fn-combat-squad-value-jsonb-integer-jsonb), [combat_stun_immune(integer,integer)](#fn-combat-stun-immune-integer-integer), [combat_thorns(integer)](#fn-combat-thorns-integer), [combat_v2_action_numbers()](#fn-combat-v2-action-numbers), [combat_v2_advance(jsonb,jsonb)](#fn-combat-v2-advance-jsonb-jsonb), [combat_v2_advance(jsonb)](#fn-combat-v2-advance-jsonb), [combat_v2_auto(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-auto-jsonb-jsonb-jsonb-jsonb), [combat_v2_auto_charging(jsonb)](#fn-combat-v2-auto-charging-jsonb), [combat_v2_auto_makes(text,jsonb,jsonb)](#fn-combat-v2-auto-makes-text-jsonb-jsonb), [combat_v2_auto_pays(jsonb)](#fn-combat-v2-auto-pays-jsonb), [combat_v2_auto_target(jsonb,jsonb,boolean,jsonb,jsonb)](#fn-combat-v2-auto-target-jsonb-jsonb-boolean-jsonb-jsonb), [combat_v2_autopick(jsonb,jsonb,integer,jsonb,jsonb)](#fn-combat-v2-autopick-jsonb-jsonb-integer-jsonb-jsonb), [combat_v2_autopick_choose(jsonb,jsonb,integer,jsonb)](#fn-combat-v2-autopick-choose-jsonb-jsonb-integer-jsonb), [combat_v2_autopick_pair(jsonb,jsonb,integer[],jsonb)](#fn-combat-v2-autopick-pair-jsonb-jsonb-integer-jsonb), [combat_v2_blocked(jsonb,jsonb,text,jsonb,jsonb)](#fn-combat-v2-blocked-jsonb-jsonb-text-jsonb-jsonb), [combat_v2_boss_move(jsonb,jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-boss-move-jsonb-jsonb-jsonb-jsonb-jsonb), [combat_v2_boss_target(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-boss-target-jsonb-jsonb-jsonb-jsonb), [combat_v2_card_act(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-card-act-jsonb-jsonb-jsonb-jsonb), [combat_v2_card_tags(bigint)](#fn-combat-v2-card-tags-bigint), [combat_v2_card_unit(bigint,jsonb)](#fn-combat-v2-card-unit-bigint-jsonb), [combat_v2_confused_target(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-confused-target-jsonb-jsonb-jsonb-jsonb), [combat_v2_damage(jsonb,jsonb,numeric,jsonb,jsonb)](#fn-combat-v2-damage-jsonb-jsonb-numeric-jsonb-jsonb), [combat_v2_draw(jsonb,integer)](#fn-combat-v2-draw-jsonb-integer), [combat_v2_draws_rest(jsonb,integer)](#fn-combat-v2-draws-rest-jsonb-integer), [combat_v2_drop(jsonb,jsonb,jsonb)](#fn-combat-v2-drop-jsonb-jsonb-jsonb), [combat_v2_dungeon_foe(text,integer,integer,text,jsonb,jsonb)](#fn-combat-v2-dungeon-foe-text-integer-integer-text-jsonb-jsonb), [combat_v2_enemy_act(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-enemy-act-jsonb-jsonb-jsonb-jsonb), [combat_v2_enemy_hit(jsonb,jsonb,jsonb,numeric,boolean,jsonb,jsonb,jsonb)](#fn-combat-v2-enemy-hit-jsonb-jsonb-jsonb-numeric-boolean-jsonb-jsonb-jsonb), [combat_v2_enemy_mult(jsonb,jsonb,jsonb)](#fn-combat-v2-enemy-mult-jsonb-jsonb-jsonb), [combat_v2_enemy_numbers()](#fn-combat-v2-enemy-numbers), [combat_v2_fall(jsonb)](#fn-combat-v2-fall-jsonb), [combat_v2_heal(jsonb,jsonb,numeric,jsonb)](#fn-combat-v2-heal-jsonb-jsonb-numeric-jsonb), [combat_v2_healed(jsonb,integer)](#fn-combat-v2-healed-jsonb-integer), [combat_v2_hit(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-hit-jsonb-jsonb-jsonb-jsonb), [combat_v2_hit(jsonb,jsonb,jsonb)](#fn-combat-v2-hit-jsonb-jsonb-jsonb), [combat_v2_hit_apply(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-hit-apply-jsonb-jsonb-jsonb-jsonb), [combat_v2_hunt_boss(text,text,jsonb,jsonb)](#fn-combat-v2-hunt-boss-text-text-jsonb-jsonb), [combat_v2_mech(jsonb,jsonb,text)](#fn-combat-v2-mech-jsonb-jsonb-text), [combat_v2_neg_kinds(jsonb,integer,jsonb)](#fn-combat-v2-neg-kinds-jsonb-integer-jsonb), [combat_v2_next(jsonb,jsonb,jsonb)](#fn-combat-v2-next-jsonb-jsonb-jsonb), [combat_v2_numbers(text[])](#fn-combat-v2-numbers-text), [combat_v2_on(text,text)](#fn-combat-v2-on-text-text), [combat_v2_on(text)](#fn-combat-v2-on-text), [combat_v2_pick_card(jsonb,jsonb,jsonb)](#fn-combat-v2-pick-card-jsonb-jsonb-jsonb), [combat_v2_speed(jsonb,integer,jsonb)](#fn-combat-v2-speed-jsonb-integer-jsonb), [combat_v2_squad_value(jsonb,jsonb,jsonb)](#fn-combat-v2-squad-value-jsonb-jsonb-jsonb), [combat_v2_standing_rule(jsonb,text,jsonb)](#fn-combat-v2-standing-rule-jsonb-text-jsonb), [combat_v2_stats(numeric,jsonb,text,jsonb)](#fn-combat-v2-stats-numeric-jsonb-text-jsonb), [combat_v2_status_apply(jsonb,jsonb,text,jsonb,jsonb)](#fn-combat-v2-status-apply-jsonb-jsonb-text-jsonb-jsonb), [combat_v2_status_check(jsonb,jsonb,text)](#fn-combat-v2-status-check-jsonb-jsonb-text), [combat_v2_status_cure(jsonb,jsonb,jsonb,integer,jsonb)](#fn-combat-v2-status-cure-jsonb-jsonb-jsonb-integer-jsonb), [combat_v2_status_drop(jsonb,text,text,boolean,integer,jsonb)](#fn-combat-v2-status-drop-jsonb-text-text-boolean-integer-jsonb), [combat_v2_status_numbers()](#fn-combat-v2-status-numbers), [combat_v2_status_on(jsonb,text,integer)](#fn-combat-v2-status-on-jsonb-text-integer), [combat_v2_status_remove(jsonb,jsonb,text,jsonb)](#fn-combat-v2-status-remove-jsonb-jsonb-text-jsonb), [combat_v2_status_strip(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-status-strip-jsonb-jsonb-jsonb-jsonb), [combat_v2_step(jsonb,jsonb,jsonb)](#fn-combat-v2-step-jsonb-jsonb-jsonb), [combat_v2_step_end(jsonb,jsonb,jsonb)](#fn-combat-v2-step-end-jsonb-jsonb-jsonb), [combat_v2_step_end(jsonb,jsonb)](#fn-combat-v2-step-end-jsonb-jsonb), [combat_v2_synergy(jsonb,jsonb)](#fn-combat-v2-synergy-jsonb-jsonb), [combat_v2_timed(jsonb,text,integer)](#fn-combat-v2-timed-jsonb-text-integer), [combat_v2_timed_any(jsonb,text)](#fn-combat-v2-timed-any-jsonb-text), [combat_v2_turn_order(jsonb,integer)](#fn-combat-v2-turn-order-jsonb-integer), [combat_v2_turn_start(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-turn-start-jsonb-jsonb-jsonb-jsonb), [combat_v2_unit_path(jsonb,jsonb)](#fn-combat-v2-unit-path-jsonb-jsonb), [combat_v2_units(jsonb)](#fn-combat-v2-units-jsonb), [combat_v2_up(jsonb)](#fn-combat-v2-up-jsonb), [combat_v2_volatile(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-volatile-jsonb-jsonb-jsonb-jsonb), [combat_weak(jsonb,jsonb,text,text,text,text[],integer)](#fn-combat-weak-jsonb-jsonb-text-text-text-text-integer), [combat_weak_mult(integer,integer,integer,jsonb)](#fn-combat-weak-mult-integer-integer-integer-jsonb), [daily_raid_board(timestamp with time zone)](#fn-daily-raid-board-timestamp-with-time-zone), [deployable_power(integer)](#fn-deployable-power-integer), [effect_preview(text)](#fn-effect-preview-text), [effect_preview_card(text,integer,jsonb,jsonb)](#fn-effect-preview-card-text-integer-jsonb-jsonb), [element_aliases()](#fn-element-aliases), [element_of(text)](#fn-element-of-text), [fight_change_check(jsonb)](#fn-fight-change-check-jsonb), [fight_state_check(jsonb)](#fn-fight-state-check-jsonb), [fight_state_check_v2(jsonb)](#fn-fight-state-check-v2-jsonb), [fight_state_v2_from_v1(jsonb)](#fn-fight-state-v2-from-v1-jsonb), [hunt_attack(text,bigint,bigint)](#fn-hunt-attack-text-bigint-bigint), [hunt_autopick(text,bigint,integer)](#fn-hunt-autopick-text-bigint-integer), [hunt_autopick_add(jsonb[],jsonb,integer[],integer[],integer[],integer[],boolean[],integer,integer,integer,integer)](#fn-hunt-autopick-add-jsonb-jsonb-integer-integer-integer-integer-boolean-integer-integer-integer-integer), [hunt_autopick_pool(jsonb,integer)](#fn-hunt-autopick-pool-jsonb-integer), [hunt_autopick_sups(integer,integer[],integer[],integer[],boolean[],integer,text[],text[],numeric[],jsonb[],numeric[],jsonb)](#fn-hunt-autopick-sups-integer-integer-integer-integer-boolean-integer-text-text-numeric-jsonb-numeric-jsonb), [hunt_autopick_val(jsonb[],integer[],integer[],jsonb)](#fn-hunt-autopick-val-jsonb-integer-integer-jsonb), [hunt_boss_move_list(text)](#fn-hunt-boss-move-list-text), [hunt_boss_v2_card(text,text)](#fn-hunt-boss-v2-card-text-text), [hunt_bosses_v2_check()](#fn-hunt-bosses-v2-check), [hunt_card_cap()](#fn-hunt-card-cap), [hunt_card_crits(text,bigint)](#fn-hunt-card-crits-text-bigint), [hunt_combat_stats(bigint)](#fn-hunt-combat-stats-bigint), [hunt_commit_card(bigint,text,bigint,date,integer)](#fn-hunt-commit-card-bigint-text-bigint-date-integer), [hunt_counter_act(bigint,text,date,bigint,integer,numeric,numeric,text,text,integer,integer,integer,numeric)](#fn-hunt-counter-act-bigint-text-date-bigint-integer-numeric-numeric-text-text-integer-integer-integer-numeric), [hunt_counter_cd(bigint,text,date,text,integer,integer)](#fn-hunt-counter-cd-bigint-text-date-text-integer-integer), [hunt_counter_hit(bigint,text,date,bigint,integer,boolean)](#fn-hunt-counter-hit-bigint-text-date-bigint-integer-boolean), [hunt_counter_mult(text)](#fn-hunt-counter-mult-text), [hunt_counter_num(text,text)](#fn-hunt-counter-num-text-text), [hunt_counter_pick(bigint,text,date,text,text)](#fn-hunt-counter-pick-bigint-text-date-text-text), [hunt_counter_text(text)](#fn-hunt-counter-text-text), [hunt_counter_tick(bigint,text,date,bigint,integer)](#fn-hunt-counter-tick-bigint-text-date-bigint-integer), [hunt_damage_reconcile(bigint)](#fn-hunt-damage-reconcile-bigint), [hunt_effect_apply(bigint,text,date,jsonb)](#fn-hunt-effect-apply-bigint-text-date-jsonb), [hunt_fight_state(bigint,text,date,bigint,bigint)](#fn-hunt-fight-state-bigint-text-date-bigint-bigint), [hunt_fight_state_info(bigint,text,date,jsonb,jsonb,bigint,jsonb,bigint)](#fn-hunt-fight-state-info-bigint-text-date-jsonb-jsonb-bigint-jsonb-bigint), [hunt_fight_summary()](#fn-hunt-fight-summary), [hunt_hit_mods(jsonb,bigint,bigint)](#fn-hunt-hit-mods-jsonb-bigint-bigint), [hunt_leaderboard(bigint,integer)](#fn-hunt-leaderboard-bigint-integer), [hunt_mark_on(jsonb,text,integer)](#fn-hunt-mark-on-jsonb-text-integer), [hunt_marks_patch(bigint,text,date,jsonb)](#fn-hunt-marks-patch-bigint-text-date-jsonb), [hunt_mt_slot(text,timestamp with time zone)](#fn-hunt-mt-slot-text-timestamp-with-time-zone), [hunt_next_mt(integer,integer,timestamp with time zone)](#fn-hunt-next-mt-integer-integer-timestamp-with-time-zone), [hunt_pass_turn(text,bigint)](#fn-hunt-pass-turn-text-bigint), [hunt_pick_pool(text,bigint,bigint[])](#fn-hunt-pick-pool-text-bigint-bigint), [hunt_round_cap()](#fn-hunt-round-cap), [hunt_squad_allows(bigint,text,date,bigint)](#fn-hunt-squad-allows-bigint-text-date-bigint), [hunt_squad_cards(bigint,text,date,bigint)](#fn-hunt-squad-cards-bigint-text-date-bigint), [hunt_squad_done(bigint,text,date,integer)](#fn-hunt-squad-done-bigint-text-date-integer), [hunt_squad_value(text,bigint,bigint[])](#fn-hunt-squad-value-text-bigint-bigint), [hunt_state_round(bigint,text,date)](#fn-hunt-state-round-bigint-text-date), [hunt_support(text,bigint,bigint,bigint)](#fn-hunt-support-text-bigint-bigint-bigint), [hunt_view(text,bigint,date)](#fn-hunt-view-text-bigint-date), [lock_hunt_squad(text,bigint,bigint[])](#fn-lock-hunt-squad-text-bigint-bigint), [next_hunt_close()](#fn-next-hunt-close), [next_hunt_spawn()](#fn-next-hunt-spawn), [nudge_hunt(bigint)](#fn-nudge-hunt-bigint), [play_card_effect(text,bigint,text)](#fn-play-card-effect-text-bigint-text), [play_card_effect_choice(text,bigint,text,integer)](#fn-play-card-effect-choice-text-bigint-text-integer), [refund_card_play(bigint,text)](#fn-refund-card-play-bigint-text), [roles_check()](#fn-roles-check), [settle_hunt(bigint)](#fn-settle-hunt-bigint), [spawn_hunt(integer,text)](#fn-spawn-hunt-integer-text), [spawn_weekly_boss(timestamp with time zone,bigint,text)](#fn-spawn-weekly-boss-timestamp-with-time-zone-bigint-text), [statuses_check()](#fn-statuses-check), [subjects_ability_check()](#fn-subjects-ability-check), [take_player_effect(text,text)](#fn-take-player-effect-text-text), [use_effect_charge(text,text)](#fn-use-effect-charge-text-text)
+Functions (242): [ability_blocks_check()](#fn-ability-blocks-check), [ability_check(jsonb)](#fn-ability-check-jsonb), [ability_cond_check(jsonb,jsonb)](#fn-ability-cond-check-jsonb-jsonb), [ability_fields_check(jsonb)](#fn-ability-fields-check-jsonb), [ability_kinds_check()](#fn-ability-kinds-check), [ability_kinds_recheck()](#fn-ability-kinds-recheck), [ability_ok(jsonb)](#fn-ability-ok-jsonb), [ability_power(jsonb)](#fn-ability-power-jsonb), [ability_ref_check(text,jsonb)](#fn-ability-ref-check-text-jsonb), [ability_step_check(text,jsonb,jsonb)](#fn-ability-step-check-text-jsonb-jsonb), [ability_v2_ally_word(text)](#fn-ability-v2-ally-word-text), [ability_v2_block_pp(jsonb,text,numeric,jsonb)](#fn-ability-v2-block-pp-jsonb-text-numeric-jsonb), [ability_v2_cap(text)](#fn-ability-v2-cap-text), [ability_v2_check(text,jsonb,jsonb)](#fn-ability-v2-check-text-jsonb-jsonb), [ability_v2_clause(text,text)](#fn-ability-v2-clause-text-text), [ability_v2_coin(text,jsonb,jsonb,jsonb)](#fn-ability-v2-coin-text-jsonb-jsonb-jsonb), [ability_v2_field_error(text,jsonb,jsonb)](#fn-ability-v2-field-error-text-jsonb-jsonb), [ability_v2_field_types()](#fn-ability-v2-field-types), [ability_v2_fill(text,jsonb)](#fn-ability-v2-fill-text-jsonb), [ability_v2_numbers()](#fn-ability-v2-numbers), [ability_v2_options(jsonb,jsonb)](#fn-ability-v2-options-jsonb-jsonb), [ability_v2_or(text[])](#fn-ability-v2-or-text), [ability_v2_pct(numeric)](#fn-ability-v2-pct-numeric), [ability_v2_pp(text,jsonb,jsonb)](#fn-ability-v2-pp-text-jsonb-jsonb), [ability_v2_pps(text,jsonb,jsonb)](#fn-ability-v2-pps-text-jsonb-jsonb), [ability_v2_silver_text(text,jsonb,jsonb,jsonb)](#fn-ability-v2-silver-text-text-jsonb-jsonb-jsonb), [ability_v2_spec()](#fn-ability-v2-spec), [ability_v2_text(text,jsonb,jsonb)](#fn-ability-v2-text-text-jsonb-jsonb), [ability_v2_vals(jsonb)](#fn-ability-v2-vals-jsonb), [ability_v2_verb(jsonb,jsonb,text,boolean)](#fn-ability-v2-verb-jsonb-jsonb-text-boolean), [ability_v2_words(text)](#fn-ability-v2-words-text), [ability_value_check(jsonb,jsonb)](#fn-ability-value-check-jsonb-jsonb), [adventure_gate(text)](#fn-adventure-gate-text), [arm_on_open()](#fn-arm-on-open), [arm_player_effects(text)](#fn-arm-player-effects-text), [card_combat(text,integer,numeric,jsonb,jsonb)](#fn-card-combat-text-integer-numeric-jsonb-jsonb), [card_combat(text,integer,numeric,jsonb)](#fn-card-combat-text-integer-numeric-jsonb), [card_effect_active(text,text)](#fn-card-effect-active-text-text), [card_element(text[])](#fn-card-element-text), [card_max_hp(integer,numeric,numeric)](#fn-card-max-hp-integer-numeric-numeric), [card_max_hp(integer)](#fn-card-max-hp-integer), [close_due_hunts()](#fn-close-due-hunts), [close_hunt(bigint)](#fn-close-hunt-bigint), [combat_absorb(integer,integer)](#fn-combat-absorb-integer-integer), [combat_aff_scale(integer)](#fn-combat-aff-scale-integer), [combat_area_roll(numeric,numeric,numeric)](#fn-combat-area-roll-numeric-numeric-numeric), [combat_burn(numeric)](#fn-combat-burn-numeric), [combat_card_facts(text[],text[])](#fn-combat-card-facts-text-text), [combat_cooldown(integer,numeric)](#fn-combat-cooldown-integer-numeric), [combat_crit_chance(boolean,text,numeric,jsonb)](#fn-combat-crit-chance-boolean-text-numeric-jsonb), [combat_crit_chance_mods(boolean,jsonb,jsonb)](#fn-combat-crit-chance-mods-boolean-jsonb-jsonb), [combat_effect(jsonb,bigint,text,jsonb)](#fn-combat-effect-jsonb-bigint-text-jsonb), [combat_effect_changes(jsonb,jsonb,jsonb)](#fn-combat-effect-changes-jsonb-jsonb-jsonb), [combat_effect_count(jsonb,jsonb)](#fn-combat-effect-count-jsonb-jsonb), [combat_effect_hit(jsonb,bigint,text,jsonb)](#fn-combat-effect-hit-jsonb-bigint-text-jsonb), [combat_effect_mark(jsonb,text,jsonb)](#fn-combat-effect-mark-jsonb-text-jsonb), [combat_effect_num(jsonb)](#fn-combat-effect-num-jsonb), [combat_effect_set(jsonb,text,text,jsonb)](#fn-combat-effect-set-jsonb-text-text-jsonb), [combat_effect_use(jsonb,bigint,jsonb)](#fn-combat-effect-use-jsonb-bigint-jsonb), [combat_effect_v2_active(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb)](#fn-combat-effect-v2-active-jsonb-jsonb-jsonb-jsonb-jsonb-jsonb), [combat_effect_v2_ally_to(jsonb,text)](#fn-combat-effect-v2-ally-to-jsonb-text), [combat_effect_v2_amount(jsonb,jsonb,jsonb,jsonb,integer,jsonb,jsonb)](#fn-combat-effect-v2-amount-jsonb-jsonb-jsonb-jsonb-integer-jsonb-jsonb), [combat_effect_v2_basic(jsonb,jsonb,jsonb,jsonb,jsonb)](#fn-combat-effect-v2-basic-jsonb-jsonb-jsonb-jsonb-jsonb), [combat_effect_v2_blocks(jsonb,jsonb)](#fn-combat-effect-v2-blocks-jsonb-jsonb), [combat_effect_v2_count(jsonb,text,text,integer,jsonb)](#fn-combat-effect-v2-count-jsonb-text-text-integer-jsonb), [combat_effect_v2_gate(jsonb,jsonb,jsonb,jsonb)](#fn-combat-effect-v2-gate-jsonb-jsonb-jsonb-jsonb), [combat_effect_v2_has(jsonb,jsonb,integer)](#fn-combat-effect-v2-has-jsonb-jsonb-integer), [combat_effect_v2_hit(jsonb,jsonb,jsonb,jsonb,jsonb,jsonb)](#fn-combat-effect-v2-hit-jsonb-jsonb-jsonb-jsonb-jsonb-jsonb), [combat_effect_v2_holds(jsonb,jsonb,integer,jsonb)](#fn-combat-effect-v2-holds-jsonb-jsonb-integer-jsonb), [combat_effect_value(jsonb,jsonb)](#fn-combat-effect-value-jsonb-jsonb), [combat_effect_when(jsonb,jsonb,jsonb)](#fn-combat-effect-when-jsonb-jsonb-jsonb), [combat_element(text,text)](#fn-combat-element-text-text), [combat_element_map()](#fn-combat-element-map), [combat_enemy_act(numeric,numeric,integer,integer,numeric,bigint)](#fn-combat-enemy-act-numeric-numeric-integer-integer-numeric-bigint), [combat_enemy_mult(numeric,integer,numeric,integer,integer,boolean,numeric,boolean)](#fn-combat-enemy-mult-numeric-integer-numeric-integer-integer-boolean-numeric-boolean), [combat_hit(integer,numeric,numeric,numeric,numeric,numeric,numeric,text,numeric,numeric,boolean,numeric,bigint,bigint)](#fn-combat-hit-integer-numeric-numeric-numeric-numeric-numeric-numeric-text-numeric-numeric-boolean-numeric-bigint-bigint), [combat_hit_core(integer,numeric,numeric,numeric,numeric,numeric,numeric,boolean,numeric,jsonb,jsonb)](#fn-combat-hit-core-integer-numeric-numeric-numeric-numeric-numeric-numeric-boolean-numeric-jsonb-jsonb), [combat_hit_elem(integer,numeric,numeric,numeric,numeric,numeric,numeric,text,numeric,numeric,boolean,numeric,bigint,bigint,text,text)](#fn-combat-hit-elem-integer-numeric-numeric-numeric-numeric-numeric-numeric-text-numeric-numeric-boolean-numeric-bigint-bigint-text-text), [combat_lifesteal(integer,numeric,integer)](#fn-combat-lifesteal-integer-numeric-integer), [combat_miss(boolean)](#fn-combat-miss-boolean), [combat_pool_act(numeric,numeric,integer,integer,numeric,integer,jsonb,boolean)](#fn-combat-pool-act-numeric-numeric-integer-integer-numeric-integer-jsonb-boolean), [combat_regen(bigint)](#fn-combat-regen-bigint), [combat_squad(text[],boolean,jsonb,jsonb)](#fn-combat-squad-text-boolean-jsonb-jsonb), [combat_squad_core(jsonb,boolean,jsonb,jsonb)](#fn-combat-squad-core-jsonb-boolean-jsonb-jsonb), [combat_squad_value(jsonb,integer,jsonb)](#fn-combat-squad-value-jsonb-integer-jsonb), [combat_stun_immune(integer,integer)](#fn-combat-stun-immune-integer-integer), [combat_thorns(integer)](#fn-combat-thorns-integer), [combat_v2_action_numbers()](#fn-combat-v2-action-numbers), [combat_v2_advance(jsonb,jsonb)](#fn-combat-v2-advance-jsonb-jsonb), [combat_v2_advance(jsonb)](#fn-combat-v2-advance-jsonb), [combat_v2_auto(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-auto-jsonb-jsonb-jsonb-jsonb), [combat_v2_auto_charging(jsonb)](#fn-combat-v2-auto-charging-jsonb), [combat_v2_auto_makes(text,jsonb,jsonb)](#fn-combat-v2-auto-makes-text-jsonb-jsonb), [combat_v2_auto_pays(jsonb)](#fn-combat-v2-auto-pays-jsonb), [combat_v2_auto_target(jsonb,jsonb,boolean,jsonb,jsonb)](#fn-combat-v2-auto-target-jsonb-jsonb-boolean-jsonb-jsonb), [combat_v2_autopick(jsonb,jsonb,integer,jsonb,jsonb)](#fn-combat-v2-autopick-jsonb-jsonb-integer-jsonb-jsonb), [combat_v2_autopick_choose(jsonb,jsonb,integer,jsonb)](#fn-combat-v2-autopick-choose-jsonb-jsonb-integer-jsonb), [combat_v2_autopick_pair(jsonb,jsonb,integer[],jsonb)](#fn-combat-v2-autopick-pair-jsonb-jsonb-integer-jsonb), [combat_v2_blocked(jsonb,jsonb,text,jsonb,jsonb)](#fn-combat-v2-blocked-jsonb-jsonb-text-jsonb-jsonb), [combat_v2_boss_move(jsonb,jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-boss-move-jsonb-jsonb-jsonb-jsonb-jsonb), [combat_v2_boss_target(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-boss-target-jsonb-jsonb-jsonb-jsonb), [combat_v2_card_act(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-card-act-jsonb-jsonb-jsonb-jsonb), [combat_v2_card_tags(bigint)](#fn-combat-v2-card-tags-bigint), [combat_v2_card_unit(bigint,jsonb)](#fn-combat-v2-card-unit-bigint-jsonb), [combat_v2_confused_target(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-confused-target-jsonb-jsonb-jsonb-jsonb), [combat_v2_convert(text)](#fn-combat-v2-convert-text), [combat_v2_convert_check(bigint[])](#fn-combat-v2-convert-check-bigint), [combat_v2_convert_expect(bigint,integer,jsonb)](#fn-combat-v2-convert-expect-bigint-integer-jsonb), [combat_v2_convert_fix(bigint[])](#fn-combat-v2-convert-fix-bigint), [combat_v2_convert_undo(text,bigint[])](#fn-combat-v2-convert-undo-text-bigint), [combat_v2_convert_write(bigint)](#fn-combat-v2-convert-write-bigint), [combat_v2_damage(jsonb,jsonb,numeric,jsonb,jsonb)](#fn-combat-v2-damage-jsonb-jsonb-numeric-jsonb-jsonb), [combat_v2_draw(jsonb,integer)](#fn-combat-v2-draw-jsonb-integer), [combat_v2_draws_rest(jsonb,integer)](#fn-combat-v2-draws-rest-jsonb-integer), [combat_v2_drop(jsonb,jsonb,jsonb)](#fn-combat-v2-drop-jsonb-jsonb-jsonb), [combat_v2_dungeon_foe(text,integer,integer,text,jsonb,jsonb)](#fn-combat-v2-dungeon-foe-text-integer-integer-text-jsonb-jsonb), [combat_v2_enemy_act(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-enemy-act-jsonb-jsonb-jsonb-jsonb), [combat_v2_enemy_hit(jsonb,jsonb,jsonb,numeric,boolean,jsonb,jsonb,jsonb)](#fn-combat-v2-enemy-hit-jsonb-jsonb-jsonb-numeric-boolean-jsonb-jsonb-jsonb), [combat_v2_enemy_mult(jsonb,jsonb,jsonb)](#fn-combat-v2-enemy-mult-jsonb-jsonb-jsonb), [combat_v2_enemy_numbers()](#fn-combat-v2-enemy-numbers), [combat_v2_fall(jsonb)](#fn-combat-v2-fall-jsonb), [combat_v2_heal(jsonb,jsonb,numeric,jsonb)](#fn-combat-v2-heal-jsonb-jsonb-numeric-jsonb), [combat_v2_healed(jsonb,integer)](#fn-combat-v2-healed-jsonb-integer), [combat_v2_hit(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-hit-jsonb-jsonb-jsonb-jsonb), [combat_v2_hit(jsonb,jsonb,jsonb)](#fn-combat-v2-hit-jsonb-jsonb-jsonb), [combat_v2_hit_apply(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-hit-apply-jsonb-jsonb-jsonb-jsonb), [combat_v2_hunt_boss(text,text,jsonb,jsonb)](#fn-combat-v2-hunt-boss-text-text-jsonb-jsonb), [combat_v2_mech(jsonb,jsonb,text)](#fn-combat-v2-mech-jsonb-jsonb-text), [combat_v2_neg_kinds(jsonb,integer,jsonb)](#fn-combat-v2-neg-kinds-jsonb-integer-jsonb), [combat_v2_next(jsonb,jsonb,jsonb)](#fn-combat-v2-next-jsonb-jsonb-jsonb), [combat_v2_numbers(text[])](#fn-combat-v2-numbers-text), [combat_v2_on(text,text)](#fn-combat-v2-on-text-text), [combat_v2_on(text)](#fn-combat-v2-on-text), [combat_v2_pick_card(jsonb,jsonb,jsonb)](#fn-combat-v2-pick-card-jsonb-jsonb-jsonb), [combat_v2_speed(jsonb,integer,jsonb)](#fn-combat-v2-speed-jsonb-integer-jsonb), [combat_v2_squad_value(jsonb,jsonb,jsonb)](#fn-combat-v2-squad-value-jsonb-jsonb-jsonb), [combat_v2_standing_rule(jsonb,text,jsonb)](#fn-combat-v2-standing-rule-jsonb-text-jsonb), [combat_v2_stats(numeric,jsonb,text,jsonb)](#fn-combat-v2-stats-numeric-jsonb-text-jsonb), [combat_v2_status_apply(jsonb,jsonb,text,jsonb,jsonb)](#fn-combat-v2-status-apply-jsonb-jsonb-text-jsonb-jsonb), [combat_v2_status_check(jsonb,jsonb,text)](#fn-combat-v2-status-check-jsonb-jsonb-text), [combat_v2_status_cure(jsonb,jsonb,jsonb,integer,jsonb)](#fn-combat-v2-status-cure-jsonb-jsonb-jsonb-integer-jsonb), [combat_v2_status_drop(jsonb,text,text,boolean,integer,jsonb)](#fn-combat-v2-status-drop-jsonb-text-text-boolean-integer-jsonb), [combat_v2_status_numbers()](#fn-combat-v2-status-numbers), [combat_v2_status_on(jsonb,text,integer)](#fn-combat-v2-status-on-jsonb-text-integer), [combat_v2_status_remove(jsonb,jsonb,text,jsonb)](#fn-combat-v2-status-remove-jsonb-jsonb-text-jsonb), [combat_v2_status_strip(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-status-strip-jsonb-jsonb-jsonb-jsonb), [combat_v2_step(jsonb,jsonb,jsonb)](#fn-combat-v2-step-jsonb-jsonb-jsonb), [combat_v2_step_end(jsonb,jsonb,jsonb)](#fn-combat-v2-step-end-jsonb-jsonb-jsonb), [combat_v2_step_end(jsonb,jsonb)](#fn-combat-v2-step-end-jsonb-jsonb), [combat_v2_synergy(jsonb,jsonb)](#fn-combat-v2-synergy-jsonb-jsonb), [combat_v2_timed(jsonb,text,integer)](#fn-combat-v2-timed-jsonb-text-integer), [combat_v2_timed_any(jsonb,text)](#fn-combat-v2-timed-any-jsonb-text), [combat_v2_turn_order(jsonb,integer)](#fn-combat-v2-turn-order-jsonb-integer), [combat_v2_turn_start(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-turn-start-jsonb-jsonb-jsonb-jsonb), [combat_v2_unit_path(jsonb,jsonb)](#fn-combat-v2-unit-path-jsonb-jsonb), [combat_v2_units(jsonb)](#fn-combat-v2-units-jsonb), [combat_v2_up(jsonb)](#fn-combat-v2-up-jsonb), [combat_v2_volatile(jsonb,jsonb,jsonb,jsonb)](#fn-combat-v2-volatile-jsonb-jsonb-jsonb-jsonb), [combat_weak(jsonb,jsonb,text,text,text,text[],integer)](#fn-combat-weak-jsonb-jsonb-text-text-text-text-integer), [combat_weak_mult(integer,integer,integer,jsonb)](#fn-combat-weak-mult-integer-integer-integer-jsonb), [daily_raid_board(timestamp with time zone)](#fn-daily-raid-board-timestamp-with-time-zone), [deployable_power(integer)](#fn-deployable-power-integer), [effect_preview(text)](#fn-effect-preview-text), [effect_preview_card(text,integer,jsonb,jsonb)](#fn-effect-preview-card-text-integer-jsonb-jsonb), [element_aliases()](#fn-element-aliases), [element_of(text)](#fn-element-of-text), [fight_change_check(jsonb)](#fn-fight-change-check-jsonb), [fight_state_check(jsonb)](#fn-fight-state-check-jsonb), [fight_state_check_v2(jsonb)](#fn-fight-state-check-v2-jsonb), [fight_state_v2_from_v1(jsonb)](#fn-fight-state-v2-from-v1-jsonb), [hunt_attack(text,bigint,bigint)](#fn-hunt-attack-text-bigint-bigint), [hunt_autopick(text,bigint,integer)](#fn-hunt-autopick-text-bigint-integer), [hunt_autopick_add(jsonb[],jsonb,integer[],integer[],integer[],integer[],boolean[],integer,integer,integer,integer)](#fn-hunt-autopick-add-jsonb-jsonb-integer-integer-integer-integer-boolean-integer-integer-integer-integer), [hunt_autopick_pool(jsonb,integer)](#fn-hunt-autopick-pool-jsonb-integer), [hunt_autopick_sups(integer,integer[],integer[],integer[],boolean[],integer,text[],text[],numeric[],jsonb[],numeric[],jsonb)](#fn-hunt-autopick-sups-integer-integer-integer-integer-boolean-integer-text-text-numeric-jsonb-numeric-jsonb), [hunt_autopick_val(jsonb[],integer[],integer[],jsonb)](#fn-hunt-autopick-val-jsonb-integer-integer-jsonb), [hunt_boss_move_list(text)](#fn-hunt-boss-move-list-text), [hunt_boss_v2_card(text,text)](#fn-hunt-boss-v2-card-text-text), [hunt_bosses_v2_check()](#fn-hunt-bosses-v2-check), [hunt_card_cap()](#fn-hunt-card-cap), [hunt_card_crits(text,bigint)](#fn-hunt-card-crits-text-bigint), [hunt_combat_stats(bigint)](#fn-hunt-combat-stats-bigint), [hunt_commit_card(bigint,text,bigint,date,integer)](#fn-hunt-commit-card-bigint-text-bigint-date-integer), [hunt_counter_act(bigint,text,date,bigint,integer,numeric,numeric,text,text,integer,integer,integer,numeric)](#fn-hunt-counter-act-bigint-text-date-bigint-integer-numeric-numeric-text-text-integer-integer-integer-numeric), [hunt_counter_cd(bigint,text,date,text,integer,integer)](#fn-hunt-counter-cd-bigint-text-date-text-integer-integer), [hunt_counter_hit(bigint,text,date,bigint,integer,boolean)](#fn-hunt-counter-hit-bigint-text-date-bigint-integer-boolean), [hunt_counter_mult(text)](#fn-hunt-counter-mult-text), [hunt_counter_num(text,text)](#fn-hunt-counter-num-text-text), [hunt_counter_pick(bigint,text,date,text,text)](#fn-hunt-counter-pick-bigint-text-date-text-text), [hunt_counter_text(text)](#fn-hunt-counter-text-text), [hunt_counter_tick(bigint,text,date,bigint,integer)](#fn-hunt-counter-tick-bigint-text-date-bigint-integer), [hunt_damage_reconcile(bigint)](#fn-hunt-damage-reconcile-bigint), [hunt_effect_apply(bigint,text,date,jsonb)](#fn-hunt-effect-apply-bigint-text-date-jsonb), [hunt_fight_state(bigint,text,date,bigint,bigint)](#fn-hunt-fight-state-bigint-text-date-bigint-bigint), [hunt_fight_state_info(bigint,text,date,jsonb,jsonb,bigint,jsonb,bigint)](#fn-hunt-fight-state-info-bigint-text-date-jsonb-jsonb-bigint-jsonb-bigint), [hunt_fight_summary()](#fn-hunt-fight-summary), [hunt_hit_mods(jsonb,bigint,bigint)](#fn-hunt-hit-mods-jsonb-bigint-bigint), [hunt_leaderboard(bigint,integer)](#fn-hunt-leaderboard-bigint-integer), [hunt_mark_on(jsonb,text,integer)](#fn-hunt-mark-on-jsonb-text-integer), [hunt_marks_patch(bigint,text,date,jsonb)](#fn-hunt-marks-patch-bigint-text-date-jsonb), [hunt_mt_slot(text,timestamp with time zone)](#fn-hunt-mt-slot-text-timestamp-with-time-zone), [hunt_next_mt(integer,integer,timestamp with time zone)](#fn-hunt-next-mt-integer-integer-timestamp-with-time-zone), [hunt_pass_turn(text,bigint)](#fn-hunt-pass-turn-text-bigint), [hunt_pick_pool(text,bigint,bigint[])](#fn-hunt-pick-pool-text-bigint-bigint), [hunt_round_cap()](#fn-hunt-round-cap), [hunt_squad_allows(bigint,text,date,bigint)](#fn-hunt-squad-allows-bigint-text-date-bigint), [hunt_squad_cards(bigint,text,date,bigint)](#fn-hunt-squad-cards-bigint-text-date-bigint), [hunt_squad_done(bigint,text,date,integer)](#fn-hunt-squad-done-bigint-text-date-integer), [hunt_squad_value(text,bigint,bigint[])](#fn-hunt-squad-value-text-bigint-bigint), [hunt_state_round(bigint,text,date)](#fn-hunt-state-round-bigint-text-date), [hunt_support(text,bigint,bigint,bigint)](#fn-hunt-support-text-bigint-bigint-bigint), [hunt_v2_abandon(text,date)](#fn-hunt-v2-abandon-text-date), [hunt_v2_act(text,jsonb)](#fn-hunt-v2-act-text-jsonb), [hunt_v2_auto(text,integer)](#fn-hunt-v2-auto-text-integer), [hunt_v2_boss_key(text)](#fn-hunt-v2-boss-key-text), [hunt_v2_credit(jsonb,jsonb,numeric)](#fn-hunt-v2-credit-jsonb-jsonb-numeric), [hunt_v2_day_json(hunt_v2_days)](#fn-hunt-v2-day-json-hunt-v2-days), [hunt_v2_end_of(text,jsonb)](#fn-hunt-v2-end-of-text-jsonb), [hunt_v2_live_credit(bigint,text,date,jsonb)](#fn-hunt-v2-live-credit-bigint-text-date-jsonb), [hunt_v2_out(bigint,text,date,jsonb)](#fn-hunt-v2-out-bigint-text-date-jsonb), [hunt_v2_save(bigint,text,date,jsonb,text,jsonb)](#fn-hunt-v2-save-bigint-text-date-jsonb-text-jsonb), [hunt_v2_shared(bigint,text,date,jsonb)](#fn-hunt-v2-shared-bigint-text-date-jsonb), [hunt_v2_start(text,bigint[])](#fn-hunt-v2-start-text-bigint), [hunt_v2_today()](#fn-hunt-v2-today), [hunt_v2_turns(text,jsonb,boolean,integer)](#fn-hunt-v2-turns-text-jsonb-boolean-integer), [hunt_v2_view(text)](#fn-hunt-v2-view-text), [hunt_view(text,bigint,date)](#fn-hunt-view-text-bigint-date), [lock_hunt_squad(text,bigint,bigint[])](#fn-lock-hunt-squad-text-bigint-bigint), [next_hunt_close()](#fn-next-hunt-close), [next_hunt_spawn()](#fn-next-hunt-spawn), [nudge_hunt(bigint)](#fn-nudge-hunt-bigint), [play_card_effect(text,bigint,text)](#fn-play-card-effect-text-bigint-text), [play_card_effect_choice(text,bigint,text,integer)](#fn-play-card-effect-choice-text-bigint-text-integer), [refund_card_play(bigint,text)](#fn-refund-card-play-bigint-text), [roles_check()](#fn-roles-check), [settle_hunt(bigint)](#fn-settle-hunt-bigint), [spawn_hunt(integer,text)](#fn-spawn-hunt-integer-text), [spawn_weekly_boss(timestamp with time zone,bigint,text)](#fn-spawn-weekly-boss-timestamp-with-time-zone-bigint-text), [statuses_check()](#fn-statuses-check), [subjects_ability_check()](#fn-subjects-ability-check), [take_player_effect(text,text)](#fn-take-player-effect-text-text), [use_effect_charge(text,text)](#fn-use-effect-charge-text-text)
 
 ## Tables
 
@@ -184,6 +184,50 @@ Table. [combat] The shared action log of every fight mode. Hunt: one row per sup
 - Check constraints: 
   - `combat_actions_kind_check`: `CHECK ((kind = ANY (ARRAY['attack'::text, 'support'::text, 'effect'::text, 'enemy'::text])))`
   - `combat_actions_mode_check`: `CHECK ((mode = ANY (ARRAY['hunt'::text, 'dungeon'::text, 'gauntlet'::text])))`
+- Row level security: on. Policies: none
+
+<a id="table-combat-v2-convert-input"></a>
+
+### combat_v2_convert_input
+
+Table. Combat v2 M1e (SPEC ON 3.7 rule 0, combat_v2_convert.sql): the input of the stat conversion: one row for each player_cards row with v1 points at the switch (ref m1), and one row for each card that combat_v2_convert_fix converted again (ref m1b, at most one for a card). The CURRENT input of a card is its newest row by (at, id). The audit record and the expected value of the live checks (combat_v2_convert_check). Rows are never changed or deleted. Service role only.
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `id` | bigint | not null |  | The row id (with at: the order of the rows of one card). |
+| `ref` | text | not null |  | The run: m1 (the switch) or m1b (the fix path). Also the ref of the ledger rows of the conversion. |
+| `player_id` | text | not null |  | The owner (players.id). |
+| `card_id` | bigint | not null |  | The card (cards.id). |
+| `stars` | integer | not null |  | player_cards.ascension at the time of the row (the stored level = v2_convert.level_per_star x this). |
+| `stat_points` | jsonb | not null |  | player_cards.stat_points (the v1 points) at the time of the row. |
+| `at` | timestamp with time zone | not null | `clock_timestamp()` | clock_timestamp() of the insert. |
+
+- Primary key: `PRIMARY KEY (ref, player_id, card_id)`
+- Unique: `combat_v2_convert_input_id_key` `UNIQUE (id)`
+- Foreign keys: none
+- Check constraints: 
+  - `combat_v2_convert_input_ref_check`: `CHECK ((ref ~ '^[a-z0-9_]+$'::text))`
+  - `combat_v2_convert_input_stars_check`: `CHECK ((stars >= 0))`
+  - `combat_v2_convert_input_stat_points_check`: `CHECK ((jsonb_typeof(stat_points) = 'object'::text))`
+- Row level security: on. Policies: none
+
+<a id="table-combat-v2-switch-log"></a>
+
+### combat_v2_switch_log
+
+Table. Combat v2 switch (SPEC ON 3.6, combat_v2_convert.sql, step M1e): one row for each run of combat_v2_switch_on.sql (action on) and combat_v2_switch_off.sql (action off), written as the LAST statement of the file with clock_timestamp(). The "at" of the newest on row is the switch time of the live checks. Service role only.
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `id` | bigint | not null |  | The row id. |
+| `action` | text | not null |  | on (the 4 flags true and the M1e conversion) or off (the 3 mode flags false, progress stays true). |
+| `at` | timestamp with time zone | not null | `clock_timestamp()` | clock_timestamp() of the last statement of the switch file (about the commit time; balance_log.changed_at is the transaction start). |
+| `by` | text | not null | `balance_who()` | Who ran it: balance_who(). |
+
+- Primary key: `PRIMARY KEY (id)`
+- Foreign keys: none
+- Check constraints: 
+  - `combat_v2_switch_log_action_check`: `CHECK ((action = ANY (ARRAY['on'::text, 'off'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-discord-effects"></a>
@@ -462,6 +506,38 @@ Table. [hunt] The squad a member locked for one Hunt day: one row per (hunt, mem
   - `hunt_squads_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
 - Check constraints: 
   - `hunt_squads_card_ids_check`: `CHECK (((cardinality(card_ids) >= 1) AND (cardinality(card_ids) <= 8)))`
+- Row level security: on. Policies: none
+
+<a id="table-hunt-v2-days"></a>
+
+### hunt_v2_days
+
+Table. [combat] Combat v2 Hunt practice days of testers (20.20 R3, QH1-QH2): one row per Hunt, tester and Denver day; a private v2 copy of the live boss (the v2 template of the same name, the live tier, the live HP fraction at the start). No reward, no board: the shared boss and hunt_hits never change. hunt_id has no foreign key to hunts (no lock on the boss row, INV-2). Only the hunt_v2_ functions read or write it. RLS on, no policy, service_role only. combat_v2_hunt_practice.sql.
+
+| Column | Type | Null | Default | Comment |
+|---|---|---|---|---|
+| `hunt_id` | bigint | not null |  | The live Hunt (hunts.id) of the practice day. No foreign key: an insert must not lock the boss row (R3 SPEC M-1). |
+| `player_id` | text | not null |  | The tester (players.id) who plays the practice day. |
+| `day` | date | not null |  | The Denver day of the practice day ((now() at time zone 'America/Denver')::date, as hunt_attack). One practice day per Hunt, tester and day (QH2). |
+| `boss` | text | not null |  | The v2 boss key (hunt_bosses_v2.key) that hunt_v2_boss_key maps from the live Hunt name. |
+| `squad` | bigint[] | not null |  | The card ids (cards.id) of the squad in fight order: the auto-pick against the boss or the tester's own pick (QH4), at most hunt_card_cap(). |
+| `state` | jsonb | not null |  | The day state, engine 2: tier, squad, units, info, fight (the v2 fight state, mode hunt), last (the last call). |
+| `start_hp` | numeric | not null |  | The HP of the private boss copy at the start: the v2 boss max x the live hp_remaining / hp_max at the start (INV-4). |
+| `damage` | numeric | not null | `0` | The practice damage of the day in v2 units: start_hp minus the boss HP now. Not on the board, no reward. |
+| `steps` | integer | not null | `0` | The fight clock (steps used of balance v2_hunt.round_cap). |
+| `status` | text | not null | `'active'::text` | active while the day plays, over when it ended. |
+| `ended_by` | text | null |  | How the day ended: cap (the step cap), squad_down, boss_down, hunt_over (the Hunt closed) or abandoned (an active day of an earlier day, ended at the next start or view). Null while active. |
+| `started_at` | timestamp with time zone | not null | `now()` | When the practice day started. |
+| `ended_at` | timestamp with time zone | null |  | When the practice day ended. Null while active. |
+| `live` | boolean | not null | `false` | true when the day started while the flag combat_v2.hunt was ON (INV-ON-1): a live day writes its credit to the shared boss (hunt_hits, hp_remaining) and counts for the board and the prizes. Readers read this mark, never the flag. A tester practice day is false. |
+| `credited` | bigint | not null | `0` | The shared boss damage that this day wrote (the sum of its hunt_hits credit, v1 HP units). 0 for a practice day. |
+
+- Primary key: `PRIMARY KEY (hunt_id, player_id, day)`
+- Foreign keys: 
+  - `hunt_v2_days_player_id_fkey` to [players](members-and-platform.md#table-players): `FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE`
+- Check constraints: 
+  - `hunt_v2_days_ended_by_check`: `CHECK ((ended_by = ANY (ARRAY['cap'::text, 'squad_down'::text, 'boss_down'::text, 'hunt_over'::text, 'abandoned'::text])))`
+  - `hunt_v2_days_status_check`: `CHECK ((status = ANY (ARRAY['active'::text, 'over'::text])))`
 - Row level security: on. Policies: none
 
 <a id="table-hunts"></a>
@@ -1674,6 +1750,66 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 
 [combat] Combat v2: a Confused unit hits a unit of its own side with a draw below confused.chance (a second draw picks it in the fixed order), for x confused.self_x. Answer {wrong, target, x, draws}. VOLATILE. combat_v2_status_rules.sql.
 
+<a id="fn-combat-v2-convert-text"></a>
+
+### combat_v2_convert(text)
+
+- Function: `combat_v2_convert(p_ref text DEFAULT 'm1'::text)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 M1e (SPEC ON 3.7 rule 0): the stat conversion of the switch (combat_v2_switch_on.sql). Refuses unless combat_v2_on('progress'). Copies every player_cards row with v1 points whose card has no input row of any ref into combat_v2_convert_input, then converts each (combat_v2_convert_write). A second run, also after an undo, adds 0 rows. The v1 points do not change. Answer: counts and seconds only. combat_v2_convert.sql.
+
+<a id="fn-combat-v2-convert-check-bigint"></a>
+
+### combat_v2_convert_check(bigint[])
+
+- Function: `combat_v2_convert_check(p_cards bigint[] DEFAULT NULL::bigint[])`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 M1e live check (SPEC ON 6.7 rows 2a and 2b). Reads only. For each card whose player_cards row exists: input_missing (v1 points and no input row), progress_mismatch (the progress row is not combat_v2_convert_expect of the current input row, or its ledger rows do not sum to it), live_differs (the live v1 points are not the current input), log_after_switch (a stat_point_log spend or reset after the newest combat_v2_switch_log on row). Answer: the counts and the items (ok = no item). combat_v2_convert.sql.
+
+<a id="fn-combat-v2-convert-expect-bigint-integer-jsonb"></a>
+
+### combat_v2_convert_expect(bigint,integer,jsonb)
+
+- Function: `combat_v2_convert_expect(p_card bigint, p_stars integer, p_pts jsonb)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 M1e (SPEC ON 3.7 rules 2 to 6, N-7 option B): the v2 progress row and its ledger rows for one card with these stars and v1 points. Level = v2_convert.level_per_star x stars (at most v2_level.max_level), XP = card_level_xp_at(level); each v1 stat x v2_convert.ratios, rounded by v2_convert.round, to the stat of v2_convert.to; the top-up of the stats of v2_convert.topup (the smallest count whose card_combat_v2 value at the level reaches the card_combat value, at most the cap); the part above v2_stats.max_per_stat and the points above the level budget become bonus points (refund); a stat of v2_convert.dead_on_attacker on a card whose v1 ability is not support is logged dead_points. Answer {row, level, xp, points, bonus, ledger, topup, refund, over, v1, v2}; row false = no v1 point, no row. Reads only. combat_v2_convert.sql.
+
+<a id="fn-combat-v2-convert-fix-bigint"></a>
+
+### combat_v2_convert_fix(bigint[])
+
+- Function: `combat_v2_convert_fix(p_cards bigint[] DEFAULT NULL::bigint[])`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 M1e fix path (SPEC ON 3.7 rule 8b): for each card that combat_v2_convert_check finds with a difference: a progress row with a spend, reset or xp ledger row is reported; a card with an m1b input row is reported; else its progress row is deleted, a new input row m1b with the live values is written and converted into a NEW progress row. A card with only a log row is reported. A second call adds 0 rows. combat_v2_convert.sql.
+
+<a id="fn-combat-v2-convert-undo-text-bigint"></a>
+
+### combat_v2_convert_undo(text,bigint[])
+
+- Function: `combat_v2_convert_undo(p_ref text, p_cards bigint[] DEFAULT NULL::bigint[])`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 M1e (SPEC ON 3.7 rule 8): deletes the card_progress_v2 rows (all, or of the named cards) whose ledger rows all carry the ref; a row with a later spend, reset or XP row stays; the ledger and input rows stay as history. For a full undo before members play; not used by the rollback. combat_v2_convert.sql.
+
+<a id="fn-combat-v2-convert-write-bigint"></a>
+
+### combat_v2_convert_write(bigint)
+
+- Function: `combat_v2_convert_write(p_input bigint)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 M1e (SPEC ON 3.7 rules 1 and 7): writes one NEW card_progress_v2 row from one combat_v2_convert_input row: the row at level 0, then each ledger row of combat_v2_convert_expect FIRST (ref = the input ref) and the row change only when the insert added a row. A card that already has a progress row is skipped. Called by combat_v2_convert and combat_v2_convert_fix. combat_v2_convert.sql.
+
 <a id="fn-combat-v2-damage-jsonb-jsonb-numeric-jsonb-jsonb"></a>
 
 ### combat_v2_damage(jsonb,jsonb,numeric,jsonb,jsonb)
@@ -1892,7 +2028,7 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Returns: `boolean`
 - Security definer: no
 
-[combat] The ONE reader of the combat v2 switch (balance combat_v2, plan 14.2): true only when combat_v2.<p_mode> is the JSON boolean true (p_mode = gauntlet, dungeon, hunt or progress). Fails closed: a missing key, another type, a name that is not one of the four capabilities or any error gives false. Its only caller is combat_v2_on(text, text). Since combat_v2_progress_freeze_v1.sql (M1d) four v1 functions read the switch through that form: spend_stat_points and reset_stat_points (they refuse when progress is ON), buy_shop_item (its stat reset is the v2 reset when progress is ON) and shop_today (its free reset counts the gifts of that reset). Since combat_v2_gauntlet_run.sql (R1b) a fifth: gauntlet_start (its tester branch starts a gauntlet_v2 run). Since combat_v2_on_gauntlet.sql (R1-ON) two more: gauntlet_v2_begin (the member mark of a v2 run) and gauntlet_pool (only cards with a usable ability_v2 while the Gauntlet is v2).
+[combat] The ONE reader of the combat v2 switch (balance combat_v2, plan 14.2): true only when combat_v2.<p_mode> is the JSON boolean true (p_mode = gauntlet, dungeon, hunt or progress). Fails closed: a missing key, another type, a name that is not one of the four capabilities or any error gives false. Its only caller is combat_v2_on(text, text). Since combat_v2_progress_freeze_v1.sql (M1d) four v1 functions read the switch through that form: spend_stat_points and reset_stat_points (they refuse when progress is ON), buy_shop_item (its stat reset is the v2 reset when progress is ON) and shop_today (its free reset counts the gifts of that reset). Since combat_v2_gauntlet_run.sql (R1b) a fifth: gauntlet_start (its tester branch starts a gauntlet_v2 run).
 
 <a id="fn-combat-v2-pick-card-jsonb-jsonb-jsonb"></a>
 
@@ -2673,6 +2809,156 @@ F-3: Team CP, the fight value and the synergy groups of a squad (GET /api/hunt/s
 - Security definer: no
 
 [hunt] One support card play in the Hunt (empower, shield, heal, weaken, expose, stun, cleanse, smite). Called by /api/hunt/support. Writes hunt_card_hp, hunt_combat_state, combat_actions, and for smite hunts, hunt_hits and hunt_events. Returns jsonb.
+
+<a id="fn-hunt-v2-abandon-text-date"></a>
+
+### hunt_v2_abandon(text,date)
+
+- Function: `hunt_v2_abandon(p_player text, p_day date)`
+- Returns: `void`
+- Security definer: no
+
+[combat] Combat v2 Hunt practice (20.20 R3): ends every active practice day of the player of an earlier day as abandoned (R3 SPEC L-4); hunt_v2_start and hunt_v2_view call it. Writes only hunt_v2_days. combat_v2_hunt_practice.sql.
+
+<a id="fn-hunt-v2-act-text-jsonb"></a>
+
+### hunt_v2_act(text,jsonb)
+
+- Function: `hunt_v2_act(p_player text, p_choice jsonb)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 Hunt practice (20.20 R3, server only, R3b route): one card turn of the practice day: the choice {use, target, ally} for the card that has the turn (D6). Errors: no_day, not_fighting, hunt_over, bad_state (+ detail), bad_choice (+ detail). combat_v2_hunt_practice.sql.
+
+<a id="fn-hunt-v2-auto-text-integer"></a>
+
+### hunt_v2_auto(text,integer)
+
+- Function: `hunt_v2_auto(p_player text, p_max integer DEFAULT 1)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 Hunt practice (20.20 R3, server only, R3b route): Auto v2 for up to p_max card turns of the practice day; the answer has auto [{actor, use, why}]. Errors: no_day, not_fighting, hunt_over, bad_state, bad_max. combat_v2_hunt_practice.sql.
+
+<a id="fn-hunt-v2-boss-key-text"></a>
+
+### hunt_v2_boss_key(text)
+
+- Function: `hunt_v2_boss_key(p_name text)`
+- Returns: `text`
+- Security definer: no
+
+[combat] Combat v2 Hunt practice (20.20 R3): the v2 boss key (hunt_bosses_v2.key) of a live Hunt name: the one boss whose name is the live name with or without a leading "The " (case-insensitive); no match or more than one: null (no_v2_boss). Reads only. combat_v2_hunt_practice.sql.
+
+<a id="fn-hunt-v2-credit-jsonb-jsonb-numeric"></a>
+
+### hunt_v2_credit(jsonb,jsonb,numeric)
+
+- Function: `hunt_v2_credit(p_log jsonb, p_squad jsonb, p_scale numeric)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 Hunt (20.21 R3-ON): the credit of one call: each decrease of the private boss HP in the call log (heals not credited) x the scale (hunts.hp_max / the private boss max); an act decrease to its card, any other decrease (a tick) to the first squad card; per card the largest remainder rule. Returns {total, cards}. Pure. combat_v2_on_hunt.sql.
+
+<a id="fn-hunt-v2-day-json-hunt-v2-days"></a>
+
+### hunt_v2_day_json(hunt_v2_days)
+
+- Function: `hunt_v2_day_json(r hunt_v2_days)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 Hunt practice (20.19 R3, 20.21 R3-ON): the screen fields of a day row (hunt_id, day, boss, squad, status, ended_by, damage, steps, start_hp, started_at, ended_at, live, credited); null for no row. Pure. combat_v2_on_hunt.sql.
+
+<a id="fn-hunt-v2-end-of-text-jsonb"></a>
+
+### hunt_v2_end_of(text,jsonb)
+
+- Function: `hunt_v2_end_of(p_event text, p_fight jsonb)`
+- Returns: `text`
+- Security definer: no
+
+[combat] Combat v2 Hunt practice (20.20 R3): how a step answer ends a practice day: choose = null (it plays on), cap = cap, end = boss_down when the boss is down, else squad_down. Reads only. combat_v2_hunt_practice.sql.
+
+<a id="fn-hunt-v2-live-credit-bigint-text-date-jsonb"></a>
+
+### hunt_v2_live_credit(bigint,text,date,jsonb)
+
+- Function: `hunt_v2_live_credit(p_hunt bigint, p_player text, p_day date, p_log jsonb)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 Hunt (20.21 R3-ON): the credit and the shared write of one call of a LIVE day (the row mark, never the flag); a closed Hunt ends the day as hunt_over. combat_v2_on_hunt.sql.
+
+<a id="fn-hunt-v2-out-bigint-text-date-jsonb"></a>
+
+### hunt_v2_out(bigint,text,date,jsonb)
+
+- Function: `hunt_v2_out(p_hunt bigint, p_player text, p_day date, p_extra jsonb)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 Hunt practice (20.20 R3): the answer of a practice function: the day, the boss card (hunt_boss_v2_card), damage, steps, status, the fight, info, units, practice true, the given fields and the screen fields of dungeon_v2_screen. Reads only. combat_v2_hunt_practice.sql.
+
+<a id="fn-hunt-v2-save-bigint-text-date-jsonb-text-jsonb"></a>
+
+### hunt_v2_save(bigint,text,date,jsonb,text,jsonb)
+
+- Function: `hunt_v2_save(p_hunt bigint, p_player text, p_day date, p_fight jsonb, p_event text, p_last jsonb)`
+- Returns: `void`
+- Security definer: no
+
+[combat] Combat v2 Hunt practice (20.20 R3): saves a fight state on the practice day: damage = start_hp minus the boss HP now, steps = the fight clock, the end (hunt_v2_end_of) and last. Writes only hunt_v2_days. combat_v2_hunt_practice.sql.
+
+<a id="fn-hunt-v2-shared-bigint-text-date-jsonb"></a>
+
+### hunt_v2_shared(bigint,text,date,jsonb)
+
+- Function: `hunt_v2_shared(p_hunt bigint, p_player text, p_day date, p_credit jsonb)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 Hunt (20.21 R3-ON): the shared write of a live call with a credit: hunts FOR NO KEY UPDATE, the status and the close time again (closed: no write, over), then hunt_hits per card (the v1 rule), the boss HP (stops at 0), one hunt_combat_log row per credited card, credited; only the call that defeats the boss settles it (settle_hunt) and writes the defeat event. combat_v2_on_hunt.sql.
+
+<a id="fn-hunt-v2-start-text-bigint"></a>
+
+### hunt_v2_start(text,bigint[])
+
+- Function: `hunt_v2_start(p_player text, p_cards bigint[] DEFAULT NULL::bigint[])`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 Hunt (20.21 R3-ON, server only, route): starts the Hunt day of a member (flag combat_v2.hunt ON: everyone, a live day) or of a tester (flag OFF: the R3a practice; no active Hunt: the newest ended Hunt, live frac 1). A live start: hunts FOR KEY SHARE first, then players FOR UPDATE; refuses v1_today; writes downed hunt_card_hp bridge rows; credits a boss HP decrease of its first step. The auto-pick ranks the dungeon_v2_unit stats with the fight speed. combat_v2_on_hunt.sql.
+
+<a id="fn-hunt-v2-today"></a>
+
+### hunt_v2_today()
+
+- Function: `hunt_v2_today()`
+- Returns: `date`
+- Security definer: no
+
+[combat] Combat v2 Hunt practice (20.20 R3): the Denver day of a practice day, the day rule of hunt_attack. combat_v2_hunt_practice.sql.
+
+<a id="fn-hunt-v2-turns-text-jsonb-boolean-integer"></a>
+
+### hunt_v2_turns(text,jsonb,boolean,integer)
+
+- Function: `hunt_v2_turns(p_player text, p_choice jsonb, p_auto boolean, p_max integer)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 Hunt (20.21 R3-ON): the body of hunt_v2_act and hunt_v2_auto: the day of today (locked), no_day, not_fighting, hunt_over (a practice against an ended Hunt plays on), dungeon_v2_play, the save, then the credit of a LIVE day (the mark). combat_v2_on_hunt.sql.
+
+<a id="fn-hunt-v2-view-text"></a>
+
+### hunt_v2_view(text)
+
+- Function: `hunt_v2_view(p_player text)`
+- Returns: `jsonb`
+- Security definer: no
+
+[combat] Combat v2 Hunt (20.21 R3-ON, server only, route): the Hunt screen in v2: tester, live (the flag), practice, hunt (live_frac = the shared boss bar), the boss card, today's day row (live, credited), can_start (the flag or a tester; a tester with no active Hunt can practise against the newest ended one) and the screen fields of an active day. combat_v2_on_hunt.sql.
 
 <a id="fn-hunt-view-text-bigint-date"></a>
 
