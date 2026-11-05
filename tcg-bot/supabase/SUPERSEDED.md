@@ -178,7 +178,7 @@ A file runs as one transaction, so an error rolls the whole file back.
 
 - `fix_search_path.sql`: a re-run stops at an error today: function public.combat_support_value(text, numeric, numeric, integer) does not exist
 
-## No structure change, but a re-run writes rows (40)
+## No structure change, but a re-run writes rows (42)
 
 Not refused (a data statement can be safe to run again, for example "on conflict do nothing"). Read the file first:
 a one-time grant or a settings value would run again.
@@ -190,6 +190,8 @@ a one-time grant or a settings value would run again.
 - `card_effects_enable_a1.sql`: effect_primitives
 - `combat_v2_autopick_active.sql`: balance, set_config()
 - `combat_v2_e7_followup.sql`: balance, set_config()
+- `combat_v2_hunt_balance_c.sql`: balance (DO block)
+- `combat_v2_hunt_balance_c_undo.sql`: balance (DO block)
 - `combat_v2_synergy.sql`: balance, set_config()
 - `d191_s1_frame_grant.sql`: achievement_claims
 - `d191_s1_origins_frame.sql`: balance

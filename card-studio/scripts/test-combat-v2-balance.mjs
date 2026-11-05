@@ -43,6 +43,10 @@ if (!LATER2.includes('create or replace function public.balance_v2_spec')) throw
 const FU = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/combat_v2_e7_followup.sql', import.meta.url)), 'utf8').replace(/\r\n/g, '\n');
 const LATER3 = FU.slice(FU.indexOf('-- @balance-begin'), FU.indexOf('-- @balance-end'));
 if (!LATER3.includes('{weak_role_x}')) throw new Error('combat_v2_e7_followup.sql has no balance part with weak_role_x');
+// The Hunt v2 boss numbers of decision D-223 (M-H option C: v2_enemy.hunt tier stats, enemy_v2 hp_factor and the v2_enemy note) run last, as on live,
+// so the values match config.json.
+const HBC = readFileSync(fileURLToPath(new URL('../../tcg-bot/supabase/combat_v2_hunt_balance_c.sql', import.meta.url)), 'utf8').replace(/\r\n/g, '\n');
+if (!HBC.includes('decision D-223')) throw new Error('combat_v2_hunt_balance_c.sql has no D-223 balance change');
 
 const MUT = {
   flag_on: ['\'{"gauntlet": false, "dungeon": false, "hunt": false, "progress": false}\',', '\'{"gauntlet": true, "dungeon": false, "hunt": false, "progress": false}\','],
@@ -165,6 +169,7 @@ begin
   execute $m$${LATER}$m$;
   execute $m$${LATER2}$m$;
   execute $m$${LATER3}$m$;
+  execute $m$${HBC}$m$;
 
   -- 3. the keys, the notes and the values (the values go to the script, which compares them with config.json)
   for k in select unnest(keys) loop

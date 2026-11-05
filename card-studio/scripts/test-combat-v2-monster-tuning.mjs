@@ -49,6 +49,8 @@ const T1 = read('combat_v2_ability_builder.sql');
 const T1B = read('combat_v2_ability_prices.sql');
 const T1C = read('combat_v2_min_share.sql');
 const E7 = read('combat_v2_monsters.sql');
+// the Hunt v2 boss numbers of decision D-223 (combat_v2_hunt_balance_c.sql: v2_enemy.hunt tier stats, enemy_v2 hp_factor) run after the file, as on live
+const HBC = read('combat_v2_hunt_balance_c.sql');
 let mig = process.env.MIG ? readFileSync(process.env.MIG, 'utf8').replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '') : read('combat_v2_monster_tuning.sql');
 // the E7 follow-up test (test-combat-v2-e7-followup.mjs) imports the blocks below and runs them with this file + combat_v2_e7_followup.sql
 export const setMig = (s) => { mig = s; };
@@ -538,6 +540,7 @@ begin
   select jsonb_object_agg(replace(p.oid::regprocedure::text, ' ', ''), md5(pg_get_functiondef(p.oid))) into t1 from pg_proc p
    where p.pronamespace = 'public'::regnamespace and replace(p.oid::regprocedure::text, ' ', '') in (${q(TUNED)});
   execute $m$${mig}$m$;
+  execute $m$${HBC}$m$;
   after := ${md5s}; c2 := ${CALLERS};
   select jsonb_object_agg(replace(p.oid::regprocedure::text, ' ', ''), md5(pg_get_functiondef(p.oid))) into t2 from pg_proc p
    where p.pronamespace = 'public'::regnamespace and replace(p.oid::regprocedure::text, ' ', '') in (${q(TUNED)});
@@ -595,6 +598,7 @@ begin
   update public.balance set value = jsonb_set(value, '{passive_params,bulwark,guard}', '0.19') where key = 'v2_dungeon';
   update public.hunt_bosses_v2 set weak_to = '{role:striker}' where key = 'zerg';
   execute $m$${mig}$m$;
+  execute $m$${HBC}$m$;
   res := res || jsonb_build_object('case', 'the file runs twice: a second run keeps a changed balance value, a changed tag, and the notes once', 'ok',
     (select (value->'mechanics'->'ironhide'->>'crit_x')::numeric = 0.65 from balance where key = 'v2_enemy') and (select (value->'passive_params'->'bulwark'->>'guard')::numeric = 0.19 from balance where key = 'v2_dungeon')
     and (select weak_to = '{role:striker}' from public.hunt_bosses_v2 where key = 'zerg')
@@ -686,6 +690,7 @@ declare out jsonb := '[]'; x jsonb; b jsonb;
 begin
   ${SETUP}
   execute $m$${mig}$m$;
+  execute $m$${HBC}$m$;
   ${DRIVER}
   b := combat_v2_enemy_numbers();
   for x in select v from jsonb_array_elements(${sqlLit(cases)}::jsonb) v loop
@@ -752,6 +757,7 @@ function fixedCases() {
 export const buildBlock = (items) => String.raw`do $t$ declare out jsonb := '[]'; x jsonb; b jsonb; u jsonb; c jsonb; ctx jsonb; h1 jsonb; h2 jsonb; begin
   ${SETUP}
   execute $m$${mig}$m$;
+  execute $m$${HBC}$m$;
   b := combat_v2_enemy_numbers();
   for x in select v from jsonb_array_elements(${sqlLit(items)}::jsonb) v loop
     if x->>0 = 'agree' then
@@ -775,6 +781,7 @@ declare b jsonb; s jsonb; r jsonb; x jsonb; ac jsonb; f int := 0; j int; bad jso
 begin
   ${SETUP}
   execute $m$${mig}$m$;
+  execute $m$${HBC}$m$;
   b := combat_v2_enemy_numbers();
   perform setseed(0.77);
   for x in select v from jsonb_array_elements(${sqlLit(specs)}::jsonb) v loop
@@ -829,6 +836,7 @@ const say = (ok, name, extra = '') => { total++; if (!ok) fail++; console.log(`$
 const NUMBERS = async () => JSON.parse(await runBlock(String.raw`do $t$ declare b jsonb; begin
   ${SETUP}
   execute $m$${mig}$m$;
+  execute $m$${HBC}$m$;
   b := combat_v2_enemy_numbers();
   raise exception 'RESULT:%', jsonb_build_object('b', b, 'ab', ability_v2_numbers())::text; end $t$;`));
 // the simulator config with the numbers of the database (the balance values replace config.json; ability_v2 as a whole)
@@ -840,6 +848,7 @@ export async function parity(FS, cfg) {
     const out = JSON.parse(await runBlock(String.raw`do $t$ declare out jsonb := '[]'; x jsonb; b jsonb; begin
       ${SETUP}
       execute $m$${mig}$m$;
+      execute $m$${HBC}$m$;
       ${FIGHT_DRIVER}
       b := combat_v2_enemy_numbers();
       for x in select v from jsonb_array_elements(${sqlLit(part)}::jsonb) v loop

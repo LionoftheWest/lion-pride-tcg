@@ -387,38 +387,38 @@
     "boss_max_dur": 1
   },
   "v2_enemy": {
-    "_rule": "Hunt boss per tier: HP and ATK live. def/evasion/resolve/keen/speed proposed (8-stat study section 4). Mythic speed 110 with ATK x0.91.",
+    "_rule": "Hunt boss per tier: HP and ATK live. def/evasion/resolve/keen/speed proposed (8-stat study section 4). Mythic ATK x0.91. hp, atk, def, speed of each tier and the boss hp_factor: M-H option C, decision D-223 (2026-11-04, combat_v2_hunt_balance_c.sql).",
     "hunt": {
       "Normal": {
-        "hp": 70000,
-        "atk": 58,
-        "def": 0.1,
+        "hp": 35000,
+        "atk": 36,
+        "def": 0.05,
         "evasion": 0,
         "resolve": 0,
         "keen": 0,
-        "speed": 100,
+        "speed": 85,
         "atk_x": 1,
         "signatures": 1
       },
       "Heroic": {
-        "hp": 80000,
-        "atk": 73,
-        "def": 0.15,
+        "hp": 32500,
+        "atk": 45,
+        "def": 0.1,
         "evasion": 0.04,
         "resolve": 0.1,
         "keen": 0,
-        "speed": 100,
+        "speed": 85,
         "atk_x": 1,
         "signatures": 1
       },
       "Mythic": {
-        "hp": 80000,
-        "atk": 93,
-        "def": 0.2,
+        "hp": 28500,
+        "atk": 57,
+        "def": 0.15,
         "evasion": 0.08,
         "resolve": 0.2,
         "keen": 0.25,
-        "speed": 110,
+        "speed": 94,
         "atk_x": 0.91,
         "signatures": 2
       }
@@ -2015,7 +2015,7 @@
       "mythic": [
         "tilt"
       ],
-      "hp_factor": 0.71,
+      "hp_factor": 0.82,
       "counter_share": 0.4,
       "moves": [
         {
@@ -2057,7 +2057,7 @@
       "mythic": [
         "elusive"
       ],
-      "hp_factor": 0.73,
+      "hp_factor": 0.7,
       "counter_share": 0.4,
       "moves": [
         {
@@ -2113,7 +2113,7 @@
       "mythic_resists": [
         "mark"
       ],
-      "hp_factor": 0.87,
+      "hp_factor": 0.9,
       "counter_share": 0.4,
       "moves": [
         {
@@ -2149,7 +2149,7 @@
       "mythic": [
         "siphon"
       ],
-      "hp_factor": 0.92,
+      "hp_factor": 0.91,
       "counter_share": 0.55,
       "moves": [
         {
@@ -2196,7 +2196,7 @@
       "mythic": [
         "undying"
       ],
-      "hp_factor": 1.08,
+      "hp_factor": 1.06,
       "counter_share": 0.4,
       "moves": [
         {
@@ -2253,7 +2253,7 @@
       "mythic": [
         "ironhide"
       ],
-      "hp_factor": 1.1,
+      "hp_factor": 0.99,
       "counter_share": 0.4,
       "moves": [
         {
@@ -2298,7 +2298,7 @@
       "mythic": [
         "crush"
       ],
-      "hp_factor": 1.26,
+      "hp_factor": 1.01,
       "counter_share": 0.55,
       "moves": [
         {
@@ -2338,7 +2338,7 @@
       "mythic": [
         "mirror_hide"
       ],
-      "hp_factor": 0.79,
+      "hp_factor": 0.4,
       "counter_share": 0.55,
       "moves": [
         {
@@ -2391,7 +2391,7 @@
       "mythic": [
         "rollout"
       ],
-      "hp_factor": 0.95,
+      "hp_factor": 0.77,
       "counter_share": 0.4,
       "moves": [
         {
@@ -2442,7 +2442,7 @@
       "mythic": [
         "rubberband"
       ],
-      "hp_factor": 0.88,
+      "hp_factor": 0.74,
       "counter_share": 0.4,
       "moves": [
         {
@@ -2525,7 +2525,7 @@
       "mythic": [
         "swarm"
       ],
-      "hp_factor": 0.64,
+      "hp_factor": 0.7,
       "counter_share": 0.55,
       "moves": [
         {
