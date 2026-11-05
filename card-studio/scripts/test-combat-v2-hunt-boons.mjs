@@ -663,7 +663,8 @@ const hEff = (p, prim, amt, opt) => `insert into public.player_effects (player_i
 const retryCall = async (sql) => {
   let r = await hq(sql); const first = r.error ? { code: r.code || null, msg: String(r.error).slice(0, 200) } : null; let n = 0;
   if (r.code === '40P01' || r.code === '40001') { n = 1; r = await hq(sql); }
-  else if (!r.error && process.env.HARNESS_MUT === 'retry_commits_twice') { n = 1; r = await hq(sql); }   // the harness check (review F-9): repeat a committed call
+  // the harness check (review F-9): a wrong harness that repeats a call that already committed
+  if (!r.error && process.env.HARNESS_MUT === 'retry_commits_twice') { n += 1; r = await hq(sql); }
   return { r, n, first };
 };
 
