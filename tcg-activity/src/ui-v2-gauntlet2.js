@@ -746,11 +746,7 @@ function supsTooTall(F) {
   const p = F.querySelector('.dg-sups'); const right = F.querySelector('.dg-right');
   if (!p || !p.querySelector('.dg-sup')) return false;
   const fb = F.getBoundingClientRect().bottom;
-  // phones (the list under Squad HP): a list taller than the squad row takes the stage height (1 attacker + 7 supports)
-  const units = F.querySelector('.dg-units');
-  const phone = /^compact/.test(document.body.dataset.size || '');
-  return p.scrollHeight > p.clientHeight + 1 || (right && right.scrollHeight > right.clientHeight + 1) || p.getBoundingClientRect().bottom > fb + 1
-    || (phone && !!units && p.offsetHeight > units.offsetHeight + 1);
+  return p.scrollHeight > p.clientHeight + 1 || (right && right.scrollHeight > right.clientHeight + 1) || p.getBoundingClientRect().bottom > fb + 1;
 }
 // N-3: the squad row of any size. Measured at the approved card size first; when that row does not fit, the cards take the largest
 // width that puts all of them in one row (at least the mini step, TOKENS card-mini), else two rows (half the cards in each) with cards
@@ -768,16 +764,29 @@ function fitRow(F, units) {
   const arena = F.querySelector('.dg-arena');
   const natural = card.offsetWidth, rowH = units.clientHeight, W = Math.max(units.clientWidth, arena?.clientWidth || 0), ratio = TOKENS['card-ratio'];
   const fitW = (per) => Math.floor((W - gap * (per - 1)) / per - exW);
-  let per = n, cw = Math.min(natural, fitW(n));
-  if (cw < TOKENS['card-mini']) { per = Math.ceil(n / 2); cw = Math.min(natural, fitW(per), Math.floor(((rowH - gap) / 2 - exH) / ratio)); }
-  F.classList.add('g2-fit'); F.classList.toggle('g2-wrap', per < n);
-  F.style.setProperty('--g2-cw', `${Math.max(TOKENS['card-mini'], cw)}px`); F.style.setProperty('--g2-per', String(per)); F.style.setProperty('--g2-ex', `${exW}px`);
+  const two = () => Math.min(natural, fitW(Math.ceil(n / 2)), Math.floor(((rowH - gap) / 2 - exH) / ratio));
+  const set = (per, w) => {
+    F.classList.add('g2-fit'); F.classList.toggle('g2-wrap', per < n);
+    F.style.setProperty('--g2-cw', `${Math.max(TOKENS['card-mini'], w)}px`); F.style.setProperty('--g2-per', String(per)); F.style.setProperty('--g2-ex', `${exW}px`);
+    // what the estimate missed (borders, a wider card): shrink the cards by the overflow that is left, once
+    const over = rowOver(units);
+    if (over > 0) F.style.setProperty('--g2-cw', `${Math.max(TOKENS['card-mini'], w - Math.ceil((2 * over) / per))}px`);
+    return !rowTooCrowded(units);
+  };
+  // one row while the cards stay at or above the mini step and nothing is cut; else two rows
+  const one = Math.min(natural, fitW(n));
+  if (one >= TOKENS['card-mini'] && set(n, one)) return;
+  set(Math.ceil(n / 2), two());
 }
 // N-3: a card of the squad row is cut (its content wider than its box) or the row is wider than its box.
+const rowOver = (units) => {
+  const b = units.getBoundingClientRect(); let over = 0;
+  for (const x of units.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')) { const r = x.getBoundingClientRect(); over = Math.max(over, b.left - r.left, r.right - b.right); }
+  return Math.max(over, units.scrollWidth - units.clientWidth);
+};
 function rowTooCrowded(units) {
-  if (units.scrollWidth > units.clientWidth + 1) return true;
-  // 375 px phones (is-narrow: the cards share the width): a state line or an HP number that no longer fits its small card
-  if (!units.closest('.is-narrow')) return false;
+  if (rowOver(units) > 1) return true;
+  // a state line or an HP number that no longer fits its small card (the cards share the width)
   return [...units.querySelectorAll(':scope > .dg-sup.g2-plate .g2-stline em, :scope > .dg-unit .dg-hpn')].some((n) => n.offsetParent && n.scrollWidth > n.clientWidth + 1);
 }
 function ctlTooNarrow(F) {
