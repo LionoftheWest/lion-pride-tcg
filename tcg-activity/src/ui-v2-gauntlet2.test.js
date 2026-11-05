@@ -585,7 +585,7 @@ test('L-1 (final review): a status tick shows the drop of the shown HP; several 
   assert.deepEqual(tickTexts(e([{ side: 'card', id: 1, dmg: 0.4 }], { side: 'card', id: 1, before: 37.2, after: 36.8 })), ['-1'], 'the shown HP 38 -> 37 (the rounded damage is 0)');
   assert.deepEqual(tickTexts(e([{ side: 'card', id: 1, dmg: 0.4 }], { side: 'card', id: 1, before: 37.8, after: 37.4 })), [''], 'the shown HP stays 38');
   assert.deepEqual(tickTexts(e([{ side: 'enemy', id: 0, dmg: 0.6 }, { side: 'enemy', id: 0, dmg: 0.6 }], { side: 'enemy', id: 0, before: 40.1, after: 38.9 })), ['-1', '-1']);
-  assert.deepEqual(tickTexts(e([{ side: 'card', id: 1, dmg: 2.2 }], { side: 'card', id: 1, before: 2.2, after: 0, down: true })), ['-3'], 'a down unit drops to 0');
+  assert.deepEqual(tickTexts(e([{ side: 'card', id: 1, dmg: 2.2 }], { side: 'card', id: 1, before: 2.2, after: 0.3, down: true })), ['-3'], 'a down unit drops to 0 (its shown HP is 0)');
   assert.deepEqual(tickTexts({ ticks: [{ side: 'enemy', id: 2, dmg: 3 }], hp: [] }), ['-3'], 'no hp entry: the rounded damage');
   const v = fresh();
   const log = [{ k: 'clock', clock: 3, ticks: [{ side: 'card', id: 124, status: 'poison', dmg: 1.4 }, { side: 'card', id: 318, status: 'burn', dmg: 0.4 }, { side: 'card', id: 43, status: 'burn', dmg: 0.4 }],
