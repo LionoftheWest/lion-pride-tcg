@@ -21,6 +21,21 @@ const read = (p) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'ut
 let mig = process.env.MIG ? readFileSync(process.env.MIG, 'utf8').replace(/\r\n/g, '\n') : read('../../tcg-bot/supabase/combat_v2_dungeon_run.sql');
 mig = mig.replace(/notify pgrst[^\n]*\n/g, '');
 const FIGHTS = Number(process.env.FIGHTS || 20);
+// R2-ON (combat_v2_on_dungeon.sql) is stacked on this file. Each block drops the table and the dungeon_v2_ functions and runs the file, so on a
+// copy with R2-ON applied the R2-ON v1 replacements would read a table with no R2-ON columns. STACK: the block runs this file + the R2-ON file
+// (MIG that already holds both, or a copy with R2-ON: the column dungeon_v2_runs.live). Then D1 and D11 count the 2 R2-ON functions as part of
+// the stack, D1 does not compare the 4 v1 functions that R2-ON replaces under its own md5 guard, and D11 accepts the R2-ON file name in a
+// comment. The R2a mutations need a copy WITHOUT R2-ON (each mutation text must match the migration exactly once).
+const R2ON_FILE = 'combat_v2_on_dungeon.sql';
+let STACK = mig.includes(`-- ${R2ON_FILE} (`);
+if (!STACK && !process.env.MIG) {
+  const probe = JSON.parse(await runBlock(`do $p$ begin raise exception 'RESULT:%', jsonb_build_object('live', exists (select 1 from pg_attribute
+    where attrelid = to_regclass('public.dungeon_v2_runs') and attname = 'live' and not attisdropped))::text; end $p$;`));
+  if (probe.live) { mig = mig + '\n' + read(`../../tcg-bot/supabase/${R2ON_FILE}`).replace(/notify pgrst[^\n]*\n/g, ''); STACK = true; }
+}
+if (STACK && process.env.MUTATE) throw new Error(`the R2a mutations need a copy without R2-ON (${R2ON_FILE} is stacked here): refresh a copy and apply R2a only`);
+if (STACK) console.log(`     STACK: this file + ${R2ON_FILE} in each block (R2-ON is on the copy or in MIG)`);
+const STACK_V1 = ['dungeon_settle_stale()', 'dungeon_board(date,integer)', 'dailies_tasks(text)', 'dungeon_start(text,bigint[])'];
 
 // ---------------------------------------------------------------------------------------------------------- the mutations
 const END13 = '-- ============================================================ 13. server only';
@@ -177,6 +192,7 @@ const NEW = ['dungeon_v2_unit(text,bigint,jsonb)', 'dungeon_v2_needs_ally(jsonb)
   'dungeon_v2_pick(jsonb,jsonb,integer)', 'dungeon_v2_rooms(jsonb,integer,integer,boolean)', 'dungeon_v2_out(bigint,jsonb)', 'dungeon_v2_end(bigint,text)',
   'dungeon_v2_start(text,bigint[])', 'dungeon_v2_turns(text,jsonb,boolean,integer)', 'dungeon_v2_act(text,jsonb)', 'dungeon_v2_auto(text,integer)',
   'dungeon_v2_choose(text,integer)', 'dungeon_v2_retreat(text)', 'dungeon_v2_view(text)'];
+if (STACK) NEW.push('dungeon_v2_settle(bigint,text,boolean)', 'dungeon_v2_loot(jsonb,jsonb,integer)');   // R2-ON (STACK)
 const NEW_ARR = `array[${NEW.map(lit).join(', ')}]::text[]`;
 const id = (k, i) => `9000000000000${k}${String(i).padStart(2, '0')}`;   // Discord-shaped ids (17 to 20 digits; balance combat_v2 testers)
 const TESTERS = Array.from({ length: 18 }, (_, i) => id('031', i + 1));
@@ -317,8 +333,8 @@ begin
   select jsonb_object_agg(c.relname, coalesce(c.relacl::text, '')), array_agg(c.relname::text order by c.relname) into acl_b, tb_b
     from pg_class c where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'v', 'm', 'p') and c.relname <> 'dungeon_v2_runs';
   select value into fb from public.balance where key = 'combat_v2';
-  ${add('D1 INV-1 every public function that existed keeps its md5 (none is gone); the file adds exactly the 21 dungeon_v2_ functions',
-    `not exists (select 1 from jsonb_each_text(md5_a) q where md5_b->>q.key is distinct from q.value)
+  ${add(`D1 INV-1 every public function that existed keeps its md5 (none is gone); the file adds exactly the ${NEW.length} dungeon_v2_ functions${STACK ? ' (STACK: R2a + R2-ON; the 4 v1 functions of the R2-ON guard are not compared)' : ''}`,
+    `not exists (select 1 from jsonb_each_text(md5_a) q where md5_b->>q.key is distinct from q.value${STACK ? ` and q.key <> all (array[${STACK_V1.map(lit).join(', ')}])` : ''})
      and (select coalesce(array_agg(q.key order by q.key), '{}') from jsonb_each_text(md5_b) q where not md5_a ? q.key) = (select array_agg(z order by z) from unnest(${NEW_ARR}) z)`,
     `jsonb_build_object('changed', (select jsonb_agg(q.key) from jsonb_each_text(md5_a) q where md5_b->>q.key is distinct from q.value),
        'added', (select jsonb_agg(q.key) from jsonb_each_text(md5_b) q where not md5_a ? q.key))`)}
@@ -336,7 +352,7 @@ begin
         and not exists (select 1 from pg_proc p, aclexplode(p.proacl) q where p.oid = z::regprocedure and q.grantee = 0)
         and has_function_privilege('service_role', z::regprocedure, 'EXECUTE')
         and (select proconfig from pg_proc where oid = z::regprocedure) = array['search_path=public']
-        and coalesce(obj_description(z::regprocedure, 'pg_proc'), '') like '[combat]%combat_v2_dungeon_run.sql%') from unnest(${NEW_ARR}) z)`,
+        and coalesce(obj_description(z::regprocedure, 'pg_proc'), '') like ${STACK ? `any (array['[combat]%combat_v2_dungeon_run.sql%', '[combat]%${R2ON_FILE}%'])` : `'[combat]%combat_v2_dungeon_run.sql%'`}) from unnest(${NEW_ARR}) z)`,
     `(select jsonb_agg(z) from unnest(${NEW_ARR}) z where has_function_privilege('anon', z::regprocedure, 'EXECUTE') or has_function_privilege('authenticated', z::regprocedure, 'EXECUTE')
         or not has_function_privilege('service_role', z::regprocedure, 'EXECUTE') or coalesce(obj_description(z::regprocedure, 'pg_proc'), '') not like '[combat]%')`)}
   ${add('D11 INV-5 the table dungeon_v2_runs: RLS on, no policy, no privilege for anon or authenticated, all for service_role, a [combat] comment',

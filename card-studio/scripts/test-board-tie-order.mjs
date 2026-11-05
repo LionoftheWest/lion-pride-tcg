@@ -71,8 +71,14 @@ declare bad text := ''; d date := dungeon_day(); w date; cfgs text[] := array[''
   rk int; n int := 0;
 begin
   w := gauntlet_week(d);
-  execute $m$${OWN_BOARD}$m$;
-  execute $m$${mig}$m$;
+  -- R2-ON (combat_v2_on_dungeon.sql) replaces dungeon_board (the v1 runs + the live v2 runs, then the same best run and the same rank keys).
+  -- On a copy with R2-ON, board_tie_order.sql is SUPERSEDED (its guard refuses a re-run): the tie rule is then checked on the live boards.
+  if exists (select 1 from pg_attribute where attrelid = to_regclass('public.dungeon_v2_runs') and attname = 'live' and not attisdropped) then
+    if ${process.env.MUTATE ? 'true' : 'false'} then raise exception 'RESULT:FAIL the board_tie_order.sql mutations need a copy without R2-ON (the file is superseded there)'; end if;
+  else
+    execute $m$${OWN_BOARD}$m$;
+    execute $m$${mig}$m$;
+  end if;
   update settings set value = value || '{"enabled": true}' where key in ('dungeon', 'gauntlet');
   perform dungeon_generate(d); perform gauntlet_generate(w);
   -- Only the test members on the boards of today and this week (rolled back with the block).
