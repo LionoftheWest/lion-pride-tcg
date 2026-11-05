@@ -60,7 +60,7 @@ const MUT = {
   // G-11
   mend_raw_hp: ["(u->>'hp')::numeric + (u->>'max')::numeric * least(v_mamt,", "(u->>'hp')::numeric + 100 * least(v_mamt,"],
   mend_any_card: ["    u := f->'cards'->(t->>'id');\n", "    t := jsonb_build_object('side', 'card', 'id', (select q.key from jsonb_each(f->'cards') q where combat_v2_up(q.value) order by (q.value->>'hp')::numeric / (q.value->>'max')::numeric, q.key limit 1));\n    u := f->'cards'->(t->>'id');\n"],
-  mend_full_card: ["and combat_v2_up(u) and (u->>'hp')::numeric < (u->>'max')::numeric then", 'and combat_v2_up(u) then'],
+  mend_full_card: ["coalesce((u->>'hp')::numeric, 0) > 0\n       and (u->>'hp')::numeric < (u->>'max')::numeric then", "coalesce((u->>'hp')::numeric, 0) > 0 then"],
   mend_take_first: [/      select pe\.id, coalesce\(pe\.amount, 0\) into v_mid, v_mamt from public\.player_effects pe\n[\s\S]*?limit 1 for update skip locked;\n/, "      v_mamt := take_player_effect(p_player, 'mend'); v_mid := case when v_mamt is null then null else -1 end;\n"],
 };
 const UNDO_MUT = {

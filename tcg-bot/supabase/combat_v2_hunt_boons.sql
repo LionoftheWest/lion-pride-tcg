@@ -24,7 +24,7 @@ begin
     raise exception 'combat_v2_hunt_boons.sql: R3-ON (combat_v2_on_hunt.sql) is not applied.';
   end if;
   for f in select * from (values
-    ('public.hunt_v2_turns(text, jsonb, boolean, integer)', '32480034440a93d10fc5b671aba81d65', '05f22d6126a2402d09ff09d5589b4475'),
+    ('public.hunt_v2_turns(text, jsonb, boolean, integer)', '32480034440a93d10fc5b671aba81d65', '4af9093c5b3f8f5c397d5d3b0a737114'),
     ('public.hunt_v2_shared(bigint, text, date, jsonb)', '7633f3120651daf0a9094e43d08df801', '102e1a816c159beae7d13525935c4507'),
     ('public.hunt_v2_live_credit(bigint, text, date, jsonb)', '187f166bf4d3e559924ca105dbaf62b1', '2e2f2b28bf7309ed1053610593128c40')
   ) x(fn, old_md5, new_md5) loop
@@ -229,10 +229,12 @@ begin
   f := r.state->'fight';
   -- HBP mend (R-MEND): on a LIVE day, the card that has the turn, up and hurt, heals max x amount % (capped at max) before the play. The mend
   -- row is locked here (SKIP LOCKED, no write) and consumed below only when the play answers ok and the credit is not over (review F-1).
+  -- "Up" is the engine rule written out (not down and hp > 0), so this function names no engine function (the R1b/R3a reader checks).
   if r.live then
     t := f->'ext'->'turn';
     u := f->'cards'->(t->>'id');
-    if t->>'side' = 'card' and u is not null and combat_v2_up(u) and (u->>'hp')::numeric < (u->>'max')::numeric then
+    if t->>'side' = 'card' and u is not null and not coalesce((u->>'down')::boolean, false) and coalesce((u->>'hp')::numeric, 0) > 0
+       and (u->>'hp')::numeric < (u->>'max')::numeric then
       select pe.id, coalesce(pe.amount, 0) into v_mid, v_mamt from public.player_effects pe
        where pe.player_id = p_player and pe.primitive = 'mend' and pe.consumed_at is null
          and (pe.starts_at is null or pe.starts_at <= now()) and (pe.expires_at is null or pe.expires_at > now())
