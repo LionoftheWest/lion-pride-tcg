@@ -591,13 +591,13 @@ function popCard(id, txt, cls = '') {
   n.className = `dg-pop on-card ${cls}`; n.textContent = txt;
   u.appendChild(n); setTimeout(() => n.remove(), 1500);
   // the v1 hit shake (ui-v2-dungeon.css .dg-unit.hurt): restart it on each hit
-  // not in the fast replay (H-1: the CI bisect, PR #507: the lunge and the shake restart, a forced reflow per hit, closed WebKit pages)
+  // not in the fast replay (H-1: the CI bisect, PR 507: the lunge and the shake restart, a forced reflow per hit, closed WebKit pages)
   if (!lite()) { u.classList.remove('hurt'); void u.offsetWidth; if (cls === 'hurt') u.classList.add('hurt'); }
 }
 // D-215: the callout of an active (the v1 move label of the monsters, the same pop on a card)
 function gainPops(e) { for (const g of gainsOf(e)) { if (g.side === 'enemy') pop(g.id, g.text, 'heal', 10); else popCard(g.id, g.text, 'heal'); } }
 function callout(co) { if (!co) return; if (co.side === 'enemy') pop(co.id, co.text, 'act move', -30); else popCard(co.id, co.text, 'act move g2-callout'); }
-// H-1 (review of PR 503): the Finish Room replay plays many steps fast (3x). WebKit pages died in CI. A CI bisect (PR #507, run 41954780976:
+// H-1 (review of PR 503): the Finish Room replay plays many steps fast (3x). WebKit pages died in CI. A CI bisect (PR 507, run 41954780976:
 // 12 of 34 cells closed; 0 with the card lunge and the shake off) found the cause: the card lunge (.striking) and the shake restart (a forced
 // reflow per hit). The fast replay keeps the hit flash, the damage numbers and the monster lunge, and skips the lunge, the shake and the heavy
 // effects (the WebGL impact, the foe move effect, the voices, the status pops); a tap and Auto play every effect.
