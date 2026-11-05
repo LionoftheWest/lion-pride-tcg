@@ -1,7 +1,7 @@
 """Headless: build the card scene and render the looping frames.
 
 Run:
-  blender --background --python animate_face.py -- <facePng> <framesOutDir> <rarity> [mask|-] [backPng]
+  blender --background --python animate_face.py -- <facePng> <framesOutDir> <rarity> [mask|-] [backPng|-] [textMask]
 """
 import bpy
 import os
@@ -16,8 +16,10 @@ OUTDIR = argv[1]
 rarity = argv[2] if len(argv) > 2 else "full_art"
 mask = None if (len(argv) < 4 or argv[3] in ("-", "")) else argv[3]
 back = argv[4] if (len(argv) > 4 and argv[4] not in ("-", "")) else None
+# UI-68: argv 5 = the text-safe mask of a v2 face (white = its title row and text panel)
+text_mask = argv[5] if (len(argv) > 5 and argv[5] not in ("-", "")) else None
 
-card_scene.build(FACE, rarity, engine="CYCLES", mask_path=mask, back_path=back)
+card_scene.build(FACE, rarity, engine="CYCLES", mask_path=mask, back_path=back, text_mask_path=text_mask)
 
 os.makedirs(OUTDIR, exist_ok=True)
 # Clear any stale frames so a shorter render never inherits leftover frames

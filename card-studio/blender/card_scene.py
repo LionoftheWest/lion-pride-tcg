@@ -22,7 +22,7 @@ def _clear():
                 coll.remove(block)
 
 
-def build(face_path, rarity, engine="CYCLES", mask_path=None, back_path=None):
+def build(face_path, rarity, engine="CYCLES", mask_path=None, back_path=None, text_mask_path=None):
     is_gold = rarity == "gold"
     # Full Art + SIR + Event get 3D embossed relief on the art (IR stays flat).
     emboss = rarity in ("full_art", "secret_rare", "event")
@@ -79,6 +79,35 @@ def build(face_path, rarity, engine="CYCLES", mask_path=None, back_path=None):
     # the face's alpha (transparent outside the rounded card) drives the shape
     nt.links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
 
+    # UI-68: the text-safe mask (white = the v2 title row and text panel). Inside it there is no emboss, no holo and no
+    # gold duotone, so the small card text stays sharp and the status colors keep their meaning. None = as before.
+    text_keep = None   # 1 outside the text, 0 inside (multiplies emboss and holo strength)
+    text_in = None     # 1 inside the text
+    glyph_in = None    # review-2: 1 on the glyphs (and the whole framed panel)
+    glyph_keep = None
+    if text_mask_path:
+        ttex = nt.nodes.new("ShaderNodeTexImage")
+        ttex.image = bpy.data.images.load(text_mask_path)
+        ttex.image.colorspace_settings.name = "Non-Color"
+        tsep = nt.nodes.new("ShaderNodeSeparateColor"); nt.links.new(ttex.outputs["Color"], tsep.inputs["Color"])
+        text_in = tsep.outputs["Red"]      # RED: the text block (no emboss)
+        glyph_in = tsep.outputs["Green"]   # GREEN: the glyphs (face colors, no holo, flat light)
+        ginv = nt.nodes.new("ShaderNodeMath"); ginv.operation = "SUBTRACT"; ginv.inputs[0].default_value = 1.0
+        nt.links.new(glyph_in, ginv.inputs[1])
+        glyph_keep = ginv.outputs["Value"]
+        tinv = nt.nodes.new("ShaderNodeMath"); tinv.operation = "SUBTRACT"; tinv.inputs[0].default_value = 1.0
+        nt.links.new(text_in, tinv.inputs[1])
+        text_keep = tinv.outputs["Value"]
+
+    def _keep(value, node_input):
+        """Drive node_input with value x text_keep (or the plain value with no text mask)."""
+        if text_keep is None:
+            node_input.default_value = value
+            return
+        m = nt.nodes.new("ShaderNodeMath"); m.operation = "MULTIPLY"; m.inputs[0].default_value = value
+        nt.links.new(text_keep, m.inputs[1])
+        nt.links.new(m.outputs["Value"], node_input)
+
     # View-dependent facing: uniform across the flat card, so it acts as a global
     # PHASE that slides as the card rocks (shifts the bands over time).
     lw = nt.nodes.new("ShaderNodeLayerWeight")
@@ -112,15 +141,27 @@ def build(face_path, rarity, engine="CYCLES", mask_path=None, back_path=None):
         nt.links.new(gold.outputs["Color"], add.inputs[1])
         nt.links.new(sheen.outputs["Color"], add.inputs[2])
         # Pronounced emboss: the art becomes a raised/recessed relief in the metal.
-        bump = nt.nodes.new("ShaderNodeBump"); bump.inputs["Strength"].default_value = 0.9; bump.inputs["Distance"].default_value = 0.03
+        bump = nt.nodes.new("ShaderNodeBump"); _keep(0.9, bump.inputs["Strength"]); bump.inputs["Distance"].default_value = 0.03
         nt.links.new(tex.outputs["Color"], bump.inputs["Height"])
         nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
-        nt.links.new(gold.outputs["Color"], bsdf.inputs["Base Color"])
-        nt.links.new(add.outputs[0], bsdf.inputs["Emission Color"])
+        gold_base, gold_emis = gold.outputs["Color"], add.outputs[0]
+        if text_in is not None:
+            # Inside the text panel: the face's own colors, self-lit, not metal.
+            gb = nt.nodes.new("ShaderNodeMixRGB"); nt.links.new(glyph_in, gb.inputs[0])
+            nt.links.new(gold_base, gb.inputs[1]); nt.links.new(tex.outputs["Color"], gb.inputs[2]); gold_base = gb.outputs[0]
+            ge2 = nt.nodes.new("ShaderNodeMixRGB"); nt.links.new(glyph_in, ge2.inputs[0])
+            nt.links.new(gold_emis, ge2.inputs[1]); nt.links.new(tex.outputs["Color"], ge2.inputs[2]); gold_emis = ge2.outputs[0]
+        nt.links.new(gold_base, bsdf.inputs["Base Color"])
+        nt.links.new(gold_emis, bsdf.inputs["Emission Color"])
         # Real metal + a low base glow, so grazing light gives 3D highlights.
         bsdf.inputs["Metallic"].default_value = 1.0
+        if glyph_keep is not None:
+            nt.links.new(glyph_keep, bsdf.inputs["Metallic"])
         bsdf.inputs["Roughness"].default_value = 0.32
         bsdf.inputs["Emission Strength"].default_value = 0.4
+        if glyph_in is not None:
+            es = nt.nodes.new("ShaderNodeMath"); es.operation = "MULTIPLY_ADD"; es.inputs[1].default_value = 0.6; es.inputs[2].default_value = 0.4
+            nt.links.new(glyph_in, es.inputs[0]); nt.links.new(es.outputs["Value"], bsdf.inputs["Emission Strength"])
     elif rarity == "promo":
         # PROMO: platinum metallic border + holographic, ridged Full Art.
         # mask (white = art, black = border) splits the two treatments.
@@ -274,6 +315,9 @@ def build(face_path, rarity, engine="CYCLES", mask_path=None, back_path=None):
             sval = nt.nodes.new("ShaderNodeValue"); sval.outputs[0].default_value = 0.5
             strength_out = sval.outputs[0]
 
+        if glyph_keep is not None:
+            hk = nt.nodes.new("ShaderNodeMath"); hk.operation = "MULTIPLY"
+            nt.links.new(strength_out, hk.inputs[0]); nt.links.new(glyph_keep, hk.inputs[1]); strength_out = hk.outputs["Value"]
         add = nt.nodes.new("ShaderNodeMixRGB"); add.blend_type = "OVERLAY"
         nt.links.new(strength_out, add.inputs[0])
         nt.links.new(tex.outputs["Color"], add.inputs[1])
@@ -283,12 +327,16 @@ def build(face_path, rarity, engine="CYCLES", mask_path=None, back_path=None):
         if emboss:
             # Raise the art into relief; a soft grazing light (below) shades it 3D.
             ebump = nt.nodes.new("ShaderNodeBump")
-            ebump.inputs["Strength"].default_value = 1.8
+            _keep(1.8, ebump.inputs["Strength"])
             ebump.inputs["Distance"].default_value = 0.06
             nt.links.new(tex.outputs["Color"], ebump.inputs["Height"])
             nt.links.new(ebump.outputs["Normal"], bsdf.inputs["Normal"])
             bsdf.inputs["Roughness"].default_value = 0.45
             bsdf.inputs["Emission Strength"].default_value = 0.25
+            if glyph_in is not None:
+                # Inside the text panel: lit like a flat card (no raking-light shading on the small text).
+                es = nt.nodes.new("ShaderNodeMath"); es.operation = "MULTIPLY_ADD"; es.inputs[1].default_value = 0.75; es.inputs[2].default_value = 0.25
+                nt.links.new(glyph_in, es.inputs[0]); nt.links.new(es.outputs["Value"], bsdf.inputs["Emission Strength"])
         else:
             bsdf.inputs["Emission Strength"].default_value = 1.0
     else:
