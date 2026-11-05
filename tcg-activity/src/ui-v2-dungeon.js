@@ -31,6 +31,8 @@ const icon3 = (name, size = 'md') => ui3Icon(name, { size });
 const segmented3 = (items, label) => ui3Segmented(items, { label });
 const esc = (s) => ctx().esc(s ?? '');
 const fmt = (n) => Number(n || 0).toLocaleString();
+// G-168: on compact classes a number of 10,000 or more uses the compact form (ON-UI: the live loot chips and the Hunt damage)
+const fmtN = (n) => fmtFor(Number(n || 0), document.body.dataset.size);
 const RL = (r) => ctx().RARITY_LABEL?.[r] || String(r || '').replace(/_/g, ' ');
 const svg = (d, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const I = {
@@ -83,6 +85,8 @@ let tick = null;
 const LAST = 'lp.adventure.tab';
 dg.mode = localStorage.getItem(LAST) === 'gauntlet' ? 'gauntlet' : 'daily';
 const GA = () => dg.mode === 'gauntlet';
+// R3b / ON-UI: the Hunt v2 fight (testers: practice; flag ON: every member) uses the UI-52 fight of this module in the Hunt view.
+const HU = () => dg.mode === 'hunt_v2';
 const API = () => (GA() ? '/api/gauntlet' : '/api/dungeon');
 // Switch the mode (the Dungeon tab or the Gauntlet tab): a new mode loads its own data.
 function setMode(m) {
@@ -145,27 +149,68 @@ async function load() {
   if (m !== dg.mode) return dg.data;   // the member switched tabs while it loaded
   dg.data = d && d.ok ? d : { closed: true, message: GA() && d?.error === 'disabled' ? 'The Gauntlet is closed.' : d?.message || (GA() ? 'The Gauntlet is closed.' : 'The Dungeon is closed.') };
   dg.v2 = null; dg.v2can = false;
-  if (d?.ok && (GA() ? g2.v2Owns(v2) : g2.v2OwnsDungeon(v2, d))) v2Take(v2);
+  // ON-UI: the member mode (dungeon_v2_view.live, combat v2 for everyone): the v2 run is THE run of the day (no test button, Start run starts v2)
+  // ON-UI screen rule (ON SPEC 3.5, review M-2): g2.dungeonScreen decides (tested in ui-v2-gauntlet2.test.js)
+  const scr = GA() ? (d?.ok && g2.v2Owns(v2) ? 'v2' : 'v1') : g2.dungeonScreen(d, v2, active());
+  dg.v2live = !GA() && scr !== 'v1-run' && !!(v2?.ok && v2.live === true);
+  if (scr === 'v2') v2Take(v2);
   // R2b: the tester-only "Play v2 (test)" in the Dungeon lobby (QD2: an extra run, so the lobby shows when the v1 run is not active)
-  else if (d?.ok && !GA() && g2.v2CanStart(v2) && !active()) { dg.v2can = true; dg.data = { ...dg.data, run: null }; }
+  else if (scr === 'v2-start') { dg.v2can = true; dg.data = { ...dg.data, run: null }; }
+  else if (scr === 'v2-lobby') dg.data = { ...dg.data, run: null };   // live, no run left today: the lobby with Start run disabled
   return dg.data;
 }
 // R1e (combat v2, testers): the v2 answer owns the run. The v1 screens that the v2 run reuses (Q-E1: reward, rest, door, floor done, over)
 // read a v1-shaped run with no loot; the fight is the v2 view (ui-v2-gauntlet2.js).
 const G2_API = '/api/gauntlet/v2';
 const D2_API = '/api/dungeon/v2';   // R2b: the Dungeon test mode (dungeon-v2-routes.js)
-const V2_BASE = () => (GA() ? G2_API : D2_API);
+const H2_API = '/api/hunt/v2';   // R3b: the Hunt v2 routes (hunt-v2-routes.js)
+const V2_BASE = () => (HU() ? H2_API : GA() ? G2_API : D2_API);
 const V2_GET = () => (GA() ? G2_API : `${D2_API}/view`);
 function v2Take(v) { dg.v2 = v; dg.data = { ...dg.data, run: g2.v1RunOf(v), rooms: v.rooms || dg.data.rooms }; }
 const g2Host = () => ({
-  dg, base: V2_BASE(), stats: GA() ? null : statsHTML, esc, fmt, thumb, elIcon, plateName, cardTile, bolt: I.bolt, trophy: I.trophy, up: I.up, hand: I.hand, timer: I.timer,
-  progressHTML, musicBtnHTML, finishHTML, finishButton, autoDisabled, waitMs, AUTO_ROUNDS, fitFight: fitFightV3, placeArena, openInfo, toast,
+  dg, oneBoss: HU(), base: V2_BASE(), stats: HU() ? huntStatsHTML : GA() ? null : statsHTML, esc, fmt, thumb, elIcon, plateName, cardTile, bolt: I.bolt, trophy: I.trophy, up: I.up, hand: I.hand, timer: I.timer,
+  progressHTML: HU() ? huntProgHTML : progressHTML, musicBtnHTML, finishHTML: HU() ? () => '' : finishHTML, finishButton, autoDisabled, waitMs, AUTO_ROUNDS, fitFight: fitFightV3, placeArena, openInfo, toast,
   // the v1 fight effects for the v2 replay (Nathan 2026-11-04: "the old animations we had need to be there"): the card element, the monster voices, the move sounds
   elementOf: (id) => cardElement(mine().get(Number(id))?.tags) || 'physical', voice: (f, kind, peak) => mvoice(f, kind, peak), snd: (k, peak) => snd(k, peak), moveSnd: (k) => MOVE_SND[k] || null,
-  apiPost: (p, b) => ctx().apiPost(p, b), sfx: (k) => ctx().sfx?.(k), currentView: () => ctx().currentView(),
-  setAuto: (on) => { dg.auto = !!on; localStorage.setItem(AUTO, on ? '1' : ''); }, setView: (v) => v2Take(v),
-  reload: async () => { await load(); if (ctx().currentView() === 'dungeon') paint(); },
+  apiPost: (p, b) => ctx().apiPost(p, b), sfx: (k) => ctx().sfx?.(k),
+  // the Hunt fight lives in the Hunt view ('battling'): the fight loop treats that view as its own
+  currentView: () => (HU() ? (ctx().currentView() === 'battling' && dg.mode === 'hunt_v2' ? 'dungeon' : 'other') : ctx().currentView()),
+  setAuto: (on) => { dg.auto = !!on; localStorage.setItem(AUTO, on ? '1' : ''); }, setView: (v) => (HU() ? huntTake(v) : v2Take(v)),
+  reload: async () => { if (HU()) { await huntReload(); return; } await load(); if (ctx().currentView() === 'dungeon') paint(); },
 });
+
+// ---- R3b / ON-UI: the Hunt v2 fight (UI-18 on the approved UI-52 view) -------------------------------------------------------
+// The answer of /api/hunt/v2/* (hunt-v2-routes.js asRun): run.state.fight / info / squad, label, cards, ref; ON-UI (R3-ON, to confirm against
+// the SQL): live (the flag), hunt.live_frac (the shared boss HP left, 0..1), day.credited (the member's credited damage), hunt.name.
+// Test mode (live false): the label "Practice (v2 test): no rewards". Member mode (live true): the shared boss bar and "your damage".
+export const huntLive = (v) => g2.huntLive(v);   // the rule lives in ui-v2-gauntlet2.js (unit tested)
+function huntTake(v) { dg.v2 = v; dg.data = { ok: true, gate: { ok: true }, rooms: [], run: g2.v1RunOf(v) }; }
+let huntBack = null;
+async function huntReload() {
+  let v = null;
+  try { v = await ctx().api(`${H2_API}/view`); } catch { v = null; }
+  if (v?.ok && v.run && v.run.status === 'active') { huntTake(v); if (ctx().currentView() === 'battling') paint(); } else { dg.mode = 'daily'; huntBack?.(); }
+}
+/** main.js: the Hunt v2 answer takes the Hunt view (a practice or a live day of today). back(): the v1 Hunt view again. */
+export function showHuntV2(v, back) {
+  dg.mode = 'hunt_v2'; huntBack = back || null; dg.view = 'main';
+  huntTake(v); paint();
+}
+export const huntV2Active = () => HU();
+export function leaveHuntV2() { if (HU()) { g2.disposeFight(); dg.stage?.dispose(); dg.stage = null; dg.roomKey = ''; dg.mode = 'daily'; } }
+function huntProgHTML() {
+  const v = dg.v2 || {}; const h = v.hunt || {};
+  const name = h.name || v.boss?.name || 'The Hunt';
+  if (!huntLive(v)) return `<div class="dg-prog"><div class="dg-fl"><span>Hunt</span><b>${esc(name)}</b></div></div>`;
+  const pct = Math.max(0, Math.min(100, Math.round(100 * (Number(h.live_frac) || 0))));
+  return `<div class="dg-prog"><div class="dg-fl"><span>Hunt</span><b>${esc(name)}</b></div><div class="u3-hs-hp" role="img" aria-label="Boss ${pct}% HP"><i style="--hp:${pct}%"></i><span>${pct}% HP</span></div></div>`;
+}
+function huntStatsHTML() {
+  const v = dg.v2 || {};
+  const label = g2.practiceLabel(v);
+  if (label) return `<div class="dg-stats"><span><b>${esc(label)}</b></span></div>`;   // the test label (mark false)
+  return `<div class="dg-stats"><span class="bank">${I.up}<b>${fmtN(Number(v.day?.credited) || 0)}</b><i>your damage</i></span></div>`;
+}
 // The member's cards (the Dungeon), or the week's squad (the Gauntlet: the same base cards for everyone).
 const cardsOf = () => dg.data?.mine || (Array.isArray(dg.data?.squad) ? dg.data.squad : []);
 const mine = () => new Map(cardsOf().map((c) => [Number(c.id), c]));
@@ -232,7 +277,9 @@ function paint() {
   if (!fight && dg.stage) { dg.stage.dispose(); dg.stage = null; dg.roomKey = ''; }
   dg.chest?.dispose(); dg.chest = null;   // the chest canvas is rebuilt with the screen
   let body;
-  if (d.closed) body = `<div class="dg-closed"><b>${esc(d.message)}</b></div>`;
+  if (HU() && !fight) { dg.mode = 'daily'; huntBack?.(); return; }   // the day ended: the Hunt view (approved squad-down state)
+  if (HU()) body = g2.fightHTML(dg.v2, g2Host());
+  else if (d.closed) body = `<div class="dg-closed"><b>${esc(d.message)}</b></div>`;
   else if (!d.gate?.ok) body = gateHTML(d.gate || {}, GA() ? 'the Gauntlet' : 'the Dungeon');
   else if (dg.view === 'board') body = boardHTML();
   else if (fight) body = dg.v2 ? g2.fightHTML(dg.v2, g2Host()) : fightHTML();
@@ -244,7 +291,8 @@ function paint() {
   // Item 19: the music follows the room (silent until Nathan picks the tracks: dungeon-music.js).
   setMood(fight ? (['guardian', 'miniboss'].includes(d.run.state.room_type) ? 'boss' : 'fight') : active() ? 'explore' : null);
   main.querySelectorAll('[data-music]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); toggleMute(); paintMusicBtn(b); }));
-  advTabs(GA() ? 'gauntlet' : 'dungeon'); // the Adventure tabs: the same place as on the Hunt view (Nathan item 2)
+  advTabs(HU() ? 'hunt' : GA() ? 'gauntlet' : 'dungeon'); // the Adventure tabs: the same place as on the Hunt view (Nathan item 2)
+  if (HU()) { g2.wireFight(main, dg.v2, g2Host(), keep); return; }
   main.querySelectorAll('.card-info').forEach((b) => b.addEventListener('click', (e) => { if (fight) return; e.stopPropagation(); const id = Number(b.closest('.dg-card')?.dataset.id); if (id) openInfo(id); }));
   wireGate(main);
   if (dg.view === 'board') wireBoard(main);
@@ -449,9 +497,10 @@ function lobbyV3HTML() {
   const head = `<header class="u3-dg-head"><img class="u3-dg-thumb" src="/dungeon/room.webp" alt="">${icon3('castle', 'lg')}<h1 class="u3-dg-name">${esc(d.name)}</h1>${date}</header>`;
   const timer = `<section class="u3-dg-panel u3-dg-timer">${icon3('timer')}<span>New dungeon in</span><b class="dg-left">${left(d.next_at)}</b></section>`;
   const pick = s.picks.length ? btn3({ label: 'Edit', data: { pickopen: '1' } }) : btn3({ label: 'Select your squad', variant: 'primary', data: { pickopen: '1' } });
-  const start = btn3({ label: 'Start run', icon: 'swords', variant: 'primary', disabled: !s.ok || dg.busy, busy: dg.busy, busyLabel: 'Starting', data: { start3: '1' } })
+  const start = btn3({ label: 'Start run', icon: 'swords', variant: 'primary', disabled: !s.ok || dg.busy || (dg.v2live && !dg.v2can), busy: dg.busy, busyLabel: 'Starting', data: { start3: '1' } })
     // R2b (combat v2 testers, R2 SPEC 3.4): the same squad starts a v2 test run; only when the server says can_start (dungeon_v2_view)
-    + (dg.v2can ? btn3({ label: 'Play v2 (test)', icon: 'swords', disabled: !s.ok || dg.busy, data: { start2: '1' } }) : '');
+    // ON-UI: in the member mode (live) Start run itself starts the v2 run, so the test button is not shown
+    + (dg.v2can && !dg.v2live ? btn3({ label: 'Play v2 (test)', icon: 'swords', disabled: !s.ok || dg.busy, data: { start2: '1' } }) : '');
   const types = ['Character', 'Creature', 'Item', 'Moment', 'Place'];
   const ruleChips = rule.types ? `<div class="u3-dg-rchips">${types.map((t) => `<span class="u3-dg-rchip ${rule.types.includes(t) ? 'is-yes' : 'is-no'}">${icon3(rule.types.includes(t) ? 'check' : 'ban')}${t}</span>`).join('')}</div>` : '';
   const ruleIn = `<span class="u3-label u3-dg-k">${icon3('layers')}Today's rule</span><h2 class="u3-dg-h">${esc(rule.name || 'Everything goes')}</h2>${rule.note ? `<p class="u3-dg-p">${esc(rule.note)}</p>` : ''}${ruleChips}`;
@@ -536,6 +585,7 @@ function wireLobbyV3(main) {
   if (!dg.tight && ((slot && slot.getBoundingClientRect().width < TOKENS['card-mini']) || over)) { dg.tight = 1; paint(); return; }
   main.querySelector('[data-start2]')?.addEventListener('click', () => startV2(M));
   main.querySelector('[data-start3]')?.addEventListener('click', async () => {
+    if (dg.v2live) { if (dg.v2can) startV2(M); return; }   // ON-UI: the member mode starts the v2 run (the v1 start refuses v2_on)
     if (dg.busy || !squadStatus(dg.sel).ok) return;
     dg.busy = true; paint(); mark('room:go');
     let r = null;
@@ -751,7 +801,7 @@ function statsHTML() {
   }
   const pend = st.pend || {}, bank = st.bank || {};
   const pc = (pend.cards || []).length, bc = (bank.cards || []).length;
-  return `<div class="dg-stats"><span class="risk" title="This floor's loot: lost if the squad falls. The floor guardian banks it.">${COIN}<b>${fmt(pend.shards)}${pc ? ` +${pc}${I.cards}` : ''}</b><i>at risk</i></span><span class="bank" title="Banked loot: safe. Yours when the run ends.">${I.lock}<b>${fmt(bank.shards)}${bc ? ` +${bc}${I.cards}` : ''}</b><i>banked</i></span><span${dg.v2 ? ' class="g2-empty" aria-hidden="true"' : ''} title="The run damage bonus">${I.up}<b>+${buff}%</b><i>damage</i></span></div>`;   // R2b N3: the v2 damage place stays empty
+  return `<div class="dg-stats"><span class="risk" title="This floor's loot: lost if the squad falls. The floor guardian banks it.">${COIN}<b>${fmtN(pend.shards)}${pc ? ` +${pc}${I.cards}` : ''}</b><i>at risk</i></span><span class="bank" title="Banked loot: safe. Yours when the run ends.">${I.lock}<b>${fmtN(bank.shards)}${bc ? ` +${bc}${I.cards}` : ''}</b><i>banked</i></span>${dg.v2 && g2.isLive(dg.v2) ? '' : `<span${dg.v2 ? ' class="g2-empty" aria-hidden="true"' : ''} title="The run damage bonus">${I.up}<b>+${buff}%</b><i>damage</i></span>`}</div>`;   // R2b N3: the v2 damage place stays empty
 }
 // A weakness / resistance as an icon: an element icon, or a short word (melee, beast ...).
 const traitIcon = (v) => {

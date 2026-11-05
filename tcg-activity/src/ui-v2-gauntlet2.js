@@ -9,6 +9,7 @@
 import { icon as ui3Icon } from './ui3/icons.js';
 import { TOKENS } from './tokens.js';
 import { fmtFull, fmtCompact } from './ui3/number.js';
+import { breakName } from './ui3/suggest.js';   // a name never breaks mid-word (D-08): break points at camelCase, _ . -
 
 // ---- The static tables (UI-67): status key -> Lucide icon, the family colors, role key -> Lucide icon ----
 export const STATUS_ICON = {
@@ -290,7 +291,20 @@ export function v1RunOf(v) {
   if (!R) return null;
   const st = R.state || {};
   return { id: R.id, status: R.status, ended_by: R.ended_by ?? null, floor: R.floor, room: R.room, turns: R.turns ?? 0, rank: null, shards: 0,
-    squad: (st.squad || []).map(Number), state: { phase: st.phase, room_type: st.room_type, offers: st.offers || [], pend: { shards: 0, cards: [] }, bank: { shards: 0, cards: [] } } };
+    squad: (st.squad || []).map(Number), state: { phase: st.phase, room_type: st.room_type, offers: st.offers || [], ...lootOf(v, R, st) } };
+}
+/** ON-UI (ON SPEC 3.5): a live run (the view flag live and the row mark run.live) shows its loot chips; a test run (mark false) shows 0.
+ *  The loot is the v1 shape (state.pend / state.bank: shards, cards), written by the R2-ON loot rules for live runs only. */
+// The Hunt v2 day (R3-ON hunt_v2_days.live, to confirm against the SQL): the flag ON and the day row mark true; a missing mark is not live.
+export const huntLive = (v) => !!(v?.live === true && v?.day?.live === true);
+/** The Practice label of a Hunt v2 day: only on a test day (mark false); the member mode shows none (ON SPEC 3.5, G-UI (a)). */
+export const practiceLabel = (v) => (huntLive(v) ? null : (v?.label || 'Practice (v2 test): no rewards'));
+export const isLive = (v) => !!(v?.live === true && v.run && v.run.live === true);   // review L-3: a missing row mark is NOT live
+function lootOf(v, R, st) {
+  const z = () => ({ shards: 0, cards: [] });
+  if (!isLive(v)) return { pend: z(), bank: z() };
+  const one = (x) => ({ shards: Number(x?.shards) || 0, cards: Array.isArray(x?.cards) ? x.cards : [] });
+  return { pend: one(st.pend), bank: one(st.bank) };
 }
 /** Does this v2 answer take the screen? A tester's v2 run of today (active or just over); else the v1 screens stay (INV-E1). */
 export const v2Owns = (v) => !!(v?.ok && v.run && (v.active_mode === 'gauntlet_v2' || v.run.status === 'over'));
@@ -298,7 +312,22 @@ export const v2Owns = (v) => !!(v?.ok && v.run && (v.active_mode === 'gauntlet_v
  *  v1 view (v1) has no active run (QD2: the v2 run is an extra run, so a v1 run of the same day keeps its screens). */
 export const v2OwnsDungeon = (v, v1) => !!(v?.ok && v.run && (v.run.status === 'active' || (v.run.status === 'over' && v1?.run?.status !== 'active')));
 /** The Dungeon test mode (R2b): the tester-only "Play v2 (test)" in the lobby. can_start is the server's (tester, no active v2 run, a run left). */
-export const v2CanStart = (v) => !!(v?.ok && v.tester === true && v.can_start === true);
+export const v2CanStart = (v) => !!(v?.ok && (v.tester === true || v.live === true) && v.can_start === true);
+/** ON-UI screen rule (ON SPEC 3.5, review M-2): while the member has an active v1 run of today (dungeon_v2_view.v1_run), the Dungeon
+ *  opens the v1 run screen; else v2 when live is true or the member is a tester. */
+export const v1RunFirst = (v) => !!(v?.ok && v.v1_run);
+/** The Dungeon screen (ON SPEC 3.5): d = the v1 /api/dungeon answer, v = dungeon_v2_view, v1Active = the v1 run of today is active.
+ *  'v1-run': an active v1 run of today (v1_run) keeps the v1 screens, also with the flag ON (review M-2); 'v2': the v2 run takes the
+ *  screen; 'v2-start': the lobby with the v2 start (a tester's Play v2 (test), or Start run in the member mode); 'v2-lobby': the member
+ *  lobby with no run left; 'v1': the v1 screens (the flag OFF, not a tester). */
+export function dungeonScreen(d, v, v1Active) {
+  if (!d?.ok) return 'v1';
+  if (v1RunFirst(v)) return 'v1-run';
+  if (v2OwnsDungeon(v, d)) return 'v2';
+  if (v2CanStart(v) && !v1Active) return 'v2-start';
+  if (v?.ok && v.live === true && !v1Active) return 'v2-lobby';
+  return 'v1';
+}
 
 // ---- The view (DOM) -----------------------------------------------------------------------------------------------------------------
 const ic = (name, size = 'sm') => ui3Icon(name, { size, cls: 'g2-ico' });
@@ -347,10 +376,10 @@ export function fightHTML(v, H) {
       <span class="g2-hprow"><span class="dg-hp"><i></i></span><span class="g2-pipbox"></span></span><small class="dg-hpn"></small>${roleHTML(c)}</div>`;
   const sup = (c) => `<button class="dg-sup g2-sup" data-sup="${c.id}" type="button">
       ${c.image_url ? `<img src="${H.thumb(c.image_url)}" alt="">` : '<span></span>'}
-      <span class="t"><b>${roleHTML(c, true)}${esc(c.name)}</b><small>${esc(c.activeName)}</small></span>
+      <span class="t"><b>${roleHTML(c, true)}${breakName(c.name)}</b><small>${esc(c.activeName)}</small></span>
       <span class="g2-suprole">${roleHTML(c)}</span><span class="card-info g2-mag" data-info="${c.id}" aria-label="Details">${ic('search')}</span>
       <span class="g2-stline"><em></em><span class="g2-shp"><span class="g2-shpl"></span><span class="dg-hp"><i></i></span><small></small></span></span></button>`;
-  return `<div class="dg-fight g2" data-room="${esc(`${m.floor}-${m.room}`)}">
+  return `<div class="dg-fight g2${H.oneBoss ? ' g2-hunt' : ''}" data-room="${esc(`${m.floor}-${m.room}`)}">
     <div class="dg-ftop">${H.progressHTML()}${statsHTML(H)}</div>
     <div class="dg-meter g2-meter"><div class="g2-strip">${stripHTML(m, H)}</div></div>
     <div class="dg-arena">
@@ -438,7 +467,8 @@ export function fightUpdate(F, v, s, H) {
   else if (s.notice) hint.innerHTML = `${H.timer}${esc(s.notice)}`;
   else if (s.tap) hint.innerHTML = `<span class="g2-tap">${badgeHTML(s.tap.badge)}<span><b>${esc(s.tap.label)}:</b> ${esc(s.tap.text)}</span></span>`;
   else if (s.busy) hint.innerHTML = `${H.timer}The monsters are acting…`;
-  else hint.innerHTML = `${H.hand}${m.targets.length > 1 ? 'Tap a monster to target it · tap a card to attack' : 'Tap a card to attack'}`;
+  // review L-4: a squad with no attacker (any Hunt mix) has no card to attack with: the room log's "Tap a card."
+  else hint.innerHTML = `${H.hand}${!m.attackers.length ? 'Tap a card.' : m.targets.length > 1 ? 'Tap a monster to target it · tap a card to attack' : 'Tap a card to attack'}`;
   // the steps left (server left) are in the tooltip: frame 11 draws one line, and the hint keeps one fixed height (nothing moves)
   const tl = hint.querySelector('.g2-tap'); if (tl && s.tap) tl.title = s.tap.left != null ? `${s.tap.line} ${H.fmt(s.tap.left)} steps left.` : s.tap.line;
   if (s.tap) F.querySelector(`.g2-b[data-unit="${s.tap.unit}"][data-st="${s.tap.key}"]`)?.classList.add('is-tapped');
@@ -499,7 +529,7 @@ export async function wireFight(main, v, host, keep) {
     try {
       const { mountStage } = await import('./dungeon-stage.js');
       if (!main.contains(canvas)) return;
-      H.dg.stage = mountStage(canvas, { onPick: (i) => target(i), onLayout: () => place(main), slotFill: () => (document.body.dataset.size === 'compact-port' ? SLOT_FILL : 0), slotTop: () => slotTop(canvas) });
+      H.dg.stage = mountStage(canvas, { onPick: (i) => target(i), onLayout: () => place(main), slotFill: () => (document.body.dataset.size === 'compact-port' || H.oneBoss ? SLOT_FILL : 0), fillOne: () => !!H.oneBoss, slotTop: () => slotTop(canvas) });   // N-3: the one Hunt boss fills the stage height on every size
       H.dg.stage.canvas = canvas; H.dg.roomKey = key;
       portraits(foesOf(V));   // the strip portraits: the same models (not awaited)
       await H.dg.stage.setFoes(foesOf(V));
@@ -727,10 +757,109 @@ function place(main = document.getElementById('main')) {
 }
 // D-206: on the wide classes the control row goes beside the cards (Music and the hint at the left, Finish Room and Auto at the right), and
 // its grid row goes to the stage (CSS: .g2-side). D-205: on 375 px phones (is-narrow) the supports join the squad row as small cards.
+// D-211: the side column is too narrow when the hint (or the left part) is wider or taller than its box (G3 pokeOut / spill).
+// N-3: the Support panel (desktop: the right column; phones: the grid under Squad HP) runs past its box or past the fight.
+function supsTooTall(F) {
+  const p = F.querySelector('.dg-sups'); const right = F.querySelector('.dg-right');
+  if (!p || !p.querySelector('.dg-sup')) return false;
+  const fb = F.getBoundingClientRect().bottom;
+  // a tile too narrow for its name or its state line (a narrow side column with many supports)
+  const narrowTile = [...p.querySelectorAll('.dg-sup .t b, .dg-sup .g2-stline em')].some((n) => n.offsetParent && n.scrollWidth > n.clientWidth + 1)
+    // a text column narrower than the tile card step breaks names mid-word (a narrow side column with many supports)
+    || [...p.querySelectorAll('.dg-sup .t')].some((n) => n.offsetParent && n.clientWidth < TOKENS['card-tile'])
+    // the READY button (PR 503) past its state line
+    || [...p.querySelectorAll('.dg-sup .g2-stline em .g2-ready')].some((n) => n.offsetParent && n.getBoundingClientRect().right > n.closest('em').getBoundingClientRect().right + 1);
+  // D-225 (review M-3): on phones a support list taller than the squad row takes the boss stage height (1 attacker + 7 supports)
+  const units = F.querySelector('.dg-units');
+  const phone = /^compact/.test(document.body.dataset.size || '');
+  // D-61 (the Hunt boss stage): on phones the supports also leave the panel when the boss stage is below its floor
+  const lowStage = phone && F.classList.contains('g2-hunt') && stageHeight(F) < stageFloor();
+  return narrowTile || p.scrollHeight > p.clientHeight + 1 || (right && right.scrollHeight > right.clientHeight + 1) || p.getBoundingClientRect().bottom > fb + 1
+    || (phone && !!units && p.offsetHeight > units.offsetHeight + 1) || lowStage;
+}
+// N-3: the squad row of any size (a CSS grid of --g2-per columns of --g2-cell px; layout() measures, CSS draws). At the approved card
+// size while it fits on one line with nothing cut; else the largest card that puts every card on one line (at least the mini step,
+// TOKENS card-mini); else two lines (half the cards each, the HP bar row hidden as on 375 px phones, D-205). The cards are capped so the
+// lines keep the height of the one approved line, but never below the mini step (then the stage gives the height, down to its minimum). Kept until the fight size or the card count changes.
+function fitRow(F, units) {
+  const items = [...units.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')];
+  const key = `${F.clientWidth}x${F.clientHeight}:${items.length}`;
+  if (F.dataset.g2fit === key) return;
+  F.classList.remove('g2-fit', 'g2-wrap', 'g2-small'); ['--g2-cw', '--g2-per', '--g2-cell'].forEach((k) => F.style.removeProperty(k));
+  F.dataset.g2fit = key;
+  if (items.length < 2 || !rowTooCrowded(units)) return;
+  const n = items.length, gap = parseFloat(getComputedStyle(units).columnGap) || 0, ratio = TOKENS['card-ratio'];
+  const it = items.find((x) => x.classList.contains('dg-unit')) || items[0]; const card = () => it.querySelector('.dg-card, img') || it;
+  // the row may already be squeezed by the flex row: the squad card step (TOKENS card-squad) is the smallest natural size
+  // the padding from the style (a card picture not laid out yet measured 0 px: the padding was the whole card, CI 820x1180 0 + 8)
+  const cs = getComputedStyle(it); const padX = ['paddingLeft', 'paddingRight', 'borderLeftWidth', 'borderRightWidth'].reduce((t, k) => t + (parseFloat(cs[k]) || 0), 0);
+  const natural = Math.max(card().offsetWidth, TOKENS['card-squad']);
+  const lineH = Math.max(it.offsetHeight, natural * ratio);
+  const arena = F.querySelector('.dg-arena'); const W = Math.max(units.clientWidth, arena?.clientWidth || 0);
+  // an unusable measure (the row not laid out yet, CI run 41970678464: a 0 px card at 820x1180): no fit now, measure again next layout
+  if (W < n * TOKENS['card-mini'] / 2) { delete F.dataset.g2fit; F.classList.remove('g2-fit', 'g2-wrap'); return; }
+  const apply = (per) => {
+    const lines = Math.ceil(n / per);
+    const cell = Math.min(natural + padX, Math.floor((W - gap * (per - 1)) / per));
+    F.classList.add('g2-fit'); F.classList.toggle('g2-wrap', lines > 1);
+    F.style.setProperty('--g2-per', String(per)); F.style.setProperty('--g2-cell', `${cell}px`); F.style.setProperty('--g2-cw', `${cell - padX}px`);
+    // the height cap: every line at most (the approved line - the gaps) / lines high
+    const exH = it.offsetHeight - card().offsetHeight;
+    const capW = Math.floor(((lineH - gap * (lines - 1)) / lines - exH) / ratio);
+    const cw = Math.max(1, Math.min(cell - padX, Math.max(TOKENS['card-mini'], capW)));   // never below the mini step: the stage gives the height
+    F.style.setProperty('--g2-cw', `${cw}px`);
+    F.classList.toggle('g2-small', cw < TOKENS['card-squad']);   // D-216 narrow rule: the ring alone marks the acting card
+    return cw;
+  };
+  const cw1 = apply(n);
+  if (cw1 >= TOKENS['card-mini'] && !rowTooCrowded(units)) return;
+  // two lines only when they give wider cards than one line (a long ability name on a 5-card row is not a reason to make the cards smaller)
+  const cw2 = apply(Math.ceil(n / 2));
+  if (cw2 <= cw1 && cw1 >= TOKENS['card-mini']) apply(n);
+}
+// D-61: the Hunt boss stage under its plates, and its floor (TOKENS sp-7 + sp-6 + sp-5, the approved UI-47 stage floor; the G3 stageMin check)
+const stageFloor = () => TOKENS['sp-7'] + TOKENS['sp-6'] + TOKENS['sp-5'];
+function stageHeight(F) {
+  const a = F.querySelector('.dg-arena'), pl = F.querySelector('.dg-plates');
+  if (!a) return Infinity;
+  const ab = a.getBoundingClientRect();
+  return ab.bottom - Math.max(ab.top, pl ? pl.getBoundingClientRect().bottom : 0);
+}
+// N-3: a card of the squad row is cut (its content wider than its box) or the row is wider than its box.
+// more than one line of cards (the base row wraps by itself) also counts as crowded
+const lines = (units) => new Set([...units.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')].map((x) => Math.round(x.offsetTop))).size;
+const rowOver = (units) => {
+  const b = units.getBoundingClientRect(); let over = 0;
+  for (const x of units.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')) { const r = x.getBoundingClientRect(); over = Math.max(over, b.left - r.left, r.right - b.right); }
+  return Math.max(over, units.scrollWidth - units.clientWidth);
+};
+function rowTooCrowded(units) {
+  if (rowOver(units) > 1) return true;
+  if (!units.closest('.g2-wrap') && lines(units) > 1) return true;
+  // a state line or an HP number that no longer fits its small card (the cards share the width)
+  // "Your turn" (PR 503, D-216) past its card
+  if ([...units.querySelectorAll(':scope > .dg-unit .g2-turn')].some((n) => { if (!n.offsetParent) return false; const r = n.getBoundingClientRect(), c = n.closest('.dg-card')?.getBoundingClientRect(); return !!c && (r.left < c.left - 1 || r.right > c.right + 1); })) return true;
+  return [...units.querySelectorAll(':scope > .dg-sup.g2-plate .g2-stline em, :scope > .dg-unit .dg-hpn, :scope > .dg-unit .g2-pill b')].some((n) => n.offsetParent && n.scrollWidth > n.clientWidth + 1);
+}
+function ctlTooNarrow(F) {
+  const L = F.querySelector('.dg-ctl .g2-l'), hint = L?.querySelector('.dg-hint');
+  if (!L || !hint) return false;
+  return L.scrollWidth > L.clientWidth + 1 || hint.scrollWidth > hint.clientWidth + 1 || hint.scrollHeight > hint.clientHeight + 1;
+}
+function ctlToRow(F, ctl, units) {
+  const parts = ['.dg-music', '.dg-hint', '.dg-finish', '.dg-auto'].map((q) => F.querySelector(q)).filter((x) => x && (x.closest('.dg-ctl') === ctl));
+  ctl.replaceChildren(...parts);
+  F.insertBefore(ctl, units);
+  F.classList.add('g2-ctl-row'); F.classList.remove('g2-side');
+  F.style.gridTemplateAreas = ''; F.style.gridTemplateRows = '';
+  layout(F);
+}
 function layout(F) {
   if (!F?.isConnected) return;
   const units = F.querySelector('.dg-units'), ctl = F.querySelector('.dg-ctl');
-  const wide = ['medium', 'expanded'].includes(document.body.dataset.size || '') && !F.classList.contains('is-stack');
+  // D-211 (Nathan 2026-11-04): when the column beside the cards is too narrow for the hint (5 attackers and no support at 1280x720), the
+  // control row stays in its own row, as on phones (g2-ctl-row, kept for this fight); otherwise D-206.
+  const wide = ['medium', 'expanded'].includes(document.body.dataset.size || '') && !F.classList.contains('is-stack') && !F.classList.contains('g2-ctl-row');
   F.classList.toggle('g2-side', wide);
   if (wide && ctl && units && ctl.parentNode !== units) {
     const L = document.createElement('div'); L.className = 'g2-l';
@@ -752,13 +881,26 @@ function layout(F) {
     }
   }
   if (wide && units) {
-    const cards = [...units.querySelectorAll('.dg-unit')].map((x) => x.getBoundingClientRect());
+    const cards = [...units.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')].map((x) => x.getBoundingClientRect());
     if (cards.length) F.style.setProperty('--g2-cards', `${Math.max(...cards.map((q) => q.right)) - Math.min(...cards.map((q) => q.left))}px`);
   }
+  if (wide && ctl && units && ctlTooNarrow(F)) { ctlToRow(F, ctl, units); return; }
   // a wide support tile (the text column 200 px or more, review-5): the HP row sits on the state line
   F.querySelectorAll('.dg-sup.g2-sup').forEach((b) => { const t = b.querySelector('.t'); b.classList.toggle('g2-row', !!t && t.getBoundingClientRect().width >= 200); });
+  // D-205 + N-3 (Nathan 2026-11-04: "squads can be any combos"): the supports are small cards in the squad row on 375 px phones (is-narrow)
+  // and wherever the Support panel cannot hold them (g2-plates, kept for this fight); a squad row too crowded for its cards wraps to two
+  // rows (g2-wrap: --g2-per cards in each row). The Hunt squad is 1 to 8 cards of any mix; the Dungeon 5; the Gauntlet 3 + 2.
+  if (!F.ownerDocument || typeof F.getBoundingClientRect !== 'function') return;   // the measuring below needs a real DOM element (the node tests stub the fight)
   const narrow = F.classList.contains('is-narrow');
-  F.querySelectorAll('.dg-sup.g2-sup').forEach((b) => { const home = narrow ? units : F.querySelector('.dg-sups'); if (home && b.parentNode !== home) home.appendChild(b); b.classList.toggle('g2-plate', narrow); });
+  const plates = narrow || F.classList.contains('g2-plates');
+  F.querySelectorAll('.dg-sup.g2-sup').forEach((b) => { const home = plates ? units : F.querySelector('.dg-sups'); if (home && b.parentNode !== home) home.appendChild(b); b.classList.toggle('g2-plate', plates); });
+  if (!plates && supsTooTall(F)) { F.classList.add('g2-plates'); layout(F); return; }
+  // the top row (the room dots and the loot chips of a live Dungeon run) too wide: the chips take the narrow step of UI-47 (is-narrow)
+  const top = F.querySelector('.dg-ftop');
+  const topOver = () => [...top.querySelectorAll('.dg-stats > span > b, .dg-prog > .dg-dots')].some((n) => n.offsetParent && n.getBoundingClientRect().right > n.parentElement.getBoundingClientRect().right + 1);
+  if (top && !F.classList.contains('g2-tight-top') && topOver()) F.classList.add('g2-tight-top');
+  if (top && F.classList.contains('g2-tight-top') && !F.classList.contains('g2-top-wrap') && topOver()) F.classList.add('g2-top-wrap');
+  if (units) fitRow(F, units);
   place(F.closest('#main') || undefined);
 }
 

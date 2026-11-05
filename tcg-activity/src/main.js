@@ -24,7 +24,7 @@ import { initV2, closeMemberOnShell, renderHomeV2, renderCollectionV2, disposeHo
 import { openNotifsV2, openLeaderboardV2, renderLeaderboardV2, renderTradingV2, tradeActions, openTradeWith, liveTrades } from './ui-v2-social.js';
 import { initDailies } from './ui-v2-dailies.js';
 import { initShop, renderShopV2, disposeShop, repaintShards } from './ui-v2-shop.js';
-import { initDungeon, renderDungeonV2, disposeDungeon, advTabs, dg } from './ui-v2-dungeon.js';
+import { initDungeon, renderDungeonV2, disposeDungeon, advTabs, dg, showHuntV2, huntV2Active, huntLive } from './ui-v2-dungeon.js';
 import { gateHTML, wireGate } from './ui-v2-gate.js';
 import { initSubtabs } from './subtabs.js';
 import { initTutorial } from './ui-v2-tutorial.js';
@@ -1368,9 +1368,36 @@ async function renderHunt() {
   if (huntCache) { paintHuntView(huntCache); backgroundRefreshHunt(); return; }
   el('main').innerHTML = '<div class="main-body"><div class="loading">Summoning the hunt…</div></div>';
   let d;
+  const v2q = loadHuntV2();
   try { d = await api('/api/hunt'); } catch { d = null; }
+  await v2q;
   huntCache = d;
   paintHuntView(d);
+}
+// R3b / ON-UI: the Hunt v2 answer (/api/hunt/v2/view). A tester (practice) or, with the flag ON, every member (live). A member who is not
+// a tester while the flag is OFF gets 403 not_tester: huntV2 stays null and the v1 Hunt is unchanged.
+let huntV2 = null;
+async function loadHuntV2() {
+  try { const v = await api('/api/hunt/v2/view'); huntV2 = v?.ok ? v : null; } catch { huntV2 = null; }
+  return huntV2;
+}
+const huntV2Owns = (v) => !!(v?.ok && v.run && v.run.status === 'active' && v.fight);
+// The v2 day of today is over: the Hunt view shows the approved "squad down" state (UI-17 ko, the UI-19 hunt-down path) with the v2 squad;
+// the member's damage is in the approved "Your hunt · Damage" tile (live: day.credited, to confirm against the R3-ON SQL).
+const huntV2Over = (v) => !!(v?.ok && (v.run?.status === 'over' || v.day?.status === 'over'));
+const huntV2CanStart = (v) => !!(v?.ok && (v.tester === true || v.live === true) && v.can_start === true);
+async function startHuntV2(btn) {
+  if (btn.disabled) return;
+  btn.disabled = true; btn.setAttribute('aria-busy', 'true');
+  const ids = [...squad.sel].map(Number).filter(Boolean);
+  let r = null;
+  try { r = await apiPost('/api/hunt/v2/start', ids.length ? { cards: ids } : {}); } catch (e) { r = e?.body || null; }
+  if (!r?.ok) { btn.disabled = false; btn.removeAttribute('aria-busy'); toast(r?.message || 'The fight did not start.'); return; }
+  SFX?.play?.('reveal'); huntV2 = r; paintHuntV2();
+}
+function paintHuntV2() {
+  disposeBoss();
+  showHuntV2(huntV2, () => { renderHunt(); });
 }
 
 // Render the whole battle view from a data object (boss + phase + boss canvas + feed).
@@ -1412,6 +1439,10 @@ function paintHuntView(d) {
     advTabs();
     return;
   }
+  // R3b / ON-UI: a v2 fight of today (practice or live) takes the Hunt view; a repaint of the poll keeps the fight that is on screen
+  if (huntV2Owns(huntV2)) { if (!(huntV2Active() && el('main').querySelector('.dg-fight'))) paintHuntV2(); return; }
+  const v2over = huntV2Over(huntV2);
+  if (v2over && huntLive(huntV2)) d = { ...d, myDamage: Number(huntV2.day?.credited) || 0 };
   huntState = d;
   huntDay = utcToday(); // remember the day so the ticker can detect the daily reset
   // The squad locked on the server (hunt_squads.sql) is the truth; this device's copy is the fallback.
@@ -1446,6 +1477,7 @@ function paintHuntView(d) {
     squad.phase = 'select'; squad.ko = false; squad.locked = false; squad.page = 0;
     squad.sel = new Set((d.roster || []).filter((c) => c.used).map((c) => c.id));
   }
+  if (v2over) { squad.phase = 'select'; squad.ko = true; squad.locked = false; squad.page = 0; squad.sel = new Set((huntV2.day?.squad || []).map(Number)); }
   el('main').innerHTML = huntHTML(d); // no "Battling" head — more room for the picker/arena
   wireHunt();
   mountBossFor(d.hunt); // spawn the live creature into the boss canvas (squad box or arena)
@@ -1458,8 +1490,10 @@ function paintHuntView(d) {
 // Background refresh after an instant open: full repaint only if the boss/cooldown state
 // changed; otherwise a light in-place update (HP, roster) with no boss re-mount flash.
 async function backgroundRefreshHunt() {
-  let d; try { d = await api('/api/hunt'); } catch { return; }
+  let d; const v2q = loadHuntV2(); try { d = await api('/api/hunt'); } catch { return; }
+  const had = huntV2Owns(huntV2); await v2q;
   if (currentView !== 'battling') return;
+  if (huntV2Owns(huntV2) || had) { huntCache = d; paintHuntView(d); return; }   // R3b / ON-UI: the v2 answer decides the screen
   const prev = huntCache; huntCache = d;
   const bossChanged = !d || !d.hunt || !prev || !prev.hunt || d.hunt.id !== prev.hunt.id || (d.gate?.ok !== prev.gate?.ok);
   if (bossChanged) { disposeBoss(); paintHuntView(d); return; }
@@ -2164,6 +2198,10 @@ function huntSelectV3HTML(d) {
     + `<p class="u3-hs-ko" id="u3HsKo"><span>Squad locked until tomorrow</span><span>${ui3Icon('skull', { size: 'sm' })}Your squad is down for today.</span></p>`;
   else if (squad.locked && picks.length) act = `${ui3Button({ label: 'Edit', data: { hpick: '1' } })}${ui3Button({ label: 'Enter battle', icon: 'swords', variant: 'primary', data: { henter: '1' } })}`;
   else act = ui3Button({ label: 'Select your squad', variant: 'primary', data: { hpick: '1' } });
+  // R3b: the tester "Practice v2" button; ON-UI member mode (live): the v2 fight is THE Hunt fight of the day, so Start replaces Enter battle
+  // (the same two states as v1: Select your squad, then Edit + Enter battle; only the Enter battle target changes)
+  if (huntV2?.ok && huntLive(huntV2) && !squad.ko && squad.locked && picks.length) act = `${ui3Button({ label: 'Edit', data: { hpick: '1' } })}${ui3Button({ label: 'Enter battle', icon: 'swords', variant: 'primary', disabled: !huntV2CanStart(huntV2), data: { h2start: '1' } })}`;
+  else if (huntV2CanStart(huntV2) && !huntLive(huntV2)) act += ui3IconButton({ icon: 'swords', label: 'Practice v2', data: { h2start: '1' } });   // tester only: an icon button keeps the approved row width
   return `<div class="u3-hunt">${stage}
     <section class="u3-hs-squad">
       <div class="u3-hs-info">
@@ -2245,6 +2283,7 @@ function wireHuntV3() {
   main.querySelector('[data-boss]')?.addEventListener('click', openBossModal);
   main.querySelector('[data-boss]')?.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBossModal(); } });
   main.querySelectorAll('[data-hpick]').forEach((b) => b.addEventListener('click', () => openHuntPicker(b)));
+  main.querySelector('[data-h2start]')?.addEventListener('click', (e) => startHuntV2(e.currentTarget));   // R3b / ON-UI
   main.querySelector('[data-henter]')?.addEventListener('click', () => {
     if (!squad.locked || squad.sel.size < 1) return;
     disposeBoss(); squadDownShown = false; squad.phase = 'battle'; SFX?.play?.('reveal');

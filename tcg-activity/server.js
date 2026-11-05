@@ -48,6 +48,7 @@ import { registerDungeonRoutes } from './src/dungeon-routes.js';
 import { registerGauntletV2Routes } from './src/gauntlet-v2-routes.js';
 import { registerHuntV2Routes } from './src/hunt-v2-routes.js';
 import { registerDungeonV2Routes } from './src/dungeon-v2-routes.js';
+import { sendV2Refusal } from './src/v2-refusals.js';
 import { makePingLimiter } from './src/trade-ping-limit.js';
 import { dailyExtras } from './src/dailies-pay.js';
 import { makeTtlCache } from './src/ttl-cache.js';
@@ -973,6 +974,7 @@ app.post('/api/hunt/attack', async (req, res) => {
   if (!cardId) return res.status(400).json({ error: 'bad card' });
   const { data, error } = await huntRpcGate(() => supabase.rpc('hunt_attack', { p_player: me.id, p_hunt: hunt.id, p_card: cardId }));
   if (error) return res.status(500).json({ error: error.message });
+  if (sendV2Refusal(res, data)) return;   // ON-UI: v2_on / v2_today -> 409
   if (data?.defeated) activeHuntCache = null;
   else if (data?.ok && activeHuntCache?.data?.id === hunt.id) activeHuntCache.data = { ...activeHuntCache.data, hp_remaining: data.hp_remaining };
   // The RPC settles the killing blow inline and records the defeat + reward notification
@@ -994,6 +996,7 @@ app.post('/api/hunt/support', async (req, res) => {
   if (!cardId) return res.status(400).json({ error: 'bad card' });
   const { data, error } = await huntRpcGate(() => supabase.rpc('hunt_support', { p_player: me.id, p_hunt: hunt.id, p_card: cardId, p_target: targetId }));
   if (error) return res.status(500).json({ error: error.message });
+  if (sendV2Refusal(res, data)) return;   // ON-UI: v2_on / v2_today -> 409
   res.json(data);
 });
 

@@ -15,6 +15,7 @@ export const ERR = {
   no_v2_boss: 'This boss has no v2 practice yet.', already: 'You practiced today. Come back tomorrow.',
   squad_size: 'Pick 1 to the card limit, each card once.', not_owned: 'You do not own that card.', no_v2: 'A card has no v2 ability yet.',
   no_day: 'You have no practice today.', not_fighting: 'Your practice of today ended.', hunt_over: 'The Hunt ended.',
+  v1_today: 'You already played in the old fight today.',
   bad_state: 'This fight cannot go on. Tell an admin.', bad_choice: 'That move is not possible now.', bad_max: 'Auto failed.',
   busy: 'The Hunt is busy. Try again.',
 };
@@ -77,6 +78,7 @@ export function registerHuntV2Routes(app, { supabase, caller, rateLimit, getCata
     const { data, error } = await supabase.rpc('hunt_v2_view', { p_player: player });
     if (error) { res.status(500).json({ error: error.message }); return null; }
     if (data?.ok && (data.tester === true || data.day?.status === 'active')) return { player, view: data };
+    if (data?.ok && data.live === true) return { player, view: data };   // ON-UI: the flag ON = everyone (hunt_v2_view.live, R3-ON)
     res.status(403).json({ ok: false, error: 'not_tester', message: ERR.not_tester });
     return null;
   };
@@ -115,6 +117,7 @@ export function registerHuntV2Routes(app, { supabase, caller, rateLimit, getCata
     const { data, error } = r;
     if (error && RETRY_CODES.has(error.code)) return res.status(409).json({ ok: false, error: 'busy', message: ERR.busy });
     if (error) return res.status(500).json({ error: error.message });
+    if (data?.ok === false && data.error === 'v1_today') return res.status(409).json({ ...data, message: ERR.v1_today });
     if (!data?.ok) return fail(res, data);
     try { res.json(await show(data)); } catch (e) { res.status(500).json({ error: e.message }); }
   };

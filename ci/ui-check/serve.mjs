@@ -161,6 +161,7 @@ function derivedFight(body, kind) {
   return { ...base, name: 'The Hollow Mines', run: { ...R, state: st } };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && ['fight', 'fight2', 'fight-2s3', 'fight-1s4'].includes(c.ci_dungeon) && body?.ok, make: (body, c) => derivedFight(body, c.ci_dungeon) });
+DERIVED.push({ when: (p, c, body) => p === '/api/dungeon' && c.ci_dungeon === 'm2-v1' && body?.ok, make: (body) => derivedFight(body, 'fight') });   // ON-UI fixture (b): the v1 run of today
 // UI-52: a Gauntlet fight (cookie ci_dungeon = g-fight): the week's squad (3 attackers, 2 supports) against the 5-monster horde of the
 // approved frames; floor 2, room 4 of 5, week best 4F R1, damage +23%. The squad cards come from the recorded lobby answer.
 function derivedGauntletFight(body) {
@@ -249,6 +250,103 @@ function derivedD2(kind) {
   return v;
 }
 DERIVED.push({ when: (p, c) => p === '/api/dungeon/v2/view' && D2_KINDS.includes(c.ci_dungeon), make: (body, c) => derivedD2(c.ci_dungeon) });
+// ON-UI (combat v2 for every member, ON SPEC 3.5, G-UI fixtures): cookie ci_dungeon = m2-<state>: the same answers as d2-<state> with the
+// flag ON for a member who is not a tester (live true, tester false) and the live row mark (run.live true) with loot: 3 Shards and 1 card
+// at risk, 12 Shards banked. m2-lobby: no run, can_start (Start run starts v2). m2-done: no run left today. m2-v1 (fixture b): the flag ON
+// and an active v1 run of today (v1_run): the v1 fight screen (/api/dungeon answers the v1 fight below).
+const M2_KINDS = ['m2-fight', 'm2-five', 'm2-lobby', 'm2-over', 'm2-done', 'm2-choose', 'm2-v1'];
+// D-211 (Nathan 2026-11-04): 5 attackers and no support (m2-five): at 1280x720 the column beside the cards is too narrow for the hint,
+// so the control row stays in its own row. The 2 supports of the R1e answer become 2 real attackers of the recorded roster.
+function fiveAttackers(v) {
+  const F = v.run.state.fight; const roster = FIX.routes['/api/hunt']?.body?.roster || [];
+  for (const id of [312, 145]) { delete F.cards[id]; delete v.cards?.[id]; delete v.status_lines[`card:${id}`]; delete v.need[id]; }
+  v.order = v.order.filter((o) => !(o.side === 'card' && [312, 145].includes(o.id)));
+  for (const [id, role] of [[57, 'striker'], [115, 'finisher']]) {
+    const c = roster.find((x) => Number(x.id) === id); if (!c) continue;
+    F.cards[id] = { ...JSON.parse(JSON.stringify(F.cards[43])), role, class: 'attacker', hp: 72, charge: 0, status: {} };
+    if (v.cards) v.cards[id] = { id, name: c.name, rarity: c.rarity, image_url: c.image_url, type: c.type };
+    v.status_lines[`card:${id}`] = []; v.need[id] = 2; v.order.push({ side: 'card', id, clock: 10 + v.order.length, ready: false });
+  }
+  F.squad = [124, 318, 43, 57, 115]; v.run.state.squad = F.squad; v.allies = F.squad;
+  return v;
+}
+function derivedM2(kind) {
+  const v = derivedD2({ 'm2-fight': 'd2-fight', 'm2-five': 'd2-fight', 'm2-over': 'd2-over', 'm2-choose': 'd2-choose' }[kind] || 'd2-lobby');
+  if (kind === 'm2-five') fiveAttackers(v);
+  Object.assign(v, { tester: false, live: true, v1_run: null });
+  if (v.run) {
+    v.run.live = true;
+    Object.assign(v.run.state, { pend: { shards: 3, cards: [v.run.state.squad?.[0] ?? 1] }, bank: { shards: 12, cards: [] } });
+    if (kind === 'm2-over') Object.assign(v.run, { shards: 15, cards: [] });
+  }
+  if (kind === 'm2-done') Object.assign(v, { can_start: false, runs_left: 0 });
+  if (kind === 'm2-v1') Object.assign(v, { can_start: false, runs_left: 0, v1_run: { id: 1879, floor: 2, room: 3 } });
+  return v;
+}
+DERIVED.push({ when: (p, c) => p === '/api/dungeon/v2/view' && M2_KINDS.includes(c.ci_dungeon), make: (body, c) => derivedM2(c.ci_dungeon) });
+// R3b + ON-UI: GET /api/hunt/v2/view answers 403 not_tester (the recorded default: the v1 Hunt). Cookie ci_hunt = h2-<state> (a tester,
+// the practice: live false) or m2h-<state> (the flag ON, a member who is not a tester: live true). lobby: no day, can_start (the button);
+// fight: an active day (the R1e fight answer of fixtures/g2-fight.json in the asRun shape of hunt-v2-routes.js); over: the day ended.
+// The member fields (ON SPEC 3.4/3.5, to confirm against the R3-ON SQL): hunt.live_frac (0.62), day.credited (1,840), live.
+// the squad mixes (attackers + supports) of the member fight: m2h-fight = 5 + 3; the extremes for G3 (Nathan N-3)
+const MIX = { 'm2h-mix80': [8, 0], 'm2h-mix17': [1, 7], 'm2h-mix44': [4, 4], 'm2h-mix08': [0, 8] };
+const H2_KINDS = ['h2-lobby', 'h2-fight', 'h2-over', 'm2h-lobby', 'm2h-fight', 'm2h-over', ...Object.keys(MIX)];
+// A Hunt fight has ONE target: the live boss (R3 SPEC 3.5). The fixture keeps the recorded squad and turns the 5-monster horde into the
+// boss of the recorded /api/hunt (its name, its model key from boss-models.js: "boss:<key>", the Hunt view's own file).
+const H2_MODEL = { 'the ban-wave demon': 'demon' };
+function oneBoss(v, name) {
+  const F = v.run.state.fight;
+  const e = F.enemies[0];
+  Object.assign(e, { hp: 1284, max: 2070, down: false, status: { exposed: { value: 0.15, until: 8, stacks: 2 } }, mechanics: [], monster: 'boss',
+    show: { name, model: `boss:${H2_MODEL[name.toLowerCase()] || 'demon'}`, element: null, level: 3, kind: 'boss' } });
+  F.enemies = [e];
+  v.targets = [0];
+  v.order = v.order.filter((o) => o.side === 'card' || o.id === 0);
+  for (const k of Object.keys(v.status_lines)) if (/^enemy:[1-9]/.test(k)) delete v.status_lines[k];
+  return v;
+}
+// N-3 (Nathan 2026-11-04: "squads can be any combos now"): a Hunt squad is 1 to daily_card_cap (8) cards of any class mix
+// (hunt_v2_start: no class limit). mixCards(v, a, s) builds a squad of a attackers and s supports from real cards of the recorded
+// roster (Character/Creature as attackers, Item/Place/Moment as supports), on the R1e card numbers. The default Hunt fight is 5 + 3.
+const ROSTER = () => FIX.routes['/api/hunt']?.body?.roster || [];
+function mixCards(v, nAtt, nSup) {
+  const F = v.run.state.fight;
+  const att = ROSTER().filter((c) => ['Character', 'Creature'].includes(c.type)).slice(0, nAtt);
+  const sup = ROSTER().filter((c) => !['Character', 'Creature'].includes(c.type)).slice(0, nSup);
+  const A = F.cards[43], S = F.cards[145];
+  for (const k of Object.keys(F.cards)) { delete F.cards[k]; delete v.status_lines[`card:${k}`]; delete v.need[k]; }
+  v.cards = {};
+  v.order = v.order.filter((o) => o.side !== 'card');
+  const ids = [];
+  [...att.map((c) => [c, 'attacker', 'striker', A]), ...sup.map((c) => [c, 'support', 'medic', S])].forEach(([c, cls, role, src], i) => {
+    const id = Number(c.id); ids.push(id);
+    F.cards[id] = { ...JSON.parse(JSON.stringify(src)), role, class: cls, hp: src.max - (i % 3) * 7, charge: i % 3, status: i % 2 ? { shielded: { value: 12 } } : {} };
+    v.cards[id] = { id, name: c.name, rarity: c.rarity, image_url: c.image_url, type: c.type };
+    v.status_lines[`card:${id}`] = []; v.need[id] = cls === 'support' ? 1 : 2;
+    v.order.splice(Math.min(v.order.length, i * 2), 0, { side: 'card', id, clock: 6 + i, ready: i === 0 });
+  });
+  F.squad = ids; v.run.state.squad = ids; v.allies = ids;
+  const hp = ids.reduce((t, id) => t + F.cards[id].hp, 0), max = ids.reduce((t, id) => t + F.cards[id].max, 0);
+  v.squad_hp = { hp, max };
+  return v;
+}
+function derivedH2(kind) {
+  const live = kind.startsWith('m2h'); const st = MIX[kind] ? 'fight' : kind.split('-')[1];
+  const name = FIX.routes['/api/hunt']?.body?.hunt?.name || 'The boss';
+  const base = { ok: true, tester: !live, live, label: 'Practice (v2 test): no rewards', hunt: { name, ...(live ? { live_frac: 0.62 } : {}) } };
+  if (st === 'lobby') return { ...base, can_start: true, day: null };
+  const v = derivedG2(st === 'over' ? 'g2-over' : 'g2-fight');
+  delete v.active_mode; delete v.run.mode;
+  if (v.run?.state?.fight?.enemies?.length) { oneBoss(v, name); const mx = MIX[kind] || [5, 3]; mixCards(v, mx[0], mx[1]); }
+  const over = st === 'over';
+  Object.assign(v.run, { status: over ? 'over' : 'active', ended_by: over ? 'fell' : null });
+  v.run.state = { ...v.run.state, engine: 2, phase: over ? 'over' : 'fight' };
+  // over: the day's squad = 8 cards of the recorded roster (the member owns them; the bridge rows mark them down, R3-ON)
+  const roster = (FIX.routes['/api/hunt']?.body?.roster || []).slice(0, 8).map((c) => Number(c.id));   // N-3: a full squad of 8
+  return { ...v, ...base, can_start: false, mode: 'hunt_v2', fight: v.run.state.fight, status: v.run.status,
+    day: { status: v.run.status, ended_by: v.run.ended_by, squad: over ? roster : v.run.state.squad, ...(live ? { live: true, credited: 1840 } : {}) } };
+}
+DERIVED.push({ when: (p, c) => p === '/api/hunt/v2/view' && H2_KINDS.includes(c.ci_hunt), make: (body, c) => derivedH2(c.ci_hunt) });
 // UI-50: the run over (a fall on floor 3, room 2) with 4 found cards: the names of the approved frames.
 function derivedOver(body) {
   const base = derivedDungeon(body);
@@ -698,6 +796,11 @@ createServer((req, res) => {
   if (p === '/' || p === '/index.html') return send(res, 200, index, 'text/html');
   if (p === '/ui3.css') return send(res, 200, ui3Css(PUB), 'text/css');   // joined as server.js does (read on each request)
   if (/^\/(main|chunk)\..*\.js$/.test(p)) return send(res, 200, readFileSync(join(BUNDLE, p.slice(1))), 'text/javascript');
+  // The Hunt boss models (boss-models.js MODEL_BASE): served from .out/models/<file> when a builder put the file there (a local preview);
+  // CI has none: the request falls through to the /api/img stub below, as on main (a 404 here made every screen with the boss preload
+  // "not checked": PR 499 CI run 41963422538), and the fight stage keeps the plate without a model (a failed load is allowed).
+  const bm = p.match(/^\/api\/img\/storage\/v1\/object\/public\/card-art\/boss\/models\/([a-z0-9-]+\.glb)$/);
+  if (bm && existsSync(join(here, '.out', 'models', bm[1]))) return send(res, 200, readFileSync(join(here, '.out', 'models', bm[1])), 'model/gltf-binary');
   if (/^\/(api\/img|cimg|api\/avatar)\//.test(p) || /^\/cdn\//.test(p)) return send(res, 200, PNG, 'image/png');
   // The pull feed stream: open and quiet, as in production with no new pulls (a closed stream makes the client poll).
   if (p === '/api/pulls/stream') { res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' }); res.write(': ui-check\n\n'); const k = cookies(req); if (k.ci_home) res.write(`data: ${JSON.stringify(k.ci_data === 'long' ? longData(derivedPulls()) : derivedPulls())}\n\n`); return undefined; }

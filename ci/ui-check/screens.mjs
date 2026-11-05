@@ -237,6 +237,31 @@ export const SCREENS = {
   'dungeon-v2-path': { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-path', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-v2-pass': { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-pass', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-v2-floor': { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-floor', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  // ON-UI (combat v2 for every member, ON SPEC 3.5, G-UI): the member mode (live, not a tester): cookie ci_dungeon = m2-* (serve.mjs derivedM2).
+  // (a) no test text, Start run starts v2, the loot chips; (b) m2-v1: an active v1 run of today keeps the v1 fight (mutation screen_reads_live_only).
+  'dungeon-m2-lobby': { id: 'UI-46', noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-lobby', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-m2-done': { id: 'UI-46', noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-done', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-m2-fight': { id: 'UI-47', squad: true, noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-fight', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
+  // D-211: 5 attackers and no support (the control row in its own row where the side column is too narrow for the hint).
+  'dungeon-m2-five': { id: 'UI-47', squad: true, noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-five', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
+  'dungeon-m2-choose': { id: 'UI-48', noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-choose', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-m2-over': { id: 'UI-50', noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-m2-v1': { id: 'UI-47', see: ['.dg-fight:not(.g2)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-v1', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
+  // R3b + ON-UI: the Hunt v2 (UI-18 on the approved UI-52 view): cookie ci_hunt = h2-* (a tester: practice) or m2h-* (flag ON: every member;
+  // the shared boss bar hunt.live_frac and "your damage" day.credited; no Practice text). serve.mjs derivedH2.
+  'hunt-v2-lobby':  { id: 'UI-17', long: true, notOn: ['tiny'], hunt: 'h2-lobby', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
+  'hunt-v2-fight':  { id: 'UI-18', long: true, safe: true, notOn: ['tiny'], hunt: 'h2-fight', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 25]] },
+  'hunt-v2-over':   { id: 'UI-18', long: true, safe: true, notOn: ['tiny'], hunt: 'h2-over', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
+  'hunt-m2-lobby':  { id: 'UI-17', noText: ['Practice', 'no rewards', '(test)'], long: true, notOn: ['tiny'], hunt: 'm2h-lobby', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
+  'hunt-m2-fight':  { id: 'UI-18', squad: true, stageMin: ['430x932'], noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], hunt: 'm2h-fight', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 25]] },
+  // ON-UI content rules (run.mjs, rule content): squad (cards >= card-mini, <= 2 lines, inside the row), stageMin (the boss stage floor),
+  // noText (no test text in the member mode, G-UI (a)), see (dungeon-m2-v1: the v1 fight, G-UI (b)).
+  // N-3: any squad mix (Hunt: 1 to 8 cards, any class). The extremes: 8 attackers + 0 supports, 1 + 7, 4 + 4, 0 + 8.
+  'hunt-m2-mix80':  { id: 'UI-18', squad: true, stageMin: ['430x932'], noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], hunt: 'm2h-mix80', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 25]] },
+  'hunt-m2-mix17':  { id: 'UI-18', squad: true, stageMin: ['430x932'], noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], hunt: 'm2h-mix17', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 25]] },
+  'hunt-m2-mix44':  { id: 'UI-18', squad: true, stageMin: ['430x932'], noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], hunt: 'm2h-mix44', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 25]] },
+  'hunt-m2-mix08':  { id: 'UI-18', squad: true, stageMin: ['430x932'], noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], hunt: 'm2h-mix08', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 25]] },
+  'hunt-m2-over':   { id: 'UI-18', noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], hunt: 'm2h-over', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
   'dungeon-v2-over': { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-over':        { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-over-revealed': { id: 'UI-50', long: true, safe: true, notOn: ['tiny'], dungeon: 'over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '.u3-dgs-reveal, .dg-reveal'], ['wait', 3]] },

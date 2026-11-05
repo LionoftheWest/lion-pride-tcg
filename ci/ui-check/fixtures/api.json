@@ -27786,6 +27786,14 @@
     "me": "100000000000000001"
    }
   },
+  "/api/hunt/v2/view": {
+   "status": 403,
+   "body": {
+    "ok": false,
+    "error": "not_tester",
+    "message": "Combat v2 is for testers only."
+   }
+  },
   "/api/dungeon/v2/view": {
    "status": 403,
    "body": {

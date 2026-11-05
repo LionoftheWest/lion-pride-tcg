@@ -58,7 +58,7 @@
   for (const t of document.querySelectorAll('.dg-fight.g2 .g2-turn')) {
     const p = t.parentElement?.querySelector('.g2-pill'), c = t.closest('.dg-card');
     if (!p || !c) { out.turnLabel.push([path(t), !p ? 'no pill' : 'not on a card']); continue; }
-    if (!t.getClientRects().length) { if (!t.closest('.dg-fight.is-narrow')) out.turnLabel.push([path(t), 'hidden outside the narrow layout']); continue; }
+    if (!t.getClientRects().length) { if (!t.closest('.dg-fight.is-narrow, .dg-fight.g2-small')) out.turnLabel.push([path(t), 'hidden outside the narrow layout']);   /* g2-small (PR 499): fitted cards below the squad step take the same D-216 narrow rule */ continue; }
     const a = t.getBoundingClientRect(), b = p.getBoundingClientRect(), k = c.getBoundingClientRect();
     const ov = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)) * Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
     if (ov > 0) out.turnLabel.push([path(t), `overlaps the pill ${Math.round(ov)} px2`]);
