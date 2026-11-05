@@ -43,6 +43,7 @@ import { registerShopRoutes } from './src/shop-routes.js';
 import { registerEventsRoutes } from './src/events-routes.js';
 import { registerDungeonRoutes } from './src/dungeon-routes.js';
 import { registerGauntletV2Routes } from './src/gauntlet-v2-routes.js';
+import { registerHuntV2Routes } from './src/hunt-v2-routes.js';
 import { makePingLimiter } from './src/trade-ping-limit.js';
 import { dailyExtras } from './src/dailies-pay.js';
 import { makeTtlCache } from './src/ttl-cache.js';
@@ -1908,6 +1909,7 @@ registerShopRoutes(app, { supabase, caller, rateLimit, bustUser, getCatalogBase,
 registerEventsRoutes(app, { supabase, caller, eventsOn, sharedCache, artUrl: (u) => (SUPA_HOST && String(u).startsWith(SUPA_HOST + '/') ? toProxyImg(u) : null) });
 registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun: dungeonPing, userCache, sharedCache });
 registerGauntletV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, sharedCache });   // R1c: /api/gauntlet/v2/* for Combat v2 testers
+registerHuntV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, huntOn: () => FEATURE_HUNT, sharedCache });   // R3b: /api/hunt/v2/* the Hunt v2 practice of Combat v2 testers
 const cardShape = (c) => c && { id: c.id, name: c.name, rarity: c.rarity, image_url: toProxyImg(c.image_url) };
 
 // Another player's cards — for picking what to request/gift in a trade.
