@@ -4,7 +4,7 @@
 // the plain texts are what ability_v2_check returns for them on live (observed 2026-11-04, gate U2).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { markStatuses, makesOf, usesOf, blockStatuses, loadFaceV2 } from '../src/face-data.js';
+import { markStatuses, makesOf, usesOf, blockStatuses, loadFaceV2, sameAbility } from '../src/face-data.js';
 import { faceParts } from '../src/face-v2.js';
 
 const STATUSES = [
@@ -128,6 +128,15 @@ test('loadFaceV2: FACE_V2_FILE fills a subject with no ability_v2; a difference 
   const other = { ...PIKA_SUBJ, ability_v2: { ...PIKA_SUBJ.ability_v2, blocks: [{ k: 'hit', x: 1.4 }, ...CASES.pikachu[1].slice(1)] } };
   await assert.rejects(loadFaceV2(fakeDb({ subject: other, check: PIKA_CHECK }), { id: 'lionofthewest-s-pikachu' }), /differ/);
   delete process.env.FACE_V2_FILE;
+});
+
+test('sameAbility: the key order of jsonb does not count; a value does', () => {
+  const file = { role: 'survivor', ability: { name: 'Sing', blocks: [{ k: 'apply', status: 'sleep', chance: 1 }], silver: { block: 1, field: 'x', value: 1.725 } } };
+  const db = { role: 'survivor', ability: { name: 'Sing', blocks: [{ k: 'apply', chance: 1, status: 'sleep' }], silver: { field: 'x', block: 1, value: 1.725 } } };
+  assert.ok(sameAbility(file, db));
+  assert.ok(!sameAbility(file, { ...db, ability: { ...db.ability, blocks: [{ k: 'apply', chance: 0.5, status: 'sleep' }] } }));
+  assert.ok(!sameAbility(file, { ...db, role: 'striker' }));
+  assert.ok(!sameAbility(file, { ...db, ability: { ...db.ability, silver: undefined } }));
 });
 
 test('loadFaceV2: an ability that the check refuses stops the render', async () => {

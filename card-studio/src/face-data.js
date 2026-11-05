@@ -101,8 +101,13 @@ export function fileAbility(key, path = process.env.FACE_V2_FILE) {
   return fileCache.map.get(key) || null;
 }
 
-const sameAbility = (a, b) => JSON.stringify({ r: a.role, n: a.ability?.name, b: a.ability?.blocks, s: a.ability?.silver ?? null })
-  === JSON.stringify({ r: b.role, n: b.ability?.name, b: b.ability?.blocks, s: b.ability?.silver ?? null });
+// JSON with sorted object keys: jsonb stores the keys in its own order, so {"k":"apply","chance":1} from the database equals
+// {"k":"apply","status":"x","chance":1} in a file when the values are equal.
+export const canon = (v) => (Array.isArray(v) ? `[${v.map(canon).join(',')}]`
+  : v && typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canon(v[k])}`).join(',')}}`
+    : JSON.stringify(v ?? null));
+export const sameAbility = (a, b) => canon({ r: a.role, n: a.ability?.name, b: a.ability?.blocks, s: a.ability?.silver ?? null })
+  === canon({ r: b.role, n: b.ability?.name, b: b.ability?.blocks, s: b.ability?.silver ?? null });
 
 /**
  * The v2 face data of a card from the database `db` (a supabase client), or null when the card has no v2 ability.
