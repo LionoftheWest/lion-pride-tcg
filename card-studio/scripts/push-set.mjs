@@ -115,7 +115,7 @@ async function main() {
       const fails = [];
       for (const f of card.finishes) {
         const c = await faceCheck(join(outDir, `${card.id}-${f}.png`));
-        console.log(`CHECK ${card.id} ${f} ${c.ok ? 'ok' : 'FAIL'} white=${c.white} blankRows=${c.blankRows}`);
+        console.log(`CHECK ${card.id} ${f} ${c.ok ? 'ok' : 'FAIL'} white=${c.white} blankRows=${c.blankRows} clear=${c.clear} clearRows=${c.clearRows}`);
         if (!c.ok) fails.push(f);
       }
       if (!fails.length) checked = true;
