@@ -1097,7 +1097,7 @@ Internal helper: a jsonb array of strings as text[] (empty for null).
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Dungeon (20.19 R2, R3 reuses it): the screen facts of a card: name (subjects.ability_v2 name), role, class, needs_ally. Raises no_data_found for a card with no usable ability_v2. Reads only. combat_v2_dungeon_run.sql.
+[combat] Combat v2 Dungeon (20.19 R2, 20.19b R2-ON; R3 reuses it): the screen facts of a card: name (subjects.ability_v2 name), role, class, needs_ally, and text = ability_v2_text(class, the active blocks).text (the Dungeon and the Hunt screens). Raises no_data_found for a card with no usable ability_v2. Reads only. combat_v2_on_dungeon.sql.
 
 <a id="fn-dungeon-v2-loot-jsonb-jsonb-integer"></a>
 
@@ -1227,7 +1227,7 @@ Internal helper: a jsonb array of strings as text[] (empty for null).
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Dungeon (20.19 R2, 20.19b R2-ON; R3 reuses it): the v2 unit of a player's card: combat_v2_card_unit (after SYN with tags) with the 12 star-dependent stat keys (atk, crt, crd, abl, acc, def, ddg, max, hp, spd, power, extra_stack) from card_combat_v2. With combat_v2_on('progress'): the live level (N-7b: v2_convert.level_per_star x the current stars, at most v2_level.max_level), the 9 points and the bonus points of the card_progress_v2 row (no row: 0). Else the player's stars, level 0, no points (QD3). Every other key stays. A card with no usable ability_v2 raises no_data_found. Reads only. combat_v2_on_dungeon.sql.
+[combat] Combat v2 Dungeon (20.19 R2, 20.19b R2-ON; R3 reuses it): the v2 unit of a player's card: combat_v2_card_unit (after SYN with tags) with the 12 star-dependent stat keys (atk, crt, crd, abl, acc, def, ddg, max, hp, spd, power, extra_stack) from card_combat_v2. With combat_v2_on('progress'): the level, the points and the bonus of card_progress_v2_fight (M1e, N-7b: v2_convert.level_per_star x the current stars, at most v2_level.max_level, a stored level above it kept; the points and the bonus of the card_progress_v2 row). Else the player's stars, level 0, no points (QD3). Every other key stays. A card with no usable ability_v2 raises no_data_found. Reads only. combat_v2_on_dungeon.sql.
 
 <a id="fn-dungeon-v2-view-text"></a>
 
