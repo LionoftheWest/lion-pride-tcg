@@ -1887,7 +1887,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
           "x": 0
         }
       },
-      "hp_factor": 1.1,
+      "hp_factor": 0.99,
       "counter_share": 0.4
     },
     "zerg": {
@@ -1910,7 +1910,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
         }
       },
       "params": {},
-      "hp_factor": 0.64,
+      "hp_factor": 0.7,
       "counter_share": 0.55
     },
     "hydra": {
@@ -1949,7 +1949,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
         }
       },
       "params": {},
-      "hp_factor": 1.26,
+      "hp_factor": 1.01,
       "counter_share": 0.55
     },
     "banwave": {
@@ -1982,7 +1982,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
         }
       },
       "params": {},
-      "hp_factor": 0.87,
+      "hp_factor": 0.9,
       "counter_share": 0.4
     },
     "pumpkin": {
@@ -2006,7 +2006,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
           "every": 2
         }
       },
-      "hp_factor": 0.95,
+      "hp_factor": 0.77,
       "counter_share": 0.4
     },
     "vampire": {
@@ -2030,7 +2030,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
         }
       },
       "params": {},
-      "hp_factor": 0.92,
+      "hp_factor": 0.91,
       "counter_share": 0.55
     },
     "warlord": {
@@ -2055,7 +2055,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
           "crit_x": 0
         }
       },
-      "hp_factor": 0.71,
+      "hp_factor": 0.82,
       "counter_share": 0.4
     },
     "lagspike": {
@@ -2074,7 +2074,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
         "packet_loss": {}
       },
       "params": {},
-      "hp_factor": 0.88,
+      "hp_factor": 0.74,
       "counter_share": 0.4
     },
     "skeleton": {
@@ -2094,7 +2094,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
         }
       },
       "params": {},
-      "hp_factor": 0.79,
+      "hp_factor": 0.4,
       "counter_share": 0.55
     },
     "warzombie": {
@@ -2121,7 +2121,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
         }
       },
       "params": {},
-      "hp_factor": 1.08,
+      "hp_factor": 1.06,
       "counter_share": 0.4
     },
     "frost_lich": {
@@ -2169,7 +2169,7 @@ Shape: `object { bosses: object { banwave: object { counter_share: number, hp_fa
         }
       },
       "params": {},
-      "hp_factor": 0.73,
+      "hp_factor": 0.7,
       "counter_share": 0.4
     },
     "salt_miner": {
@@ -2846,34 +2846,34 @@ Shape: `object { asc3_hp_x: number, boss_heal_ref: number, boss_moves: object { 
 {
   "hunt": {
     "Heroic": {
-      "hp": 80000,
-      "atk": 73,
-      "def": 0.15,
+      "hp": 32500,
+      "atk": 45,
+      "def": 0.1,
       "keen": 0,
       "atk_x": 1,
-      "speed": 100,
+      "speed": 85,
       "evasion": 0.04,
       "resolve": 0.1,
       "signatures": 1
     },
     "Mythic": {
-      "hp": 80000,
-      "atk": 93,
-      "def": 0.2,
+      "hp": 28500,
+      "atk": 57,
+      "def": 0.15,
       "keen": 0.25,
       "atk_x": 0.91,
-      "speed": 110,
+      "speed": 94,
       "evasion": 0.08,
       "resolve": 0.2,
       "signatures": 2
     },
     "Normal": {
-      "hp": 70000,
-      "atk": 58,
-      "def": 0.1,
+      "hp": 35000,
+      "atk": 36,
+      "def": 0.05,
       "keen": 0,
       "atk_x": 1,
-      "speed": 100,
+      "speed": 85,
       "evasion": 0,
       "resolve": 0,
       "signatures": 1
