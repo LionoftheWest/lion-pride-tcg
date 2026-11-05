@@ -379,7 +379,7 @@ export function fightHTML(v, H) {
       <span class="t"><b>${roleHTML(c, true)}${breakName(c.name)}</b><small>${esc(c.activeName)}</small></span>
       <span class="g2-suprole">${roleHTML(c)}</span><span class="card-info g2-mag" data-info="${c.id}" aria-label="Details">${ic('search')}</span>
       <span class="g2-stline"><em></em><span class="g2-shp"><span class="g2-shpl"></span><span class="dg-hp"><i></i></span><small></small></span></span></button>`;
-  return `<div class="dg-fight g2" data-room="${esc(`${m.floor}-${m.room}`)}">
+  return `<div class="dg-fight g2${H.oneBoss ? ' g2-hunt' : ''}" data-room="${esc(`${m.floor}-${m.room}`)}">
     <div class="dg-ftop">${H.progressHTML()}${statsHTML(H)}</div>
     <div class="dg-meter g2-meter"><div class="g2-strip">${stripHTML(m, H)}</div></div>
     <div class="dg-arena">
@@ -770,8 +770,10 @@ function supsTooTall(F) {
   // D-225 (review M-3): on phones a support list taller than the squad row takes the boss stage height (1 attacker + 7 supports)
   const units = F.querySelector('.dg-units');
   const phone = /^compact/.test(document.body.dataset.size || '');
+  // D-61 (the Hunt boss stage): on phones the supports also leave the panel when the boss stage is below its floor
+  const lowStage = phone && F.classList.contains('g2-hunt') && stageHeight(F) < stageFloor();
   return narrowTile || p.scrollHeight > p.clientHeight + 1 || (right && right.scrollHeight > right.clientHeight + 1) || p.getBoundingClientRect().bottom > fb + 1
-    || (phone && !!units && p.offsetHeight > units.offsetHeight + 1);
+    || (phone && !!units && p.offsetHeight > units.offsetHeight + 1) || lowStage;
 }
 // N-3: the squad row of any size (a CSS grid of --g2-per columns of --g2-cell px; layout() measures, CSS draws). At the approved card
 // size while it fits on one line with nothing cut; else the largest card that puts every card on one line (at least the mini step,
@@ -790,6 +792,8 @@ function fitRow(F, units) {
   const padX = Math.max(0, it.offsetWidth - card().offsetWidth), natural = Math.max(card().offsetWidth, TOKENS['card-squad']);
   const lineH = Math.max(it.offsetHeight, natural * ratio);
   const arena = F.querySelector('.dg-arena'); const W = Math.max(units.clientWidth, arena?.clientWidth || 0);
+  // an unusable measure (the row not laid out yet, CI run 41970678464: a 0 px card at 820x1180): no fit now, measure again next layout
+  if (W < n * TOKENS['card-mini'] / 2) { delete F.dataset.g2fit; F.classList.remove('g2-fit', 'g2-wrap'); return; }
   const apply = (per) => {
     const lines = Math.ceil(n / per);
     const cell = Math.min(natural + padX, Math.floor((W - gap * (per - 1)) / per));
@@ -804,6 +808,14 @@ function fitRow(F, units) {
   };
   if (apply(n) >= TOKENS['card-mini'] && !rowTooCrowded(units)) return;
   apply(Math.ceil(n / 2));
+}
+// D-61: the Hunt boss stage under its plates, and its floor (TOKENS sp-7 + sp-6 + sp-5, the approved UI-47 stage floor; the G3 stageMin check)
+const stageFloor = () => TOKENS['sp-7'] + TOKENS['sp-6'] + TOKENS['sp-5'];
+function stageHeight(F) {
+  const a = F.querySelector('.dg-arena'), pl = F.querySelector('.dg-plates');
+  if (!a) return Infinity;
+  const ab = a.getBoundingClientRect();
+  return ab.bottom - Math.max(ab.top, pl ? pl.getBoundingClientRect().bottom : 0);
 }
 // N-3: a card of the squad row is cut (its content wider than its box) or the row is wider than its box.
 // more than one line of cards (the base row wraps by itself) also counts as crowded
