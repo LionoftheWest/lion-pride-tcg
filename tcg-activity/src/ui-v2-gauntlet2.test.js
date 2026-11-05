@@ -453,11 +453,12 @@ test('reviewer L-2, item 3: a card active plays the v1 lunge and impact, the cal
     labels: () => [0, 1, 2, 3, 4].map((x) => ({ x, y: 1, foot: 2, w: 1 })), setTarget() {}, dispose() {} };
   const w = fresh(); w.run.state.fight.enemies[0].hp = 8.4;
   w.status_lines['enemy:0'] = [...w.status_lines['enemy:0'], { key: 'mark', stacks: null, left: null, amounts: [] }];
+  let replayDone; const replayEnd = new Promise((ok) => { replayDone = ok; });
   const answer = { ok: true, status: 'active', state: w.run.state, order: w.order, targets: w.targets, allies: w.allies, status_lines: w.status_lines, need: w.need, squad_hp: w.squad_hp,
     log: [{ k: 'act', actor: { side: 'card', id: 318 }, action: 'active', target: { side: 'enemy', id: 0 }, hits: [{ target: { side: 'enemy', id: 0 }, dmg: 41.6, crit: false, miss: false }],
       hp: [{ side: 'enemy', id: 0, before: 50, after: 8.4, down: false, shield_before: 0, shield_after: 0 }] }] };
   const host = recHost({ dg: { auto: false, stage }, base: '/api/gauntlet/v2', apiPost: async () => answer, waitMs: () => 0, currentView: () => 'dungeon', sfx() {}, snd() {}, voice() {}, moveSnd: () => null,
-    elementOf: () => 'water', setView() {}, setAuto() {}, toast() {}, fitFight() {}, placeArena() {}, openInfo() {} });
+    elementOf: () => 'water', setView() { replayDone(); }, setAuto() {}, toast() {}, fitFight() {}, placeArena() {}, openInfo() {} });
   const saved = { document: globalThis.document, raf: globalThis.requestAnimationFrame, gcs: globalThis.getComputedStyle };
   globalThis.document = { querySelector: (q) => (q === '.dg-fight.g2' ? d.F : d.sub('', q)), querySelectorAll: () => [], getElementById: () => null, body: { dataset: {} },
     createElement: () => ({ className: '', textContent: '', style: {}, remove() {} }) };
@@ -468,7 +469,8 @@ test('reviewer L-2, item 3: a card active plays the v1 lunge and impact, the cal
     await wireFight(main, v, host, { keep: true });
     const pill = { dataset: { active: '318' }, closest: (q) => (q === '[data-active]' ? pill : null) };
     await handlers[0]({ target: pill });
-    await new Promise((ok) => setTimeout(ok, 50));
+    await Promise.race([replayEnd, new Promise((ok) => setTimeout(ok, 5000))]);   // the end of the replay (setView), not a fixed wait
+    await new Promise((ok) => setTimeout(ok, 30));   // settle() runs after it
   } finally { globalThis.document = saved.document; globalThis.requestAnimationFrame = saved.raf; globalThis.getComputedStyle = saved.gcs; }
   assert.ok(stage.calls.includes('cast 0 water'), `the element impact: ${stage.calls.join(', ')}`);
   assert.ok(stage.calls.includes('play 0 hit'));
@@ -492,8 +494,9 @@ test('H-1: the Finish Room fast replay plays the light v1 effects (hit, number, 
   }
   const answer = { ok: true, status: 'active', state: w.run.state, order: w.order, targets: w.targets, allies: w.allies, status_lines: w.status_lines, need: w.need, squad_hp: w.squad_hp, log };
   const voices = [];
+  let replayDone; const replayEnd = new Promise((ok) => { replayDone = ok; });
   const host = recHost({ dg: { auto: false, stage }, base: '/api/gauntlet/v2', apiPost: async () => answer, waitMs: () => 0, currentView: () => 'dungeon', sfx() {}, snd: (k) => voices.push(k), voice: (f, k) => voices.push(k), moveSnd: () => 'boss:strike',
-    elementOf: () => 'water', setView() {}, setAuto() {}, toast() {}, fitFight() {}, placeArena() {}, openInfo() {} });
+    elementOf: () => 'water', setView() { replayDone(); }, setAuto() {}, toast() {}, fitFight() {}, placeArena() {}, openInfo() {} });
   const saved = { document: globalThis.document, raf: globalThis.requestAnimationFrame, gcs: globalThis.getComputedStyle };
   globalThis.document = { querySelector: (q) => (q === '.dg-fight.g2' ? d.F : d.sub('', q)), querySelectorAll: () => [], getElementById: () => null, body: { dataset: {} },
     createElement: () => ({ className: '', textContent: '', style: {}, remove() {} }) };
@@ -505,7 +508,8 @@ test('H-1: the Finish Room fast replay plays the light v1 effects (hit, number, 
     d.mk('.dg-fight.g2 .dg-finish').addEventListener = (t, fn) => { finish = fn; };
     await wireFight(main, v, host, { keep: true });
     await finish({ stopPropagation() {} });
-    await new Promise((ok) => setTimeout(ok, 50));
+    await Promise.race([replayEnd, new Promise((ok) => setTimeout(ok, 5000))]);   // the end of the replay (setView), not a fixed wait
+    await new Promise((ok) => setTimeout(ok, 30));   // settle() runs after it
   } finally { globalThis.document = saved.document; globalThis.requestAnimationFrame = saved.raf; globalThis.getComputedStyle = saved.gcs; }
   assert.equal(stage.calls.filter((c) => c.startsWith('cast')).length, 0, `no WebGL impact in the fast replay: ${stage.calls.join(', ')}`);
   assert.equal(stage.calls.filter((c) => c.startsWith('foeFx')).length, 0, 'no foe move effect');
