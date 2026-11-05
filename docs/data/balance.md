@@ -1780,7 +1780,7 @@ Shape: `number`
 
 ### effect_tiers
 
-Pranks and boons (play_card_effect): power multiplies the base amount and length (Rally %, Butterfingers %, Mend, ...), cd the cooldown, by the rarity of the played card. The base amounts are in subjects.effect, the ceilings in effect_primitives.max_amount / max_duration_s. event and promo = the full_art values (Nathan 2026-11-05 EVT-2 Q3b: event and promo cards are special and have full-art power). Limits: every rarity has power 0.5 to 3 and cd 0.1 to 2. undo of EVT-2 B4 (evt2_special_power_undo.sql).
+Pranks and boons (play_card_effect): power multiplies the base amount and length (Rally %, Butterfingers %, Mend, ...), cd the cooldown, by the rarity of the played card. The base amounts are in subjects.effect, the ceilings in effect_primitives.max_amount / max_duration_s. event and promo = the full_art values (Nathan 2026-11-05 EVT-2 Q3b: event and promo cards are special and have full-art power). Limits: every rarity has power 0.5 to 3 and cd 0.1 to 2.
 
 Shape: `object { event: object { cd: number, power: number }, full_art: object { cd: number, power: number }, gold: object { cd: number, power: number }, illustrated_rare: object { cd: number, power: number }, normal: object { cd: number, power: number }, promo: object { cd: number, power: number }, secret_rare: object { cd: number, power: number } }`
 
@@ -2357,7 +2357,7 @@ Shape: `object { pack_size: number, rates: object { full_art: number, gold: numb
 
 ### rarity_cp
 
-Card power at 0 stars, by rarity. An unknown rarity uses normal. Each subject also has its own subjects.cp_mod (0.92 to 1.06), multiplied in card_cp_exact. promo = full_art = 75 (Nathan 2026-11-05 EVT-2 Q3b); event = 75 since the launch. undo of EVT-2 B4 (evt2_special_power_undo.sql).
+Card power at 0 stars, by rarity. An unknown rarity uses normal. Each subject also has its own subjects.cp_mod (0.92 to 1.06), multiplied in card_cp_exact. promo = full_art = 75 (Nathan 2026-11-05 EVT-2 Q3b); event = 75 since the launch.
 
 Shape: `object { event: number, full_art: number, gold: number, illustrated_rare: number, normal: number, promo: number, secret_rare: number }`
 
@@ -2451,7 +2451,7 @@ Shape: `object { cooldown_days: number, dupe_values: object { full_art: number, 
 
 ### stars
 
-Star curve S1 (Nathan 2026-10-15; before: Option C 2026-10-03): the power multiplier for 0 to 5 stars, by rarity. A 5-star normal = 7.5x (75 CP, a 0-star Full Art), a 5-star illustrated rare = 7.0x (140 CP, a 0-star Gold). Used by the collection power, the leaderboard AND the raid. Event and promo cards cannot ascend (ascend_card), so only their 0-star value counts. promo = the full_art curve (Nathan 2026-11-05 EVT-2 Q3b). Event and promo cannot ascend, so only index 0 counts. undo of EVT-2 B4 (evt2_special_power_undo.sql).
+Star curve S1 (Nathan 2026-10-15; before: Option C 2026-10-03): the power multiplier for 0 to 5 stars, by rarity. A 5-star normal = 7.5x (75 CP, a 0-star Full Art), a 5-star illustrated rare = 7.0x (140 CP, a 0-star Gold). Used by the collection power, the leaderboard AND the raid. Event and promo cards cannot ascend (ascend_card), so only their 0-star value counts. promo = the full_art curve (Nathan 2026-11-05 EVT-2 Q3b). Event and promo cannot ascend, so only index 0 counts.
 
 Shape: `object { event: array(6) of number, full_art: array(6) of number, gold: array(6) of number, illustrated_rare: array(6) of number, normal: array(6) of number, promo: array(6) of number, secret_rare: array(6) of number }`
 
@@ -2601,7 +2601,7 @@ Shape: `object { affinity_cap: number, affinity_step: number, expose_cap: number
 
 ### v2_asc
 
-Combat v2: ascension ASC-3 (plan 2.3, decided 2026-10-18). CP = base[r] x (1 + (top[r] / base[r] - 1) x curve[stars]) x cp_mod. curve = the share of the way from the 0-star base to the 5-star top for 0 to 5 stars (starts at 0, ends at 1, never falls). top = the 5-star value of today (no live card loses CP). alias: promo uses normal, event uses full_art. Stars give no stat points in v2. Rules: every card rarity has a base or an alias; base is never above top (balance_check_combat_v2). Nothing reads this key until combat_v2 progress is on. alias promo = full_art (Nathan 2026-11-05 EVT-2 Q3b; before: promo = normal). undo of EVT-2 B4 (evt2_special_power_undo.sql).
+Combat v2: ascension ASC-3 (plan 2.3, decided 2026-10-18). CP = base[r] x (1 + (top[r] / base[r] - 1) x curve[stars]) x cp_mod. curve = the share of the way from the 0-star base to the 5-star top for 0 to 5 stars (starts at 0, ends at 1, never falls). top = the 5-star value of today (no live card loses CP). alias: promo uses normal, event uses full_art. Stars give no stat points in v2. Rules: every card rarity has a base or an alias; base is never above top (balance_check_combat_v2). Nothing reads this key until combat_v2 progress is on. alias promo = full_art (Nathan 2026-11-05 EVT-2 Q3b; before: promo = normal).
 
 Shape: `object { alias: object { event: string, promo: string }, base: object { full_art: number, gold: number, illustrated_rare: number, normal: number, secret_rare: number }, curve: array(6) of number, top: object { full_art: number, gold: number, illustrated_rare: number, normal: number, secret_rare: number } }`
 
