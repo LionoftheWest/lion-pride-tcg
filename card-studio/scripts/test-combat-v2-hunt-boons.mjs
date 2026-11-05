@@ -21,6 +21,9 @@ const read = (p) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'ut
 let mig = process.env.MIG ? readFileSync(process.env.MIG, 'utf8').replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '') : read('../../tcg-bot/supabase/combat_v2_hunt_boons.sql');
 let undo = read('../../tcg-bot/supabase/combat_v2_hunt_boons_undo.sql');
 const CLEAN = mig;
+// the guard of the file: [function, the md5 of the text that this file makes]
+const GUARD_NEW = [...CLEAN.matchAll(/\('public\.([^']+)', '[0-9a-f]{32}', '([0-9a-f]{32})'\)/g)].map((m) => [m[1], m[2]]);
+if (GUARD_NEW.length !== 3) throw new Error('the guard of the file must name 3 functions with their md5 (' + GUARD_NEW.length + ')');
 const SEEDS = Number(process.env.SEEDS || 20), LOGS = Number(process.env.LOGS || 50), ROUNDS = Number(process.env.ROUNDS || 20);
 
 // ---------------------------------------------------------------------------------------------------------- the mutations (spec 6, 8.6)
@@ -465,7 +468,9 @@ const B4 = block(String.raw`
   ${add('G-8a the guard: a foreign hunt_v2_shared text (one space added) makes the file refuse (raise, no change)', `msg like '%changed since this file was built%'`, 'to_jsonb(msg)')}
   o := (select jsonb_object_agg(z, md5(replace(pg_get_functiondef(('public.' || z)::regprocedure), chr(13), ''))) from unnest(array[${FN4.map(lit).join(', ')}]) z);
   msg := null;
-  begin execute $m$${mig}$m$; exception when others then msg := sqlerrm; end;
+  -- the second run of the text that is applied now: its guard accepts that text (for a mutated text the md5 of the file is replaced by the
+  -- md5 of the mutated text, so G-8b tests idempotence and does not catch every mutation of a guarded function)
+  begin execute ${GUARD_NEW.map(([fn, m]) => `replace(`).join('')}$m$${mig}$m$${GUARD_NEW.map(([fn, m]) => `, '${m}', md5(replace(pg_get_functiondef('public.${fn}'::regprocedure), chr(13), '')))`).join('')}; exception when others then msg := sqlerrm; end;
   ${add('G-8b a second run: no error, the 4 functions unchanged (md5)', `msg is null and o = (select jsonb_object_agg(z, md5(replace(pg_get_functiondef(('public.' || z)::regprocedure), chr(13), ''))) from unnest(array[${FN4.map(lit).join(', ')}]) z)`, `jsonb_build_object('err', msg, 'md5', o)`)}
   msg := null;
   begin
@@ -842,7 +847,13 @@ async function runH({ mig: hmig, CLEAN: hclean, ROUNDS: R, mutated }) {
   } finally {
     const c = await hq(hCleanup);
     let r = { error: null };
-    if (mutated) r = await hq(`do $h$ begin execute ${Q}${hclean}${Q}; end $h$;`);
+    // the clean file WITHOUT its guard (the guard refuses the mutated text on the copy), then the check that the 3 md5s are the file's again
+    if (mutated) {
+      r = await hq(`do $h$ begin execute ${Q}${hclean.replace(/do \$g\$\ndeclare m text; f record;[\s\S]*?-- GUARD-END\n/, '')}${Q}; end $h$;`);
+      const m = await one(`select string_agg(md5(replace(pg_get_functiondef(('public.' || z)::regprocedure), chr(13), '')), ',' order by z) s from unnest(array[${GUARD_NEW.map(([fn]) => lit(fn)).join(', ')}]) z;`);
+      const want = GUARD_NEW.slice().sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, x]) => x).join(',');
+      if (!r.error && m?.s !== want) r = { error: `the clean file is not back: ${m?.s} <> ${want}` };
+    }
     const left = await one(`select (select count(*) from public.players where id = any(array[${[...HP, HPR].map(HL).join(', ')}])) + (select count(*) from public.hunts where weak_points = '${HMARK}'::jsonb)
       + (select count(*) from public.balance_log where changed_by = '${HBY}') + (select count(*) from pg_proc where proname in ('hbp_h_real_step', 'hbp_h_real_out', 'hbp_h_synstub'))
       + (select count(*) from pg_class where relname = 'hbp_h_seq') n, (select value->>'hunt' from public.balance where key = 'combat_v2') flag;`);
