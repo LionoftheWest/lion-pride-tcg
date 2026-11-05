@@ -38,9 +38,10 @@ async function ensureBucket() {
 
 // Spawn Blender and count each rendered frame (it prints "Saved: …f_0001.png")
 // so the studio can show a real progress bar, then encode the frames to WebP.
-function animate(facePng, rarity, framesDir, webpOut, maskPng, onFrame) {
+function animate(facePng, rarity, framesDir, webpOut, maskPng, onFrame, textMaskPng = null) {
   const args = ['--background', '--python', ANIM_SCRIPT, '--', facePng, framesDir, rarity];
-  if (maskPng) args.push(maskPng);
+  if (maskPng || textMaskPng) args.push(maskPng || '-');
+  if (textMaskPng) args.push('-', textMaskPng); // argv 5 = the back (none here), argv 6 = the UI-68 text-safe mask
   return new Promise((resolve, reject) => {
     const proc = spawn(BLENDER, args);
     let buf = '';
@@ -82,7 +83,13 @@ export async function renderTier(card, rarity, artFor, outDir, onFrame) {
     maskPng = join(outDir, `${card.id}-${rarity}-mask.png`);
     await renderPng(card, rarity, artFor(rarity), maskPng, 2, true);
   }
-  await animate(facePng, rarity, framesDir, webp, maskPng, onFrame);
+  // UI-68: a v2 face also gets the text-safe mask (white = its title row and text panel): no emboss, holo or gold there.
+  let textMask = null;
+  if (card.v2 && process.env.UI68_TEXT_MASK !== '0') {
+    textMask = join(outDir, `${card.id}-${rarity}-textmask.png`);
+    await renderPng(eff, rarity, artFor(rarity), textMask, 2, 'text');
+  }
+  await animate(facePng, rarity, framesDir, webp, maskPng, onFrame, textMask);
   return { file: webp, contentType: 'image/webp' };
 }
 

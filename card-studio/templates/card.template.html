@@ -72,16 +72,83 @@
   /* Secret Rare: holo on the BORDER instead of the art window. */
   .card.secret_rare.maskmode { border-color:#fff !important; }
   .card.secret_rare.maskmode .art { background:#000 !important; }
+
+  /* ---- UI-68 PROTOTYPE (review-2): the combat v2 face (only when the card has v2 data: class "v2") ---- */
+  .card:not(.v2) .v2-only { display:none !important; }
+  .card.v2 .v1-only { display:none !important; }
+  .v2-role { position:relative; flex:none; display:inline-block; }
+  .v2-role > svg { display:block; filter:drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
+  .v2-role-g { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:flex; }
+  .v2-el { flex:none; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(10,10,18,.72); box-sizing:border-box; }
+  .tb-mid { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:3px; }
+  .tb-sub { font-size:12px; letter-spacing:2px; text-transform:uppercase; color:var(--accent-soft); white-space:nowrap; }
+  .v2-rolename { font-weight:800; margin-right:10px; }
+  .v2-panel {
+    position:relative; z-index:2; display:flex; flex-direction:column; gap:8px;
+    background:rgba(10,10,18,.78); border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:11px 14px 12px;
+  }
+  .v2-active { font-size:17px; line-height:1.36; color:#F5F2EC; }
+  .v2-aname { font-weight:800; color:#FFFFFF; }
+  .v2-aname::after { content:':'; }
+  /* Review-2 alignment (Nathan: the icons did not line up with the text). A status is an inline glyph: a 0.96em box whose
+     center sits on the middle of the capitals (Segoe UI cap height 0.70em = 0.35em above the baseline), so
+     vertical-align = 0.35em - 0.48em. One gap (0.22em) before the word. No flex, so the line height does not change. */
+  .v2-st { font-weight:700; white-space:nowrap; }
+  .v2-badge { display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; width:.96em; height:.96em;
+    margin-right:.22em; vertical-align:.04em; border:.08em solid; background:#20202F; border-radius:.24em; }
+  .v2-badge.circle { border-radius:50%; }
+  .v2-badge svg { display:block; width:70%; height:70%; }
+  .v2-silver { display:flex; align-items:baseline; gap:8px; font-size:15px; line-height:1.3; color:#C9D1DC; padding-top:8px; border-top:1px solid rgba(255,255,255,.09); }
+  .v2-stext { min-width:0; } /* review-2: a long Silver line wraps (style guide R12: the full sentence, up to 17 words) */
+  .v2-slabel { flex:none; display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase;
+    color:#0A0A12; background:#C9D1DC; padding:3px 9px; border-radius:999px; border:1px solid #C9D1DC; }
+  .card.v2:not(.silver-on) .v2-slabel { background:transparent; color:#C9D1DC; border-color:rgba(201,209,220,.55); }
+  .card.v2:not(.silver-on) .v2-stext { opacity:.5; filter:grayscale(1); }
+  .v2-chiprow { display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
+  .v2-chiprow:empty { display:none; }
+  .v2-chips { display:inline-flex; align-items:center; gap:6px; }
+  .v2-chips-l { font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; color:#AEABC0; }
+  .v2-chip { display:inline-block; font-size:13px; line-height:1; font-weight:700; padding:4px 9px 4px 4px; border-radius:999px; background:rgba(255,255,255,.07); white-space:nowrap; }
+  /* Review-2 (Nathan: "for the Lore part, we can't forget that part"): the lore line stays, in its italic serif, one short line. */
+  .v2-lore { position:relative; z-index:2; color:#cbd3e1; font-family:Georgia,'Times New Roman',serif; font-style:italic; font-size:14px; line-height:1.3; }
+  .v2-lore:empty { display:none; }
+
+  /* v2 parts in the holo mask: nothing (the holo regions stay as today). */
+  .card.maskmode svg { display:none !important; }
+  .card.maskmode .v2-panel, .card.maskmode .v2-badge, .card.maskmode .v2-el, .card.maskmode .v2-chip, .card.maskmode .v2-slabel { border-color:transparent !important; }
+  /* The text-safe mask for blender/card_scene.py, 2 channels. RED = no emboss (the block of the title row, the lore and the text).
+     GREEN = the face colors, no holo, flat light (the glyphs; on framed tiers the whole panel). */
+  .card.textmask { background:#000 !important; border-color:#000 !important; }
+  .card.textmask::before, .card.textmask::after { display:none !important; }
+  .card.textmask * { color:transparent !important; background:transparent !important; border-color:transparent !important; text-shadow:none !important; box-shadow:none !important; }
+  .card.textmask svg, .card.textmask img { visibility:hidden !important; }
+  .card.textmask .v2-safe { background:#f00 !important; filter:blur(2px); }
+  .card.textmask .v2-safe, .card.textmask .v2-safe * { color:#ff0 !important; }
+  .card.textmask .v2-safe .v2-badge, .card.textmask .v2-safe .v2-el, .card.textmask .v2-safe .v2-slabel { border-color:#ff0 !important; }
+  .card.textmask .v2-safe svg { visibility:visible !important; filter:brightness(0) invert(1); }
+  /* framed: the panel replaces the lore box; the lore line sits under the panel; the art window keeps its frame */
+  .card.v2 { gap:9px; }
+  .card.v2 .titlebar { align-items:center; gap:12px; }
+  .card.v2 .name { font-size:26px; }
+  .card.v2 .v2-lore { padding:0 4px; margin-top:-1px; }
+  .card.textmask .v2-panel.v2-safe { background:#ff0 !important; }
 </style>
 </head>
 <body>
   <div class="card %%CLASS%%">
-    <div class="titlebar">
-      <div class="name">%%NAME%%</div>
+    <div class="titlebar v2-safe">
+      <span class="v2-only">%%ROLEBADGE%%</span>
+      <div class="tb-mid">
+        <div class="name">%%NAME%%</div>
+        <div class="tb-sub v2-only">%%ROLENAME%%%%GENRE%%</div>
+      </div>
+      <span class="v2-only">%%ELEMENT%%</span>
     </div>
-    <div class="subject">%%GENRE%%</div>
+    <div class="subject v1-only">%%GENRE%%</div>
     <div class="art">%%ART%%</div>
-    <div class="lore">&ldquo;%%LORE%%&rdquo;</div>
+    <div class="lore v1-only">&ldquo;%%LORE%%&rdquo;</div>
+    <div class="v2-panel v2-safe v2-only">%%ACTIVE%%%%SILVER%%<div class="v2-chiprow">%%CHIPS%%</div></div>
+    <div class="v2-lore v2-safe v2-only">%%V2LORE%%</div>
     <div class="footer">
       <span class="artist">%%ARTIST%%</span>
       <span class="brand">Lion Pride TCG</span>
