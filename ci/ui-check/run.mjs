@@ -182,7 +182,7 @@ async function runCell([s, screen, variant], ref = {}) {
               else {
                 const ub = u.getBoundingClientRect(); const tops = new Set();
                 for (const it of u.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')) {
-                  const c = it.querySelector('.dg-card, img') || it; const w = c.getBoundingClientRect().width; const b = it.getBoundingClientRect();
+                  const c = [...it.querySelectorAll('.dg-card, img')].find((e) => e.getClientRects().length) || it; /* a picture the approved short layout hides (is-short3): the card itself */ const w = c.getBoundingClientRect().width; const b = it.getBoundingClientRect();
                   if (w < mini - 0.5) out.push(['squad card below card-mini', `${Math.round(w)} px`]);
                   if (b.left < ub.left - 1 || b.right > ub.right + 1 || b.top < ub.top - 1 || b.bottom > ub.bottom + 1) out.push(['squad card outside the squad row', `${Math.round(b.left)},${Math.round(b.top)}`]);
                   tops.add(Math.round(b.top));

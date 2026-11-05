@@ -766,7 +766,9 @@ function supsTooTall(F) {
   // a tile too narrow for its name or its state line (a narrow side column with many supports)
   const narrowTile = [...p.querySelectorAll('.dg-sup .t b, .dg-sup .g2-stline em')].some((n) => n.offsetParent && n.scrollWidth > n.clientWidth + 1)
     // a text column narrower than the tile card step breaks names mid-word (a narrow side column with many supports)
-    || [...p.querySelectorAll('.dg-sup .t')].some((n) => n.offsetParent && n.clientWidth < TOKENS['card-tile']);
+    || [...p.querySelectorAll('.dg-sup .t')].some((n) => n.offsetParent && n.clientWidth < TOKENS['card-tile'])
+    // the READY button (PR 503) past its state line
+    || [...p.querySelectorAll('.dg-sup .g2-stline em .g2-ready')].some((n) => n.offsetParent && n.getBoundingClientRect().right > n.closest('em').getBoundingClientRect().right + 1);
   // D-225 (review M-3): on phones a support list taller than the squad row takes the boss stage height (1 attacker + 7 supports)
   const units = F.querySelector('.dg-units');
   const phone = /^compact/.test(document.body.dataset.size || '');
@@ -783,13 +785,15 @@ function fitRow(F, units) {
   const items = [...units.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')];
   const key = `${F.clientWidth}x${F.clientHeight}:${items.length}`;
   if (F.dataset.g2fit === key) return;
-  F.classList.remove('g2-fit', 'g2-wrap'); ['--g2-cw', '--g2-per', '--g2-cell'].forEach((k) => F.style.removeProperty(k));
+  F.classList.remove('g2-fit', 'g2-wrap', 'g2-small'); ['--g2-cw', '--g2-per', '--g2-cell'].forEach((k) => F.style.removeProperty(k));
   F.dataset.g2fit = key;
   if (items.length < 2 || !rowTooCrowded(units)) return;
   const n = items.length, gap = parseFloat(getComputedStyle(units).columnGap) || 0, ratio = TOKENS['card-ratio'];
   const it = items.find((x) => x.classList.contains('dg-unit')) || items[0]; const card = () => it.querySelector('.dg-card, img') || it;
   // the row may already be squeezed by the flex row: the squad card step (TOKENS card-squad) is the smallest natural size
-  const padX = Math.max(0, it.offsetWidth - card().offsetWidth), natural = Math.max(card().offsetWidth, TOKENS['card-squad']);
+  // the padding from the style (a card picture not laid out yet measured 0 px: the padding was the whole card, CI 820x1180 0 + 8)
+  const cs = getComputedStyle(it); const padX = ['paddingLeft', 'paddingRight', 'borderLeftWidth', 'borderRightWidth'].reduce((t, k) => t + (parseFloat(cs[k]) || 0), 0);
+  const natural = Math.max(card().offsetWidth, TOKENS['card-squad']);
   const lineH = Math.max(it.offsetHeight, natural * ratio);
   const arena = F.querySelector('.dg-arena'); const W = Math.max(units.clientWidth, arena?.clientWidth || 0);
   // an unusable measure (the row not laid out yet, CI run 41970678464: a 0 px card at 820x1180): no fit now, measure again next layout
@@ -804,10 +808,14 @@ function fitRow(F, units) {
     const capW = Math.floor(((lineH - gap * (lines - 1)) / lines - exH) / ratio);
     const cw = Math.max(1, Math.min(cell - padX, Math.max(TOKENS['card-mini'], capW)));   // never below the mini step: the stage gives the height
     F.style.setProperty('--g2-cw', `${cw}px`);
+    F.classList.toggle('g2-small', cw < TOKENS['card-squad']);   // D-216 narrow rule: the ring alone marks the acting card
     return cw;
   };
-  if (apply(n) >= TOKENS['card-mini'] && !rowTooCrowded(units)) return;
-  apply(Math.ceil(n / 2));
+  const cw1 = apply(n);
+  if (cw1 >= TOKENS['card-mini'] && !rowTooCrowded(units)) return;
+  // two lines only when they give wider cards than one line (a long ability name on a 5-card row is not a reason to make the cards smaller)
+  const cw2 = apply(Math.ceil(n / 2));
+  if (cw2 <= cw1 && cw1 >= TOKENS['card-mini']) apply(n);
 }
 // D-61: the Hunt boss stage under its plates, and its floor (TOKENS sp-7 + sp-6 + sp-5, the approved UI-47 stage floor; the G3 stageMin check)
 const stageFloor = () => TOKENS['sp-7'] + TOKENS['sp-6'] + TOKENS['sp-5'];
@@ -829,6 +837,8 @@ function rowTooCrowded(units) {
   if (rowOver(units) > 1) return true;
   if (!units.closest('.g2-wrap') && lines(units) > 1) return true;
   // a state line or an HP number that no longer fits its small card (the cards share the width)
+  // "Your turn" (PR 503, D-216) past its card
+  if ([...units.querySelectorAll(':scope > .dg-unit .g2-turn')].some((n) => { if (!n.offsetParent) return false; const r = n.getBoundingClientRect(), c = n.closest('.dg-card')?.getBoundingClientRect(); return !!c && (r.left < c.left - 1 || r.right > c.right + 1); })) return true;
   return [...units.querySelectorAll(':scope > .dg-sup.g2-plate .g2-stline em, :scope > .dg-unit .dg-hpn, :scope > .dg-unit .g2-pill b')].some((n) => n.offsetParent && n.scrollWidth > n.clientWidth + 1);
 }
 function ctlTooNarrow(F) {

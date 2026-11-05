@@ -26,3 +26,9 @@ body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-tight-top .dg-stats i { display: no
 /* still too wide: the chips take their own line under the room dots (the stats row of the UI-47 stacked layout, is-stack) */
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-tight-top.g2-top-wrap .dg-ftop { flex-wrap: wrap; row-gap: var(--sp-1); }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-tight-top.g2-top-wrap .dg-ftop > .dg-stats { flex: 1 1 100%; justify-content: flex-end; }
+/* g2-small: fitted cards below the squad card step cannot hold "Your turn" with the pill: the D-216 narrow rule of 90-ui-52-v2.css
+   (is-narrow) applies, the stronger ring alone marks the acting card */
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-small .dg-card .g2-turn { display: none; }
+/* the READY button of PR 503 in a support small card: the narrow-card size of 90-ui-52-v2.css (is-narrow .g2-plate .g2-ready) */
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates .dg-sup.g2-plate .g2-ready { min-height: var(--chip-sm); padding: var(--sp-half) var(--sp-1-5); font-size: var(--fs-label); }
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.g2-plates.g2-small .dg-sup.g2-plate .g2-ready { padding: var(--sp-half) var(--sp-1); gap: var(--sp-half); }
