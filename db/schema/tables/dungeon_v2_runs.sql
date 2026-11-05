@@ -18,7 +18,11 @@ create table public.dungeon_v2_runs (
   ended_by text,
   attempt smallint default 1 not null,
   started_at timestamp with time zone default now() not null,
-  ended_at timestamp with time zone
+  ended_at timestamp with time zone,
+  live boolean default false not null,
+  shards integer default 0 not null,
+  cards bigint[] default '{}'::bigint[] not null,
+  settled_at timestamp with time zone
 );
 
 -- @constraints
@@ -26,6 +30,7 @@ alter table public.dungeon_v2_runs add constraint dungeon_v2_runs_ended_by_check
 alter table public.dungeon_v2_runs add constraint dungeon_v2_runs_pkey PRIMARY KEY (id);
 alter table public.dungeon_v2_runs add constraint dungeon_v2_runs_player_id_day_attempt_key UNIQUE (player_id, day, attempt);
 alter table public.dungeon_v2_runs add constraint dungeon_v2_runs_player_id_fkey FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE;
+alter table public.dungeon_v2_runs add constraint dungeon_v2_runs_shards_check CHECK ((shards >= 0));
 alter table public.dungeon_v2_runs add constraint dungeon_v2_runs_status_check CHECK ((status = ANY (ARRAY['active'::text, 'over'::text])));
 
 -- @indexes
