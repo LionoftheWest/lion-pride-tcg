@@ -295,7 +295,11 @@ export function v1RunOf(v) {
 }
 /** ON-UI (ON SPEC 3.5): a live run (the view flag live and the row mark run.live) shows its loot chips; a test run (mark false) shows 0.
  *  The loot is the v1 shape (state.pend / state.bank: shards, cards), written by the R2-ON loot rules for live runs only. */
-export const isLive = (v) => !!(v?.live === true && v.run && v.run.live !== false);
+// The Hunt v2 day (R3-ON hunt_v2_days.live, to confirm against the SQL): the flag ON and the day row mark true; a missing mark is not live.
+export const huntLive = (v) => !!(v?.live === true && v?.day?.live === true);
+/** The Practice label of a Hunt v2 day: only on a test day (mark false); the member mode shows none (ON SPEC 3.5, G-UI (a)). */
+export const practiceLabel = (v) => (huntLive(v) ? null : (v?.label || 'Practice (v2 test): no rewards'));
+export const isLive = (v) => !!(v?.live === true && v.run && v.run.live === true);   // review L-3: a missing row mark is NOT live
 function lootOf(v, R, st) {
   const z = () => ({ shards: 0, cards: [] });
   if (!isLive(v)) return { pend: z(), bank: z() };
@@ -312,6 +316,18 @@ export const v2CanStart = (v) => !!(v?.ok && (v.tester === true || v.live === tr
 /** ON-UI screen rule (ON SPEC 3.5, review M-2): while the member has an active v1 run of today (dungeon_v2_view.v1_run), the Dungeon
  *  opens the v1 run screen; else v2 when live is true or the member is a tester. */
 export const v1RunFirst = (v) => !!(v?.ok && v.v1_run);
+/** The Dungeon screen (ON SPEC 3.5): d = the v1 /api/dungeon answer, v = dungeon_v2_view, v1Active = the v1 run of today is active.
+ *  'v1-run': an active v1 run of today (v1_run) keeps the v1 screens, also with the flag ON (review M-2); 'v2': the v2 run takes the
+ *  screen; 'v2-start': the lobby with the v2 start (a tester's Play v2 (test), or Start run in the member mode); 'v2-lobby': the member
+ *  lobby with no run left; 'v1': the v1 screens (the flag OFF, not a tester). */
+export function dungeonScreen(d, v, v1Active) {
+  if (!d?.ok) return 'v1';
+  if (v1RunFirst(v)) return 'v1-run';
+  if (v2OwnsDungeon(v, d)) return 'v2';
+  if (v2CanStart(v) && !v1Active) return 'v2-start';
+  if (v?.ok && v.live === true && !v1Active) return 'v2-lobby';
+  return 'v1';
+}
 
 // ---- The view (DOM) -----------------------------------------------------------------------------------------------------------------
 const ic = (name, size = 'sm') => ui3Icon(name, { size, cls: 'g2-ico' });
@@ -451,7 +467,8 @@ export function fightUpdate(F, v, s, H) {
   else if (s.notice) hint.innerHTML = `${H.timer}${esc(s.notice)}`;
   else if (s.tap) hint.innerHTML = `<span class="g2-tap">${badgeHTML(s.tap.badge)}<span><b>${esc(s.tap.label)}:</b> ${esc(s.tap.text)}</span></span>`;
   else if (s.busy) hint.innerHTML = `${H.timer}The monsters are acting…`;
-  else hint.innerHTML = `${H.hand}${m.targets.length > 1 ? 'Tap a monster to target it · tap a card to attack' : 'Tap a card to attack'}`;
+  // review L-4: a squad with no attacker (any Hunt mix) has no card to attack with: the room log's "Tap a card."
+  else hint.innerHTML = `${H.hand}${!m.attackers.length ? 'Tap a card.' : m.targets.length > 1 ? 'Tap a monster to target it · tap a card to attack' : 'Tap a card to attack'}`;
   // the steps left (server left) are in the tooltip: frame 11 draws one line, and the hint keeps one fixed height (nothing moves)
   const tl = hint.querySelector('.g2-tap'); if (tl && s.tap) tl.title = s.tap.left != null ? `${s.tap.line} ${H.fmt(s.tap.left)} steps left.` : s.tap.line;
   if (s.tap) F.querySelector(`.g2-b[data-unit="${s.tap.unit}"][data-st="${s.tap.key}"]`)?.classList.add('is-tapped');
@@ -750,7 +767,11 @@ function supsTooTall(F) {
   const narrowTile = [...p.querySelectorAll('.dg-sup .t b, .dg-sup .g2-stline em')].some((n) => n.offsetParent && n.scrollWidth > n.clientWidth + 1)
     // a text column narrower than the tile card step breaks names mid-word (a narrow side column with many supports)
     || [...p.querySelectorAll('.dg-sup .t')].some((n) => n.offsetParent && n.clientWidth < TOKENS['card-tile']);
-  return narrowTile || p.scrollHeight > p.clientHeight + 1 || (right && right.scrollHeight > right.clientHeight + 1) || p.getBoundingClientRect().bottom > fb + 1;
+  // D-225 (review M-3): on phones a support list taller than the squad row takes the boss stage height (1 attacker + 7 supports)
+  const units = F.querySelector('.dg-units');
+  const phone = /^compact/.test(document.body.dataset.size || '');
+  return narrowTile || p.scrollHeight > p.clientHeight + 1 || (right && right.scrollHeight > right.clientHeight + 1) || p.getBoundingClientRect().bottom > fb + 1
+    || (phone && !!units && p.offsetHeight > units.offsetHeight + 1);
 }
 // N-3: the squad row of any size (a CSS grid of --g2-per columns of --g2-cell px; layout() measures, CSS draws). At the approved card
 // size while it fits on one line with nothing cut; else the largest card that puts every card on one line (at least the mini step,

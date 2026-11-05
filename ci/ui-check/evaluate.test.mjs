@@ -301,7 +301,7 @@ test('exceptions.json: every entry is valid; the UI-49 empty-space entries name 
   assert.equal(pts.length, 10);   // the enforced phone sizes (375x667 is report-only, D-136) and the portrait tablets 692x917 and 820x1180 (D-181)
   assert.ok(pts.every((e) => e.decision === 'D-171' && e.rule === 'missing' && ['collection-detail-points', 'stat-points-error'].includes(e.screen) && ['412x915', '430x822', '430x932', '692x917', '820x1180'].includes(e.size) && /stat-points-open/.test(e.why)));
   const fight = list.filter((e) => e.id === 'UI-47');   // D-155: the phone controls of the fight; D-181: the portrait tablets use the phone layout (692x917, 820x1180)
-  assert.ok(fight.length > 0 && fight.every((e) => e.decision === 'D-155' && e.rule === 'missing' && /^dungeon-fight/.test(e.screen) && ['430x932', '430x822', '412x915', '692x917', '820x1180'].includes(e.size)));
+  assert.ok(fight.length > 0 && fight.every((e) => e.decision === 'D-155' && e.rule === 'missing' && /^dungeon-(fight|m2-)/.test(e.screen) && ['430x932', '430x822', '412x915', '692x917', '820x1180'].includes(e.size)));
 });
 
 test('D-136: a defect at a report-only landscape size is listed but does not fail; the same defect at a portrait size fails', () => {
@@ -416,4 +416,12 @@ test('D-217 exceptions: only the v3 paused Shop spec, only the empty rule, only 
   assert.ok(!mine.some((e) => accepts(e, cell('430x932', 'missing'))), 'a missing see item is never accepted');
   assert.ok(!mine.some((e) => accepts(e, cell('1280x720', 'empty'))), 'not at another size');
   assert.ok(!mine.some((e) => accepts(e, { ...cell('430x932', 'empty'), screen: 'shop' })), 'not on another Shop spec');
+});
+
+test('ON-UI D-155 exceptions: the 8 member and Hunt v2 fight specs x the 5 portrait sizes, rule missing, nothing else', async () => {
+  const { readFileSync } = await import('node:fs');
+  const list = JSON.parse(readFileSync(new URL('./exceptions.json', import.meta.url), 'utf8')).filter((e) => /^(dungeon-m2-|hunt-m2-|hunt-v2-)/.test(e.screen));
+  const want = ['dungeon-m2-fight', 'dungeon-m2-five', 'dungeon-m2-v1', 'hunt-m2-fight', 'hunt-m2-mix17', 'hunt-m2-mix44', 'hunt-m2-mix80', 'hunt-v2-fight'];
+  assert.equal(list.length, want.length * 5);
+  assert.ok(list.every((e) => e.decision === 'D-155' && e.rule === 'missing' && want.includes(e.screen) && ['430x932', '430x822', '412x915', '692x917', '820x1180'].includes(e.size)));
 });

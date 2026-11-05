@@ -797,9 +797,10 @@ createServer((req, res) => {
   if (p === '/ui3.css') return send(res, 200, ui3Css(PUB), 'text/css');   // joined as server.js does (read on each request)
   if (/^\/(main|chunk)\..*\.js$/.test(p)) return send(res, 200, readFileSync(join(BUNDLE, p.slice(1))), 'text/javascript');
   // The Hunt boss models (boss-models.js MODEL_BASE): served from .out/models/<file> when a builder put the file there (a local preview);
-  // CI has none: 404, and the fight stage keeps the plate without a model (dungeon-stage.js load() allows a failed load).
+  // CI has none: the request falls through to the /api/img stub below, as on main (a 404 here made every screen with the boss preload
+  // "not checked": PR 499 CI run 41963422538), and the fight stage keeps the plate without a model (a failed load is allowed).
   const bm = p.match(/^\/api\/img\/storage\/v1\/object\/public\/card-art\/boss\/models\/([a-z0-9-]+\.glb)$/);
-  if (bm) { const f = join(here, '.out', 'models', bm[1]); if (existsSync(f)) return send(res, 200, readFileSync(f), 'model/gltf-binary'); return send(res, 404, '{}'); }
+  if (bm && existsSync(join(here, '.out', 'models', bm[1]))) return send(res, 200, readFileSync(join(here, '.out', 'models', bm[1])), 'model/gltf-binary');
   if (/^\/(api\/img|cimg|api\/avatar)\//.test(p) || /^\/cdn\//.test(p)) return send(res, 200, PNG, 'image/png');
   // The pull feed stream: open and quiet, as in production with no new pulls (a closed stream makes the client poll).
   if (p === '/api/pulls/stream') { res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' }); res.write(': ui-check\n\n'); const k = cookies(req); if (k.ci_home) res.write(`data: ${JSON.stringify(k.ci_data === 'long' ? longData(derivedPulls()) : derivedPulls())}\n\n`); return undefined; }

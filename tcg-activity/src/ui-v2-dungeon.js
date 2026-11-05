@@ -150,12 +150,13 @@ async function load() {
   dg.data = d && d.ok ? d : { closed: true, message: GA() && d?.error === 'disabled' ? 'The Gauntlet is closed.' : d?.message || (GA() ? 'The Gauntlet is closed.' : 'The Dungeon is closed.') };
   dg.v2 = null; dg.v2can = false;
   // ON-UI: the member mode (dungeon_v2_view.live, combat v2 for everyone): the v2 run is THE run of the day (no test button, Start run starts v2)
-  dg.v2live = !GA() && !!(v2?.ok && v2.live === true);
-  if (d?.ok && !GA() && g2.v1RunFirst(v2)) dg.v2live = false;   // ON-UI screen rule: an active v1 run of today keeps the v1 screens
-  else if (d?.ok && (GA() ? g2.v2Owns(v2) : g2.v2OwnsDungeon(v2, d))) v2Take(v2);
+  // ON-UI screen rule (ON SPEC 3.5, review M-2): g2.dungeonScreen decides (tested in ui-v2-gauntlet2.test.js)
+  const scr = GA() ? (d?.ok && g2.v2Owns(v2) ? 'v2' : 'v1') : g2.dungeonScreen(d, v2, active());
+  dg.v2live = !GA() && scr !== 'v1-run' && !!(v2?.ok && v2.live === true);
+  if (scr === 'v2') v2Take(v2);
   // R2b: the tester-only "Play v2 (test)" in the Dungeon lobby (QD2: an extra run, so the lobby shows when the v1 run is not active)
-  else if (d?.ok && !GA() && g2.v2CanStart(v2) && !active()) { dg.v2can = true; dg.data = { ...dg.data, run: null }; }
-  else if (dg.v2live && !active()) dg.data = { ...dg.data, run: null };   // live, no run left today: the lobby with Start run disabled
+  else if (scr === 'v2-start') { dg.v2can = true; dg.data = { ...dg.data, run: null }; }
+  else if (scr === 'v2-lobby') dg.data = { ...dg.data, run: null };   // live, no run left today: the lobby with Start run disabled
   return dg.data;
 }
 // R1e (combat v2, testers): the v2 answer owns the run. The v1 screens that the v2 run reuses (Q-E1: reward, rest, door, floor done, over)
@@ -182,7 +183,7 @@ const g2Host = () => ({
 // The answer of /api/hunt/v2/* (hunt-v2-routes.js asRun): run.state.fight / info / squad, label, cards, ref; ON-UI (R3-ON, to confirm against
 // the SQL): live (the flag), hunt.live_frac (the shared boss HP left, 0..1), day.credited (the member's credited damage), hunt.name.
 // Test mode (live false): the label "Practice (v2 test): no rewards". Member mode (live true): the shared boss bar and "your damage".
-export const huntLive = (v) => v?.live === true && v?.day?.live !== false;
+export const huntLive = (v) => g2.huntLive(v);   // the rule lives in ui-v2-gauntlet2.js (unit tested)
 function huntTake(v) { dg.v2 = v; dg.data = { ok: true, gate: { ok: true }, rooms: [], run: g2.v1RunOf(v) }; }
 let huntBack = null;
 async function huntReload() {
@@ -206,7 +207,8 @@ function huntProgHTML() {
 }
 function huntStatsHTML() {
   const v = dg.v2 || {};
-  if (!huntLive(v)) return `<div class="dg-stats"><span><b>${esc(v.label || 'Practice (v2 test): no rewards')}</b></span></div>`;   // the test label (mark false)
+  const label = g2.practiceLabel(v);
+  if (label) return `<div class="dg-stats"><span><b>${esc(label)}</b></span></div>`;   // the test label (mark false)
   return `<div class="dg-stats"><span class="bank">${I.up}<b>${fmtN(Number(v.day?.credited) || 0)}</b><i>your damage</i></span></div>`;
 }
 // The member's cards (the Dungeon), or the week's squad (the Gauntlet: the same base cards for everyone).

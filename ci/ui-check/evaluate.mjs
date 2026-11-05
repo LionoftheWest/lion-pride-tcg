@@ -23,6 +23,8 @@ export const RULES = {   // 12.6 item -> [name, design.md section]
   overlap: ['Overlapping sections', '3.3'], empty: ['Empty space above 25%', '3.4'], 'icon-name': ['Icon-only control without a name', '5.3'],
   contrast: ['Contrast below the threshold', '9.4'], keyboard: ['Keyboard covers the focused text box', '2.3'],
   'not-checked': ['Not checked (runner error, missing step, missing fixture or missing result)', '12.6'],
+  // ON-UI (ON SPEC G-UI, review r1 M-1 M-2 M-3): a screen's content rule of screens.mjs (see, noText, squad, stageMin)
+  content: ['Screen content (shown and hidden parts, the squad row, the stage height)', '12.6, ON SPEC G-UI'],
 };
 const BLEED_FIT = new Set(['clipX', 'cutBtn', 'cutText', 'spill', 'squashed', 'pokeOut', 'offscreen']);
 const BLEED_CUT = new Set(['clipped', 'midword', 'offscreen', 'placeholder']);
@@ -82,6 +84,7 @@ export function defectsOf(r, expanded) {
     for (const [rule, where, value] of r.walk || []) { if (rule === 'missing') add('not-checked', where, value); else add(rule, where, value); }
   }
   for (const [w, why] of r.see || []) add('missing', w, why);   // UI-43 N-10: a 'see' selector of screens.mjs is absent or outside the view
+  for (const [w, why] of r.content || []) add('content', w, why);   // ON-UI: noText / squad / stageMin (screens.mjs)
   for (const [w, why] of r.extra?.iconNoName || []) add('icon-name', w, why);
   for (const [w, ratio, need] of r.extra?.contrast || []) add('contrast', w, `${ratio} < ${need}`);
   for (const [w, why] of r.extra?.turnLabel || []) add('overlap', `Your turn: ${w}`, why);   // UI-52 D-216 (PR 503 review L-3)

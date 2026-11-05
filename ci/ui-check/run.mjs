@@ -12,6 +12,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { SIZES, SCREENS, sizeKey, boot, runSteps } from './screens.mjs';
+import { TOKENS } from '../../tcg-activity/src/tokens.js';   // ON-UI content rules: card-mini, the stage floor
 
 const here = dirname(fileURLToPath(import.meta.url));
 const arg = (k, d) => { const i = process.argv.indexOf(`--${k}`); return i > 0 ? process.argv[i + 1] : d; };
@@ -166,6 +167,33 @@ async function runCell([s, screen, variant], ref = {}) {
             const ok = b.width > 0 && b.height > 0 && st.visibility !== 'hidden' && b.top >= -1 && b.left >= -1 && b.bottom <= innerHeight + 1 && b.right <= innerWidth + 1;
             return ok ? null : [q, 'outside the view'];
           }).filter(Boolean), spec.see);
+          // ON-UI content rules (screens.mjs; 'see' is the UI-43 check above): noText = words not on the page; squad = every squad card at
+          // least TOKENS card-mini, at most 2 lines, inside the squad row; stageMin = the boss stage (the arena under its plates) high enough
+          if (spec.noText || spec.squad || spec.stageMin) res.content = await pg.evaluate(({ noText, squad, stageMin, mini }) => {
+            const out = [];
+            const text = document.getElementById('main')?.innerText || '';
+            for (const w of noText || []) if (text.includes(w)) out.push([`noText "${w}"`, 'on the page']);
+            const F = document.querySelector('.dg-fight.g2');
+            if (squad) {
+              const u = F?.querySelector('.dg-units');
+              if (!u) out.push(['squad .dg-units', 'absent']);
+              else {
+                const ub = u.getBoundingClientRect(); const tops = new Set();
+                for (const it of u.querySelectorAll(':scope > .dg-unit, :scope > .dg-sup.g2-plate')) {
+                  const c = it.querySelector('.dg-card, img') || it; const w = c.getBoundingClientRect().width; const b = it.getBoundingClientRect();
+                  if (w < mini - 0.5) out.push(['squad card below card-mini', `${Math.round(w)} px`]);
+                  if (b.left < ub.left - 1 || b.right > ub.right + 1 || b.top < ub.top - 1 || b.bottom > ub.bottom + 1) out.push(['squad card outside the squad row', `${Math.round(b.left)},${Math.round(b.top)}`]);
+                  tops.add(Math.round(b.top));
+                }
+                if (tops.size > 2) out.push(['squad row', `${tops.size} lines`]);
+              }
+            }
+            if (stageMin) {
+              const a = F?.querySelector('.dg-arena'), pl = F?.querySelector('.dg-plates');
+              if (a) { const h = a.getBoundingClientRect().bottom - Math.max(a.getBoundingClientRect().top, pl ? pl.getBoundingClientRect().bottom : 0); if (h < stageMin - 0.5) out.push(['boss stage below its minimum', `${Math.round(h)} px < ${stageMin}`]); }
+            }
+            return out;
+          }, { noText: spec.noText, squad: !!spec.squad, stageMin: spec.stageMin ? TOKENS['sp-7'] + TOKENS['sp-6'] + TOKENS['sp-5'] : 0, mini: TOKENS['card-mini'] });
           if (spec.walk) res.walk = await call(pg, WALK, { touch });   // UI-37: the walkthrough card (the other checks skip #tutLayer)
           if (!res.checks || !res.fit || !res.cut || !res.extra) throw new Error('a check returned nothing');
           // A loaded runner (software WebGL, the 3D chest) timed out on page.screenshot (PR #290, three runs). On a TimeoutError wait 2 s
