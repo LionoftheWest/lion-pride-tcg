@@ -48,6 +48,25 @@ export const maxShown = (max) => Math.ceil(num(max));
 // The damage number of an HP change: the drop of the SHOWN HP (so the number and the HP text agree). 0 shows no number (Nathan 2026-11-04:
 // a "-0" floated over a downed support); a miss or a full block is shown by its own word, not by "-0".
 export const shownDrop = (x) => Math.max(0, hpShown(x?.before) - hpShown(x?.after, x?.down));
+/** The squad HP text: the sum of the shown values of the squad cards (whole numbers, as each card shows), else the server total rounded up. */
+export function squadShownOf(v) {
+  const F = fightOf(v);
+  if (F?.cards) {
+    let hp = 0, max = 0;
+    for (const id of stateOf(v)?.squad || []) { const u = F.cards[id] || F.cards[String(id)]; if (!u) continue; hp += hpShown(u.hp, u.down); max += maxShown(u.max); }
+    if (max > 0) return { hp, max };
+  }
+  return { hp: hpShown(v?.squad_hp?.hp), max: maxShown(v?.squad_hp?.max) };
+}
+/** The number of a card's hit on a foe: the drop of the foe's shown HP (its hp entry); BLOCKED when a guard took it all; else the rounded damage. */
+export function hitText(h, e) {
+  if (h?.miss) return 'MISS';
+  const x = (e?.hp || []).find((y) => y.side === h?.target?.side && Number(y.id) === Number(h?.target?.id));
+  if (!x) return dmgText(h?.dmg);
+  const d = shownDrop(x);
+  if (d > 0) return `-${fmtN(d)}`;
+  return maxShown(x.shield_before) > maxShown(x.shield_after) ? 'BLOCKED' : '';
+}
 export const dmgText = (n) => (Math.round(num(n)) > 0 ? `-${fmtN(n)}` : '');
 /** The power on the card chip: the full form, the compact form from 10,000 ("123.5M": a 9-digit power fits the chip, G3 long variant). */
 export const fmtPower = (n) => (Math.abs(num(n)) >= 10000 ? fmtCompact(n) : fmtFull(n));
@@ -155,7 +174,7 @@ export function logLines(v, log) {
   for (const e of log || []) {
     if (e.k === 'act' && e.actor?.side === 'card') {
       const who = nm('card', e.actor.id);
-      for (const h of e.hits || []) out.push({ kind: 'me', who, to: nm(h.target?.side, h.target?.id), txt: h.miss ? 'miss' : dmgText(h.dmg) });
+      for (const h of e.hits || []) out.push({ kind: 'me', who, to: nm(h.target?.side, h.target?.id), txt: h.miss ? 'miss' : hitText(h, e).replace('BLOCKED', 'blocked') });
       if (!(e.hits || []).length && e.ally) out.push({ kind: 'sup', who, to: nm('card', e.ally.id), txt: '' });
       for (const x of e.hp || []) if (x.down) out.push({ kind: 'kill', who: nm(x.side, x.id), to: 'down', txt: '' });
     } else if (e.k === 'act' && e.actor?.side === 'enemy') {
@@ -193,7 +212,7 @@ export function v2InfoOf(v, id) {
   const label = role?.label || (c.role ? c.role[0].toUpperCase() + c.role.slice(1) : '');
   const text = typeof inf.text === 'string' ? inf.text : typeof inf.text?.text === 'string' ? inf.text.text : '';
   const charge = c.ready ? 'Ready' : `Charge ${c.charge} of ${c.need}`;
-  return { id: c.id, role: c.role, cls: c.cls, roleLabel: label, purpose: ROLE_PURPOSE[c.role] || '', roleIcon: ic(ROLE_ICON[c.role] || 'circle', 'md'),
+  return { id: c.id, maxHp: maxShown(c.max), power: c.power, role: c.role, cls: c.cls, roleLabel: label, purpose: ROLE_PURPOSE[c.role] || '', roleIcon: ic(ROLE_ICON[c.role] || 'circle', 'md'),
     ability: { name: c.activeName, desc: text, kind: `${label}${label ? ' · ' : ''}${c.cls === 'support' ? 'Support' : 'Attacker'} active`, effect: charge } };
 }
 /** D-215: the callout of a step event: the name of an active when it fires (a card's active, or a foe's move); a basic attack has none. */
@@ -374,8 +393,8 @@ export function fightUpdate(F, v, s, H) {
       const pill = u.querySelector('.g2-pillbox');
       // D-216: the acting card shows "Your turn" on its art (below the power chip, above the pill)
       pill.innerHTML = c.actor && !c.down && !s.picking && !s.finishing
-        ? '<span class="g2-turn">Your turn</span>' + (c.ready ? `<button type="button" class="g2-pill" data-active="${c.id}"><b>${esc(c.activeName)}</b>${pipsHTML(c)}</button>`
-          : `<span class="g2-pill is-wait"><b>${esc(c.activeName)}</b>${pipsHTML(c)}<span>${H.fmt(c.charge)} of ${H.fmt(c.need)}</span></span>`) : '';
+        ? '<span class="g2-pillwrap"><span class="g2-turn">Your turn</span>' + (c.ready ? `<button type="button" class="g2-pill" data-active="${c.id}"><b>${esc(c.activeName)}</b>${pipsHTML(c)}</button>`
+          : `<span class="g2-pill is-wait"><b>${esc(c.activeName)}</b>${pipsHTML(c)}<span>${H.fmt(c.charge)} of ${H.fmt(c.need)}</span></span>`) + '</span>' : '';
     } else {
       u.querySelector('.g2-stline em').innerHTML = supStateHTML(c, H);
       u.querySelector('.g2-shpl').innerHTML = shieldPlace(c);
@@ -384,7 +403,8 @@ export function fightUpdate(F, v, s, H) {
       u.disabled = !!s.busy && !s.picking;
     }
   }
-  F.querySelector('.dg-shp .v').innerHTML = `${H.fmt(hpShown(m.squadHp.hp))}<small> / ${H.fmt(maxShown(m.squadHp.max))}</small>`;
+  const sq = squadShownOf(v);
+  F.querySelector('.dg-shp .v').innerHTML = `${H.fmt(sq.hp)}<small> / ${H.fmt(sq.max)}</small>`;
   F.querySelector('.dg-shp .dg-hp i').style.width = `${m.squadHp.max ? (m.squadHp.hp / m.squadHp.max) * 100 : 0}%`;
   F.querySelector('.g2-strip').innerHTML = stripHTML(m, H);
   F.querySelector('.dg-log').innerHTML = s.log.slice(-6).reverse().map((l) => `<li class="${l.kind}"><b>${esc(l.who)}</b>${l.to ? `<span>→ ${esc(l.to)}</span>` : ''}<em>${esc(l.txt)}</em></li>`).join('') || '<li class="none">The fight starts. Tap a card.</li>';
@@ -554,16 +574,19 @@ export function applyHp(step, hp) {
     if (Number(x.shield_after) > 0) u.status[sk] = { ...(u.status[sk] || {}), value: x.shield_after }; else delete u.status[sk];
   }
 }
+const POP_CAP = 8;   // the most numbers in the stage pops box at once
 function pop(i, txt, cls = '', dy = 0) {
   const box = document.querySelector('.dg-fight.g2 .dg-pops'); const l = H.dg.stage?.labels()[i]; const canvas = document.querySelector('.dg-fight.g2 .dg-canvas');
   if (!box || !l) return;
   const n = document.createElement('span');
+  while (box.children.length >= POP_CAP) box.firstElementChild.remove();
   n.className = `dg-pop ${cls}`; n.textContent = txt; n.style.left = `${l.x}px`; n.style.top = `${(canvas?.offsetTop || 0) + l.y + 40 + dy}px`;
   box.appendChild(n); setTimeout(() => n.remove(), 1500);
 }
 function popCard(id, txt, cls = '') {
   const u = document.querySelector(`.dg-fight.g2 .dg-unit[data-card="${id}"], .dg-fight.g2 .dg-sup[data-sup="${id}"]`);
   if (!u || !txt) return;
+  for (const old of [...u.querySelectorAll(':scope > .dg-pop')].slice(0, -1)) old.remove();   // one number on a card at a time (the newest)
   const n = document.createElement('span');
   n.className = `dg-pop on-card ${cls}`; n.textContent = txt;
   u.appendChild(n); setTimeout(() => n.remove(), 1500);
@@ -573,6 +596,11 @@ function popCard(id, txt, cls = '') {
 // D-215: the callout of an active (the v1 move label of the monsters, the same pop on a card)
 function gainPops(e) { for (const g of gainsOf(e)) { if (g.side === 'enemy') pop(g.id, g.text, 'heal', 10); else popCard(g.id, g.text, 'heal'); } }
 function callout(co) { if (!co) return; if (co.side === 'enemy') pop(co.id, co.text, 'act move', -30); else popCard(co.id, co.text, 'act move g2-callout'); }
+// H-1 (review of PR 503): the Finish Room replay plays many steps fast (3x). WebKit pages died in CI when each of 80 steps ran the WebGL
+// element impact, the foe move effect, the voices and the status pops. The fast replay keeps the light v1 effects (the hit flash, the damage
+// numbers, the monster lunge, the shake) and skips the heavy ones; a tap and Auto play every effect.
+export const liteReplay = (s) => !!s?.finishing;
+const lite = () => liteReplay(S);
 /** Replay the log of a write answer on the stage, then take the server's state. */
 async function play(r) {
   const step = clone(V);
@@ -585,14 +613,14 @@ async function play(r) {
       me?.classList.add('striking');   // the v1 card lunge (ui-v2-dungeon.css .striking)
       callout(calloutOf(step, e));     // D-215: the active's name
       const first = (e.hits || []).find((h) => h.target?.side === 'enemy');
-      if (first && H.dg.stage?.cast) { const el = H.elementOf?.(e.actor.id) || 'physical'; H.snd?.(el, 0.6); H.dg.stage.cast(first.target.id, el); await nap(480); }   // the v1 element impact and its sound
+      if (first && H.dg.stage?.cast && !lite()) { const el = H.elementOf?.(e.actor.id) || 'physical'; H.snd?.(el, 0.6); H.dg.stage.cast(first.target.id, el); await nap(480); }   // the v1 element impact and its sound
       for (const h of e.hits || []) {
         if (h.target?.side !== 'enemy') continue;
         const down = (e.hp || []).some((x) => x.side === 'enemy' && x.id === h.target.id && x.down);
         H.dg.stage?.play(h.target.id, down ? 'death' : 'hit');
         const foe = foesOf(step)[h.target.id];
-        if (down) { H.voice?.(foe, 'die', 0.6); if (foe?.boss) H.snd?.('boss:defeat', 0.6); } else if (dmgText(h.dmg)) H.voice?.(foe, 'hurt', 0.45);   // the v1 voices
-        pop(h.target.id, h.miss ? 'MISS' : dmgText(h.dmg), h.miss ? 'miss' : h.crit ? 'crit' : '');
+        if (lite()) { /* the fast replay: no voices */ } else if (down) { H.voice?.(foe, 'die', 0.6); if (foe?.boss) H.snd?.('boss:defeat', 0.6); } else if (hitText(h, e).startsWith('-')) H.voice?.(foe, 'hurt', 0.45);   // the v1 voices
+        pop(h.target.id, hitText(h, e), h.miss || hitText(h, e) === 'BLOCKED' ? 'miss' : h.crit ? 'crit' : '');
       }
       if (!(e.hits || []).length && e.ally) popCard(e.ally.id, step.run.state.info?.[e.actor.id]?.name || '', 'heal');
       if ((e.hits || []).length) H.sfx('hit');
@@ -602,9 +630,9 @@ async function play(r) {
       me?.classList.remove('striking');
     } else if (e.k === 'act' && e.actor?.side === 'enemy') {
       callout(calloutOf(step, e));     // the move name (as v1)
-      H.dg.stage?.foeFx?.(e.actor.id, e.move);   // the v1 move effect (dungeon-stage.js MOVE_FX)
+      if (!lite()) H.dg.stage?.foeFx?.(e.actor.id, e.move);   // the v1 move effect (dungeon-stage.js MOVE_FX)
       H.dg.stage?.play(e.actor.id, 'attack');    // the v1 monster lunge
-      H.voice?.(foesOf(step)[e.actor.id], 'atk', 0.55); const ms = H.moveSnd?.(e.move); if (ms) H.snd?.(ms, 0.4);   // the v1 attack voice and move sound
+      if (!lite()) { H.voice?.(foesOf(step)[e.actor.id], 'atk', 0.55); const ms = H.moveSnd?.(e.move); if (ms) H.snd?.(ms, 0.4); }   // the v1 attack voice and move sound
       await nap(380);
       for (const x of e.hp || []) if (x.side !== 'enemy' && shownDrop(x) > 0) popCard(x.id, `-${fmtN(shownDrop(x))}`, 'hurt');
       if ((e.hp || []).some((x) => shownDrop(x) > 0)) H.sfx('hit');
@@ -621,7 +649,7 @@ async function play(r) {
   V = mergeAnswer(V, r);
   H.setView(V);
   // the v1 status glyphs: each status the answer added pops its name on the unit ("Poisoned", "Stunned" ...)
-  if (!S.skip && alive()) for (const n of newStatusesOf(before, V)) { if (n.side === 'enemy') pop(n.id, n.label, 'act', 10); else popCard(n.id, n.label, 'debuff'); }
+  if (!S.skip && !lite() && alive()) for (const n of newStatusesOf(before, V)) { if (n.side === 'enemy') pop(n.id, n.label, 'act', 10); else popCard(n.id, n.label, 'debuff'); }
 }
 async function settle(r) {
   S.busy = false;

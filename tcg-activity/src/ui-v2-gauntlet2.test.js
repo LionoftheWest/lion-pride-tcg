@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, cardStatusHTML, squadOf, foesOf, portraitKey, fmtPower, wireFight, infoIdOf, v2InfoOf, ROLE_PURPOSE, hpShown, maxShown, shownDrop, dmgText, supStateHTML, calloutOf, gainsOf, newStatusesOf, STRIP_N } from './ui-v2-gauntlet2.js';
+import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, cardStatusHTML, squadOf, foesOf, portraitKey, fmtPower, wireFight, infoIdOf, v2InfoOf, ROLE_PURPOSE, hpShown, maxShown, shownDrop, dmgText, supStateHTML, calloutOf, gainsOf, newStatusesOf, fightUpdate, squadShownOf, hitText, liteReplay, STRIP_N } from './ui-v2-gauntlet2.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIX = JSON.parse(readFileSync(join(here, '..', '..', 'ci', 'ui-check', 'fixtures', 'g2-fight.json'), 'utf8')).body;
@@ -358,4 +358,162 @@ test('item 3: the v1 gain pops (+n heal, +n shield / guard) and the status glyph
   w.status_lines['card:43'].push({ key: 'stunned', stacks: null, left: 1, amounts: [] });
   assert.deepEqual(newStatusesOf(v, w), [{ side: 'card', id: 43, key: 'stunned', label: 'Stunned' }]);
   assert.deepEqual(newStatusesOf(v, fresh()), []);
+});
+
+// ---- PR 503 round 2 (REVIEW-fix-mag): the reviewer's uncaught mutations, M-1, the lows ----
+// A recording DOM: every element that the view asks for exists and keeps what the view writes into it.
+function recDom(attackers = [124, 318, 43], supports = [312, 145]) {
+  const els = new Map(); const pops = []; const classes = [];
+  const mk = (key) => {
+    if (els.has(key)) return els.get(key);
+    const cls = new Set();
+    const e = { key, innerHTML: '', textContent: '', style: { setProperty() {} }, dataset: {}, disabled: false, title: '', children: [], isConnected: true, offsetWidth: 1,
+      classList: { add: (c) => { cls.add(c); classes.push(`${key} +${c}`); }, remove: (c) => cls.delete(c), toggle: (c, on) => (on === undefined ? (cls.has(c) ? cls.delete(c) : cls.add(c)) : on ? cls.add(c) : cls.delete(c)), contains: (c) => cls.has(c) || key.startsWith(`.${c}`) || key.includes(` .${c}[`) },
+      setAttribute() {}, removeAttribute() {}, addEventListener() {}, insertAdjacentHTML(_, h) { e.innerHTML += h; }, remove() {}, replaceWith() {}, closest: () => null,
+      getBoundingClientRect: () => ({ top: 0, left: 0, right: 1, bottom: 1, width: 1, height: 1 }),
+      querySelector: (q) => sub(key, q), querySelectorAll: () => [], appendChild: (n) => { pops.push({ in: key, text: n.textContent, cls: n.className }); e.children.push(n); }, firstElementChild: null };
+    els.set(key, e); return e;
+  };
+  const sub = (key, q) => {
+    const m = /\.dg-unit\[data-card="(\d+)"\]/.exec(q); if (m && supports.includes(Number(m[1])) && !q.includes('dg-sup')) return null;
+    const n = /\.dg-sup\[data-sup="(\d+)"\]/.exec(q); if (n && attackers.includes(Number(n[1])) && !q.includes('dg-unit')) return null;
+    return mk(`${key} ${q}`);
+  };
+  const F = mk('.dg-fight.g2');
+  return { F, mk, sub, pops, classes, els };
+}
+const recHost = (extra = {}) => ({ dg: { auto: false, stage: null }, fmt: (n) => String(n), esc: (x) => String(x), thumb: String, elIcon: () => '', hand: '', timer: '', finishButton: () => ({}), autoDisabled: () => false, ...extra });
+const withBody = (fn) => { const saved = globalThis.document; globalThis.document = { body: { dataset: {} } }; try { return fn(); } finally { globalThis.document = saved; } };
+const decimalFight = () => {
+  const v = fresh(); const F = v.run.state.fight;
+  Object.assign(F.cards[124], { hp: 47.3, max: 72.4, status: { shielded: { value: 12.2 } } });
+  Object.assign(F.cards[312], { hp: 50.4, max: 60 });
+  Object.assign(F.enemies[0], { hp: 8.2, max: 50.5 });
+  return v;
+};
+
+test('reviewer L-2: the HP texts of fightUpdate are whole numbers (foe plate, card, support, squad = the sum of the shown values)', () => {
+  const v = decimalFight(); const d = recDom();
+  withBody(() => fightUpdate(d.F, v, { target: 0, log: [] }, recHost()));
+  assert.equal(d.els.get('.dg-fight.g2 .dg-plate[data-foe="0"] .hpn').textContent, '9 / 51');
+  assert.match(d.els.get('.dg-fight.g2 .dg-unit[data-card="124"] .dg-hpn').innerHTML, /^48\/73 <em>\+13<\/em>$/);
+  assert.match(d.els.get('.dg-fight.g2 .dg-sup[data-sup="312"] .g2-shp small').innerHTML, /^51\/60/);
+  const sq = squadShownOf(v);
+  const F = v.run.state.fight;
+  assert.equal(sq.hp, [124, 318, 43, 312, 145].reduce((a, id) => a + hpShown(F.cards[id].hp, F.cards[id].down), 0));
+  assert.equal(d.els.get('.dg-fight.g2 .dg-shp .v').innerHTML, `${sq.hp}<small> / ${sq.max}</small>`);
+  assert.equal(maxShown(72.4), 73, 'the max rounds up, not to the nearest');
+});
+
+test('reviewer L-2: the shield value of the tap line is HP: rounded up', () => {
+  const v = fresh();
+  v.status_lines['card:124'].find((l) => l.key === 'shielded').amounts = [0.5, 12.2];
+  assert.equal(tapLine(v, 'card', 124, 'shielded').line, 'Shielded: Absorbs 13 damage before HP.');
+});
+
+test('M-1, D-216: "Your turn" is on the acting card, in one column with the pill and before it (never under it)', () => {
+  const v = fresh(); const d = recDom();
+  withBody(() => fightUpdate(d.F, v, { target: 0, log: [] }, recHost()));
+  const html = d.els.get('.dg-fight.g2 .dg-unit[data-card="318"] .g2-pillbox').innerHTML;
+  assert.match(html, /^<span class="g2-pillwrap"><span class="g2-turn">Your turn<\/span><button type="button" class="g2-pill"/);
+  assert.equal(d.els.get('.dg-fight.g2 .dg-unit[data-card="43"] .g2-pillbox').innerHTML, '', 'not on another card');
+  const c = fresh(); c.order[0] = { side: 'card', id: 43, clock: 6, ready: false }; c.run.state.fight.ext.turn = { side: 'card', id: 43 };
+  const e = recDom(); withBody(() => fightUpdate(e.F, c, { target: 0, log: [] }, recHost()));
+  assert.match(e.els.get('.dg-fight.g2 .dg-unit[data-card="43"] .g2-pillbox').innerHTML, /^<span class="g2-pillwrap"><span class="g2-turn">Your turn<\/span><span class="g2-pill is-wait">/);
+});
+
+test('reviewer L-2: a charged support READY on another card\'s turn sends nothing (the clock picks the card)', async () => {
+  const s = stubFight(); const posts = [];
+  s.host.apiPost = async (p, b) => { posts.push([p, b]); return { ok: false }; }; s.host.base = '/api/gauntlet/v2';
+  await withDocument(() => null, async () => {
+    await wireFight(s.main, fresh(), s.host);   // the actor is card 318 (ready)
+    const tap = s.handlers.find((h) => h.name === 'fight').fn;
+    const ready = { dataset: { active: '312' }, closest: (q) => (q === '[data-active]' ? ready : null) };
+    await tap({ target: ready });
+    assert.equal(posts.length, 0);
+    const own = { dataset: { active: '318' }, closest: (q) => (q === '[data-active]' ? own : null) };
+    await tap({ target: own });
+    assert.equal(posts.length, 1, 'the actor\'s own active is sent');
+  });
+});
+
+test('reviewer L-2: the damage number and the log of a hit are the shown HP drop; a guard that took it all is BLOCKED', () => {
+  const e = { hp: [{ side: 'enemy', id: 0, before: 50, after: 8.4, down: false, shield_before: 0, shield_after: 0 }] };
+  assert.equal(hitText({ target: { side: 'enemy', id: 0 }, dmg: 41.6 }, e), '-41', 'the shown HP goes 50 -> 9');
+  assert.equal(hitText({ target: { side: 'enemy', id: 0 }, dmg: 9 }, { hp: [{ side: 'enemy', id: 0, before: 50, after: 50, shield_before: 10, shield_after: 1 }] }), 'BLOCKED');
+  assert.equal(hitText({ target: { side: 'enemy', id: 0 }, miss: true }, e), 'MISS');
+  const v = fresh();
+  const lines = logLines(v, [{ k: 'act', actor: { side: 'enemy', id: 2 }, move: 'strike', hp: [{ side: 'card', id: 124, before: 48.2, after: 48.1, down: false, shield_before: 0, shield_after: 0 }] }]);
+  assert.equal(lines[0].txt, '', 'a drop that does not change the shown HP shows no number');
+});
+
+test('reviewer L-2, item 3: a card active plays the v1 lunge and impact, the callout, the hit, and the status glyphs', async () => {
+  const v = fresh(); const d = recDom();
+  const stage = { calls: [], cast(i, el) { this.calls.push(`cast ${i} ${el}`); }, play(i, k) { this.calls.push(`play ${i} ${k}`); }, foeFx(i, m) { this.calls.push(`foeFx ${i} ${m}`); },
+    labels: () => [0, 1, 2, 3, 4].map((x) => ({ x, y: 1, foot: 2, w: 1 })), setTarget() {}, dispose() {} };
+  const w = fresh(); w.run.state.fight.enemies[0].hp = 8.4;
+  w.status_lines['enemy:0'] = [...w.status_lines['enemy:0'], { key: 'mark', stacks: null, left: null, amounts: [] }];
+  const answer = { ok: true, status: 'active', state: w.run.state, order: w.order, targets: w.targets, allies: w.allies, status_lines: w.status_lines, need: w.need, squad_hp: w.squad_hp,
+    log: [{ k: 'act', actor: { side: 'card', id: 318 }, action: 'active', target: { side: 'enemy', id: 0 }, hits: [{ target: { side: 'enemy', id: 0 }, dmg: 41.6, crit: false, miss: false }],
+      hp: [{ side: 'enemy', id: 0, before: 50, after: 8.4, down: false, shield_before: 0, shield_after: 0 }] }] };
+  const host = recHost({ dg: { auto: false, stage }, base: '/api/gauntlet/v2', apiPost: async () => answer, waitMs: () => 0, currentView: () => 'dungeon', sfx() {}, snd() {}, voice() {}, moveSnd: () => null,
+    elementOf: () => 'water', setView() {}, setAuto() {}, toast() {}, fitFight() {}, placeArena() {}, openInfo() {} });
+  const saved = { document: globalThis.document, raf: globalThis.requestAnimationFrame, gcs: globalThis.getComputedStyle };
+  globalThis.document = { querySelector: (q) => (q === '.dg-fight.g2' ? d.F : d.sub('', q)), querySelectorAll: () => [], getElementById: () => null, body: { dataset: {} },
+    createElement: () => ({ className: '', textContent: '', style: {}, remove() {} }) };
+  globalThis.requestAnimationFrame = () => 0; globalThis.getComputedStyle = () => ({ gridTemplateAreas: '', gridTemplateRows: '' });
+  try {
+    const main = { querySelector: (q) => (q === '.dg-fight.g2' ? d.F : null), contains: () => true };
+    const handlers = []; d.F.addEventListener = (type, fn) => handlers.push(fn);
+    await wireFight(main, v, host, { keep: true });
+    const pill = { dataset: { active: '318' }, closest: (q) => (q === '[data-active]' ? pill : null) };
+    await handlers[0]({ target: pill });
+    await new Promise((ok) => setTimeout(ok, 50));
+  } finally { globalThis.document = saved.document; globalThis.requestAnimationFrame = saved.raf; globalThis.getComputedStyle = saved.gcs; }
+  assert.ok(stage.calls.includes('cast 0 water'), `the element impact: ${stage.calls.join(', ')}`);
+  assert.ok(stage.calls.includes('play 0 hit'));
+  assert.ok(d.classes.some((c) => c.includes('data-card="318"') && c.endsWith('+striking')), 'the card lunge');
+  assert.ok(d.pops.some((p) => p.text === 'Peaches Beam'), 'the callout');
+  assert.ok(d.pops.some((p) => p.text === '-41'), `the damage number (the shown HP 50 -> 9): ${d.pops.map((p) => p.text).join(', ')}`);
+  assert.ok(d.pops.some((p) => p.text === 'Mark'), 'the status glyph');
+});
+
+test('H-1: the Finish Room fast replay plays the light v1 effects (hit, number, lunge) and no WebGL impact, voice or status glyph', async () => {
+  const v = fresh(); const d = recDom();
+  const stage = { calls: [], cast(i) { this.calls.push(`cast ${i}`); }, play(i, k) { this.calls.push(`play ${i} ${k}`); }, foeFx(i) { this.calls.push(`foeFx ${i}`); },
+    labels: () => [0, 1, 2, 3, 4].map((x) => ({ x, y: 1, foot: 2, w: 1 })), setTarget() {}, dispose() {} };
+  const w = fresh(); w.run.state.fight.enemies[0].hp = 8.4;
+  w.status_lines['enemy:0'] = [...w.status_lines['enemy:0'], { key: 'mark', stacks: null, left: null, amounts: [] }];
+  const log = [];
+  for (let k = 0; k < 3; k += 1) {
+    log.push({ k: 'act', actor: { side: 'card', id: 318 }, action: 'basic', target: { side: 'enemy', id: 0 }, hits: [{ target: { side: 'enemy', id: 0 }, dmg: 10, crit: false, miss: false }],
+      hp: [{ side: 'enemy', id: 0, before: 50 - k * 10, after: 40 - k * 10, down: false, shield_before: 0, shield_after: 0 }] });
+    log.push({ k: 'act', actor: { side: 'enemy', id: 2 }, move: 'strike', hp: [{ side: 'card', id: 124, before: 48 - k, after: 47 - k, down: false, shield_before: 0, shield_after: 0 }] });
+  }
+  const answer = { ok: true, status: 'active', state: w.run.state, order: w.order, targets: w.targets, allies: w.allies, status_lines: w.status_lines, need: w.need, squad_hp: w.squad_hp, log };
+  const voices = [];
+  const host = recHost({ dg: { auto: false, stage }, base: '/api/gauntlet/v2', apiPost: async () => answer, waitMs: () => 0, currentView: () => 'dungeon', sfx() {}, snd: (k) => voices.push(k), voice: (f, k) => voices.push(k), moveSnd: () => 'boss:strike',
+    elementOf: () => 'water', setView() {}, setAuto() {}, toast() {}, fitFight() {}, placeArena() {}, openInfo() {} });
+  const saved = { document: globalThis.document, raf: globalThis.requestAnimationFrame, gcs: globalThis.getComputedStyle };
+  globalThis.document = { querySelector: (q) => (q === '.dg-fight.g2' ? d.F : d.sub('', q)), querySelectorAll: () => [], getElementById: () => null, body: { dataset: {} },
+    createElement: () => ({ className: '', textContent: '', style: {}, remove() {} }) };
+  globalThis.requestAnimationFrame = () => 0; globalThis.getComputedStyle = () => ({ gridTemplateAreas: '', gridTemplateRows: '' });
+  let finish = null;
+  try {
+    const main = { querySelector: (q) => (q === '.dg-fight.g2' ? d.F : null), contains: () => true };
+    d.F.addEventListener = () => {};
+    d.mk('.dg-fight.g2 .dg-finish').addEventListener = (t, fn) => { finish = fn; };
+    await wireFight(main, v, host, { keep: true });
+    await finish({ stopPropagation() {} });
+    await new Promise((ok) => setTimeout(ok, 50));
+  } finally { globalThis.document = saved.document; globalThis.requestAnimationFrame = saved.raf; globalThis.getComputedStyle = saved.gcs; }
+  assert.equal(stage.calls.filter((c) => c.startsWith('cast')).length, 0, `no WebGL impact in the fast replay: ${stage.calls.join(', ')}`);
+  assert.equal(stage.calls.filter((c) => c.startsWith('foeFx')).length, 0, 'no foe move effect');
+  assert.equal(stage.calls.filter((c) => c === 'play 0 hit').length, 3, 'the hit flash of each step');
+  assert.equal(stage.calls.filter((c) => c === 'play 2 attack').length, 3, 'the monster lunge of each step');
+  assert.equal(voices.length, 0, 'no voices or sounds');
+  assert.ok(!d.pops.some((p) => p.text === 'Mark'), 'no status glyph pops');
+  assert.ok(d.pops.some((p) => p.text === '-10'), 'the damage numbers');
+  assert.equal(liteReplay({ finishing: true }), true);
+  assert.equal(liteReplay({ finishing: false }), false);
 });

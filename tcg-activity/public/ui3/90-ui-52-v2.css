@@ -198,7 +198,7 @@ body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-sup.g2-plate 
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-stline em .g2-down { color: var(--text-secondary); }
 /* D-216: the acting card: a stronger ring (the bright gold) and the label "Your turn" above the card */
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit.g2-actor .dg-card { box-shadow: 0 0 0 calc(var(--bw-focus) * 2) var(--gold-hi), var(--glow-action); }
-body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-card .g2-turn { position: absolute; left: 50%; top: var(--sp-6); transform: translateX(-50%); white-space: nowrap;
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-card .g2-turn { position: static; flex: none; white-space: nowrap;
   padding: var(--sp-half) var(--sp-1-5); border-radius: var(--rad-pill); background: var(--gold-hi); color: var(--on-gold);
   font: var(--fw-heading) var(--fs-label)/var(--lh-label) var(--font-ui); pointer-events: none; }
 /* D-215: the active callout uses the v1 move label pop, in gold (it names an active) */
@@ -223,6 +223,18 @@ body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit > .
 body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit > .g2-role .g2-ico { width: var(--icon-sm); height: var(--icon-sm); }
 /* the stacked phone layout: READY keeps the height of the state line (the support row keeps its approved height, G-E6) */
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-stack .g2-stline em .g2-ready { min-height: var(--counter); padding: var(--sp-half) var(--sp-2); font-size: var(--fs-caption); }
-body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-card .g2-turn { top: var(--sp-5); padding: var(--u3-none) var(--sp-1); }
+body[data-size="compact-port"].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-card .g2-turn { padding: var(--u3-none) var(--sp-1); }
 /* UI-08: the v2 ability line is a sentence ("Charge 1 of 2"), not the capitalized v1 meta words (style.css .v-ability-meta) */
 body.ui-v2 #viewer .v-ability.is-v2 .v-ability-meta { text-transform: none; }
+/* M-1 (review of PR 503): "Your turn" and the pill are one column at the bottom of the art, so the label is always above the pill, whatever the
+   pill height (a charging pill has 2 or 3 lines on a phone) */
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pillwrap { position: absolute; left: var(--sp-1); right: var(--sp-1); bottom: var(--sp-1); display: flex; flex-direction: column; align-items: center; gap: var(--sp-half); pointer-events: none; }
+body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .g2-pillwrap .g2-pill { position: static; align-self: stretch; pointer-events: auto; }
+/* reduced motion: no v1 shake and no lunge in the v2 fight either (the v1 rules are ui-v2-dungeon.css .hurt, .striking) */
+@media (prefers-reduced-motion: reduce) {
+  body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit.hurt .dg-card { animation: none; }
+  body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-unit.striking, body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-sup.striking { transform: none; }
+}
+/* the narrow 375 px cards (D-205, is-narrow; a report-only size): the card cannot hold the power chip, "Your turn" and a 2-line pill; the stronger
+   ring alone marks the acting card there (D-216) */
+body[data-size].ui-v2.ui-v3 .v2-dungeon .dg-fight.g2.is-narrow .dg-card .g2-turn { display: none; }

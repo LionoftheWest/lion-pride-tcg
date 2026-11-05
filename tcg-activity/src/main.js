@@ -3360,6 +3360,8 @@ function fillViewerV2(v2) {
   if (!box) return;
   box.querySelector('.g2-vrole')?.remove();
   if (v2.roleLabel) box.insertAdjacentHTML('afterbegin', `<div class="g2-vrole"><span class="g2-role ${v2.cls === 'support' ? 'is-sup' : 'is-att'}">${v2.roleIcon || ''}</span><span><b>${esc(v2.roleLabel)}</b><small>${esc(v2.purpose || '')}</small></span></div>`);
+  // the fight numbers of the v2 card (its v2 max HP and power), not the v1 card numbers
+  box.querySelectorAll('.vr-stat').forEach((st) => { const k = st.querySelector('span')?.textContent, b = st.querySelector('b'); if (!b) return; if (k === 'HP' && v2.maxHp != null) b.textContent = String(v2.maxHp); });
   box.classList.remove('hidden');
 }
 
