@@ -39,6 +39,9 @@ const LIVE = flag('--live');
 
 async function main() {
   if (!SET || SET.startsWith('--')) { console.error('usage: node scripts/push-set.mjs --set <id> [--only <k1,k2>] [--dry] [--live]'); return 1; }
+  // the test hooks (S2PUB_TEST_*) can never reach a live run: refuse before any request, render or write
+  const testVars = Object.keys(process.env).filter((k) => k.startsWith('S2PUB_TEST_'));
+  if (LIVE && testVars.length) { console.log(`refused: ${testVars.join(', ')} set with --live (test hooks are for a local copy only)`); return 1; }
   const local = globalThis.__LOCALDB_API || null; // set only by the localdb preload
   if (!local && !LIVE) { console.log('refused: the target is LIVE (use --live)'); return 1; }
   if (local && LIVE) { console.log('refused: --live with the localdb preload (the target would be LOCAL)'); return 1; }
@@ -94,6 +97,16 @@ async function main() {
       if (!file) return stop(card.id, `${f} has no art`);
       const sha = createHash('sha256').update(readFileSync(file)).digest('hex');
       console.log(`ART ${card.id} ${f} ${relative(ROOT, file).replace(/\\/g, '/')} ${sha}`);
+    }
+    // a test hook for the supervisor's child wait (G-SUP A7 mutation), LOCAL only, once (a marker file): start a DETACHED blender.exe
+    // --background child, so it keeps running when this push is killed. A normal child ends with node: on Windows libuv puts each child in
+    // a job object that ends with its parent (observed 2026-11-04: the push's own Blender and a pipe-less child both ended at the kill).
+    if (local && process.env.S2PUB_TEST_ORPHAN_BLENDER && !existsSync(join(outDir, '.orphan-once'))) {
+      (await import('node:fs')).writeFileSync(join(outDir, '.orphan-once'), new Date().toISOString());
+      const { spawn } = await import('node:child_process');
+      const BL = 'C:/Program Files/Blender Foundation/Blender 5.2/blender.exe';
+      const o = spawn(BL, ['--background', '--factory-startup', '--python-expr', `import time; time.sleep(${Number(process.env.S2PUB_TEST_ORPHAN_BLENDER)})`], { stdio: 'ignore', detached: true }); o.unref();
+      console.log(`TEST orphan-style blender pid=${o.pid} (S2PUB_TEST_ORPHAN_BLENDER)`);
     }
     // a test hook for the supervisor's stall watchdog, LOCAL only: hang once (a marker file in out/push-set) after this card's ART lines
     if (local && process.env.S2PUB_TEST_HANG_ONCE === card.id) {
