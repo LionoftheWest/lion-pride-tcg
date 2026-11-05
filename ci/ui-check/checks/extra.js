@@ -67,7 +67,8 @@
     const w = t.parentElement; const pe = [t.style.pointerEvents, w.style.pointerEvents]; t.style.pointerEvents = 'auto'; w.style.pointerEvents = 'auto';
     const top = document.elementFromPoint((a.left + a.right) / 2, (a.top + a.bottom) / 2);
     t.style.pointerEvents = pe[0]; w.style.pointerEvents = pe[1];
-    if (!top || !(top === t || t.contains(top))) out.turnLabel.push([path(t), `covered by ${top ? name(top) : 'nothing'}`]);
+    // only a part of the fight covers it: an open window over the fight (the card info, gauntlet-v2-info) is by design
+    if (!top || (!(top === t || t.contains(top)) && top.closest('.dg-fight'))) out.turnLabel.push([path(t), `covered by ${top ? name(top) : 'nothing'}`]);
   }
   return out;
 }
