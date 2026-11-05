@@ -40,11 +40,12 @@ export function choiceOf(body) {
   const a = posId(b.ally); if (a !== null) c.ally = { side: 'card', id: a };
   return c;
 }
-// The own pick: a list of whole card ids (the SQL checks the size, duplicates and ownership); no list = the auto-pick (null).
+// The own pick: a list of card ids (the SQL checks the size, duplicates and ownership); no list = the auto-pick (null). A bad entry stays
+// as null, so the SQL answers squad_size (R3 SPEC 3.2 item 3) and never plays a shorter squad (review r1 L-3).
 export function cardsOf(body) {
   const c = body && typeof body === 'object' ? body.cards : undefined;
   if (!Array.isArray(c)) return null;
-  return c.map((x) => posId(x)).filter((x) => x !== null).slice(0, 50);
+  return c.slice(0, 50).map((x) => posId(x));
 }
 
 const timeCache = (ttl) => {

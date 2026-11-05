@@ -30,6 +30,7 @@ export const MUTATIONS = {
   no_max_clamp: ['p_max: autoMax(req.body?.max)', 'p_max: Number(req.body?.max)'],
   message_missing: [" hunt_over: 'The Hunt ended.',", ''],
   no_run_shape: ['  if (!data || !data.fight) return data;', '  return data;'],
+  cards_drop_bad: ['  return c.slice(0, 50).map((x) => posId(x));', '  return c.map((x) => posId(x)).filter((x) => x !== null).slice(0, 50);'],
   no_retry: ['    if (r.error && RETRY_CODES.has(r.error.code)) r = await supabase.rpc(fn, args);\n', ''],
   v1_touched: ['  const refs = sharedCache', "  app.get('/api/hunt', (req, res, next) => next());\n  const refs = sharedCache"],
 };
@@ -159,7 +160,7 @@ test('G6-4 the choice (use, target, ally only, engine shapes), the own pick (ids
   await h.call('POST', '/api/hunt/v2/start', { body: {} });
   assert.deepEqual(h.calls[5], { name: 'hunt_v2_start', args: { p_player: '77', p_cards: null } });
   await h.call('POST', '/api/hunt/v2/start', { body: { cards: [11, '12', -3, 'x', 1.5] } });
-  assert.deepEqual(h.calls[7].args.p_cards, [11, 12]);
+  assert.deepEqual(h.calls[7].args.p_cards, [11, 12, null, null, null]);   // a bad id stays null: the SQL answers squad_size (review r1 L-3)
   await h.call('POST', '/api/hunt/v2/auto', { body: { max: 99999 } });
   await h.call('POST', '/api/hunt/v2/auto', { body: { max: -4 } });
   await h.call('POST', '/api/hunt/v2/auto', { body: {} });
