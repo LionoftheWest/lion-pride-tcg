@@ -880,7 +880,7 @@ function layout(F) {
   // D-205 + N-3 (Nathan 2026-11-04: "squads can be any combos"): the supports are small cards in the squad row on 375 px phones (is-narrow)
   // and wherever the Support panel cannot hold them (g2-plates, kept for this fight); a squad row too crowded for its cards wraps to two
   // rows (g2-wrap: --g2-per cards in each row). The Hunt squad is 1 to 8 cards of any mix; the Dungeon 5; the Gauntlet 3 + 2.
-  if (typeof F.getBoundingClientRect !== 'function') return;   // the measuring below needs a real DOM (a stubbed fight in the node tests)
+  if (!F.ownerDocument || typeof F.getBoundingClientRect !== 'function') return;   // the measuring below needs a real DOM element (the node tests stub the fight)
   const narrow = F.classList.contains('is-narrow');
   const plates = narrow || F.classList.contains('g2-plates');
   F.querySelectorAll('.dg-sup.g2-sup').forEach((b) => { const home = plates ? units : F.querySelector('.dg-sups'); if (home && b.parentNode !== home) home.appendChild(b); b.classList.toggle('g2-plate', plates); });
