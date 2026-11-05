@@ -78,12 +78,18 @@ const SQL_MUT = {
     select c.id, c.subject_id, c.name, c.rarity, c.source, c.image_url, c.artist_credit, c.lore, c.set_id, c.set_number
       from public.cards c join public.card_sets s on s.id = c.set_id where c.in_draw_pool and c.source::text = 'draw';`,
 };
+// S2-PUB (Set 2 launch): this test checks the S1-only state, but from 2026-11-06 a second real set (S2) is pullable on live and on
+// every fresh copy of it. So inside the rolled-back block every real pullable set except S1 is made not pullable first (the rollback
+// restores it). MUTATE=nofixture leaves it out: with a second real set pullable, the S1-only cases must FAIL.
+const NOFIX = process.env.MUTATE === 'nofixture';
+const FIX = NOFIX ? '-- MUTATE=nofixture: no fixture' : "update card_sets set pullable = false where pullable and id <> 'S1';";
 let MUT = '';
 if (process.env.MUTATE && MIG_MUT[process.env.MUTATE]) {
   const [a, b] = MIG_MUT[process.env.MUTATE];
   if (!mig.includes(a)) throw new Error(`MUTATION ${process.env.MUTATE} does not match`);
   console.log(`MUTATE=${process.env.MUTATE}: the migration text`); mig = mig.replace(a, b);
 } else if (process.env.MUTATE && SQL_MUT[process.env.MUTATE]) { console.log(`MUTATE=${process.env.MUTATE}`); MUT = SQL_MUT[process.env.MUTATE]; }
+else if (NOFIX) console.log('MUTATE=nofixture');
 else MUT = mutation(FN_MUT);
 
 const P = 'tst_cset';
@@ -98,6 +104,7 @@ const body = String.raw`do $t$
 declare res jsonb := '[]'; ok boolean; n int; m int; x bigint; y bigint; cs bigint[]; s1 bigint[]; v jsonb; w jsonb; subj bigint;
   before jsonb; after jsonb; again jsonb; seen text[]; d date; s1_alone_new boolean; badges_before jsonb; weak_before int; top text; sb int;
 begin
+  ${FIX}
   -- The catalog as /api/catalog gives it to the browser today (every card, ordered by id, season || 'Season 1').
   select jsonb_agg(jsonb_build_object('id', id, 'season', coalesce(nullif(season, ''), 'Season 1')) order by id) into before from cards;
   -- The readers of cards.season: the Hunt weak points (combat_weak, a 'season' weak point 'Season 1') and the
