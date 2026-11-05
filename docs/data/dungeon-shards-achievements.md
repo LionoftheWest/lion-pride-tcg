@@ -1457,7 +1457,7 @@ POST /api/gauntlet/start: starts a Gauntlet run with the week's squad. Checks bo
 - Returns: `boolean`
 - Security definer: no
 
-[combat] Combat v2 Gauntlet (20.15 R1b): true when an active (its blocks) asks the player for an ally: a shield, heal, empower, focus or cure block, or quicken without all, whose to is not most_hurt or strongest (the engine rule of combat_effect_v2_active). A gated block may make it true when the engine does not use the ally (harmless). Pure. combat_v2_gauntlet_run.sql.
+[combat] Combat v2 Gauntlet (20.15 R1b; R1b-FIX combat_v2_needs_ally_self.sql): true when an active (its blocks) asks the player for an ally: a shield, heal, empower, focus or cure block, or quicken without all, whose to is not most_hurt or strongest and that is not self (an attacker quicken on the card itself) (the engine rule of combat_effect_v2_active). A gated block may make it true when the engine does not use the ally (harmless). Pure. combat_v2_gauntlet_run.sql.
 
 <a id="fn-gauntlet-v2-out-bigint-jsonb"></a>
 
