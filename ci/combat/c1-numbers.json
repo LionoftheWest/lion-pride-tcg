@@ -14,7 +14,8 @@
     "^gauntlet_v2_",
     "^hunt_(attack|support|pass_turn|counter_|card_crits|autopick|squad_value|effect_apply|fight_state|hit_mods|state_round|commit_card|boss_move_list|marks_patch|mark_on)",
     "^dungeon_(attack|support|enemy_turn|auto_|pass_turn|effect_apply|fight_state|make_foe|after_kill|finish_room|run_card|card$|card_base|enter|room_foes)",
-    "^dungeon_v2_"
+    "^dungeon_v2_",
+    "^hunt_v2_"
   ],
   "always": [
     "0",
@@ -197,6 +198,12 @@
       "2": {
         "count": 2,
         "reason": "round(random() x act_at, 2): the meter of a card and of a foe at the room start has 2 decimals (the Lab rule of plan 20.15, R2 SPEC INV-6). A display precision, not a combat number."
+      }
+    },
+    "hunt_v2_start": {
+      "2": {
+        "count": 2,
+        "reason": "round(random() x act_at, 2): the meter of the boss copy and of each card at the start of a practice day has 2 decimals (the Lab rule of plan 20.15, as dungeon_v2_fight; R3 SPEC INV-6). A display precision, not a combat number."
       }
     },
     "dungeon_v2_screen": {

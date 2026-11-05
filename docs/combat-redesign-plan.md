@@ -2619,3 +2619,23 @@ writes 20.18.
   `steps_left` of the last step, `hp_changes`), `dungeon_v2_screen`; and `dungeon_v2_room`.
 - **Proof**: `card-studio/scripts/test-combat-v2-dungeon-run.mjs` (cases D1-D12, rolled back, `MUTATE=all`). The REPORT of item R2 has the runs.
   D4b (the unit `tags`) and D5b (the synergy at each fight room) need SYN on the copy: until then they print WAIT.
+
+### 20.20 R3a: the v2 Hunt practice for testers (`tcg-bot/supabase/combat_v2_hunt_practice.sql`)
+
+R3a is the SQL part of the TESTER practice of plan row 14.1 phase 7 "R3 Hunt v2 ON" (pipeline item R3, SPEC v3; Nathan QH1-QH5, QT1).
+Nothing in play changes: `combat_v2.hunt` stays false, and only a player on `balance combat_v2.testers` can start a practice day. The shared
+boss stays v1 for everyone: one HP number on the v1 scale cannot take v2 damage (R3 SPEC section 0). A real Hunt v2 for all is item R3-ON.
+
+- **A private copy of the live boss** (QH1): the v2 template of the same boss (`hunt_v2_boss_key`: the `hunt_bosses_v2` name with or without a
+  leading "The "), the live tier, the live `hp_remaining / hp_max` at the start (INV-4). One practice day per Hunt, tester and Denver day (QH2),
+  40 steps (`v2_hunt.round_cap`), the player's stars and level 0 (QH3), the auto-pick against the boss or the own pick of up to
+  `hunt_card_cap()` cards (QH4), `combat_v2_synergy` once before the first step.
+- **No shared write, no boss lock (INV-2)**: the new table `hunt_v2_days` has NO foreign key to `hunts`; every `hunt_v2_` function reads the
+  `hunts` row with no lock; no table but `hunt_v2_days` is written. No reward, no XP, no board row, no `hunt_hits` row.
+- **The functions** (server only, R3b routes): `hunt_v2_start`, `hunt_v2_act`, `hunt_v2_auto` (the R2a helper `dungeon_v2_play`), `hunt_v2_view`
+  (`can_start`, `hunt.live_frac` = the shared v1 bar, read only). The end: `cap`, `squad_down`, `boss_down`, `hunt_over` (the Hunt closed: no
+  fight call), `abandoned` (an active day of an earlier day).
+- **Proof**: `card-studio/scripts/test-combat-v2-hunt-practice.mjs` (cases H1-H11; H3 on two real connections; `MUTATE=all`). The REPORT of
+  item R3 has the runs. H5b (the synergy and the unit `tags`) needs SYN on the copy: until then it prints WAIT.
+- **Go-live order**: after R1b, SYN and R2a (the merge order R1b -> SYN -> R2a -> R3a). `rehearse-sql.mjs`, then `apply-sql.mjs --live`, then
+  `check-schema-drift.mjs --live` = 0. Not in Thu 14-15 MT or Mon 16-17 MT (new objects only; no lock on `hunts`).
