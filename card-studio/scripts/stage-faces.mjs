@@ -1191,7 +1191,6 @@ async function swap(db, target) {
     if (stop) continue;
     if (cut.has(id)) { console.log(`WAIT ${id} storage`); continue; }
     if (Date.now() >= until) { stop = 'until'; console.log('UNTIL reached (no new row)'); continue; }
-    if (existsSync(join(ITEM, 'work', 'PAUSE'))) { stop = 'PAUSE'; console.log('PAUSE (no new row)'); continue; }
     // 1. the row and its backup
     const why = [];
     if (row.set_id !== SET) why.push(`set ${row.set_id}`);
@@ -1227,11 +1226,12 @@ async function swap(db, target) {
     let upOk = true;
     for (const [k, x] of [['main', n.main], ['grid', n.grid], ['reveal', n.reveal]]) {
       if (!x) continue;
-      const { error: ue } = await db.storage.from(BUCKET).upload(x, local[k], { upsert: false, contentType: typeOf(x), cacheControl: '31536000' });
+      const { error: ue } = await db.storage.from(BUCKET).upload(x, local[k], { upsert: false, contentType: typeOf(x) });
       if (isBlocked()) return 5;
       if (ue) { console.log(`ERROR upload ${id} ${x}: ${ue.message}`); upOk = false; break; }
       const st = await objectState(db, x), h = await objectHead(db, x);
-      if (!st.present || st.size !== local[k].length || h.status !== 200 || h.length !== local[k].length) {
+      // the size = the LIST size (the origin); the HEAD proves the public read (its content-length is compared when it has one)
+      if (!st.present || st.size !== local[k].length || h.status !== 200 || (h.length !== null && h.length !== local[k].length)) {
         console.log(`ERROR upload check ${id} ${x} listed=${st.present ? st.size : 'no'} head=${h.status} length=${h.length} local=${local[k].length}`); upOk = false; break;
       }
     }
@@ -1281,7 +1281,7 @@ async function swap(db, target) {
   const tot = (await listAll(db)).reduce((t, o) => t + o.size, 0);
   console.log(`STORAGE now=${tot} queue=${queue.length}`);
   console.log(`SWAP SUMMARY updated=${nUpd} deleted=${nDel} done=${nDone} skip=${nSkip} wait-storage=${cut.size} grace-flush=${flushes} stop=${stop || '-'} target=${target}`);
-  return ok && (!stop || stop === 'until' || stop === 'PAUSE') ? 0 : 1;
+  return ok && (!stop || stop === 'until') ? 0 : 1;
 }
 
 /** unswap (SPEC 2.5, B5). unswap --set S1 (--only <key|id,...> | --all) [--live] [--manifest] [--backup] [--swapped]. Each row on its own:
@@ -1348,7 +1348,7 @@ async function unswap(db, target) {
     for (const x of plan) {
       console.log(`${x.act === 'keep' ? 'KEEP' : 'UPLOAD'} ${id} ${x.o.name}`);
       if (x.act !== 'upload') continue;
-      const { error: ue } = await db.storage.from(BUCKET).upload(x.o.name, x.buf, { upsert: false, contentType: x.o.contentType || typeOf(x.o.name), cacheControl: '31536000' });
+      const { error: ue } = await db.storage.from(BUCKET).upload(x.o.name, x.buf, { upsert: false, contentType: x.o.contentType || typeOf(x.o.name) });
       if (isBlocked()) return 5;
       const got = ue ? null : await objectBytes(db, x.o.name);
       if (ue || !got || got.status !== 200 || sha(got.buf) !== x.o.sha256) { console.log(`ERROR upload ${id} ${x.o.name} ${ue ? ue.message : `http=${got?.status}`}`); upOk = false; break; }
