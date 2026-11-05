@@ -95,6 +95,11 @@ async function main() {
       const sha = createHash('sha256').update(readFileSync(file)).digest('hex');
       console.log(`ART ${card.id} ${f} ${relative(ROOT, file).replace(/\\/g, '/')} ${sha}`);
     }
+    // a test hook for the supervisor's stall watchdog, LOCAL only: hang once (a marker file in out/push-set) after this card's ART lines
+    if (local && process.env.S2PUB_TEST_HANG_ONCE === card.id) {
+      const mark = join(outDir, `.hang-once-${card.id}`);
+      if (!existsSync(mark)) { (await import('node:fs')).writeFileSync(mark, new Date().toISOString()); console.log(`TEST hang (S2PUB_TEST_HANG_ONCE=${card.id})`); setInterval(() => {}, 60000); await new Promise(() => {}); } // the timer keeps the process alive (else node exits 13)
+    }
     let v2 = null;
     if (faceMod) { try { v2 = await faceMod.loadFaceV2(supabase, card); } catch (e) { return stop(card.id, e.message || String(e)); } }
     const face = !faceMod ? 'v1 no-ui68' : v2 ? `v2 role=${v2.role} name="${v2.active?.name ?? ''}"` : 'v1';
