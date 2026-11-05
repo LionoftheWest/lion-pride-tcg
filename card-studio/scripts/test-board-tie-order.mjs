@@ -25,6 +25,15 @@ const q = async (sql) => (await fetch(`https://api.supabase.com/v1/projects/${re
 
 let mig = readFileSync(process.env.MIG || fileURLToPath(new URL('../../tcg-bot/supabase/board_tie_order.sql', import.meta.url)), 'utf8')
   .replace(/\r\n/g, '\n').replace(/notify pgrst[^\n]*\n/g, '');
+// The file's own gauntlet_board text first (the docs/foundations.md fix, as test-pack-ledger-strict.mjs): combat_v2_on_gauntlet.sql
+// (R1-ON) replaced gauntlet_board after this file, so the guard of this file refuses the live text. Its own text has its new md5.
+// Cut from the file BEFORE a mutation, so a mutation changes only the text that the file itself installs.
+const OWN_BOARD = (() => {
+  const i = mig.indexOf('CREATE OR REPLACE FUNCTION public.gauntlet_board(');
+  const j = mig.indexOf('$function$;', i);
+  if (i < 0 || j < 0) throw new Error('board_tie_order.sql: no gauntlet_board text');
+  return mig.slice(i, j + '$function$;'.length);
+})();
 // Each mutation takes the tie-break out of ONE place. (The "order by rank limit" has no copy of the keys, so no mutation there.)
 const MUT = {
   d_window: ['coalesce(r.ended_at, now()), r.player_id) rank', 'coalesce(r.ended_at, now())) rank'],
@@ -62,6 +71,7 @@ declare bad text := ''; d date := dungeon_day(); w date; cfgs text[] := array[''
   rk int; n int := 0;
 begin
   w := gauntlet_week(d);
+  execute $m$${OWN_BOARD}$m$;
   execute $m$${mig}$m$;
   update settings set value = value || '{"enabled": true}' where key in ('dungeon', 'gauntlet');
   perform dungeon_generate(d); perform gauntlet_generate(w);

@@ -1252,7 +1252,7 @@ The Dungeon view without the member card list (key mine). The Home slide reads i
 - Returns: `jsonb`
 - Security definer: no
 
-GET /api/gauntlet/board, gauntlet_view and dungeon_pay: the Gauntlet board of a week (default this week). Each member's best run of the week counts, ranked by floor, room, turns, end time (an active run: now), then the member id, so a tie always has the same order (board_tie_order.sql). Returns a jsonb array with rank and runs.
+GET /api/gauntlet/board, gauntlet_view and dungeon_pay: the Gauntlet board of a week (default this week). Each member's best run of the week counts, ranked by floor, room, turns, end time (an active run: now), then the member id, so a tie always has the same order (board_tie_order.sql). Returns a jsonb array with rank and runs. Since combat_v2_on_gauntlet.sql (R1-ON) a run is a v1 run (mode gauntlet) or a v2 run with the member mark (mode gauntlet_v2, state.member true); a tester v2 run of before the switch is not on the board.
 
 <a id="fn-gauntlet-cfg"></a>
 
@@ -1282,7 +1282,7 @@ Internal helper: builds the Gauntlet of a week once (squad and seeded floors: ba
 - Returns: `TABLE(id bigint, ckey bigint, role text, cost integer, tags text[], aff text)`
 - Security definer: no
 
-Internal helper: the cards that the Gauntlet squad can use (attackers and support cards, no Event or Promo), with cost (balance dungeon.cost), tags and affinity. Called by gauntlet_squad.
+Internal helper: the cards that the Gauntlet squad can use (attackers and support cards, no Event or Promo), with cost (balance dungeon.cost), tags and affinity. Called by gauntlet_squad. Since combat_v2_on_gauntlet.sql (R1-ON), while combat_v2_on('gauntlet') is true, only cards with a usable ability_v2 (the combat_v2_card_unit rule), so a new week squad always plays v2.
 
 <a id="fn-gauntlet-squad-date"></a>
 
@@ -1352,7 +1352,7 @@ POST /api/gauntlet/start: starts a Gauntlet run with the week's squad. Checks bo
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Gauntlet (20.15 R1b): the start of a v2 run for the tester branch of gauntlet_start: the run state (engine 2, units, carry, info), room 1 of floor 1, the row (mode gauntlet_v2, the next attempt of both modes) and the start log. combat_v2_gauntlet_run.sql.
+[combat] Combat v2 Gauntlet (20.15 R1b): the start of a v2 run for the tester branch of gauntlet_start: the run state (engine 2, units, carry, info), room 1 of floor 1, the row (mode gauntlet_v2, the next attempt of both modes) and the start log. combat_v2_gauntlet_run.sql. Since combat_v2_on_gauntlet.sql (R1-ON) the state also has member = combat_v2_on('gauntlet') at the start: the mark that gauntlet_board and gauntlet_view read (false for a tester run before the switch; it stays true after a rollback).
 
 <a id="fn-gauntlet-v2-choose-text-integer"></a>
 
@@ -1422,7 +1422,7 @@ POST /api/gauntlet/start: starts a Gauntlet run with the week's squad. Checks bo
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Gauntlet (20.15 R1b): the screen facts of the squad at the run start (a snapshot, D4): for each card the active name (subjects.ability_v2 name), the role, the class and needs_ally. Reads only. combat_v2_gauntlet_run.sql.
+[combat] Combat v2 Gauntlet (20.15 R1b): the screen facts of the squad at the run start (a snapshot, D4): for each card the active name (subjects.ability_v2 name), the role, the class and needs_ally. Reads only. combat_v2_gauntlet_run.sql. Since combat_v2_on_gauntlet.sql (R1-ON) each card also has text: the description of its active (ability_v2_text of its class and blocks), for the card info window.
 
 <a id="fn-gauntlet-v2-needs-ally-jsonb"></a>
 
@@ -1522,7 +1522,7 @@ POST /api/gauntlet/start: starts a Gauntlet run with the week's squad. Checks bo
 - Returns: `jsonb`
 - Security definer: no
 
-GET /api/gauntlet: the member's Gauntlet screen. Ends the member's active runs of earlier days, builds the week, and returns the squad (costs: balance dungeon.cost), the budget (balance gauntlet.budget), today's newest run (null when it is over and a run is left: runs_left, last_run), the member's best rank, the rooms, the top 3 and the prizes.
+GET /api/gauntlet: the member's Gauntlet screen. Ends the member's active runs of earlier days, builds the week, and returns the squad (costs: balance dungeon.cost), the budget (balance gauntlet.budget), today's newest run (null when it is over and a run is left: runs_left, last_run), the member's best rank, the rooms, the top 3 and the prizes. Since combat_v2_on_gauntlet.sql (R1-ON) runs_left and players_week count the board set (v1 runs and v2 runs with the member mark); run stays the v1 run (gauntlet_v2_view has the v2 run).
 
 <a id="fn-gauntlet-week-date"></a>
 

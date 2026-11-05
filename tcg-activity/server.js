@@ -1900,8 +1900,9 @@ registerReportRoutes(app, { supabase, caller, rateLimit, targets: appLogs.on });
 registerHallRoutes(app, { supabase, caller, rateLimit, notify, announce, bustUser, getCatalogBase, hallOn, postsOn: hallPostsOn });
 registerShopRoutes(app, { supabase, caller, rateLimit, bustUser, getCatalogBase, shardsOn, userCache });
 registerEventsRoutes(app, { supabase, caller, eventsOn, sharedCache, artUrl: (u) => (SUPA_HOST && String(u).startsWith(SUPA_HOST + '/') ? toProxyImg(u) : null) });
-registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun: dungeonPing, userCache, sharedCache });
-registerGauntletV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, sharedCache });   // R1c: /api/gauntlet/v2/* for Combat v2 testers
+const dungeonCaches = registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun: dungeonPing, userCache, sharedCache });
+// R1c: /api/gauntlet/v2/* (Combat v2). R1-ON: a v2 write drops the member's cached Gauntlet view and, at a run end, the board.
+registerGauntletV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, sharedCache, onRunChange: dungeonCaches.gauntletRunChanged });
 registerHuntV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, huntOn: () => FEATURE_HUNT, sharedCache });   // R3b: /api/hunt/v2/* the Hunt v2 practice of Combat v2 testers
 registerDungeonV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, sharedCache });   // R2b: /api/dungeon/v2/* for Combat v2 testers
 const cardShape = (c) => c && { id: c.id, name: c.name, rarity: c.rarity, image_url: toProxyImg(c.image_url) };
