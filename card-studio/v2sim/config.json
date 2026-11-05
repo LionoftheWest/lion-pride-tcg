@@ -387,7 +387,7 @@
     "boss_max_dur": 1
   },
   "v2_enemy": {
-    "_rule": "Hunt boss per tier: HP and ATK live. def/evasion/resolve/keen/speed proposed (8-stat study section 4). Mythic ATK x0.91. hp, atk, def, speed of each tier and the boss hp_factor: M-H option C, decision D-223 (2026-11-04, combat_v2_hunt_balance_c.sql).",
+    "_rule": "Hunt boss per tier: HP and ATK live. def/evasion/resolve/keen/speed proposed (8-stat study section 4). Mythic ATK x0.91. hp, atk, def, speed of each tier and the boss hp_factor: M-H option C, decision D-223 (2026-11-04, combat_v2_hunt_balance_c.sql); Heroic hp 26000 and Mythic hp 18500: M-H option C-low, decision D-223b (2026-11-05, combat_v2_hunt_balance_c_low.sql).",
     "hunt": {
       "Normal": {
         "hp": 35000,
@@ -401,7 +401,7 @@
         "signatures": 1
       },
       "Heroic": {
-        "hp": 32500,
+        "hp": 26000,
         "atk": 45,
         "def": 0.1,
         "evasion": 0.04,
@@ -412,7 +412,7 @@
         "signatures": 1
       },
       "Mythic": {
-        "hp": 28500,
+        "hp": 18500,
         "atk": 57,
         "def": 0.15,
         "evasion": 0.08,
