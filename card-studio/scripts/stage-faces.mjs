@@ -1,31 +1,34 @@
 import './localdb-guard.mjs';
 /**
- * S1-FACE (SPEC v2.1): render the UI-68 card face of the Set 1 rows to the LOCAL DISK, then (Friday) swap each card version in place.
+ * S1-FACE (SPEC v2.4): render the UI-68 card face of the Set 1 rows to the LOCAL DISK, then (Friday) swap each card version in place.
  * READ commands (the write guard is on: any write = "WRITE BLOCKED ...", exit 5):
- *   stage   --set S1 --order <file> --manifest <file> --until <ISO> [--only id,id]   render to <manifest folder>/stage/
+ *   stage   --set S1 --order <file> --manifest <file> --until <ISO> [--only id,id] [--keys <list> | --shard i/n]   render to <manifest dir>/stage/
  *   order   --set S1 [--out <file>]                    the row order: stills first, then animated; owners desc, copies desc, id
  *   before  --set S1 [--out <file>] [--force]          the baseline: the hash of every row of the set + the list of its old objects
- *   verify  --set S1 --manifest <file> [--order <f>] [--before <f>]   live-unchanged, files, counts, eta, projected-end
+ *   verify  --set S1 --manifest <file> [--order <f>] [--before <f>]   live-unchanged, files, counts, eta, projected-end(-with-s2), B11 line
  *   fresh   --set S1 --manifest <file>                 each staged row: FRESH or STALE (fp of the render inputs)
- *   storage --set S1 --manifest <file> [--limit <bytes>]   now, projected end, the cut list (S1FACE_LIMIT, default 950000000)
+ *   storage --set S1 --manifest <file> [--limit <bytes>]   now, the projected end, the cut list (S1FACE_LIMIT, default 950000000)
  *   backup  --set S1 [--out <folder>]                   download every old object of the set (main, grid, reveal) with sha256
- * WRITE commands (no guard; each prints its write list first): orphans (B10), swap, unswap. See the WRITE COMMANDS part at the end.
- * Every command: --live, or a local copy (LOCALDB=1 with the localdb preload). Without both: refused (the push-set.mjs target rule).
+ *   face-export --set S1 [--out <file>]                 the loadFaceV2 output of every S1 card (the input of the render-only machine)
+ *   ingest  --set S1 --from <dir> --manifest <ours> [--tools-ref <f>]   take the rows of the render-only machine (checks, see the function)
+ * FILE commands (no database): tools [--save <f>] (the tools print, fp-code, scripts sha), keys / keys-check (the two machines' lists).
+ * WRITE commands (no guard; each prints its write list first): orphans (B10). swap, unswap: not built yet (SPEC B4/B5, before Friday).
+ * Every database command: --live, or a local copy (LOCALDB=1 with the localdb preload). Without both: refused (the push-set.mjs target rule).
+ * --render-only (SPEC 2.8, a second machine, with --import ./scripts/render-only-preload.mjs --cards <f> --face-export <f>): stage with no
+ * project and no keys, exempt from the target rule.
  *
- * The write guard (SPEC 2.1), installed before the Supabase client is made, two layers:
- *   1. fetch: a request to the Supabase host with a method other than GET or HEAD fails, except POST /rest/v1/rpc/ability_v2_check,
- *      POST /rest/v1/rpc/card_element (both STABLE) and POST /storage/v1/object/list/<bucket> (the storage list API: a read).
- *   2. the shared client of src/supabase.js: .insert/.update/.upsert/.delete on any table, every write method of storage.from(...),
- *      and .rpc(<another name>) throw.
- *   A block prints "WRITE BLOCKED <what>" and the run ends with exit 5 (the supervisor does not restart on 5).
+ * The write guard (SPEC 2.1, scripts/stage-guard.mjs), installed before the Supabase client is made: an allow-list by method + host + path
+ * on fetch (REST GET of cards, subjects, statuses, player_cards; POST of the 2 STABLE read rpcs; the storage LIST call; GET/HEAD of public
+ * objects; nothing to api.supabase.com), and the client layer (.insert/.update/.upsert/.delete, storage writes, other rpcs throw).
+ * A block prints "WRITE BLOCKED <what>" and the run ends with exit 5 (the supervisor does not restart on 5).
  *
- * stage, per row of the order file with no STAGED line in the manifest (--only: exactly the named row ids; the newest line counts):
+ * stage, per row of the order file (and of --keys) with no STAGED line in the manifest (--only: exactly the named ids; the newest line counts):
  *   before the row: work/PAUSE = "PAUSE", exit 3; now >= --until = "UNTIL reached", exit 4; a blender.exe --background that is not a child
- *   of this job = "WAIT foreign-blender pid=<p>" (also in the S1 log), check every 60 s, "RESUME" when it ends.
- *   then loadFaceV2 (once per card), renderTier, a 2nd renderPng of the face and of the text mask, the checks (SPEC 4), the thumbs
- *   (src/thumbs.js makeThumbs), and one manifest line: { s:"STAGED", card_id, key, rarity, cls, old, files:{main,grid,reveal}, fp, fpParts,
- *   face, checks, sec, attempts, commit, at } or { s:"FAIL", card_id, key, rarity, why, at }. A failed check renders the row again
- *   (max 2 times, "RETRY <id> <why>"), then FAIL; the run goes on with the next row. Exit 0 when every row is done.
+ *   of this job = "WAIT foreign-blender pid=<p>" (every check; the S1 log at once and every 5 min), "RESUME" when it ends.
+ *   then the face data (loadFaceV2 once per card, or the face export), renderTier, a 2nd renderPng of the face and of the text mask, the
+ *   checks (SPEC 4), the thumbs (src/thumbs.js makeThumbs), and one manifest line: { s:"STAGED", card_id, key, rarity, host, cls, old,
+ *   files:{main,grid,reveal}, fp, fpParts, face, checks, sec, attempts, commit, stageSha, tools, toolsSha, at } or { s:"FAIL", ..., why }.
+ *   A failed check renders the row again (max 2 times, "RETRY <id> <why>"), then FAIL; the run goes on. Exit 0 when every row is done.
  * It never writes cards.json.
  */
 import { readFileSync, writeFileSync, appendFileSync, existsSync, mkdirSync, rmSync, readdirSync } from 'node:fs';
@@ -55,7 +58,8 @@ const CMD = argv[0];
 const flag = (n) => argv.includes(n);
 const val = (n) => (argv.includes(n) ? argv[argv.indexOf(n) + 1] : null);
 const LIVE = flag('--live');
-const OFFLINE = flag('--offline');
+// --render-only (SPEC v2.4 name; --offline = the same): the render machine mode, exempt from the target rule (no database at all)
+const OFFLINE = flag('--render-only') || flag('--offline');
 const SET = val('--set');
 const now = () => new Date().toISOString();
 const sha = (b) => createHash('sha256').update(b).digest('hex');
@@ -90,6 +94,33 @@ const git = (...x) => { try { return execFileSync('git', ['-C', ROOT, ...x], { e
 
 /** The sha256 of each render code file (SPEC 2.2). */
 export function codeHashes() { return Object.fromEntries(CODE_FILES().map((f) => [f, sha(readFileSync(join(ROOT, f), 'utf8').replace(/\r\n/g, '\n'))])); }
+
+/** The sha256 of stage-faces.mjs itself (LF-normalized): import refuses a row made by another version of this script. */
+// SPEC v2.4 P-6: ingest compares the LF sha of the render scripts of both machines. ONE list (the spec names stage-faces.mjs and
+// render-only-preload.mjs; the files they load at render time are added): printed by `tools`, stored per row as stageSha.
+export const SCRIPT_FILES = ['scripts/stage-faces.mjs', 'scripts/render-only-preload.mjs', 'scripts/render-only-hooks.mjs', 'scripts/render-only-supabase.mjs', 'scripts/stage-guard.mjs', 'scripts/face-check.mjs'];
+export const stageSha = () => sha(canon(Object.fromEntries(SCRIPT_FILES.map((f) => [f, existsSync(join(ROOT, f)) ? sha(readFileSync(join(ROOT, f), 'utf8').replace(/\r\n/g, '\n')) : null]))));
+/** The tools print (SPEC v2.4 r4 item 3): Edge, Blender, Python, Pillow, sharp/libvips, node, and the sha256 of the font files that the
+ *  templates name (Segoe UI, Georgia, Times New Roman: system fonts; the templates load no font file). Two machines must give the
+ *  same print, else import refuses their rows. Measured once per run. */
+export function toolsPrint(sharpMod) {
+  const run = (cmd, args) => { try { return execFileSync(cmd, args, { encoding: 'utf8', timeout: 120000, windowsHide: true }).trim().split(/\r?\n/)[0].trim(); } catch { return null; } };
+  const EDGE = ['C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', 'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'].find(existsSync);
+  const BLENDER = ['C:\\Program Files\\Blender Foundation\\Blender 5.2\\blender.exe'].find(existsSync);
+  const FONTS = 'C:/Windows/Fonts';
+  let fonts = {};
+  try { fonts = Object.fromEntries(readdirSync(FONTS).filter((f) => /^(segoeui|segui|georgia|times)[a-z]*\.ttf$/i.test(f)).sort().map((f) => [f.toLowerCase(), sha(readFileSync(join(FONTS, f)))])); } catch { /* none */ }
+  const t = {
+    edge: EDGE ? run('powershell', ['-NoProfile', '-c', `(Get-Item '${EDGE}').VersionInfo.ProductVersion`]) : null,
+    blender: BLENDER ? (run(BLENDER, ['--factory-startup', '--version']) || '').replace(/\s+/g, ' ') : null,
+    python: run('python', ['--version']),
+    pillow: run('python', ['-c', 'import PIL; print(PIL.__version__)']),
+    sharp: sharpMod?.versions ? `sharp ${sharpMod.versions.sharp} vips ${sharpMod.versions.vips}` : null,
+    node: process.version,
+    fonts,
+  };
+  return { tools: t, toolsSha: sha(canon(t)) };
+}
 
 /** The art file of a slot, following art/_sources.json (the studio resolver of src/server.js; not exported on main). */
 async function artResolver() {
@@ -180,7 +211,8 @@ function foreignBlender() {
 
 // ---------------------------------------------------------------- image checks
 async function pixelDiff(sharp, a, b) {
-  const raw = (f) => sharp(f).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  // a buffer, not a path: sharp keeps no handle on the file (Windows: an open handle made the retry's cleanup fail with EPERM)
+  const raw = (f) => sharp(typeof f === 'string' ? readFileSync(f) : f).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const A = await raw(a), B = await raw(b);
   if (A.info.width !== B.info.width || A.info.height !== B.info.height) return { equal: false, px: -1 };
   if (A.data.equals(B.data)) return { equal: true, px: 0 };
@@ -198,23 +230,35 @@ const failedOf = (c, mask, lim) => {
 };
 
 // ---------------------------------------------------------------- main
-const READ_CMDS = ['stage', 'order', 'before', 'verify', 'fresh', 'storage', 'backup', 'export-faces', 'import'];
+const READ_CMDS = ['stage', 'order', 'before', 'verify', 'fresh', 'storage', 'backup', 'face-export', 'ingest'];
 const WRITE_CMDS = ['orphans', 'swap', 'unswap'];
+const FILE_CMDS = ['tools', 'keys', 'keys-check']; // no database, no target: local files only
 async function main() {
-  if (![...READ_CMDS, ...WRITE_CMDS].includes(CMD) || !SET || SET.startsWith('--')) {
-    console.error(`usage: node scripts/stage-faces.mjs ${[...READ_CMDS, ...WRITE_CMDS].join('|')} --set S1 [options] [--live]  (see the head of this file)`);
+  if (![...READ_CMDS, ...WRITE_CMDS, ...FILE_CMDS].includes(CMD) || !SET || SET.startsWith('--')) {
+    console.error(`usage: node scripts/stage-faces.mjs ${[...READ_CMDS, ...WRITE_CMDS, ...FILE_CMDS].join('|')} --set S1 [options] [--live]  (see the head of this file)`);
     return 1;
   }
+  if (CMD === 'tools') {
+    // the tools print of this machine (S2n: compare the two machines before a start); --save <f> writes it (the S2n reference of ingest)
+    const tp = toolsPrint((await import('sharp')).default);
+    const rec = { at: now(), host: hostname(), toolsSha: tp.toolsSha, tools: tp.tools, stageSha: stageSha(), commit: git('rev-parse', 'HEAD'), fpCode: sha(canon(codeHashes())) };
+    console.log(`TOOLS ${tp.toolsSha} host=${rec.host} scripts=${rec.stageSha} commit=${rec.commit} fp-code=${rec.fpCode}`);
+    console.log(JSON.stringify(tp.tools, null, 1));
+    if (val('--save')) { writeFileSync(val('--save'), JSON.stringify(rec, null, 1)); console.log(`TOOLS SAVED ${val('--save')}`); }
+    return 0;
+  }
+  if (CMD === 'keys') return keysCommand();
+  if (CMD === 'keys-check') return keysCommand(true);
   if (OFFLINE) {
-    // render-only mode (a second render machine): no database, no .env. src/supabase.js is replaced by a stub (stage-offline-loader.mjs)
-    // and every Supabase request is blocked (the guard in offline mode).
-    if (CMD !== 'stage') { console.log('refused: --offline is for stage only'); return 1; }
-    if (LIVE || globalThis.__LOCALDB_API) { console.log('refused: --offline with --live or the localdb preload'); return 1; }
-    if (!val('--faces')) { console.log('refused: --offline needs --faces <file> (stage-faces export-faces)'); return 1; }
+    // render-only mode (SPEC 2.8, a second render machine): no project, no keys, exempt from the target rule. The preload
+    // (render-only-preload.mjs) maps src/supabase.js to a stub and blocks every non-local fetch; the guard blocks every Supabase request too.
+    if (CMD !== 'stage') { console.log('refused: --render-only is for stage only'); return 1; }
+    if (LIVE || globalThis.__LOCALDB_API) { console.log('refused: --render-only with --live or the localdb preload'); return 1; }
+    if (!globalThis.__S1FACE_RENDER_ONLY) { console.log('refused: --render-only needs --import ./scripts/render-only-preload.mjs'); return 1; }
+    if (!val('--face-export') || !val('--cards')) { console.log('refused: --render-only needs --face-export <file> and --cards <file>'); return 1; }
+    process.env.CARDS_FILE = val('--cards'); // src/cardstore.js reads it at import (after this line)
     installFetchGuard(null, { offline: true });
-    const { register } = await import('node:module');
-    register('./stage-offline-loader.mjs', import.meta.url);
-    return stage(null, `OFFLINE ${hostname()}`);
+    return stage(null, `RENDER-ONLY ${hostname()}`);
   }
   const refused = targetCheck();
   if (refused) { console.log(refused); return 1; }
@@ -224,7 +268,7 @@ async function main() {
   const { supabase } = await import('../src/supabase.js');
   if (read) guardClient(supabase);
   else return writeCommand(CMD, supabase, target);
-  return { stage, order, before, verify, fresh, storage, backup, 'export-faces': exportFaces, import: importStaged }[CMD](supabase, target);
+  return { stage, order, before, verify, fresh, storage, backup, 'face-export': exportFaces, ingest: importStaged }[CMD](supabase, target);
 }
 
 async function order(db, target) {
@@ -365,17 +409,21 @@ async function storage(db) {
   const ordf = val('--order') || join(ITEM, 'work', 'order.txt');
   const ids = existsSync(ordf) ? readOrder(ordf).map((o) => o.id).filter((id) => staged.has(id)) : [...staged.keys()];
   const byId = new Map(s.rows.map((r) => [r.id, r]));
-  let end = nowBytes;
-  const cut = [];
+  // the projected end of a swap of ALL these rows; over the limit: cut rows from the END of the order (the least owned) until it is
+  // under (SPEC section 4 and 5: the same order for the render, the swap and a storage cut)
+  const delta = [];
   for (const id of ids) {
     const row = byId.get(id); const m = staged.get(id);
     const old = ((row && (await oldObjects(row))) || []).reduce((t, n) => t + (s.all.get(n)?.size || 0), 0);
-    const next = end - old + stagedBytes(m);
-    if (next > limit) cut.push(id); else end = next;
+    delta.push({ id, d: stagedBytes(m) - old });
   }
+  const full = nowBytes + delta.reduce((t, x) => t + x.d, 0);
+  let end = full;
+  const cut = [];
+  for (let i = delta.length - 1; i >= 0 && end > limit; i--) { end -= delta[i].d; cut.unshift(delta[i].id); }
   if (!cut.length) { console.log(`STORAGE PASS now=${nowBytes} end=${end} limit=${limit} rows=${ids.length}`); return 0; }
-  console.log(`refused: projected end over the limit: now=${nowBytes} end=${end} limit=${limit}`);
-  console.log(`WAIT storage rows=${cut.length} ids=${cut.join(',')}`);
+  console.log(`refused: projected end over the limit: now=${nowBytes} end=${full} limit=${limit}`);
+  console.log(end <= limit ? `WAIT storage rows=${cut.length} ids=${cut.join(',')} end-without-them=${end}` : `WAIT storage rows=${cut.length} (all) end-without-them=${end} > limit`);
   return 1;
 }
 
@@ -411,7 +459,71 @@ async function backup(db, target) {
   return bad ? 1 : 0;
 }
 
-/** export-faces (for a render-only machine): the loadFaceV2 output of every card of the set that has a cards row on the target.
+/** The key lists of the two machines, from ONE order file (SPEC v2.4 2.8 P-2, r5 L-3). No database.
+ *   keys --set S1 --order <f> --out ws.txt,no.txt [--split <still s>/<anim s>,<still s>/<anim s>] [--calib calib.txt]
+ *        default: the card keys in the order of the file, index mod 2 = 0 -> ws.txt, = 1 -> no.txt (P-2). --split: each key to the machine
+ *        that ends first with the given seconds per row (for example 23/447,2.1/171). --calib: the first still row and the first animated
+ *        row of ws.txt as "<key> <rarity>" lines (r5 L-3: a SEPARATE --keys run on BOTH machines; not in no.txt). Then keys-check.
+ *   keys-check --set S1 --order <f> --keys ws.txt,no.txt
+ *        "KEYS PASS ws=<rows> no=<rows> total=352 overlap=0": the union of both lists = exactly the rows of the order file, no overlap.
+ * A list line is "<key>" (every row of the key) or "<key> <rarity>" (one row). */
+export function listRows(text, ord) {
+  const out = [];
+  for (const l of text.split(/\r?\n/).map((x) => x.trim()).filter((x) => x && !x.startsWith('#'))) {
+    const [k, r] = l.split(/\s+/);
+    const rows = ord.filter((o) => o.key === k && (!r || o.rarity === r));
+    out.push({ line: l, rows });
+  }
+  return out;
+}
+function keysCommand(checkOnly = false) {
+  const ordf = val('--order');
+  if (!ordf) { console.error('usage: keys --set S1 --order <f> --out ws.txt,no.txt [--split s/a,s/a] [--calib calib.txt] | keys-check --set S1 --order <f> --keys ws.txt,no.txt'); return 1; }
+  const ord = readOrder(ordf);
+  const keyOrder = [...new Set(ord.map((o) => o.key))];
+  let files = (val('--keys') || val('--out') || '').split(',').filter(Boolean);
+  if (files.length !== 2) { console.error('keys: two lists (ws,no)'); return 1; }
+  if (!checkOnly) {
+    const lists = [[], []];
+    let note = 'index mod 2';
+    if (val('--split')) {
+      const sp = val('--split').split(',').map((x) => x.split('/').map(Number));
+      if (sp.length !== 2 || sp.some((x) => x.length !== 2 || x.some((n) => !(n > 0)))) { console.error('usage: --split 23/447,2.1/171'); return 1; }
+      const tot = [0, 0];
+      for (const key of keyOrder) {
+        const rows = ord.filter((o) => o.key === key);
+        const cost = sp.map(([s, a]) => rows.reduce((t, r) => t + (r.cls === 'animated' ? a : s), 0));
+        const m = tot[0] + cost[0] <= tot[1] + cost[1] ? 0 : 1;
+        tot[m] += cost[m]; lists[m].push(key);
+      }
+      note = `split ${val('--split')}: ws ${(tot[0] / 3600).toFixed(2)} h, no ${(tot[1] / 3600).toFixed(2)} h`;
+    } else keyOrder.forEach((k, i) => lists[i % 2].push(k));
+    files.forEach((f, i) => writeFileSync(f, `# stage-faces keys ${now()} ${i ? 'no' : 'ws'} from ${ordf} (${note})\n${lists[i].join('\n')}\n`));
+    console.log(`KEYS WRITTEN ws=${lists[0].length} keys no=${lists[1].length} keys (${note})`);
+    if (val('--calib')) {
+      const wsRows = ord.filter((o) => lists[0].includes(o.key));
+      const st = wsRows.find((o) => o.cls === 'still'), an = wsRows.find((o) => o.cls === 'animated');
+      writeFileSync(val('--calib'), `# stage-faces calibration rows (r5 L-3): the first still and the first animated row of ws; a separate --keys run on BOTH machines\n${st.key} ${st.rarity}\n${an.key} ${an.rarity}\n`);
+      console.log(`CALIB WRITTEN ${st.id} ${st.key} ${st.rarity} + ${an.id} ${an.key} ${an.rarity}`);
+    }
+  }
+  const sets = files.map((f) => listRows(readFileSync(f, 'utf8'), ord));
+  const bad = [];
+  const seen = new Map();
+  sets.forEach((s, i) => s.forEach((x) => {
+    if (!x.rows.length) bad.push(`${x.line} not in the order`);
+    for (const r of x.rows) { if (seen.has(r.id)) bad.push(`${r.key} ${r.rarity} in ${seen.get(r.id) ? 'no' : 'ws'} and ${i ? 'no' : 'ws'}`); else seen.set(r.id, i); }
+  }));
+  const missing = ord.filter((o) => !seen.has(o.id));
+  for (const o of missing.slice(0, 10)) bad.push(`${o.key} ${o.rarity} in no list`);
+  const n = sets.map((s) => s.reduce((t, x) => t + x.rows.length, 0));
+  const overlap = n[0] + n[1] - seen.size;
+  if (seen.size !== ord.length) bad.push(`total ${seen.size} != ${ord.length}`);
+  console.log(bad.length ? `KEYS FAIL ws=${n[0]} no=${n[1]} total=${seen.size} overlap=${overlap} ${bad.slice(0, 10).join('; ')}` : `KEYS PASS ws=${n[0]} no=${n[1]} total=${seen.size} overlap=0`);
+  return bad.length ? 1 : 0;
+}
+
+/** face-export (for a render-only machine): the loadFaceV2 output of every card of the set that has a cards row on the target.
  *  { at, target, set, cards: <sha256 of the cards file>, faces: { <key>: <v2> } }. Read only. */
 async function exportFaces(db, target) {
   const out = val('--out') || join(ITEM, 'work', `faces-${SET.toLowerCase()}.json`);
@@ -433,14 +545,21 @@ async function exportFaces(db, target) {
   return bad || v1 ? 1 : 0;
 }
 
-/** import (the workstation): take the STAGED rows of another machine's manifest. For each row (the newest STAGED line):
- *  the files (found by name in --files <dir>) must have the sha256 and bytes of the line; the image checks run again (face check of the
- *  main file, page 0 and last page, the thumbs decode); fp is RECOMPUTED here from the local inputs and the target's face data and must
- *  equal the line's fp. Else "IMPORT REFUSED <id> <why>". A pass copies the files to work/stage/ and appends a STAGED line with the
- *  target's image_url as "old" and origin=<the other machine>. A row that is STAGED here already is skipped. Read only on the database. */
+/** ingest (SPEC v2.4 2.8, the workstation): take the STAGED rows of the render-only machine. --from <dir> holds its manifest
+ *  (staged.jsonl, or --remote-manifest <f>) and its row files (<dir>/stage/ or <dir>). For each row (the newest STAGED line):
+ *  (1) fp RECOMPUTED here from the local inputs and the target's face data = the row fp; (1b) the row commit = this HEAD, and the row
+ *  stageSha = the LF sha of this machine's render scripts (SCRIPT_FILES); (1c) the row tools = this machine's tools, AND this machine's
+ *  tools now = the S2n reference (--tools-ref, default <item>/work/tools-s2n.json; r5 L-2: a tools change here after S2n refuses);
+ *  (2) each file sha and bytes = the row; (3) the content checks again (face check of the main file, page count, last page, thumbs decode).
+ *  Pass: the files are copied to work/stage/, a STAGED line with host=<the other machine> and old=<the target image_url> is appended:
+ *  "INGESTED <id> ...". Else "INGEST FAIL <id> <key> <rarity> <why>" (the row is rendered again on the workstation).
+ *  A row that is STAGED here already (the calibration rows, r5 L-3): "CALIB <id> still pixel-equal|differs px=<n>" or, animated, the last
+ *  frame of both to work/calib/ for Nathan; not ingested. Last line "INGEST PASS n=<k>" or "INGEST FAIL n=<k> fail=<f>". Read only. */
 async function importStaged(db, target) {
-  const from = val('--from'), filesDir = val('--files'), man = val('--manifest');
-  if (!from || !filesDir || !man) { console.error('usage: import --set S1 --from <their manifest> --files <dir> --manifest <ours>'); return 1; }
+  const from = val('--from'), man = val('--manifest');
+  if (!from || !man) { console.error('usage: ingest --set S1 --from <dir> --manifest <ours> [--remote-manifest <f>] [--tools-ref <f>] [--live]'); return 1; }
+  const remoteMan = val('--remote-manifest') || join(from, 'staged.jsonl');
+  const filesDir = existsSync(join(from, 'stage')) ? join(from, 'stage') : from;
   const sharp = (await import('sharp')).default;
   const { loadFaceV2 } = await import('../src/face-data.js');
   const { getCards } = await import('../src/cardstore.js');
@@ -449,21 +568,26 @@ async function importStaged(db, target) {
   const resolve = await artResolver();
   const code = codeHashes();
   const cards = new Map(getCards().filter((c) => c.set === SET).map((c) => [c.id, c]));
-  const { staged: theirs } = manifestState(readManifest(from));
+  const tp = toolsPrint(sharp), myStage = stageSha(), myHead = git('rev-parse', 'HEAD');
+  console.log(`TOOLS ${tp.toolsSha.slice(0, 12)} commit=${myHead.slice(0, 8)} scripts=${myStage.slice(0, 12)}`);
+  // r5 L-2: this machine's tools must still be the tools of the S2n check
+  const refF = val('--tools-ref') || join(ITEM, 'work', 'tools-s2n.json');
+  if (!existsSync(refF)) { console.log(`refused: no S2n tools reference ${refF} (stage-faces tools --save)`); return 1; }
+  const ref = JSON.parse(readFileSync(refF, 'utf8'));
+  if (ref.toolsSha !== tp.toolsSha) {
+    console.log(`refused: the tools of this machine changed after S2n (${Object.keys(tp.tools).filter((k) => canon(tp.tools[k]) !== canon(ref.tools?.[k])).join(',')})`);
+    return 1;
+  }
+  if (!existsSync(remoteMan)) { console.log(`refused: no remote manifest ${remoteMan}`); return 1; }
+  const { staged: theirs } = manifestState(readManifest(remoteMan));
   const { staged: ours } = manifestState(readManifest(man));
-  const STAGE = join(dirname(man), 'stage');
+  const STAGE = join(dirname(man), 'stage'), CALIB = join(dirname(man), 'calib');
   mkdirSync(STAGE, { recursive: true });
   const v2s = new Map();
-  let ok = 0, refused = 0, skipped = 0;
+  let ok = 0, failed = 0, calib = 0;
   const base = (p) => String(p).replace(/\\/g, '/').split('/').pop();
   for (const m of theirs.values()) {
-    if (ours.has(m.card_id)) { skipped += 1; console.log(`IMPORT SKIP ${m.card_id} staged here`); continue; }
     const why = [];
-    const card = cards.get(m.key);
-    const { data: row, error } = await db.from('cards').select('id, rarity, image_url, set_id, subject:subjects!inner(key)').eq('id', m.card_id).maybeSingle();
-    if (error) throw new Error(`cards ${m.card_id}: ${error.message}`);
-    if (!row || row.subject.key !== m.key || row.rarity !== m.rarity || row.set_id !== SET) why.push('row');
-    if (!card) why.push('card');
     const local = {};
     for (const [k, f] of Object.entries(m.files || {})) {
       if (!f) continue;
@@ -473,15 +597,42 @@ async function importStaged(db, target) {
       if (sha(buf) !== f.sha256 || buf.length !== f.bytes) why.push(`${k} sha`);
       local[k] = { p, buf };
     }
+    if (ours.has(m.card_id)) {
+      // the calibration rows (r5 L-3): staged on both machines. Compare, do not ingest.
+      calib += 1;
+      const mine = ours.get(m.card_id);
+      if (why.length || !local.main) { console.log(`CALIB ${m.card_id} ${m.key} ${m.rarity} remote file ${why.join(',') || 'missing'}`); continue; }
+      if (!ANIMATED.has(m.rarity)) {
+        const d = await pixelDiff(sharp, local.main.p, mine.files.main.path);
+        console.log(`CALIB ${m.card_id} ${m.key} ${m.rarity} still ${d.equal ? 'pixel-equal' : `differs px=${d.px}`}`);
+      } else {
+        mkdirSync(CALIB, { recursive: true });
+        for (const [who, f] of [['remote', local.main.p], ['here', mine.files.main.path]]) {
+          const md = await sharp(f, { animated: true }).metadata();
+          await sharp(f, { page: md.pages - 1 }).png().toFile(join(CALIB, `${m.key}-${m.rarity}-last-${who}.png`));
+        }
+        const d = await pixelDiff(sharp, join(CALIB, `${m.key}-${m.rarity}-last-remote.png`), join(CALIB, `${m.key}-${m.rarity}-last-here.png`));
+        console.log(`CALIB ${m.card_id} ${m.key} ${m.rarity} animated last-frame ${d.equal ? 'pixel-equal' : `differs px=${d.px}`} files=${CALIB.replace(/\\/g, '/')}`);
+      }
+      continue;
+    }
+    const card = cards.get(m.key);
+    const { data: row, error } = await db.from('cards').select('id, rarity, image_url, set_id, subject:subjects!inner(key)').eq('id', m.card_id).maybeSingle();
+    if (error) throw new Error(`cards ${m.card_id}: ${error.message}`);
+    if (!row || row.subject.key !== m.key || row.rarity !== m.rarity || row.set_id !== SET) why.push('row');
+    if (!card) why.push('card');
+    if (m.commit !== myHead) why.push(`commit ${String(m.commit).slice(0, 8)}`);
+    if (m.stageSha !== myStage) why.push('code');
+    if (m.toolsSha !== tp.toolsSha) why.push(`tools (${Object.keys(tp.tools).filter((k) => canon(tp.tools[k]) !== canon(m.tools?.[k])).join(',') || 'tools'})`);
     if (!why.length) {
       const anim = ANIMATED.has(m.rarity);
       try {
         const c0 = await fc.faceCheck(local.main.buf);
-        if (!c0.ok) why.push('main check');
+        for (const x of failedOf(c0, false, fc)) why.push(`check ${x}`);
         if (anim) {
           const md = await sharp(local.main.buf, { animated: true }).metadata();
           if (md.pages !== ANIM_PAGES || md.width !== 500 || md.pageHeight !== 700) why.push(`pages=${md.pages}`);
-          else if (!(await fc.faceCheck(await sharp(local.main.buf, { page: md.pages - 1 }).png().toBuffer())).ok) why.push('last page check');
+          else for (const x of failedOf(await fc.faceCheck(await sharp(local.main.buf, { page: md.pages - 1 }).png().toBuffer()), false, fc)) why.push(`last ${x}`);
           if (!local.reveal) why.push('no reveal'); else await sharp(local.reveal.buf, { animated: true }).metadata();
         }
         await sharp(local.grid.buf).metadata();
@@ -497,16 +648,16 @@ async function importStaged(db, target) {
         if (inp.fp !== m.fp) why.push(`fp (${Object.keys(inp.fpParts).filter((k) => canon(inp.fpParts[k]) !== canon(m.fpParts?.[k])).join(',') || 'fp'})`);
       }
     }
-    if (why.length) { refused += 1; console.log(`IMPORT REFUSED ${m.card_id} ${m.key} ${m.rarity} ${why.join(',')}`); continue; }
+    if (why.length) { failed += 1; console.log(`INGEST FAIL ${m.card_id} ${m.key} ${m.rarity} ${why.join(',')}`); continue; }
     const files = {};
     for (const [k, { p, buf }] of Object.entries(local)) { const dest = join(STAGE, base(p)); writeFileSync(dest, buf); files[k] = { path: dest.replace(/\\/g, '/'), sha256: sha(buf), bytes: buf.length }; }
     if (!files.reveal) files.reveal = null;
-    appendFileSync(man, JSON.stringify({ ...m, old: row.image_url, files, origin: m.host || 'other', importedAt: now() }) + '\n');
+    appendFileSync(man, JSON.stringify({ ...m, old: row.image_url, files, host: m.host || 'other', ingestedAt: now() }) + '\n');
     ok += 1;
-    console.log(`IMPORTED ${m.card_id} ${m.key} ${m.rarity}`);
+    console.log(`INGESTED ${m.card_id} ${m.key} ${m.rarity} host=${m.host}`);
   }
-  console.log(`IMPORT ${refused ? 'FAIL' : 'PASS'} imported=${ok} refused=${refused} skipped=${skipped} target=${target}`);
-  return refused ? 1 : 0;
+  console.log(failed ? `INGEST FAIL n=${ok} fail=${failed} calib=${calib} target=${target}` : `INGEST PASS n=${ok} calib=${calib} target=${target}`);
+  return failed ? 1 : 0;
 }
 
 async function stage(db, target) {
@@ -517,19 +668,23 @@ async function stage(db, target) {
   const local = Boolean(globalThis.__LOCALDB_API);
   const head = git('rev-parse', 'HEAD');
   const sharp = (await import('sharp')).default;
+  sharp.cache(false); // no file handles kept open (Windows: the retry removes the files of the attempt before)
   const { renderTier } = await import('../src/push.js');
   const { renderPng } = await import('../src/render.js');
   const { loadFaceV2 } = await import('../src/face-data.js');
   const { ANIMATED, artKeyFor } = await import('../src/rarity.js');
   const { getCards } = await import('../src/cardstore.js');
-  const facesFile = OFFLINE ? JSON.parse(readFileSync(val('--faces'), 'utf8')) : null;
-  if (facesFile) console.log(`FACES ${val('--faces')} sha256=${sha(readFileSync(val('--faces')))} cards=${Object.keys(facesFile.faces).length} at=${facesFile.at} from=${facesFile.target}`);
-  if (OFFLINE && globalThis.__S1FACE_OFFLINE_SUPABASE !== true) throw new Error('offline: the supabase stub is not in place');
-  if (OFFLINE) console.log('OFFLINE src/supabase.js=stub (no .env, no client)');
+  const facesFile = OFFLINE ? JSON.parse(readFileSync(val('--face-export'), 'utf8')) : null;
+  if (facesFile) console.log(`FACE-EXPORT ${val('--face-export')} sha256=${sha(readFileSync(val('--face-export')))} cards=${Object.keys(facesFile.faces).length} at=${facesFile.at} from=${facesFile.target}`);
+  if (OFFLINE && globalThis.__S1FACE_RENDER_ONLY_SUPABASE !== true) throw new Error('render-only: the supabase stub is not in place');
+  if (OFFLINE) console.log(`RENDER-ONLY src/supabase.js=stub (no .env, no client) cards=${val('--cards')}`);
   const { makeThumbs } = await import('../src/thumbs.js');
   const fc = await import('./face-check.mjs');
   const resolve = await artResolver();
   const code = codeHashes();
+  const tp = toolsPrint(sharp);
+  const scriptSha = stageSha();
+  console.log(`TOOLS ${tp.toolsSha.slice(0, 12)} edge=${tp.tools.edge} blender="${tp.tools.blender}" python="${tp.tools.python}" pillow=${tp.tools.pillow} ${tp.tools.sharp} node=${tp.tools.node} fonts=${Object.keys(tp.tools.fonts).length} stage-faces=${scriptSha.slice(0, 12)}`);
   const cardsFile = process.env.CARDS_FILE || join(ROOT, 'cards.json');
   console.log(`CARDS_FILE ${process.env.CARDS_FILE || 'cards.json'} sha256=${sha(readFileSync(cardsFile))}`);
   const cards = new Map(getCards().filter((c) => c.set === SET).map((c) => [c.id, c]));
@@ -541,9 +696,10 @@ async function stage(db, target) {
   const keyOrder = [...new Set(ordAll.map((o) => o.key))];
   const shard = val('--shard') ? val('--shard').split('/').map(Number) : null;
   if (shard && !(shard[1] >= 1 && shard[0] >= 1 && shard[0] <= shard[1])) { console.error('usage: --shard i/n (1 <= i <= n)'); return 1; }
-  const keySet = val('--keys') ? new Set(readFileSync(val('--keys'), 'utf8').split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith('#')))
+  const keyRows = val('--keys') ? new Set(listRows(readFileSync(val('--keys'), 'utf8'), ordAll).flatMap((x) => x.rows.map((r) => r.id))) : null;
+  const keySet = keyRows ? new Set(ordAll.filter((o) => keyRows.has(o.id)).map((o) => o.key))
     : shard ? new Set(keyOrder.filter((k, i) => i % shard[1] === shard[0] - 1)) : null;
-  const ord = ordAll.filter((o) => !keySet || keySet.has(o.key)).map((o) => o.id);
+  const ord = ordAll.filter((o) => (keyRows ? keyRows.has(o.id) : !keySet || keySet.has(o.key))).map((o) => o.id);
   const { staged } = manifestState(readManifest(man));
   const todo = ONLY || ord.filter((id) => !staged.has(id));
   if (keySet) console.log(`SHARD ${val('--shard') || 'keys ' + val('--keys')} keys=${keySet.size} rows=${ord.length}`);
@@ -574,7 +730,8 @@ async function stage(db, target) {
     for (;;) {
       if (existsSync(PAUSE)) { console.log('PAUSE'); summary('PAUSE'); return 3; }
       if (Date.now() >= until) { console.log('UNTIL reached'); summary('UNTIL'); return 4; }
-      const fb = foreignBlender();
+      // S1FACE_TEST_NOWAIT=1: a LOCAL (or offline) test of a still row that does not test this rule (no Blender in the row)
+      const fb = (local || OFFLINE) && process.env.S1FACE_TEST_NOWAIT === '1' ? [] : foreignBlender();
       if (fb && !fb.length) break;
       const why = fb ? `foreign-blender pid=${fb.join(',')}` : 'process-list-unreadable';
       console.log(`WAIT ${why} ${now()}`); // every check: the stage log moves (the stall watchdog reads it)
@@ -602,7 +759,7 @@ async function stage(db, target) {
     if (!card) { fail(key, rarity, `no ${SET} card in cards.json`); continue; }
     if (!(card.finishes || []).includes(rarity)) { fail(key, rarity, 'the finish is not in cards.json'); continue; }
     if (!v2s.has(key)) {
-      if (OFFLINE) v2s.set(key, key in facesFile.faces ? facesFile.faces[key] : { error: 'not in the faces file' });
+      if (OFFLINE) v2s.set(key, key in facesFile.faces ? facesFile.faces[key] : { error: 'not in the face export' });
       else v2s.set(key, await loadFaceV2(db, card).catch((e) => ({ error: e.message || String(e) })));
     }
     if (isBlocked()) return 5;
@@ -619,8 +776,10 @@ async function stage(db, target) {
     const maskPng = join(OUT, `${key}-${rarity}-mask.png`), textMask = join(OUT, `${key}-${rarity}-textmask.png`), text2 = join(OUT, `${key}-${rarity}-textmask-twice.png`);
     let result = null, checks = null, why = null, attempt = 0, thumbs = null;
     for (attempt = 0; attempt < 3; attempt++) {
-      for (const f of [facePng, face2, webp, maskPng, textMask, text2]) rmSync(f, { force: true });
-      rmSync(frames, { recursive: true, force: true });
+      // a file that cannot be removed (a handle of another process) is overwritten by the render: a warning, not a crash of the run
+      for (const f of [facePng, face2, webp, maskPng, textMask, text2, frames]) {
+        try { rmSync(f, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } catch (e) { console.log(`WARN cleanup ${f} ${e.code || e.message}`); }
+      }
       let file;
       try {
         ({ file } = await renderTier({ ...card, v2 }, rarity, (r) => resolve(card.id, artKeyFor(r)), OUT));
@@ -635,25 +794,26 @@ async function stage(db, target) {
       if (plant && plantId === id) await doPlant(sharp, plant, attempt, { facePng, face2, textMask, text2 });
       checks = {};
       const fails = [];
-      const f0 = await fc.faceCheck(facePng); checks.face = f0;
+      const f0 = await fc.faceCheck(readFileSync(facePng)); checks.face = f0;
       for (const m of failedOf(f0, false, fc)) fails.push(`face ${m}`);
       const d = await pixelDiff(sharp, facePng, face2); checks.twice = d;
       if (!d.equal) fails.push('twice-differ');
       if (anim) {
-        if (rarity !== 'gold') { const c = await fc.faceCheck(maskPng); checks.mask = c; for (const m of failedOf(c, true, fc)) fails.push(`mask ${m}`); }
+        if (rarity !== 'gold') { const c = await fc.faceCheck(readFileSync(maskPng)); checks.mask = c; for (const m of failedOf(c, true, fc)) fails.push(`mask ${m}`); }
         if (!existsSync(textMask)) fails.push('no textmask');
         else {
-          const c = await fc.faceCheck(textMask); checks.textmask = c; for (const m of failedOf(c, true, fc)) fails.push(`textmask ${m}`);
+          const c = await fc.faceCheck(readFileSync(textMask)); checks.textmask = c; for (const m of failedOf(c, true, fc)) fails.push(`textmask ${m}`);
           const t = await pixelDiff(sharp, textMask, text2); checks.textTwice = t;
           if (!t.equal) fails.push('textmask-differ');
         }
         try {
-          const md = await sharp(webp, { animated: true }).metadata();
+          const wb = readFileSync(webp);
+          const md = await sharp(wb, { animated: true }).metadata();
           checks.webp = { pages: md.pages, width: md.width, pageHeight: md.pageHeight };
           if (md.pages !== ANIM_PAGES || md.width !== 500 || md.pageHeight !== 700) fails.push(`webp pages=${md.pages} ${md.width}x${md.pageHeight}`);
           else {
-            const p0 = await fc.faceCheck(webp);
-            const pl = await fc.faceCheck(await sharp(webp, { page: md.pages - 1 }).png().toBuffer());
+            const p0 = await fc.faceCheck(wb);
+            const pl = await fc.faceCheck(await sharp(wb, { page: md.pages - 1 }).png().toBuffer());
             checks.page0 = p0; checks.pageLast = pl;
             for (const m of failedOf(p0, false, fc)) fails.push(`page0 ${m}`);
             for (const m of failedOf(pl, false, fc)) fails.push(`pageLast ${m}`);
@@ -682,10 +842,10 @@ async function stage(db, target) {
     if (anim) save(`${base}-face.png`, readFileSync(facePng)); // the still face, for the preview
     const sec = Math.round((Date.now() - t0) / 1000);
     write({ s: 'STAGED', card_id: id, key, rarity, host: hostname(), cls: anim ? 'animated' : 'still', old: row.image_url, files, fp: sha(canon(inp.fpParts)), fpParts: inp.fpParts,
-      face: faceLine(v2), checks, sec, attempts: attempt + 1, commit: head, stamp, at: now() });
+      face: faceLine(v2), checks, sec, attempts: attempt + 1, commit: head, stageSha: scriptSha, tools: tp.tools, toolsSha: tp.toolsSha, stamp, at: now() });
     nStaged += 1;
     console.log(`STAGED ${id} ${key} ${rarity} sec=${sec} attempts=${attempt + 1} bytes=${files.main.bytes + files.grid.bytes + (files.reveal?.bytes || 0)} file=${files.main.path}`);
-    rmSync(frames, { recursive: true, force: true });
+    try { rmSync(frames, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } catch (e) { console.log(`WARN cleanup ${frames} ${e.code}`); }
   }
   summary('done');
   return 0;
@@ -749,7 +909,7 @@ async function orphans(db, target) {
   const total = list.reduce((t, o) => t + o.size, 0);
   console.log(`ORPHANS list n=${list.length} bytes=${total} target=${target}`);
   for (const o of list) console.log(`  WILL DELETE ${o.name} ${o.size}`);
-  if (plus.length || minus.length) { console.log(`refused: list differs ${plus.map((n) => '+' + n).join(' ')} ${minus.map((n) => '-' + n).join(' ')}`.trim()); return 1; }
+  if (plus.length || minus.length) { console.log(`refused: list differs ${[...plus.map((n) => '+' + n), ...minus.map((n) => '-' + n)].join(' ')}`); return 1; }
   if (size.length) { console.log(`refused: size differs ${size.join(' ')}`); return 1; }
   if (flag('--dry')) { console.log('ORPHANS DRY (nothing written)'); return 0; }
   // backup with sha, before any delete

@@ -11,7 +11,7 @@ import './localdb-guard.mjs';
  *   TARGET   no preload and no --live = refused; --live with another project ref = "refused: not the TCG project".
  *   SETUP    (L-b) the main, grid, reveal of the 3 test rows: GET from live (curl, public objects), upload to the LOCAL bucket.
  *   GUARD    against the LOCAL STUB (scripts/stage-stub.mjs, a recording proxy in front of the copy, also for the Management SQL):
- *            order (N-1: player_cards > 1,000 rows, paged, owner totals = SQL), stage --only <still>, verify, storage, backup, export-faces under
+ *            order (N-1: player_cards > 1,000 rows, paged, owner totals = SQL), stage --only <still>, verify, storage, backup, face-export under
  *            the guard: exit 0, no WRITE BLOCKED, every recorded request is allowed. Mutations (a) writeTierRow (b) storage upload (c) rpc
  *            admin_set_save (d) GET players (e) Management SQL (f) /read-only (g) storage DELETE: each WRITE BLOCKED, exit 5, and the stub
  *            records NO request that the allow-list forbids.
@@ -26,9 +26,13 @@ import './localdb-guard.mjs';
  *            back = refused; one extra name = "refused: list differs +<name>"; one missing = "-<name>"; one size = "refused: size differs".
  *   YIELD    PAUSE = exit 3 no ROW; --until past = exit 4; resume skips a staged row; a real foreign "blender --background" = WAIT lines, S1 log
  *            "S1 WAIT foreign-blender" (repeated) and "S1 RESUME", then STAGED. Mutation: the PAUSE check removed = the PAUSE case FAILs.
- *   OFFLINE  render-only: export-faces (copy), then stage --offline --faces with NO Supabase env and a missing .env: STAGED, "OFFLINE
- *            src/supabase.js=stub"; --shard 1/2 and 2/2 are disjoint and cover the order; import of the offline manifest on the copy = IMPORTED;
- *            a file with one byte changed = IMPORT REFUSED sha; a changed faces file (fp) = IMPORT REFUSED fp.
+ *   RENDERONLY (2.8) face-export; stage --render-only with the preload, NO Supabase env and no .env: 1 still + 1 animated STAGED;
+ *            --live = refused; no preload = refused. Mutations: a fetch to another host = NET BLOCKED; a use of the client = RENDER-ONLY: no database.
+ *   INGEST   the remote folder (staged.jsonl + stage/) = INGEST PASS n=2; the same rows staged here = CALIB lines (r5 L-3). Mutations: one byte,
+ *            another fp, another Edge, another font sha, another commit, another stage-faces.mjs, the UI-68 cut PNG = INGEST FAIL; the
+ *            workstation tools changed after S2n = refused (r5 L-2). fp-code is CRLF/LF neutral (P-3).
+ *   KEYS     keys (index mod 2) + keys-check = KEYS PASS ws=<a> no=<b> total=352 overlap=0; calib.txt = 2 rows; stage --keys rows add up.
+ *            Mutations: one key in both lists, one key missing = KEYS FAIL.
  */
 import { spawnSync, spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync, copyFileSync, readdirSync, appendFileSync } from 'node:fs';
@@ -74,17 +78,22 @@ const sameH = (a, b) => a.cards === b.cards && a.subjects === b.subjects && a.st
 
 // a child run of stage-faces (or a mutated copy) on the copy, or on the stub (envFile)
 const LOCALENV = process.env.LOCALDB_ENV;
-function sf(args, { env = {}, script = 'scripts/stage-faces.mjs', envFile = LOCALENV, preload = true, timeoutMin = 40 } = {}) {
-  const r = spawnSync(process.execPath, [...(preload ? ['--import', './scripts/localdb-preload.mjs'] : []), script, ...args], {
-    cwd: ROOT, encoding: 'utf8', timeout: timeoutMin * 60000,
-    env: { ...process.env, LOCALDB_ENV: envFile, LOCALDB_QUIET: '1', S1FACE_ITEM: ITEM, S1FACE_LOG: S1LOG, ...env },
+// async: the stub (stage-stub.mjs) runs in THIS process and must answer while the child runs (spawnSync would block it)
+// wait: false (default) = S1FACE_TEST_NOWAIT=1 (a still row that does not test the foreign-Blender rule); true = the real rule (a Blender row)
+function sf(args, { env = {}, script = 'scripts/stage-faces.mjs', envFile = LOCALENV, preload = true, timeoutMin = 40, wait = false } = {}) {
+  return new Promise((resolve) => {
+    const c = spawn(process.execPath, [...(preload ? ['--import', './scripts/localdb-preload.mjs'] : []), script, ...args], {
+      cwd: ROOT, env: { ...process.env, LOCALDB_ENV: envFile, LOCALDB_QUIET: '1', S1FACE_ITEM: ITEM, S1FACE_LOG: S1LOG, ...(wait ? {} : { S1FACE_TEST_NOWAIT: '1' }), ...(preload ? {} : { LOCALDB: '' }), ...env },
+    });
+    let out = '';
+    c.stdout.on('data', (d) => { out += d; }); c.stderr.on('data', (d) => { out += d; });
+    const timer = setTimeout(() => { try { c.kill(); } catch { /* gone */ } }, timeoutMin * 60000);
+    c.on('close', (code) => { clearTimeout(timer); resolve({ code, out, lines: out.split(/\r?\n/) }); });
   });
-  const out = (r.stdout || '') + (r.stderr || '');
-  return { code: r.status, out, lines: out.split(/\r?\n/) };
 }
 const man = (name) => `${ITEM}/work/${name}.jsonl`;
 const stageArgs = (m, extra = []) => ['stage', '--set', 'S1', '--order', ORDER, '--manifest', m, '--until', '2099-01-01T00:00:00Z', ...extra];
-const show = (r, re = /^(START|ROW|FACE|CHECK|RETRY|FAIL|STAGED|PAUSE|UNTIL|SUMMARY|WRITE BLOCKED|ERROR|TEST|refused|OFFLINE|SHARD|IMPORT|EXPORT|ORPHANS|STORAGE|VERIFY|BYTES|B11|ORDER|BACKUP|FRESH|STALE)/) =>
+const show = (r, re = /^(START|ROW|FACE|CHECK|RETRY|FAIL|STAGED|PAUSE|UNTIL|SUMMARY|WRITE BLOCKED|ERROR|TEST|refused|RENDER-ONLY|SHARD|INGEST|FACE-EXPORT|ORPHANS|STORAGE|VERIFY|BYTES|B11|ORDER|BACKUP|FRESH|STALE)/) =>
   r.lines.filter((l) => re.test(l)).forEach((l) => console.log('   | ' + l.slice(0, 230)));
 function mutant(name, edits) {
   let s = readFileSync(join(ROOT, 'scripts', 'stage-faces.mjs'), 'utf8');
@@ -112,7 +121,7 @@ const MUTS = {
 const tlog = (block, t) => appendFileSync('C:/Users/vaugh/lptcg-pipeline/items/S1-FACE/logs/test-times.txt', `${new Date().toISOString()} test-stage-faces ${block} ${((Date.now() - t) / 1000).toFixed(0)} s\n`);
 
 // the order file (read only, on the copy)
-let o = sf(['order', '--set', 'S1', '--out', ORDER]);
+let o = await sf(['order', '--set', 'S1', '--out', ORDER]);
 show(o, /^ORDER/);
 if (o.code !== 0) { console.log(o.out); process.exit(1); }
 const ordRows = readFileSync(ORDER, 'utf8').split(/\n/).filter((l) => l && !l.startsWith('#')).map((l) => l.split('\t'));
@@ -156,9 +165,9 @@ if (want('STATIC')) {
 
 // ---------------------------------------------------------------- TARGET
 if (want('TARGET')) {
-  let r = sf(['stage', '--set', 'S1'], { preload: false, env: { LOCALDB: '' } });
+  let r = await sf(['stage', '--set', 'S1'], { preload: false, env: { LOCALDB: '' } });
   res('TARGET no --live, no preload', r.code === 1 && r.lines.includes('refused: the target is LIVE (use --live)'));
-  r = sf(['verify', '--set', 'S1', '--live'], { preload: false, env: { LOCALDB: '', SUPABASE_URL: 'https://abcdefghijklmnopqrst.supabase.co' } });
+  r = await sf(['verify', '--set', 'S1', '--live'], { preload: false, env: { LOCALDB: '', SUPABASE_URL: 'https://abcdefghijklmnopqrst.supabase.co' } });
   res('TARGET another project ref', r.code === 1 && r.lines.includes('refused: not the TCG project'), r.lines.find((l) => l.startsWith('refused')) || '');
 }
 
@@ -201,12 +210,12 @@ if (want('GUARD')) {
     ['verify', ['verify', '--set', 'S1', '--manifest', man('guard-stage'), '--order', ORDER, '--before', `${ITEM}/work/before-stub.json`]],
     ['storage', ['storage', '--set', 'S1', '--manifest', man('guard-stage'), '--order', ORDER]],
     ['backup', ['backup', '--set', 'S1', '--only', String(STILL), '--out', `${ITEM}/work/guard-backup/backup`]],
-    ['export-faces', ['export-faces', '--set', 'S1', '--out', `${ITEM}/work/faces-stub.json`]],
+    ['face-export', ['face-export', '--set', 'S1', '--out', `${ITEM}/work/faces-stub.json`]],
   ];
-  sf(['before', '--set', 'S1', '--out', `${ITEM}/work/before-stub.json`], { envFile: stubEnv });
+  await sf(['before', '--set', 'S1', '--out', `${ITEM}/work/before-stub.json`], { envFile: stubEnv });
   for (const [name, args] of runs) {
     const from = stub.log.length;
-    const r = sf(args, { envFile: stubEnv });
+    const r = await sf(args, { envFile: stubEnv });
     show(r, /^(ORDER|STAGED|FAIL|VERIFY|COUNTS|BYTES|STORAGE|WAIT storage|BACKUP|EXPORT|WRITE BLOCKED|ERROR|refused)/);
     const fb = forbidden(from);
     const okCode = name === 'storage' || name === 'verify' ? r.code === 0 || r.code === 1 : r.code === 0;
@@ -223,7 +232,7 @@ if (want('GUARD')) {
   // the mutations: each forbidden request, under the guard, from stage() before any row
   for (const [name, code] of Object.entries(MUTS)) {
     const from = stub.log.length;
-    const r = sf(stageArgs(man(`guard-${name}`), ['--only', String(STILL)]), { envFile: stubEnv, script: mutant(name, [[ANCHOR, code + ANCHOR]]) });
+    const r = await sf(stageArgs(man(`guard-${name}`), ['--only', String(STILL)]), { envFile: stubEnv, script: mutant(name, [[ANCHOR, code + ANCHOR]]) });
     const fb = forbidden(from);
     const bl = r.lines.find((l) => l.startsWith('WRITE BLOCKED')) || '-';
     mut(`guard_${name}`, r.code === 5 && bl !== '-' && !fb.length && !r.lines.some((l) => l.startsWith('ROW ')), `${bl}, exit ${r.code}, forbidden requests at the stub=${fb.length}`);
@@ -237,7 +246,7 @@ if (want('GUARD')) {
 if (want('NOWRITE') || want('FP') || want('STORAGE')) {
   const t = Date.now();
   const h0 = await H();
-  const r = sf(stageArgs(man('nowrite'), ['--only', testIds.join(',')]));
+  const r = await sf(stageArgs(man('nowrite'), ['--only', testIds.join(',')]), { wait: true });
   show(r);
   const h1 = await H();
   const st = existsSync(man('nowrite')) ? readFileSync(man('nowrite'), 'utf8').trim().split(/\n/).map((l) => JSON.parse(l)).filter((l) => l.s === 'STAGED') : [];
@@ -248,7 +257,7 @@ if (want('NOWRITE') || want('FP') || want('STORAGE')) {
   for (const l of st) console.log(`   ${l.card_id} ${l.key} ${l.rarity} sec=${l.sec} attempts=${l.attempts} bytes=${Object.values(l.files).filter(Boolean).reduce((a, f) => a + f.bytes, 0)} pages=${l.checks?.webp?.pages ?? '-'} textTwice=${l.checks?.textTwice?.equal ?? '-'}`);
   // the mutation: the guard removed + writeTierRow (on the still row)
   const [row] = await sql(`select image_url from cards where id = ${STILL}`);
-  const mb = sf(stageArgs(man('nowrite-mut'), ['--only', String(STILL)]), { script: mutant('nowrite', [[GUARD_ON, '  // guard removed (mutant)\n'], [GUARD_CLIENT, ''], [AFTER_STAGED, AFTER_STAGED + WRITE]]) });
+  const mb = await sf(stageArgs(man('nowrite-mut'), ['--only', String(STILL)]), { script: mutant('nowrite', [[GUARD_ON, '  // guard removed (mutant)\n'], [GUARD_CLIENT, ''], [AFTER_STAGED, AFTER_STAGED + WRITE]]) });
   const hb = await H();
   if (hb.cards !== h0.cards) console.log('NOWRITE FAIL db');
   mut('nowrite_guard_removed_writeTierRow', hb.cards !== h0.cards, `cards hash ${hb.cards === h0.cards ? 'equal' : 'differs'}, exit ${mb.code}`);
@@ -263,20 +272,20 @@ if (want('FP')) {
   const t = Date.now();
   const M = man('nowrite');
   const fresh = (opts = {}) => sf(['fresh', '--set', 'S1', '--manifest', M], opts);
-  let r = fresh();
+  let r = await fresh();
   res('FP baseline FRESH n=3', r.lines.includes('FRESH n=3 stale=0'), r.lines.filter((l) => /^(FRESH n|STALE)/.test(l)).join(' | '));
-  r = fresh({ script: mutant('fp', [['// ---------------------------------------------------------------- main', '// a change only in stage-faces.mjs\n// ---------------------------------------------------------------- main']]) });
+  r = await fresh({ script: mutant('fp', [['// ---------------------------------------------------------------- main', '// a change only in stage-faces.mjs\n// ---------------------------------------------------------------- main']]) });
   res('FP a change only in stage-faces.mjs = FRESH', r.lines.includes('FRESH n=3 stale=0'));
   cleanMutants();
   const fv = join(ROOT, 'src', 'face-v2.js'); const orig = readFileSync(fv);
-  try { writeFileSync(fv, Buffer.concat([orig, Buffer.from(' ')])); r = fresh(); } finally { writeFileSync(fv, orig); }
+  try { writeFileSync(fv, Buffer.concat([orig, Buffer.from(' ')])); r = await fresh(); } finally { writeFileSync(fv, orig); }
   res('FP one char in face-v2.js = STALE (all)', r.lines.includes('FRESH n=0 stale=3') && r.lines.filter((l) => l.startsWith('STALE ')).every((l) => /\bcode\b/.test(l)), r.lines.filter((l) => /^(FRESH n|STALE)/.test(l)).join(' | '));
   res('FP face-v2.js restored', sha(readFileSync(fv)) === sha(orig));
   const key = rowOf(STILL)[1];
   const [ab] = await sql(`select ability_v2::text a from subjects where key = '${key}'`);
   try {
     await sql(`update subjects set ability_v2 = jsonb_set(ability_v2, '{name}', to_jsonb((ability_v2->>'name') || ' X')) where key = '${key}'`);
-    r = fresh();
+    r = await fresh();
   } finally { await sql(`update subjects set ability_v2 = '${ab.a.replace(/'/g, "''")}'::jsonb where key = '${key}'`); }
   res(`FP ability_v2 of ${key} changed = STALE ${key}`, r.lines.some((l) => l.startsWith(`STALE ${key} `)) && r.lines.includes('FRESH n=2 stale=1'), r.lines.filter((l) => /^(FRESH n|STALE)/.test(l)).join(' | '));
   const [ab2] = await sql(`select ability_v2::text a from subjects where key = '${key}'`);
@@ -285,7 +294,7 @@ if (want('FP')) {
   const cards = JSON.parse(readFileSync(join(ROOT, 'cards.json'), 'utf8'));
   cards.find((c) => c.id === key).genre = 'CHANGED GENRE';
   writeFileSync(cf, JSON.stringify(cards, null, 2));
-  r = fresh({ env: { CARDS_FILE: cf } });
+  r = await fresh({ env: { CARDS_FILE: cf } });
   res(`FP genre of ${key} changed = STALE ${key}`, r.lines.some((l) => l.startsWith(`STALE ${key} `) && /card/.test(l)) && r.lines.includes('FRESH n=2 stale=1'), r.lines.filter((l) => /^(FRESH n|STALE)/.test(l)).join(' | '));
   tlog('FP', t);
 }
@@ -302,7 +311,7 @@ if (want('CHECKS')) {
     ['face-v1', STILL, { FACE_V2: '0' }, new RegExp(`^FAIL ${STILL} \\S+ \\S+ face v1`), null],
   ];
   for (const [name, id, env, wantRe, also] of cases) {
-    const r = sf(stageArgs(man(`chk-${name}`), ['--only', String(id)]), { env: { ...env, S1FACE_TEST_ID: String(id) } });
+    const r = await sf(stageArgs(man(`chk-${name}`), ['--only', String(id)]), { env: { ...env, S1FACE_TEST_ID: String(id) }, wait: id !== STILL });
     show(r, /^(TEST|CHECK|RETRY|FAIL|STAGED|FACE)/);
     res(`CHECKS ${name}`, r.code === 0 && r.lines.some((l) => wantRe.test(l)) && (!also || r.lines.some((l) => also.test(l))), `exit=${r.code}`);
   }
@@ -312,16 +321,16 @@ if (want('CHECKS')) {
 // ---------------------------------------------------------------- STORAGE
 if (want('STORAGE')) {
   const M = man('nowrite');
-  let r = sf(['storage', '--set', 'S1', '--manifest', M, '--order', ORDER, '--limit', '99999999999']);
+  let r = await sf(['storage', '--set', 'S1', '--manifest', M, '--order', ORDER, '--limit', '99999999999']);
   const end = Number((r.lines.find((l) => l.startsWith('STORAGE PASS')) || '').match(/end=(\d+)/)?.[1]);
   show(r, /^(STORAGE|refused|WAIT)/);
-  r = sf(['storage', '--set', 'S1', '--manifest', M, '--order', ORDER, '--limit', String(end - 1)]);
+  r = await sf(['storage', '--set', 'S1', '--manifest', M, '--order', ORDER, '--limit', String(end - 1)]);
   res('STORAGE limit = end - 1 = refused + WAIT storage', r.code === 1 && r.lines.some((l) => l.startsWith('refused: projected end')) && r.lines.some((l) => l.startsWith('WAIT storage rows=')), r.lines.filter((l) => /^(refused|WAIT)/.test(l)).join(' | '));
-  r = sf(['storage', '--set', 'S1', '--manifest', M, '--order', ORDER, '--limit', String(end)]);
+  r = await sf(['storage', '--set', 'S1', '--manifest', M, '--order', ORDER, '--limit', String(end)]);
   res('STORAGE limit = end = PASS', r.code === 0 && r.lines.some((l) => l.startsWith(`STORAGE PASS now=`)));
-  sf(['before', '--set', 'S1', '--out', `${ITEM}/work/before-s1.json`, '--force']);
-  r = sf(['verify', '--set', 'S1', '--manifest', M, '--order', ORDER], { env: { S1FACE_S2_TERM: '900000000' } });
-  const r0 = sf(['verify', '--set', 'S1', '--manifest', M, '--order', ORDER], { env: { S1FACE_S2_TERM: '0', S1FACE_LIMIT: '99999999999' } });
+  await sf(['before', '--set', 'S1', '--out', `${ITEM}/work/before-s1.json`, '--force']);
+  r = await sf(['verify', '--set', 'S1', '--manifest', M, '--order', ORDER], { env: { S1FACE_S2_TERM: '900000000' } });
+  const r0 = await sf(['verify', '--set', 'S1', '--manifest', M, '--order', ORDER], { env: { S1FACE_S2_TERM: '0', S1FACE_LIMIT: '99999999999' } });
   show(r, /^(VERIFY|BYTES|B11)/);
   res('STORAGE B11 NEEDED / NOT NEEDED', r.lines.some((l) => l.startsWith('B11 NEEDED')) && r0.lines.some((l) => l.startsWith('B11 NOT NEEDED')) && r.lines.some((l) => l.startsWith('VERIFY PASS live-unchanged')));
 }
@@ -334,25 +343,25 @@ if (want('ORPHANS')) {
   writeFileSync(stubEnv, `SUPABASE_URL=${stub.url}\nSUPABASE_SERVICE_ROLE_KEY=${env.SUPABASE_SERVICE_ROLE_KEY}\nPGMETA_URL=${stub.metaUrl}\n`);
   const list17 = readFileSync(`${ITEM}/gate/orphans-17.txt`, 'utf8').split(/\n/).filter((l) => l && !l.startsWith('#')).map((l) => l.split('\t'));
   const orph = (extra = []) => sf(['orphans', '--set', 'S1', '--out', `${ITEM}/work/orphans-backup`, ...extra], { envFile: stubEnv });
-  let r = orph(['--dry']);
+  let r = await orph(['--dry']);
   res('ORPHANS the 17 (dry)', r.code === 0 && r.lines.includes('ORPHANS list n=17 bytes=19785107 target=LOCAL ' + stub.url) && !r.out.includes('card-back'), r.lines.find((l) => l.startsWith('ORPHANS list')) || '');
   const bad17 = `${ITEM}/gate/orphans-bad.txt`;
   writeFileSync(bad17, readFileSync(`${ITEM}/gate/orphans-17.txt`, 'utf8') + 'cards/card-back.png\t258366\n');
-  r = orph(['--dry', '--list', bad17]);
+  r = await orph(['--dry', '--list', bad17]);
   mut('orphans_list_with_card_back', r.code === 1 && r.lines.some((l) => /^refused: .*holds cards\/card-back\.png/.test(l)), r.lines.find((l) => l.startsWith('refused')) || '-');
   stub.mode = { extra: [{ name: 'cards/zz-extra-normal.png', size: 10 }] };
-  r = orph(['--dry']);
+  r = await orph(['--dry']);
   mut('orphans_one_extra', r.code === 1 && r.lines.some((l) => l === 'refused: list differs +cards/zz-extra-normal.png'), r.lines.find((l) => l.startsWith('refused')) || '-');
   stub.mode = { drop: [list17[0][0]] };
-  r = orph(['--dry']);
+  r = await orph(['--dry']);
   mut('orphans_one_missing', r.code === 1 && r.lines.some((l) => l === `refused: list differs -${list17[0][0]}`), r.lines.find((l) => l.startsWith('refused')) || '-');
   stub.mode = { size: { [list17[1][0]]: 5 } };
-  r = orph(['--dry']);
+  r = await orph(['--dry']);
   mut('orphans_one_size', r.code === 1 && r.lines.some((l) => l.startsWith('refused: size differs')), r.lines.find((l) => l.startsWith('refused')) || '-');
   // a real run against the stub: the backup (fake bytes), the delete of exactly the 17
   stub.mode = { fake: new Map(list17.map(([n, b]) => [n, Number(b)])) };
   const from = stub.log.length;
-  r = orph();
+  r = await orph();
   show(r, /^(ORPHANS|refused|ERROR|STILL)/);
   const dels = stub.log.slice(from).filter((q) => q.method === 'DELETE').flatMap((q) => JSON.parse(q.body).prefixes);
   res('ORPHANS run (stub): deletes exactly the 17, never the card back, backup 17', r.code === 0 && r.lines.includes('ORPHANS PASS deleted=17 bytes=19785107 backup=17') && dels.length === 17 && !dels.includes('cards/card-back.png') && dels.every((d) => list17.some((x) => x[0] === d)),
@@ -365,14 +374,14 @@ if (want('YIELD')) {
   const t = Date.now();
   const m = man('yield');
   writeFileSync(`${ITEM}/work/PAUSE`, 'test');
-  let r = sf(stageArgs(m));
+  let r = await sf(stageArgs(m));
   res('YIELD PAUSE = exit 3, no row', r.code === 3 && r.lines.includes('PAUSE') && !r.lines.some((l) => l.startsWith('ROW ')), `exit=${r.code}`);
   // the mutation: the PAUSE check removed (on one still row only)
-  const mp = sf(stageArgs(man('yield-mut'), ['--only', String(STILL)]), { script: mutant('nopause2', [["      if (existsSync(PAUSE)) { console.log('PAUSE'); summary('PAUSE'); return 3; }\n", '']]) });
+  const mp = await sf(stageArgs(man('yield-mut'), ['--only', String(STILL)]), { script: mutant('nopause2', [["      if (existsSync(PAUSE)) { console.log('PAUSE'); summary('PAUSE'); return 3; }\n", '']]) });
   mut('pause_check_removed', !(mp.code === 3 && !mp.lines.some((l) => l.startsWith('ROW '))), `exit ${mp.code}, rows=${mp.lines.filter((l) => l.startsWith('ROW ')).length}`);
   cleanMutants();
   rmSync(`${ITEM}/work/PAUSE`);
-  r = sf(['stage', '--set', 'S1', '--order', ORDER, '--manifest', m, '--until', '2020-01-01T00:00:00Z']);
+  r = await sf(['stage', '--set', 'S1', '--order', ORDER, '--manifest', m, '--until', '2020-01-01T00:00:00Z']);
   res('YIELD UNTIL = exit 4, no row', r.code === 4 && r.lines.includes('UNTIL reached') && !r.lines.some((l) => l.startsWith('ROW ')), `exit=${r.code}`);
   // resume: a 2-row order, the first row staged already
   const small = `${ITEM}/work/order-small.txt`;
@@ -383,7 +392,7 @@ if (want('YIELD')) {
   const fb = spawn(BL, ['--background', '--python-expr', 'import time; time.sleep(45)'], { stdio: 'ignore' });
   await new Promise((x) => setTimeout(x, 3000));
   const s1before = existsSync(S1LOG) ? readFileSync(S1LOG, 'utf8').split(/\n/).length : 0;
-  r = sf(['stage', '--set', 'S1', '--order', small, '--manifest', m, '--until', '2099-01-01T00:00:00Z'], { env: { S1FACE_WAIT_S: '5', S1FACE_WAITLOG_S: '15' } });
+  r = await sf(['stage', '--set', 'S1', '--order', small, '--manifest', m, '--until', '2099-01-01T00:00:00Z'], { env: { S1FACE_WAIT_S: '5', S1FACE_WAITLOG_S: '15' }, wait: true });
   show(r, /^(START|RESUME|STAGED|SUMMARY)/);
   const s1 = readFileSync(S1LOG, 'utf8').split(/\n/).slice(s1before - 1).filter(Boolean);
   const waits = s1.filter((l) => new RegExp(` S1 WAIT foreign-blender pid=.*\\b${fb.pid}\\b`).test(l)).length;
@@ -395,59 +404,138 @@ if (want('YIELD')) {
   tlog('YIELD', t);
 }
 
-// ---------------------------------------------------------------- OFFLINE (render-only machine)
-if (want('OFFLINE')) {
+// ---------------------------------------------------------------- RENDER-ONLY (SPEC 2.8), INGEST and KEYS
+const RO = ['--import', './scripts/render-only-preload.mjs'];
+// a render-only run: NO Supabase env, a .env path that does not exist, no localdb preload, the render-only preload
+const roEnv = { SUPABASE_URL: '', SUPABASE_SERVICE_ROLE_KEY: '', SUPABASE_ACCESS_TOKEN: '', DOTENV_CONFIG_PATH: `${ITEM}/no-such.env`, LOCALDB: '' };
+const ro = (args, opts = {}) => {
+  // node --import render-only-preload.mjs scripts/stage-faces.mjs ... (sf adds no preload with preload:false; the script arg carries it)
+  return new Promise((resolveP) => {
+    const c = spawn(process.execPath, [...RO, opts.script || 'scripts/stage-faces.mjs', ...args], { cwd: ROOT, env: { ...process.env, S1FACE_ITEM: ITEM, S1FACE_LOG: S1LOG, S1FACE_TEST_NOWAIT: opts.wait ? '' : '1', ...roEnv, ...(opts.env || {}) } });
+    let out = ''; c.stdout.on('data', (d) => { out += d; }); c.stderr.on('data', (d) => { out += d; });
+    c.on('close', (code) => resolveP({ code, out, lines: out.split(/\r?\n/) }));
+  });
+};
+const FX = `${ITEM}/work/face-export.json`, CARDSL = `${ITEM}/work/cards.local.json`;
+if (want('RENDERONLY') || want('INGEST') || want('KEYS')) {
+  const r = await sf(['face-export', '--set', 'S1', '--out', FX]);
+  show(r, /^FACE-EXPORT/);
+  res('RENDER-ONLY face-export (130 S1 cards)', r.code === 0 && /^FACE-EXPORT PASS cards=130 /.test(r.lines.find((l) => l.startsWith('FACE-EXPORT')) || ''));
+  writeFileSync(CARDSL, JSON.stringify(JSON.parse(readFileSync(join(ROOT, 'cards.json'), 'utf8')).filter((c) => c.set === 'S1'), null, 2));
+}
+const roArgs = (m, extra = []) => [...stageArgs(m, extra), '--render-only', '--cards', CARDSL, '--face-export', FX];
+if (want('RENDERONLY') || want('INGEST')) {
   const t = Date.now();
-  const faces = `${ITEM}/work/faces-s1.json`;
-  let r = sf(['export-faces', '--set', 'S1', '--out', faces]);
-  show(r, /^EXPORT/);
-  res('OFFLINE export-faces', r.code === 0 && /^EXPORT-FACES PASS cards=130 /.test(r.lines.find((l) => l.startsWith('EXPORT')) || ''));
-  // render-only: no Supabase env, a .env path that does not exist, no preload
-  const off = { SUPABASE_URL: '', SUPABASE_SERVICE_ROLE_KEY: '', SUPABASE_ACCESS_TOKEN: '', DOTENV_CONFIG_PATH: `${ITEM}/no-such.env`, LOCALDB: '' };
-  const om = man('offline');
-  r = sf([...stageArgs(om, ['--only', String(STILL)]), '--offline', '--faces', faces], { preload: false, env: off });
-  show(r, /^(START|OFFLINE|FACES|STAGED|FAIL|ERROR|WRITE)/);
-  res('OFFLINE stage with no Supabase env and no .env', r.code === 0 && r.lines.includes('OFFLINE src/supabase.js=stub (no .env, no client)') && r.lines.some((l) => l.startsWith(`STAGED ${STILL} `)), `exit=${r.code}`);
-  r = sf([...stageArgs(man('offline-x'), ['--only', String(STILL)]), '--offline', '--faces', faces, '--live'], { preload: false, env: off });
-  res('OFFLINE with --live = refused', r.code === 1 && r.lines.includes('refused: --offline with --live or the localdb preload'));
-  // shards: disjoint, together the whole order (the START/SHARD lines; PAUSE so no row renders)
-  writeFileSync(`${ITEM}/work/PAUSE`, 'shard test');
-  const keysOf = (i) => { const x = sf([...stageArgs(man(`shard${i}`), ['--shard', `${i}/2`]), '--offline', '--faces', faces], { preload: false, env: off }); return Number((x.lines.find((l) => l.startsWith('SHARD')) || '').match(/rows=(\d+)/)?.[1]); };
-  const n1 = keysOf(1), n2 = keysOf(2);
-  rmSync(`${ITEM}/work/PAUSE`);
-  // the exact sets, computed like stage does
-  const keyOrder = [...new Set(ordRows.map((x) => x[1]))];
-  const k1 = new Set(keyOrder.filter((k, i) => i % 2 === 0)), k2 = new Set(keyOrder.filter((k, i) => i % 2 === 1));
-  res('OFFLINE --shard 1/2 + 2/2 disjoint and complete', n1 + n2 === ordRows.length && [...k1].every((k) => !k2.has(k)), `rows ${n1} + ${n2} = ${ordRows.length}`);
-  // import on the copy (the workstation side): files in a folder as scp brings them
-  const drop = `${ITEM}/work/from-office`;
-  mkdirSync(drop, { recursive: true });
-  const line = readFileSync(om, 'utf8').trim().split(/\n/).map((l) => JSON.parse(l)).filter((l) => l.s === 'STAGED').pop();
-  for (const f of Object.values(line.files).filter(Boolean)) copyFileSync(f.path, `${drop}/${f.path.split('/').pop()}`);
+  const om = man('remote');
+  let r = await ro(roArgs(om, ['--only', `${STILL},${ANIM}`]), { wait: true });
+  show(r, /^(START|RENDER-ONLY|FACE-EXPORT|STAGED|FAIL|ERROR|WRITE|NET|TOOLS)/);
+  res('RENDER-ONLY 1 still + 1 animated with no env, no .env, the preload', r.code === 0 && r.lines.some((l) => l.startsWith('RENDER-ONLY src/supabase.js=stub')) && r.lines.some((l) => l.startsWith(`STAGED ${STILL} `)) && r.lines.some((l) => l.startsWith(`STAGED ${ANIM} `)), `exit=${r.code}`);
+  r = await ro([...roArgs(man('ro-x'), ['--only', String(STILL)]), '--live']);
+  res('RENDER-ONLY with --live = refused (P-5)', r.code === 1 && r.lines.includes('refused: --render-only with --live or the localdb preload'));
+  r = await sf(roArgs(man('ro-y'), ['--only', String(STILL)]), { preload: false, env: roEnv });
+  res('RENDER-ONLY without the preload = refused', r.code === 1 && r.lines.includes('refused: --render-only needs --import ./scripts/render-only-preload.mjs'));
+  // the preload blocks the network, and the stub throws on any use of the client (mutations: a copy that uses them)
+  r = await ro(roArgs(man('ro-net'), ['--only', String(STILL)]), { script: mutant('ro_net', [[ANCHOR, "  await fetch('https://example.com/x');\n" + ANCHOR]]) });
+  mut('render_only_net', r.code !== 0 && r.lines.some((l) => l.startsWith('NET BLOCKED example.com/x')), r.lines.find((l) => /NET BLOCKED|ERROR/.test(l)) || '-');
+  r = await ro(roArgs(man('ro-db'), ['--only', String(STILL)]), { script: mutant('ro_db', [[ANCHOR, "  { const { supabase } = await import('../src/supabase.js'); await supabase.from('cards'); }\n" + ANCHOR]]) });
+  mut('render_only_db', r.code !== 0 && r.lines.some((l) => /RENDER-ONLY: no database \(from\)/.test(l)), r.lines.find((l) => /RENDER-ONLY: no database|ERROR/.test(l)) || '-');
+  cleanMutants();
+  tlog('RENDERONLY', t);
+}
+if (want('INGEST')) {
+  const t = Date.now();
+  // the remote machine's folder as the workstation receives it (scp): <dir>/staged.jsonl + <dir>/stage/
+  const om = man('remote');
+  const remote = `${ITEM}/work/stage-remote`;
+  const pack = (srcMan, dir, edit = (l) => l) => {
+    rmSync(dir, { recursive: true, force: true }); mkdirSync(`${dir}/stage`, { recursive: true });
+    const lines = readFileSync(srcMan, 'utf8').trim().split(/\n/).map((l) => JSON.parse(l)).filter((l) => l.s === 'STAGED');
+    for (const l of lines) for (const f of Object.values(l.files).filter(Boolean)) copyFileSync(f.path, `${dir}/stage/${f.path.split('/').pop()}`);
+    writeFileSync(`${dir}/staged.jsonl`, lines.map((l) => JSON.stringify(edit({ ...l, tools: { ...l.tools } }))).join('\n') + '\n');
+    return lines;
+  };
+  const lines = pack(om, remote);
+  const toolsRef = `${ITEM}/work/tools-s2n.json`;
+  let r = await sf(['tools', '--set', 'S1', '--save', toolsRef], { preload: false });
   const ours = man('ours');
-  r = sf(['import', '--set', 'S1', '--from', om, '--files', drop, '--manifest', ours]);
-  show(r, /^IMPORT/);
-  const imp = existsSync(ours) ? JSON.parse(readFileSync(ours, 'utf8').trim().split(/\n/).pop()) : {};
-  res('OFFLINE import = IMPORTED, old = the row image_url', r.code === 0 && r.lines.some((l) => l.startsWith(`IMPORTED ${STILL} `)) && /\/card-art\/cards\//.test(imp.old || ''));
-  // mutation 1: one byte of the main file changed
-  const ours2 = man('ours2');
-  const mainF = `${drop}/${line.files.main.path.split('/').pop()}`; const keep = readFileSync(mainF);
-  const b = Buffer.from(keep); b[b.length - 10] ^= 1; writeFileSync(mainF, b);
-  r = sf(['import', '--set', 'S1', '--from', om, '--files', drop, '--manifest', ours2]);
-  writeFileSync(mainF, keep);
-  mut('import_one_byte', r.code === 1 && r.lines.some((l) => new RegExp(`^IMPORT REFUSED ${STILL} .*main sha`).test(l)), r.lines.find((l) => l.startsWith('IMPORT REFUSED')) || '-');
-  // mutation 2: the other machine rendered from a different faces file (fp)
-  const fx = JSON.parse(readFileSync(faces, 'utf8')); const k = line.key;
-  fx.faces[k] = { ...fx.faces[k], active: { ...fx.faces[k].active, text: fx.faces[k].active.text + ' changed' } };
-  const faces2 = `${ITEM}/work/faces-changed.json`; writeFileSync(faces2, JSON.stringify(fx));
-  const om2 = man('offline-2');
-  sf([...stageArgs(om2, ['--only', String(STILL)]), '--offline', '--faces', faces2], { preload: false, env: off });
-  const line2 = readFileSync(om2, 'utf8').trim().split(/\n/).map((l) => JSON.parse(l)).filter((l) => l.s === 'STAGED').pop();
-  const drop2 = `${ITEM}/work/from-office-2`; mkdirSync(drop2, { recursive: true });
-  for (const f of Object.values(line2.files).filter(Boolean)) copyFileSync(f.path, `${drop2}/${f.path.split('/').pop()}`);
-  r = sf(['import', '--set', 'S1', '--from', om2, '--files', drop2, '--manifest', man('ours3')]);
-  mut('import_other_faces_fp', r.code === 1 && r.lines.some((l) => new RegExp(`^IMPORT REFUSED ${STILL} .*fp \\(face\\)`).test(l)), r.lines.find((l) => l.startsWith('IMPORT REFUSED')) || '-');
-  tlog('OFFLINE', t);
+  r = await sf(['ingest', '--set', 'S1', '--from', remote, '--manifest', ours, '--tools-ref', toolsRef]);
+  show(r, /^(INGEST|INGESTED|CALIB|refused)/);
+  const got = existsSync(ours) ? readFileSync(ours, 'utf8').trim().split(/\n/).map((l) => JSON.parse(l)) : [];
+  res('INGEST 2 rows = INGEST PASS n=2, old = the row image_url', r.code === 0 && r.lines.some((l) => /^INGEST PASS n=2 /.test(l)) && got.length === 2 && got.every((l) => /\/card-art\/cards\//.test(l.old || '')));
+  // calibration (r5 L-3): the same rows staged here too -> CALIB lines, not ingested again
+  const here = man('here'); writeFileSync(here, readFileSync(man('nowrite'), 'utf8'));
+  r = await sf(['ingest', '--set', 'S1', '--from', remote, '--manifest', here, '--tools-ref', toolsRef]);
+  show(r, /^(CALIB|INGEST)/);
+  res('INGEST calibration rows: CALIB still + animated, nothing ingested', r.lines.some((l) => new RegExp(`^CALIB ${STILL} .* still (pixel-equal|differs)`).test(l)) && r.lines.some((l) => new RegExp(`^CALIB ${ANIM} .* animated last-frame`).test(l)) && r.lines.some((l) => /^INGEST PASS n=0 calib=2/.test(l)));
+  const ing = async (name, edit, fileEdit = null) => {
+    const dir = `${ITEM}/work/remote-${name}`; pack(om, dir, edit);
+    if (fileEdit) fileEdit(dir);
+    return sf(['ingest', '--set', 'S1', '--from', dir, '--manifest', man(`ours-${name}`), '--tools-ref', toolsRef]);
+  };
+  const failOf = (x, re) => x.code === 1 && x.lines.some((l) => new RegExp(`^INGEST FAIL ${STILL} .*${re}`).test(l));
+  const firstFail = (x) => x.lines.find((l) => l.startsWith('INGEST FAIL') || l.startsWith('refused')) || '-';
+  const mainOf = (dir) => `${dir}/stage/${lines.find((l) => l.card_id === STILL).files.main.path.split('/').pop()}`;
+  r = await ing('byte', (l) => l, (dir) => { const f = mainOf(dir); const b = readFileSync(f); b[b.length - 10] ^= 1; writeFileSync(f, b); });
+  mut('ingest_one_byte', failOf(r, 'main sha'), firstFail(r));
+  r = await ing('fp', (l) => (l.card_id === STILL ? { ...l, fp: 'x' + l.fp.slice(1) } : l));
+  mut('ingest_other_fp', failOf(r, 'fp'), firstFail(r));
+  r = await ing('tools', (l) => { l.tools.edge = '1.2.3.4'; l.toolsSha = 'other'; return l; });
+  mut('ingest_other_tools_edge', failOf(r, 'tools \\(edge\\)'), firstFail(r));
+  r = await ing('font', (l) => { const k = Object.keys(l.tools.fonts)[0]; l.tools.fonts = { ...l.tools.fonts, [k]: '0'.repeat(64) }; l.toolsSha = 'other'; return l; });
+  mut('ingest_other_font', failOf(r, 'tools \\(fonts\\)'), firstFail(r));
+  r = await ing('commit', (l) => { l.commit = '0'.repeat(40); return l; });
+  mut('ingest_other_commit', failOf(r, 'commit 00000000'), firstFail(r));
+  r = await ing('code', (l) => { l.stageSha = 'x'; return l; });
+  mut('ingest_other_stage_faces', failOf(r, 'code'), firstFail(r));
+  // the UI-68 cut PNG as a returned face (sha in the manifest made to match: only the content check can see it)
+  r = await ing('cut', (l) => l, (dir) => {
+    const f = mainOf(dir); const cutB = readFileSync(`${ITEM}/gate/fixtures/cut-ottozone-s-head-full_art.png`); writeFileSync(f, cutB);
+    const ls = readFileSync(`${dir}/staged.jsonl`, 'utf8').trim().split(/\n/).map((x) => JSON.parse(x));
+    for (const l of ls) if (l.card_id === STILL) l.files.main = { ...l.files.main, sha256: sha(cutB), bytes: cutB.length };
+    writeFileSync(`${dir}/staged.jsonl`, ls.map((x) => JSON.stringify(x)).join('\n') + '\n');
+  });
+  mut('ingest_cut_png', failOf(r, 'check clearRows'), firstFail(r));
+  // r5 L-2: the workstation tools changed after S2n
+  const ref2 = `${ITEM}/work/tools-s2n-old.json`;
+  const rec = JSON.parse(readFileSync(toolsRef, 'utf8')); rec.toolsSha = 'old'; rec.tools = { ...rec.tools, pillow: '0.0.1' }; writeFileSync(ref2, JSON.stringify(rec));
+  r = await sf(['ingest', '--set', 'S1', '--from', remote, '--manifest', man('ours-ref'), '--tools-ref', ref2]);
+  mut('ingest_workstation_tools_changed', r.code === 1 && r.lines.some((l) => /^refused: the tools of this machine changed after S2n \(pillow\)/.test(l)), r.lines.find((l) => l.startsWith('refused')) || '-');
+  // P-3: the code hashes are line-ending neutral (a CRLF and an LF copy of a code file give one fp-code)
+  const fv = join(ROOT, 'src', 'rarity.js'); const orig = readFileSync(fv);
+  const h = async () => ((await sf(['tools', '--set', 'S1'], { preload: false })).lines.find((l) => l.startsWith('TOOLS ')) || '').match(/ fp-code=(\S+)/)?.[1];
+  let hCrlf, hLf;
+  try {
+    writeFileSync(fv, orig.toString('utf8').replace(/\r?\n/g, '\r\n')); hCrlf = await h();
+    writeFileSync(fv, orig.toString('utf8').replace(/\r\n/g, '\n')); hLf = await h();
+  } finally { writeFileSync(fv, orig); }
+  res('INGEST fp-code is CRLF/LF neutral (P-3)', hCrlf && hCrlf === hLf && sha(readFileSync(fv)) === sha(orig), `crlf=${hCrlf?.slice(0, 12)} lf=${hLf?.slice(0, 12)}`);
+  tlog('INGEST', t);
+}
+if (want('KEYS')) {
+  const ka = `${ITEM}/work/keys-ws.txt`, kb = `${ITEM}/work/keys-no.txt`, kc = `${ITEM}/work/calib.txt`;
+  let r = await sf(['keys', '--set', 'S1', '--order', ORDER, '--out', `${ka},${kb}`, '--calib', kc], { preload: false });
+  show(r, /^(KEYS|CALIB)/);
+  res('KEYS ws/no (index mod 2) = KEYS PASS ws=+no=352, overlap 0', r.code === 0 && r.lines.some((l) => /^KEYS PASS ws=\d+ no=\d+ total=352 overlap=0$/.test(l)));
+  r = await sf(['keys-check', '--set', 'S1', '--order', ORDER, '--keys', `${ka},${kb}`], { preload: false });
+  res('KEYS keys-check', r.code === 0 && r.lines.some((l) => /^KEYS PASS ws=\d+ no=\d+ total=352 overlap=0$/.test(l)));
+  const a = readFileSync(ka, 'utf8'), b = readFileSync(kb, 'utf8');
+  const lastA = a.trim().split(/\n/).pop();
+  writeFileSync(kb, b + lastA + '\n');
+  r = await sf(['keys-check', '--set', 'S1', '--order', ORDER, '--keys', `${ka},${kb}`], { preload: false });
+  mut('keys_overlap', r.code === 1 && r.lines.some((l) => /^KEYS FAIL .* overlap=[1-9]/.test(l)), r.lines.find((l) => l.startsWith('KEYS')) || '-');
+  writeFileSync(kb, b.trim().split(/\n/).slice(0, -1).join('\n') + '\n');
+  r = await sf(['keys-check', '--set', 'S1', '--order', ORDER, '--keys', `${ka},${kb}`], { preload: false });
+  mut('keys_missing', r.code === 1 && r.lines.some((l) => /^KEYS FAIL .*total=3[0-4]\d .* in no list/.test(l)), r.lines.find((l) => l.startsWith('KEYS')) || '-');
+  writeFileSync(kb, b);
+  // L-3: the calibration list is 2 rows, separate from keys-no
+  const cal = readFileSync(kc, 'utf8').split(/\n/).filter((l) => l && !l.startsWith('#'));
+  res('KEYS calib.txt = 1 still + 1 animated row of ws, not in no', cal.length === 2 && cal.every((l) => l.split(' ').length === 2) && !b.split(/\n/).some((k) => cal.some((c) => c.startsWith(k + ' '))), cal.join(' | '));
+  // the stage runs with --keys: their rows are disjoint and sum to the order; calib.txt selects exactly 2 rows
+  writeFileSync(`${ITEM}/work/PAUSE`, 'keys test');
+  const rowsOfK = async (kf) => Number(((await ro(roArgs(man(`keys-${kf.split('/').pop()}`), ['--keys', kf]))).lines.find((l) => l.startsWith('SHARD')) || '').match(/rows=(\d+)/)?.[1]);
+  const na = await rowsOfK(ka), nb = await rowsOfK(kb), nc = await rowsOfK(kc);
+  rmSync(`${ITEM}/work/PAUSE`);
+  res('KEYS stage --keys rows: ws + no = 352, calib = 2', na + nb === 352 && nc === 2, `${na} + ${nb}, calib ${nc}`);
 }
 
 console.log(`RESULT ${failed ? 'FAIL' : 'PASS'} failed=${failed} item=${ITEM} time=${((Date.now() - T0) / 60000).toFixed(1)} min`);
