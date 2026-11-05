@@ -40,7 +40,7 @@ const LIVE = flag('--live');
 async function main() {
   if (!SET || SET.startsWith('--')) { console.error('usage: node scripts/push-set.mjs --set <id> [--only <k1,k2>] [--dry] [--live]'); return 1; }
   // the test hooks (S2PUB_TEST_*) can never reach a live run: refuse before any request, render or write
-  const testVars = Object.keys(process.env).filter((k) => k.startsWith('S2PUB_TEST_'));
+  const testVars = Object.keys(process.env).filter((k) => k.toUpperCase().startsWith('S2PUB_TEST_')); // upper case: Windows environment names are not case-sensitive
   if (LIVE && testVars.length) { console.log(`refused: ${testVars.join(', ')} set with --live (test hooks are for a local copy only)`); return 1; }
   const local = globalThis.__LOCALDB_API || null; // set only by the localdb preload
   if (!local && !LIVE) { console.log('refused: the target is LIVE (use --live)'); return 1; }
