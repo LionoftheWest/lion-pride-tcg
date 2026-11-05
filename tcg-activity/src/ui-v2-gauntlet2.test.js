@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, cardStatusHTML, squadOf, foesOf, portraitKey, fmtPower, wireFight, infoIdOf, v2InfoOf, ROLE_PURPOSE, hpShown, maxShown, shownDrop, dmgText, supStateHTML, calloutOf, gainsOf, newStatusesOf, fightUpdate, squadShownOf, hitText, liteReplay, STRIP_N } from './ui-v2-gauntlet2.js';
+import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, cardStatusHTML, squadOf, foesOf, portraitKey, fmtPower, wireFight, infoIdOf, v2InfoOf, ROLE_PURPOSE, hpShown, maxShown, shownDrop, dmgText, supStateHTML, calloutOf, gainsOf, newStatusesOf, fightUpdate, squadShownOf, hitText, liteReplay, tickTexts, STRIP_N } from './ui-v2-gauntlet2.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIX = JSON.parse(readFileSync(join(here, '..', '..', 'ci', 'ui-check', 'fixtures', 'g2-fight.json'), 'utf8')).body;
@@ -521,4 +521,83 @@ test('H-1: the Finish Room fast replay plays the light v1 effects (hit, number, 
   assert.ok(d.pops.some((p) => p.text === '-10'), 'the damage numbers');
   assert.equal(liteReplay({ finishing: true }), true);
   assert.equal(liteReplay({ finishing: false }), false);
+});
+
+// ---- PR 503 final review (REVIEW-PR503-final): M-2 the shake on a tap and an Auto hit, L-1 the tick numbers, L-2 the info max HP ----
+// One replay on the recording DOM: `trigger` starts it (a tap on the card body, or the Auto button); the answer carries `log`.
+async function replayRun(log, trigger) {
+  const v = fresh(); const d = recDom();
+  const stage = { calls: [], cast(i) { this.calls.push(`cast ${i}`); }, play(i, k) { this.calls.push(`play ${i} ${k}`); }, foeFx(i) { this.calls.push(`foeFx ${i}`); },
+    labels: () => [0, 1, 2, 3, 4].map((x) => ({ x, y: 1, foot: 2, w: 1 })), setTarget() {}, dispose() {} };
+  const w = fresh();
+  const answer = { ok: true, status: 'active', state: w.run.state, order: w.order, targets: w.targets, allies: w.allies, status_lines: w.status_lines, need: w.need, squad_hp: w.squad_hp, log };
+  const posts = [];
+  let replayDone; const replayEnd = new Promise((ok) => { replayDone = ok; });
+  const host = recHost({ dg: { auto: false, stage }, base: '/api/gauntlet/v2', AUTO_ROUNDS: 5, apiPost: async (p) => { posts.push(p); return answer; }, waitMs: () => 0, currentView: () => 'dungeon', sfx() {}, snd() {}, voice() {}, moveSnd: () => null,
+    elementOf: () => 'water', setView() { host.dg.auto = false; replayDone(); }, setAuto(on) { host.dg.auto = on; }, toast() {}, fitFight() {}, placeArena() {}, openInfo() {} });
+  const saved = { document: globalThis.document, raf: globalThis.requestAnimationFrame, gcs: globalThis.getComputedStyle };
+  globalThis.document = { querySelector: (q) => (q === '.dg-fight.g2' ? d.F : d.sub('', q)), querySelectorAll: () => [], getElementById: () => null, body: { dataset: {} },
+    createElement: () => ({ className: '', textContent: '', style: {}, remove() {} }) };
+  globalThis.requestAnimationFrame = () => 0; globalThis.getComputedStyle = () => ({ gridTemplateAreas: '', gridTemplateRows: '' });
+  try {
+    const main = { querySelector: (q) => (q === '.dg-fight.g2' ? d.F : null), contains: () => true };
+    const handlers = []; d.F.addEventListener = (type, fn) => handlers.push(fn);
+    let auto = null; d.mk('.dg-fight.g2 .dg-auto').addEventListener = (t, fn) => { auto = fn; };
+    await wireFight(main, v, host, { keep: true });
+    if (trigger === 'tap') {
+      const unit = { dataset: { card: '318' } };
+      await handlers[0]({ target: { closest: (q) => (q === '.dg-unit, .dg-sup' ? unit : null) } });
+    } else {
+      auto({ stopPropagation() {}, currentTarget: { classList: { toggle() {} }, setAttribute() {} } });
+    }
+    await Promise.race([replayEnd, new Promise((ok) => setTimeout(ok, 5000))]);   // the end of the replay (setView), not a fixed wait
+    await new Promise((ok) => setTimeout(ok, 30));   // settle() runs after it
+  } finally { globalThis.document = saved.document; globalThis.requestAnimationFrame = saved.raf; globalThis.getComputedStyle = saved.gcs; }
+  return { d, stage, posts };
+}
+const hurtLog = () => [
+  { k: 'act', actor: { side: 'card', id: 318 }, action: 'basic', target: { side: 'enemy', id: 0 }, hits: [{ target: { side: 'enemy', id: 0 }, dmg: 10, crit: false, miss: false }],
+    hp: [{ side: 'enemy', id: 0, before: 50, after: 40, down: false, shield_before: 0, shield_after: 0 }] },
+  { k: 'act', actor: { side: 'enemy', id: 2 }, move: 'strike', hp: [{ side: 'card', id: 124, before: 48, after: 41, down: false, shield_before: 0, shield_after: 0 },
+    { side: 'card', id: 312, before: 50, after: 44, down: false, shield_before: 0, shield_after: 0 }] },
+  // L-1: a 1.4 tick takes the shown HP 41 -> 39 (the number is -2, not the rounded damage -1); a 0.4 tick takes a foe 38 -> 37 (-1, not nothing)
+  { k: 'clock', clock: 7, ticks: [{ side: 'card', id: 43, status: 'poison', dmg: 1.4 }, { side: 'enemy', id: 1, status: 'burn', dmg: 0.4 }],
+    hp: [{ side: 'card', id: 43, before: 40.1, after: 38.7, down: false, shield_before: 0, shield_after: 0 }, { side: 'enemy', id: 1, before: 37.2, after: 36.8, down: false, shield_before: 0, shield_after: 0 }] },
+];
+for (const trigger of ['tap', 'auto']) {
+  test(`M-2 (final review): a ${trigger} hit on a card plays the v1 shake (.hurt) on the hit card and the hit support; the tick pop is the shown HP drop`, async () => {
+    const { d, posts } = await replayRun(hurtLog(), trigger);
+    assert.equal(posts[0], trigger === 'tap' ? '/api/gauntlet/v2/act' : '/api/gauntlet/v2/auto');
+    const hurt = d.classes.filter((c) => c.endsWith('+hurt'));
+    assert.ok(hurt.some((c) => c.includes('data-card="124"')), `the hit card shakes: ${hurt.join(', ')}`);
+    assert.ok(hurt.some((c) => c.includes('data-sup="312"')), `the hit support shakes: ${hurt.join(', ')}`);
+    assert.ok(d.classes.some((c) => c.includes('data-card="318"') && c.endsWith('+striking')), 'the card lunge');
+    const tick = d.pops.filter((p) => p.in.includes('data-card="43"'));
+    assert.deepEqual(tick.map((p) => p.text), ['-2'], 'the tick number is the drop of the shown HP 41 -> 39');
+    assert.ok(d.pops.some((p) => p.in.endsWith('.dg-pops') && p.text === '-1'), `the foe tick 38 -> 37 shows -1: ${d.pops.map((p) => p.text).join(', ')}`);
+    assert.ok(!d.pops.some((p) => p.text === '-0'), 'no -0');
+  });
+}
+
+test('L-1 (final review): a status tick shows the drop of the shown HP; several ticks of one unit add up to its shown drop', () => {
+  const e = (ticks, x) => ({ k: 'clock', clock: 3, ticks, hp: [x] });
+  assert.deepEqual(tickTexts(e([{ side: 'card', id: 1, dmg: 1.4 }], { side: 'card', id: 1, before: 40.1, after: 38.7 })), ['-2']);
+  assert.deepEqual(tickTexts(e([{ side: 'card', id: 1, dmg: 0.4 }], { side: 'card', id: 1, before: 37.2, after: 36.8 })), ['-1'], 'the shown HP 38 -> 37 (the rounded damage is 0)');
+  assert.deepEqual(tickTexts(e([{ side: 'card', id: 1, dmg: 0.4 }], { side: 'card', id: 1, before: 37.8, after: 37.4 })), [''], 'the shown HP stays 38');
+  assert.deepEqual(tickTexts(e([{ side: 'enemy', id: 0, dmg: 0.6 }, { side: 'enemy', id: 0, dmg: 0.6 }], { side: 'enemy', id: 0, before: 40.1, after: 38.9 })), ['-1', '-1']);
+  assert.deepEqual(tickTexts(e([{ side: 'card', id: 1, dmg: 2.2 }], { side: 'card', id: 1, before: 2.2, after: 0, down: true })), ['-3'], 'a down unit drops to 0');
+  assert.deepEqual(tickTexts({ ticks: [{ side: 'enemy', id: 2, dmg: 3 }], hp: [] }), ['-3'], 'no hp entry: the rounded damage');
+  const v = fresh();
+  const log = [{ k: 'clock', clock: 3, ticks: [{ side: 'card', id: 124, status: 'poison', dmg: 1.4 }, { side: 'card', id: 318, status: 'burn', dmg: 0.4 }, { side: 'card', id: 43, status: 'burn', dmg: 0.4 }],
+    hp: [{ side: 'card', id: 124, before: 40.1, after: 38.7 }, { side: 'card', id: 318, before: 37.2, after: 36.8 }, { side: 'card', id: 43, before: 37.8, after: 37.4 }] }];
+  const ticks = logLines(v, log).filter((l) => l.who === 'Poison' || l.who === 'Burn');
+  assert.deepEqual(ticks.map((l) => [l.who, l.txt]), [['Poison', '-2'], ['Burn', '-1']], 'the log: -2 for 41 -> 39, -1 for 38 -> 37, no line for 38 -> 38');
+});
+
+test('L-2 (final review): the info window max HP is the shown max (rounded up)', () => {
+  const v = fresh();
+  v.run.state.fight.cards[124].max = 647.2;
+  assert.equal(v2InfoOf(v, 124).maxHp, 648);
+  v.run.state.fight.cards[124].max = 200;
+  assert.equal(v2InfoOf(v, 124).maxHp, 200);
 });

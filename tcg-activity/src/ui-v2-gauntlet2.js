@@ -67,6 +67,24 @@ export function hitText(h, e) {
   if (d > 0) return `-${fmtN(d)}`;
   return maxShown(x.shield_before) > maxShown(x.shield_after) ? 'BLOCKED' : '';
 }
+/** The numbers of the status ticks of a clock entry (review L-1): each tick shows its part of the drop of the SHOWN HP of its unit (the unit's hp
+ *  entry), so the numbers of a unit add up to its shown HP drop and agree with the HP text. A tick with no hp entry shows its rounded damage. */
+export function tickTexts(e) {
+  const ticks = e?.ticks || []; const left = new Map(); const out = [];
+  for (const t of ticks) { const k = unitKey(t.side, t.id); left.set(k, (left.get(k) || 0) + 1); }
+  const cur = new Map();
+  for (const t of ticks) {
+    const x = (e?.hp || []).find((y) => unitKey(y.side, y.id) === unitKey(t.side, t.id));
+    if (!x) { out.push(dmgText(t.dmg)); continue; }
+    const k = unitKey(t.side, t.id); const n = left.get(k) - 1; left.set(k, n);
+    const from = cur.has(k) ? cur.get(k) : num(x.before);
+    const to = n === 0 ? num(x.after) : Math.max(num(x.after), from - num(t.dmg));
+    cur.set(k, to);
+    const d = Math.max(0, hpShown(from) - hpShown(to, n === 0 && x.down));
+    out.push(d > 0 ? `-${fmtN(d)}` : '');
+  }
+  return out;
+}
 export const dmgText = (n) => (Math.round(num(n)) > 0 ? `-${fmtN(n)}` : '');
 /** The power on the card chip: the full form, the compact form from 10,000 ("123.5M": a 9-digit power fits the chip, G3 long variant). */
 export const fmtPower = (n) => (Math.abs(num(n)) >= 10000 ? fmtCompact(n) : fmtFull(n));
@@ -184,7 +202,8 @@ export function logLines(v, log) {
       for (const x of hit) out.push({ kind: 'foe', who, to: nm(x.side, x.id), txt: shownDrop(x) > 0 ? `-${fmtN(shownDrop(x))}` : '' });
       for (const x of e.hp || []) if (x.down) out.push({ kind: 'kill', who: nm(x.side, x.id), to: 'down', txt: '' });
     } else if (e.k === 'clock') {
-      for (const t of e.ticks || []) if (dmgText(t.dmg)) out.push({ kind: 'foe', who: refStatus(v?.ref, t.status)?.label || moveLabel(t.status), to: nm(t.side, t.id), txt: dmgText(t.dmg) });
+      const tt = tickTexts(e);
+      (e.ticks || []).forEach((t, i) => { if (tt[i]) out.push({ kind: 'foe', who: refStatus(v?.ref, t.status)?.label || moveLabel(t.status), to: nm(t.side, t.id), txt: tt[i] }); });
       for (const x of e.hp || []) {
         if (x.before === x.after && num(x.shield_after) === 0 && num(x.shield_before) > 0) out.push({ kind: 'sup', who: nm(x.side, x.id), to: 'Shield ends', txt: '' });
         if (x.down) out.push({ kind: 'kill', who: nm(x.side, x.id), to: 'down', txt: '' });
@@ -642,7 +661,8 @@ async function play(r) {
       applyHp(step, e.hp); S.log.push(...lines); upd(step);
       await nap(600);
     } else if (e.k === 'clock' && ((e.ticks || []).length || (e.hp || []).length)) {
-      for (const t of e.ticks || []) { const d = dmgText(t.dmg); if (!d) continue; if (t.side === 'enemy') pop(t.id, d, ''); else popCard(t.id, d, 'hurt'); }
+      const tt = tickTexts(e);   // review L-1: the drop of the shown HP, as the hits
+      (e.ticks || []).forEach((t, i) => { const d = tt[i]; if (!d) return; if (t.side === 'enemy') pop(t.id, d, ''); else popCard(t.id, d, 'hurt'); });
       applyHp(step, e.hp); S.log.push(...lines); upd(step);
       await nap(300);
     }
