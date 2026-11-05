@@ -6034,7 +6034,17 @@
         "object"
       ]
     },
-    "ability": null,
+    "ability": {
+      "name": "Gottem",
+      "kind": "support",
+      "effect": "smite",
+      "amount": 200,
+      "target": "boss",
+      "affinity": "origin:meme",
+      "cooldown": 4,
+      "duration": 1,
+      "desc": "Direct boss damage — scales with your Meme cards"
+    },
     "pushedAt": 1792024480845
   },
   {
@@ -6067,7 +6077,13 @@
       "realm": [],
       "traits": []
     },
-    "ability": null,
+    "ability": {
+      "name": "Everyone Jumped In",
+      "kind": "attack",
+      "effect": "rampage",
+      "amount": 0.2,
+      "desc": "20% chance to strike twice."
+    },
     "pushedAt": 1792024611887,
     "effect": {
       "primitive": "raid_crasher",
@@ -6122,6 +6138,13 @@
       "genre": [],
       "realm": [],
       "traits": []
+    },
+    "ability": {
+      "name": "Launch Queue",
+      "kind": "attack",
+      "effect": "focus",
+      "amount": 0.15,
+      "desc": "+15% critical chance on this attack."
     }
   },
   {
@@ -6149,7 +6172,12 @@
       "traits": []
     },
     "type": "Character",
-    "ability": null,
+    "ability": {
+      "name": "Big Pull",
+      "kind": "attack",
+      "effect": "pierce",
+      "desc": "The boss cannot block this attack."
+    },
     "pushedAt": 1793209419665
   },
   {
@@ -6177,7 +6205,15 @@
       "traits": []
     },
     "type": "Character",
-    "pushedAt": 1793209418160
+    "pushedAt": 1793209418160,
+    "ability": {
+      "name": "Post-Workout",
+      "kind": "attack",
+      "effect": "lifesteal",
+      "amount": 0.2,
+      "target": "self",
+      "desc": "Heal for 20% of the damage dealt."
+    }
   },
   {
     "id": "ottozone-bow-ties",
@@ -6203,7 +6239,15 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "ability": {
+      "name": "Dressed to Kill",
+      "kind": "attack",
+      "effect": "execute",
+      "amount": 0.5,
+      "threshold": 0.25,
+      "desc": "+50% damage when the boss is below 25% HP."
+    }
   },
   {
     "id": "mr-mobs-taco-bell",
@@ -6230,7 +6274,12 @@
       "traits": []
     },
     "type": "Character",
-    "ability": null,
+    "ability": {
+      "name": "Fourth Meal",
+      "kind": "attack",
+      "effect": "pierce",
+      "desc": "The boss cannot block this attack."
+    },
     "pushedAt": 1793209865003
   },
   {
@@ -6258,7 +6307,12 @@
       "traits": []
     },
     "type": "Character",
-    "ability": null,
+    "ability": {
+      "name": "Splash Art",
+      "kind": "attack",
+      "effect": "pierce",
+      "desc": "The boss cannot block this attack."
+    },
     "pushedAt": 1793209873454
   },
   {
@@ -6286,7 +6340,13 @@
       "traits": []
     },
     "type": "Character",
-    "ability": null,
+    "ability": {
+      "name": "Fetch!",
+      "kind": "attack",
+      "effect": "rampage",
+      "amount": 0.2,
+      "desc": "20% chance to strike twice."
+    },
     "pushedAt": 1793210261244
   },
   {
@@ -6314,7 +6374,13 @@
       "traits": []
     },
     "type": "Character",
-    "pushedAt": 1793210265032
+    "pushedAt": 1793210265032,
+    "ability": {
+      "name": "Joyride",
+      "kind": "attack",
+      "effect": "pierce",
+      "desc": "The boss cannot block this attack."
+    }
   },
   {
     "id": "heero-panda-express",
@@ -6341,7 +6407,15 @@
       "traits": []
     },
     "type": "Character",
-    "pushedAt": 1793210617157
+    "pushedAt": 1793210617157,
+    "ability": {
+      "name": "Bigger Plate",
+      "kind": "attack",
+      "effect": "lifesteal",
+      "amount": 0.2,
+      "target": "self",
+      "desc": "Heal for 20% of the damage dealt."
+    }
   },
   {
     "id": "noobeth-cancun",
@@ -6368,7 +6442,14 @@
       "traits": []
     },
     "type": "Character",
-    "ability": null,
+    "ability": {
+      "name": "Sunburn",
+      "kind": "attack",
+      "effect": "lifesteal",
+      "amount": 0.2,
+      "target": "self",
+      "desc": "Heal for 20% of the damage dealt."
+    },
     "pushedAt": 1793210616089
   },
   {
@@ -6424,7 +6505,14 @@
         "event": ""
       }
     },
-    "ability": null,
+    "ability": {
+      "name": "Gambit",
+      "kind": "attack",
+      "effect": "execute",
+      "amount": 0.5,
+      "threshold": 0.25,
+      "desc": "+50% damage when the boss is below 25% HP."
+    },
     "pushedAt": 1792789948294
   },
   {
@@ -6451,7 +6539,13 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "ability": {
+      "name": "Power Surge",
+      "kind": "attack",
+      "effect": "pierce",
+      "desc": "The boss cannot block this attack."
+    }
   },
   {
     "id": "pringles-jeep",
@@ -6478,7 +6572,13 @@
       "traits": []
     },
     "type": "Character",
-    "pushedAt": 1793210882521
+    "pushedAt": 1793210882521,
+    "ability": {
+      "name": "Off-Road",
+      "kind": "attack",
+      "effect": "pierce",
+      "desc": "The boss cannot block this attack."
+    }
   },
   {
     "id": "jelly-shiny-mew",
@@ -6539,7 +6639,13 @@
         "event": ""
       }
     },
-    "ability": null,
+    "ability": {
+      "name": "Shiny Hunt",
+      "kind": "attack",
+      "effect": "focus",
+      "amount": 0.2,
+      "desc": "+20% critical chance on this attack."
+    },
     "pushedAt": 1792789969116
   },
   {
@@ -6567,7 +6673,13 @@
       "traits": []
     },
     "type": "Character",
-    "pushedAt": 1793210889442
+    "pushedAt": 1793210889442,
+    "ability": {
+      "name": "Hot Take",
+      "kind": "attack",
+      "effect": "pierce",
+      "desc": "The boss cannot block this attack."
+    }
   },
   {
     "id": "chevynova-starcraft",
@@ -6594,7 +6706,13 @@
       "traits": []
     },
     "type": "Character",
-    "ability": null
+    "ability": {
+      "name": "Frame Perfect",
+      "kind": "attack",
+      "effect": "rampage",
+      "amount": 0.2,
+      "desc": "20% chance to strike twice."
+    }
   },
   {
     "id": "nugleo-jigglypuff",
@@ -6656,7 +6774,14 @@
         "event": ""
       }
     },
-    "ability": null,
+    "ability": {
+      "name": "Sing",
+      "kind": "attack",
+      "effect": "lifesteal",
+      "amount": 0.15,
+      "target": "self",
+      "desc": "Heal for 15% of the damage dealt."
+    },
     "pushedAt": 1792186935167
   },
   {
@@ -6718,7 +6843,12 @@
         "event": ""
       }
     },
-    "ability": null,
+    "ability": {
+      "name": "Demolition",
+      "kind": "attack",
+      "effect": "pierce",
+      "desc": "The boss cannot block this attack."
+    },
     "pushedAt": 1792790337535
   },
   {
@@ -6774,7 +6904,14 @@
         "event": ""
       }
     },
-    "pushedAt": 1792790362541
+    "pushedAt": 1792790362541,
+    "ability": {
+      "name": "Jab Rush",
+      "kind": "attack",
+      "effect": "rampage",
+      "amount": 0.2,
+      "desc": "20% chance to strike twice."
+    }
   },
   {
     "id": "flink-pikachu",
@@ -6835,7 +6972,12 @@
         "event": ""
       }
     },
-    "ability": null,
+    "ability": {
+      "name": "Discharge",
+      "kind": "attack",
+      "effect": "pierce",
+      "desc": "The boss cannot block this attack."
+    },
     "pushedAt": 1792790721772
   },
   {
@@ -6865,7 +7007,12 @@
       "traits": []
     },
     "type": "Character",
-    "ability": null
+    "ability": {
+      "name": "Crushing Wheels",
+      "kind": "attack",
+      "effect": "pierce",
+      "desc": "The boss cannot block this attack."
+    }
   },
   {
     "id": "xokrissie-blissey",
@@ -6894,7 +7041,14 @@
       "traits": []
     },
     "type": "Creature",
-    "ability": null,
+    "ability": {
+      "name": "Soft-Boiled",
+      "kind": "attack",
+      "effect": "lifesteal",
+      "amount": 0.15,
+      "target": "self",
+      "desc": "Heal for 15% of the damage dealt."
+    },
     "tierDetails": {
       "normal": {
         "genre": "Pokemon Unite",
@@ -6974,7 +7128,14 @@
         "event": ""
       }
     },
-    "ability": null,
+    "ability": {
+      "name": "Checkmate",
+      "kind": "attack",
+      "effect": "execute",
+      "amount": 0.5,
+      "threshold": 0.25,
+      "desc": "+50% damage when the boss is below 25% HP."
+    },
     "pushedAt": 1792790929923
   },
   {
@@ -7003,7 +7164,18 @@
       "realm": [],
       "traits": []
     },
-    "type": "Item"
+    "type": "Item",
+    "ability": {
+      "name": "Bombing Run",
+      "kind": "support",
+      "effect": "smite",
+      "amount": 200,
+      "target": "boss",
+      "affinity": "origin:minecraft",
+      "cooldown": 4,
+      "duration": 1,
+      "desc": "Direct boss damage — scales with your Minecraft cards"
+    }
   },
   {
     "id": "tarek-s-t5-army",
@@ -7031,7 +7203,13 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "ability": {
+      "name": "Full March",
+      "kind": "attack",
+      "effect": "pierce",
+      "desc": "The boss cannot block this attack."
+    }
   },
   {
     "id": "tech-ninja-s-hoopa",
@@ -7059,7 +7237,13 @@
       "realm": [],
       "traits": []
     },
-    "type": "Creature"
+    "type": "Creature",
+    "ability": {
+      "name": "Hyperspace Fury",
+      "kind": "attack",
+      "effect": "pierce",
+      "desc": "The boss cannot block this attack."
+    }
   },
   {
     "id": "mrs-mobs",
@@ -7085,7 +7269,15 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "ability": {
+      "name": "Last Word",
+      "kind": "attack",
+      "effect": "execute",
+      "amount": 0.5,
+      "threshold": 0.25,
+      "desc": "+50% damage when the boss is below 25% HP."
+    }
   },
   {
     "id": "pickleman-s-pickle",
@@ -7122,7 +7314,18 @@
         "event": ""
       }
     },
-    "pushedAt": 1793211751687
+    "pushedAt": 1793211751687,
+    "ability": {
+      "name": "Brine",
+      "kind": "support",
+      "effect": "heal",
+      "amount": 0.3,
+      "target": "ally",
+      "affinity": "origin:community",
+      "cooldown": 2,
+      "duration": 1,
+      "desc": "Heal an ally — extra strong on Community (Game) cards"
+    }
   },
   {
     "id": "kaykay-s-skogul",
@@ -7150,7 +7353,13 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "ability": {
+      "name": "Chooser of the Slain",
+      "kind": "attack",
+      "effect": "pierce",
+      "desc": "The boss cannot block this attack."
+    }
   },
   {
     "id": "litew8-s-g-w",
@@ -7178,7 +7387,14 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "ability": {
+      "name": "Judge",
+      "kind": "attack",
+      "effect": "focus",
+      "amount": 0.15,
+      "desc": "+15% critical chance on this attack."
+    }
   },
   {
     "id": "nidgy-s-captain-falcon",
@@ -7206,7 +7422,15 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "ability": {
+      "name": "Falcon Punch",
+      "kind": "attack",
+      "effect": "execute",
+      "amount": 0.5,
+      "threshold": 0.25,
+      "desc": "+50% damage when the boss is below 25% HP."
+    }
   },
   {
     "id": "meme-mondays",
@@ -7233,7 +7457,18 @@
       "traits": []
     },
     "type": "Moment",
-    "pushedAt": 1793211187645
+    "pushedAt": 1793211187645,
+    "ability": {
+      "name": "Meme Review",
+      "kind": "support",
+      "effect": "expose",
+      "amount": 0.3,
+      "target": "boss",
+      "affinity": "origin:meme",
+      "cooldown": 3,
+      "duration": 2,
+      "desc": "Boss takes more — scales with your Meme cards"
+    }
   },
   {
     "id": "aren-t-you-so-proud-peak-cannibalism",
@@ -7259,7 +7494,18 @@
       "realm": [],
       "traits": []
     },
-    "type": "Moment"
+    "type": "Moment",
+    "ability": {
+      "name": "Gross but Effective",
+      "kind": "support",
+      "effect": "cleanse",
+      "amount": 0,
+      "target": "team",
+      "affinity": "origin:party",
+      "cooldown": 2,
+      "duration": 1,
+      "desc": "Clear curses — themed around Party cards"
+    }
   },
   {
     "id": "peak-checkpoint",
@@ -7285,7 +7531,18 @@
       "traits": []
     },
     "type": "Moment",
-    "pushedAt": 1793211197634
+    "pushedAt": 1793211197634,
+    "ability": {
+      "name": "Campfire",
+      "kind": "support",
+      "effect": "heal",
+      "amount": 0.3,
+      "target": "ally",
+      "affinity": "origin:party",
+      "cooldown": 2,
+      "duration": 1,
+      "desc": "Heal an ally — extra strong on Party cards"
+    }
   },
   {
     "id": "doc-s-link",
@@ -7311,7 +7568,15 @@
       "traits": []
     },
     "type": "Character",
-    "pushedAt": 1793211207295
+    "pushedAt": 1793211207295,
+    "ability": {
+      "name": "Check-Up",
+      "kind": "attack",
+      "effect": "lifesteal",
+      "amount": 0.2,
+      "target": "self",
+      "desc": "Heal for 20% of the damage dealt."
+    }
   },
   {
     "id": "time-to-awaken",
@@ -7337,7 +7602,17 @@
       "traits": []
     },
     "type": "Moment",
-    "ability": null
+    "ability": {
+      "name": "Awaken",
+      "kind": "support",
+      "effect": "empower",
+      "amount": 0.5,
+      "target": "ally",
+      "affinity": "origin:party",
+      "cooldown": 2,
+      "duration": 1,
+      "desc": "Boost the next hit — extra strong on Party cards"
+    }
   },
   {
     "id": "sushi-ohtani",
@@ -7363,7 +7638,14 @@
       "traits": []
     },
     "type": "Character",
-    "pushedAt": 1793211227520
+    "pushedAt": 1793211227520,
+    "ability": {
+      "name": "Sho-Time",
+      "kind": "attack",
+      "effect": "rampage",
+      "amount": 0.25,
+      "desc": "25% chance to strike twice."
+    }
   },
   {
     "id": "science-fiction-or-fantasy",
@@ -7388,7 +7670,18 @@
       "traits": []
     },
     "type": "Moment",
-    "pushedAt": 1793211232426
+    "pushedAt": 1793211232426,
+    "ability": {
+      "name": "Plot Hole",
+      "kind": "support",
+      "effect": "expose",
+      "amount": 0.3,
+      "target": "boss",
+      "affinity": "origin:party",
+      "cooldown": 3,
+      "duration": 2,
+      "desc": "Boss takes more — scales with your Party cards"
+    }
   },
   {
     "id": "meme-dump",
@@ -7413,7 +7706,18 @@
       "traits": []
     },
     "type": "Moment",
-    "pushedAt": 1793211238236
+    "pushedAt": 1793211238236,
+    "ability": {
+      "name": "Cringe Compilation",
+      "kind": "support",
+      "effect": "smite",
+      "amount": 200,
+      "target": "boss",
+      "affinity": "origin:meme",
+      "cooldown": 4,
+      "duration": 1,
+      "desc": "Direct boss damage — scales with your Meme cards"
+    }
   },
   {
     "id": "runescape-addiction",
@@ -7438,7 +7742,18 @@
       "traits": []
     },
     "type": "Moment",
-    "pushedAt": 1793211244237
+    "pushedAt": 1793211244237,
+    "ability": {
+      "name": "Dragon Dagger",
+      "kind": "support",
+      "effect": "smite",
+      "amount": 200,
+      "target": "boss",
+      "affinity": "origin:party",
+      "cooldown": 4,
+      "duration": 1,
+      "desc": "Direct boss damage — scales with your Party cards"
+    }
   },
   {
     "id": "wow-addiction",
@@ -7463,7 +7778,18 @@
       "traits": []
     },
     "type": "Moment",
-    "pushedAt": 1793211249169
+    "pushedAt": 1793211249169,
+    "ability": {
+      "name": "Raid Tank",
+      "kind": "support",
+      "effect": "shield",
+      "amount": 0.4,
+      "target": "ally",
+      "affinity": "origin:party",
+      "cooldown": 2,
+      "duration": 1,
+      "desc": "Shield an ally — extra strong on Party cards"
+    }
   },
   {
     "id": "palworld-addiction",
@@ -7487,7 +7813,18 @@
       "realm": [],
       "traits": []
     },
-    "type": "Moment"
+    "type": "Moment",
+    "ability": {
+      "name": "Shock Pal",
+      "kind": "support",
+      "effect": "shield",
+      "amount": 0.4,
+      "target": "ally",
+      "affinity": "origin:party",
+      "cooldown": 2,
+      "duration": 1,
+      "desc": "Shield an ally — extra strong on Party cards"
+    }
   },
   {
     "id": "meccha-chameleon-whistle",
@@ -7511,7 +7848,18 @@
       "realm": [],
       "traits": []
     },
-    "type": "Item"
+    "type": "Item",
+    "ability": {
+      "name": "Lullaby Whistle",
+      "kind": "support",
+      "effect": "shield",
+      "amount": 0.4,
+      "target": "ally",
+      "affinity": "origin:community",
+      "cooldown": 2,
+      "duration": 1,
+      "desc": "Shield an ally — extra strong on Community (Game) cards"
+    }
   },
   {
     "id": "blade-suicune",
@@ -7539,7 +7887,13 @@
       "realm": [],
       "traits": []
     },
-    "type": "Creature"
+    "type": "Creature",
+    "ability": {
+      "name": "Purifying Wave",
+      "kind": "attack",
+      "effect": "pierce",
+      "desc": "The boss cannot block this attack."
+    }
   },
   {
     "id": "japser-sunny",
@@ -7567,7 +7921,13 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "ability": {
+      "name": "Sunny Side Up",
+      "kind": "attack",
+      "effect": "pierce",
+      "desc": "The boss cannot block this attack."
+    }
   },
   {
     "id": "lazypie-extra-life-stream",
@@ -7593,7 +7953,15 @@
       "realm": [],
       "traits": []
     },
-    "type": "Character"
+    "type": "Character",
+    "ability": {
+      "name": "Donation Drive",
+      "kind": "attack",
+      "effect": "lifesteal",
+      "amount": 0.2,
+      "target": "self",
+      "desc": "Heal for 20% of the damage dealt."
+    }
   },
   {
     "id": "wiifu-digimon-time-stranger",
@@ -7620,7 +7988,15 @@
       "traits": []
     },
     "type": "Creature",
-    "pushedAt": 1793211549050
+    "pushedAt": 1793211549050,
+    "ability": {
+      "name": "Time Skip",
+      "kind": "attack",
+      "effect": "execute",
+      "amount": 0.5,
+      "threshold": 0.25,
+      "desc": "+50% damage when the boss is below 25% HP."
+    }
   },
   {
     "id": "heero-gundam-cards",
@@ -7645,7 +8021,18 @@
       "traits": []
     },
     "type": "Item",
-    "pushedAt": 1793211554489
+    "pushedAt": 1793211554489,
+    "ability": {
+      "name": "Command Deck",
+      "kind": "support",
+      "effect": "empower",
+      "amount": 0.5,
+      "target": "ally",
+      "affinity": "origin:party",
+      "cooldown": 2,
+      "duration": 1,
+      "desc": "Boost the next hit — extra strong on Party cards"
+    }
   },
   {
     "id": "anyone-down-for-games",
@@ -7671,7 +8058,17 @@
       "traits": []
     },
     "type": "Moment",
-    "ability": null,
+    "ability": {
+      "name": "Who's In?",
+      "kind": "support",
+      "effect": "empower",
+      "amount": 0.5,
+      "target": "ally",
+      "affinity": "origin:party",
+      "cooldown": 2,
+      "duration": 1,
+      "desc": "Boost the next hit — extra strong on Party cards"
+    },
     "pushedAt": 1793211567998
   },
   {
@@ -7698,7 +8095,18 @@
       "traits": []
     },
     "type": "Moment",
-    "pushedAt": 1793211578657
+    "pushedAt": 1793211578657,
+    "ability": {
+      "name": "Skill Issue",
+      "kind": "support",
+      "effect": "weaken",
+      "amount": 0.3,
+      "target": "boss",
+      "affinity": "origin:meme",
+      "cooldown": 3,
+      "duration": 2,
+      "desc": "Boss hits softer — scales with your Meme cards"
+    }
   },
   {
     "id": "ottozone-s-head",
@@ -7725,7 +8133,18 @@
         "forbidden-pride"
       ]
     },
-    "type": "Item"
+    "type": "Item",
+    "ability": {
+      "name": "Obliterate",
+      "kind": "support",
+      "effect": "smite",
+      "amount": 200,
+      "target": "boss",
+      "affinity": "origin:community",
+      "cooldown": 4,
+      "duration": 1,
+      "desc": "Direct boss damage — scales with your Community (Game) cards"
+    }
   },
   {
     "id": "blastninja-s-feet",
@@ -7752,7 +8171,18 @@
         "forbidden-pride"
       ]
     },
-    "type": "Item"
+    "type": "Item",
+    "ability": {
+      "name": "Foot Rub",
+      "kind": "support",
+      "effect": "expose",
+      "amount": 0.3,
+      "target": "boss",
+      "affinity": "origin:community",
+      "cooldown": 3,
+      "duration": 2,
+      "desc": "Boss takes more — scales with your Community (Game) cards"
+    }
   },
   {
     "id": "lion-s-legs",
@@ -7779,7 +8209,18 @@
         "forbidden-pride"
       ]
     },
-    "type": "Item"
+    "type": "Item",
+    "ability": {
+      "name": "Leg Day",
+      "kind": "support",
+      "effect": "empower",
+      "amount": 0.5,
+      "target": "ally",
+      "affinity": "origin:community",
+      "cooldown": 2,
+      "duration": 1,
+      "desc": "Boost the next hit — extra strong on Community (Game) cards"
+    }
   },
   {
     "id": "mobs-dirty-gloves",
@@ -7807,7 +8248,17 @@
       ]
     },
     "type": "Item",
-    "ability": null
+    "ability": {
+      "name": "Dirty Gloves",
+      "kind": "support",
+      "effect": "weaken",
+      "amount": 0.3,
+      "target": "boss",
+      "affinity": "origin:community",
+      "cooldown": 3,
+      "duration": 2,
+      "desc": "Boss hits softer — scales with your Community (Game) cards"
+    }
   },
   {
     "id": "noobeth-s-tanktop",
@@ -7834,7 +8285,18 @@
         "forbidden-pride"
       ]
     },
-    "type": "Item"
+    "type": "Item",
+    "ability": {
+      "name": "Tank Top",
+      "kind": "support",
+      "effect": "shield",
+      "amount": 0.4,
+      "target": "ally",
+      "affinity": "origin:community",
+      "cooldown": 2,
+      "duration": 1,
+      "desc": "Shield an ally — extra strong on Community (Game) cards"
+    }
   },
   {
     "id": "broken-warden-s-butt",
@@ -7861,7 +8323,18 @@
         "forbidden-pride"
       ]
     },
-    "type": "Item"
+    "type": "Item",
+    "ability": {
+      "name": "Soft Landing",
+      "kind": "support",
+      "effect": "heal",
+      "amount": 0.3,
+      "target": "ally",
+      "affinity": "origin:community",
+      "cooldown": 2,
+      "duration": 1,
+      "desc": "Heal an ally — extra strong on Community (Game) cards"
+    }
   },
   {
     "id": "shugameat-s-modpack",
@@ -7887,7 +8360,18 @@
       "realm": [],
       "traits": []
     },
-    "type": "Item"
+    "type": "Item",
+    "ability": {
+      "name": "Overclocked",
+      "kind": "support",
+      "effect": "empower",
+      "amount": 0.5,
+      "target": "ally",
+      "affinity": "origin:minecraft",
+      "cooldown": 2,
+      "duration": 1,
+      "desc": "Boost the next hit — extra strong on Minecraft cards"
+    }
   },
   {
     "id": "samhenrygaming-s-schematicannon",
@@ -7914,7 +8398,18 @@
       "traits": []
     },
     "type": "Item",
-    "pushedAt": 1793211897680
+    "pushedAt": 1793211897680,
+    "ability": {
+      "name": "Build Order",
+      "kind": "support",
+      "effect": "smite",
+      "amount": 200,
+      "target": "boss",
+      "affinity": "origin:minecraft",
+      "cooldown": 4,
+      "duration": 1,
+      "desc": "Direct boss damage — scales with your Minecraft cards"
+    }
   },
   {
     "id": "jerichojack-s-steam-powered-armor",
@@ -7942,7 +8437,18 @@
         "metal"
       ]
     },
-    "type": "Item"
+    "type": "Item",
+    "ability": {
+      "name": "Steam Vent",
+      "kind": "support",
+      "effect": "shield",
+      "amount": 0.4,
+      "target": "ally",
+      "affinity": "origin:minecraft",
+      "cooldown": 2,
+      "duration": 1,
+      "desc": "Shield an ally — extra strong on Minecraft cards"
+    }
   },
   {
     "id": "cknbromein-s-racing-rig",
@@ -7968,7 +8474,18 @@
       "realm": [],
       "traits": []
     },
-    "type": "Item"
+    "type": "Item",
+    "ability": {
+      "name": "Pit Stop",
+      "kind": "support",
+      "effect": "shield",
+      "amount": 0.4,
+      "target": "ally",
+      "affinity": "origin:party",
+      "cooldown": 2,
+      "duration": 1,
+      "desc": "Shield an ally — extra strong on Party cards"
+    }
   },
   {
     "id": "xarnexe-s-tsareena",
@@ -7996,7 +8513,14 @@
         "nature"
       ]
     },
-    "type": "Creature"
+    "type": "Creature",
+    "ability": {
+      "name": "Triple Axel",
+      "kind": "attack",
+      "effect": "rampage",
+      "amount": 0.2,
+      "desc": "20% chance to strike twice."
+    }
   },
   {
     "id": "ezoun-s-delphox",
@@ -8025,7 +8549,13 @@
       ]
     },
     "type": "Creature",
-    "pushedAt": 1793211976068
+    "pushedAt": 1793211976068,
+    "ability": {
+      "name": "Fire Blast",
+      "kind": "attack",
+      "effect": "pierce",
+      "desc": "The boss cannot block this attack."
+    }
   },
   {
     "id": "boog-s-alliance",
@@ -8051,7 +8581,18 @@
       "realm": [],
       "traits": []
     },
-    "type": "Moment"
+    "type": "Moment",
+    "ability": {
+      "name": "Alliance",
+      "kind": "support",
+      "effect": "shield",
+      "amount": 0.4,
+      "target": "ally",
+      "affinity": "origin:party",
+      "cooldown": 2,
+      "duration": 1,
+      "desc": "Shield an ally — extra strong on Party cards"
+    }
   },
   {
     "id": "kozykanto-s-stream",
@@ -8077,7 +8618,18 @@
       "traits": []
     },
     "type": "Moment",
-    "pushedAt": 1793211908207
+    "pushedAt": 1793211908207,
+    "ability": {
+      "name": "Chat Spotted It",
+      "kind": "support",
+      "effect": "expose",
+      "amount": 0.3,
+      "target": "boss",
+      "affinity": "origin:community",
+      "cooldown": 3,
+      "duration": 2,
+      "desc": "Boss takes more — scales with your Community (Game) cards"
+    }
   },
   {
     "id": "meme-warfare",
@@ -8103,7 +8655,18 @@
       "traits": []
     },
     "type": "Moment",
-    "pushedAt": 1793211917225
+    "pushedAt": 1793211917225,
+    "ability": {
+      "name": "Flame War",
+      "kind": "support",
+      "effect": "smite",
+      "amount": 200,
+      "target": "boss",
+      "affinity": "origin:meme",
+      "cooldown": 4,
+      "duration": 1,
+      "desc": "Direct boss damage — scales with your Meme cards"
+    }
   },
   {
     "id": "heero-s-gundam-suit",
@@ -8130,7 +8693,13 @@
         "metal"
       ]
     },
-    "type": "Character"
+    "type": "Character",
+    "ability": {
+      "name": "Beam Shield",
+      "kind": "attack",
+      "effect": "pierce",
+      "desc": "The boss cannot block this attack."
+    }
   },
   {
     "id": "marvel-rival-or-overwatch",
@@ -8155,7 +8724,18 @@
       "traits": []
     },
     "type": "Moment",
-    "pushedAt": 1793211925157
+    "pushedAt": 1793211925157,
+    "ability": {
+      "name": "EMP",
+      "kind": "support",
+      "effect": "stun",
+      "amount": 0,
+      "target": "boss",
+      "affinity": "origin:party",
+      "cooldown": 5,
+      "duration": 1,
+      "desc": "Skip the boss turn — themed around Party cards"
+    }
   },
   {
     "id": "path-of-exile-tech-tree",
@@ -8180,7 +8760,18 @@
       "traits": []
     },
     "type": "Moment",
-    "pushedAt": 1793211927586
+    "pushedAt": 1793211927586,
+    "ability": {
+      "name": "Arc",
+      "kind": "support",
+      "effect": "smite",
+      "amount": 200,
+      "target": "boss",
+      "affinity": "origin:party",
+      "cooldown": 4,
+      "duration": 1,
+      "desc": "Direct boss damage — scales with your Party cards"
+    }
   },
   {
     "id": "mario-party-super-battle-golf",
@@ -8204,7 +8795,18 @@
       "realm": [],
       "traits": []
     },
-    "type": "Moment"
+    "type": "Moment",
+    "ability": {
+      "name": "Tee Shot",
+      "kind": "support",
+      "effect": "expose",
+      "amount": 0.3,
+      "target": "boss",
+      "affinity": "origin:party",
+      "cooldown": 3,
+      "duration": 2,
+      "desc": "Boss takes more — scales with your Party cards"
+    }
   },
   {
     "id": "pineapple-pizza-dox",
@@ -8229,7 +8831,18 @@
       "traits": []
     },
     "type": "Moment",
-    "pushedAt": 1793211930071
+    "pushedAt": 1793211930071,
+    "ability": {
+      "name": "Doxxed",
+      "kind": "support",
+      "effect": "expose",
+      "amount": 0.3,
+      "target": "boss",
+      "affinity": "origin:meme",
+      "cooldown": 3,
+      "duration": 2,
+      "desc": "Boss takes more — scales with your Meme cards"
+    }
   },
   {
     "id": "30-year-old-gamer",
@@ -8254,7 +8867,18 @@
       "traits": []
     },
     "type": "Moment",
-    "pushedAt": 1793211932408
+    "pushedAt": 1793211932408,
+    "ability": {
+      "name": "One Last Game",
+      "kind": "support",
+      "effect": "stun",
+      "amount": 0,
+      "target": "boss",
+      "affinity": "origin:party",
+      "cooldown": 5,
+      "duration": 1,
+      "desc": "Skip the boss turn — themed around Party cards"
+    }
   },
   {
     "id": "the-fox-the-lion",
@@ -8281,7 +8905,13 @@
       "traits": []
     },
     "type": "Character",
-    "ability": null
+    "ability": {
+      "name": "Waveshine",
+      "kind": "attack",
+      "effect": "rampage",
+      "amount": 0.25,
+      "desc": "25% chance to strike twice."
+    }
   },
   {
     "id": "draw-me-like-one-of-your-french-girls",
@@ -8314,7 +8944,13 @@
         "event": ""
       }
     },
-    "ability": null,
+    "ability": {
+      "name": "Hold Still",
+      "kind": "attack",
+      "effect": "focus",
+      "amount": 0.15,
+      "desc": "+15% critical chance on this attack."
+    },
     "pushedAt": 1792186620288
   },
   {
@@ -8342,6 +8978,17 @@
         "forbidden-pride"
       ]
     },
-    "type": "Item"
+    "type": "Item",
+    "ability": {
+      "name": "Funny Bone",
+      "kind": "support",
+      "effect": "stun",
+      "amount": 0,
+      "target": "boss",
+      "affinity": "origin:community",
+      "cooldown": 5,
+      "duration": 1,
+      "desc": "Skip the boss turn — themed around Community (Game) cards"
+    }
   }
 ]
