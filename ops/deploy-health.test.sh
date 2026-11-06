@@ -56,6 +56,30 @@ printf 'IMG_UPSTREAM=supabase\n' > "$T/home/activity/.env"
 out=$(STUB_IMG_FAIL=1 STUB_CONFIG="${CFG}\"img\":\"supabase\"}" STUB_TYPE=image/webp remote "$HA_T" activity 2>&1)
 [ "$out" = UNHEALTHY ] && ok "activity: the image route fails -> UNHEALTHY" || no "activity: image route fails (got $out)"
 
+# M2 (review r1): the rollback check of the OLD image (HEALTH_PREV). An old Activity (before R2-MOVE) has no "img" field.
+P=$(sed -n "/^  activity)/,/;;/p" deploy.sh | grep -o "HEALTH_PREV='.*'")
+[ -n "$P" ] && ok "the activity HEALTH_PREV assignment is in deploy.sh" || no "HEALTH_PREV assignment not found"
+eval "$P"; HP=$HEALTH_PREV
+case "$HP" in *"'"*) no "HEALTH_PREV holds a single quote";; *) ok "no single quote in HEALTH_PREV";; esac
+HP_T=${HP//\/home\/ubuntu\//$T\/home\/}
+case_p() { # name, .env content, config json, expected
+  printf '%s\n' "$2" > "$T/home/activity/.env"
+  out=$(STUB_CONFIG="$3" STUB_TYPE=image/webp remote "$HP_T" activity 2>&1)
+  [ "$out" = "$4" ] && ok "activity rollback: $1 -> $4" || no "activity rollback: $1 (want $4, got: $out)"
+}
+case_p "an old build (no img field)" "IMG_UPSTREAM=supabase" '{"features":{"hunt":true}}' HEALTHY
+case_p "a new build, img = the .env" "IMG_UPSTREAM=supabase" "${CFG}\"img\":\"supabase\"}" HEALTHY
+case_p "a new build, img differs from the .env" "IMG_UPSTREAM=r2" "${CFG}\"img\":\"supabase\"}" UNHEALTHY
+case_p "an old build, hunt false" "IMG_UPSTREAM=supabase" '{"features":{"hunt":false}}' UNHEALTHY
+case_p "no answer from /api/config" "IMG_UPSTREAM=supabase" "" UNHEALTHY
+# The wiring: deploy.sh sends HEALTH_PREV to the VM, and healthy() uses HEALTH for "new" and HEALTH_PREV for the rollback.
+grep -q "HEALTH='\$HEALTH' HEALTH_PREV='\$HEALTH_PREV' " deploy.sh && ok "deploy.sh passes HEALTH_PREV to the VM" || no "deploy.sh passes HEALTH_PREV to the VM"
+HB=$(sed -n '/^# HEALTHY_BEGIN/,/^# HEALTHY_END/p' deploy.sh)
+hy() { bash -c "set -euo pipefail; sleep() { :; }; FORCE=''; HEALTH='$1'; HEALTH_PREV='$2'; $HB
+if healthy $3; then echo HEALTHY; else echo UNHEALTHY; fi" 2>&1; }
+{ [ -n "$HB" ] && [ "$(hy false true new)" = UNHEALTHY ] && [ "$(hy false true '')" = HEALTHY ] && [ "$(hy true false new)" = HEALTHY ] && [ "$(hy true false '')" = UNHEALTHY ]; } \
+  && ok "deploy.sh healthy: the new build uses HEALTH, the rollback uses HEALTH_PREV" || no "deploy.sh healthy: the rollback uses HEALTH_PREV (HB=${HB:0:40})"
+
 out=$(STUB_GALLERY='{"subjects":[],"backUrl":"https://img.lionpridetcg.com/card-art/cards/card-back.png"}' remote "$HG" gallery 2>&1)
 [ "$out" = HEALTHY ] && ok "gallery: /api/gallery has a backUrl -> HEALTHY" || no "gallery backUrl (got $out)"
 out=$(STUB_GALLERY='{"error":"x"}' remote "$HG" gallery 2>&1)
@@ -73,6 +97,7 @@ echo CONTINUED" 2>&1); rc=$?
 }
 standby "IMG_UPSTREAM removed -> STANDBY ENV: IMG_UPSTREAM missing, exit 1" 1 "DISCORD_TOKEN=x" 1 "STANDBY ENV: IMG_UPSTREAM missing"
 standby "IMG_UPSTREAM=r3 (unknown) -> refused" 1 "IMG_UPSTREAM=r3" 1 "STANDBY ENV: IMG_UPSTREAM missing"
+standby "IMG_UPSTREAM=r2x (the end anchor, review r1 L4) -> refused" 1 "IMG_UPSTREAM=r2x" 1 "STANDBY ENV: IMG_UPSTREAM missing"
 standby "IMG_UPSTREAM=supabase -> continues" 1 "IMG_UPSTREAM=supabase" 0 "CONTINUED"
 standby "IMG_UPSTREAM=r2 -> continues" 1 "IMG_UPSTREAM=r2" 0 "CONTINUED"
 standby "not a standby deploy -> no check here (the health check covers it)" "" "DISCORD_TOKEN=x" 0 "CONTINUED"
