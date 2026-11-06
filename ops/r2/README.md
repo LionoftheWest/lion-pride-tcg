@@ -92,9 +92,15 @@ that host has no file. Every reader maps the name (`art-url.js`: `artKey`, `r2Ur
 
 - A NEW Activity build is healthy when `/api/config` has `"hunt":true` and `"img"` = the `IMG_UPSTREAM` of the host `.env`,
   and one image loads as `image/webp` through `/api/img` (`HEALTH`).
-- The rollback checks the OLD image with `HEALTH_PREV`: `"hunt":true`, and `"img"` = the `.env` value when the field exists.
-  An Activity built before R2-MOVE has no `"img"` field and passes. So `ROLLBACK ALSO UNHEALTHY` means a real defect.
+- The rollback checks the OLD image with `HEALTH_PREV`: `"hunt":true`. When the `"img"` field exists, it must equal the
+  `.env` value, and one image must load as `image/webp`. An Activity built before R2-MOVE has no `"img"` field and passes.
+  So `ROLLBACK ALSO UNHEALTHY` means a real defect.
+- An env-only deploy (S5, S6) rolls back to the same code with the same `.env`. If that mode does not serve images, the
+  rollback is also broken, and deploy.sh prints `ROLLBACK ALSO UNHEALTHY`. Set the `.env` back to the last mode, then deploy again.
 - Bot and gallery: the rollback uses the same check as the new build. Test: `bash ops/deploy-health.test.sh`.
+- **Main hosts: to change an env value (S5, S6), edit the `.env`, then run `ops/deploy.sh <activity|bot|gallery>`. Never use
+  `docker restart`.** Docker reads `--env-file` only when it creates a container. deploy.sh removes the container and runs
+  it again (`run()`), so the new `.env` takes effect.
 
 ## The bot on the backup VM (STANDBY)
 
