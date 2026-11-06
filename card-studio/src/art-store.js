@@ -6,6 +6,8 @@
 // ~/.lptcg/r2 = C:\Users\vaugh\.lptcg\r2), read on EVERY call, in every process, whatever its .env (R2-MOVE spec 4.2a):
 //   FROZEN    no NEW logical write starts. A write that started before may finish (its in-flight file is open).
 //   CUTOVER   the writers use R2 only: backend supabase = 'refused: cut to R2 (R2-MOVE)'.
+//             Backend r2 WITHOUT CUTOVER = 'refused: ART_STORE=r2 before the cut (R2-MOVE)' (I-2: one store. Before the
+//             cut a later r2-copy overwrites an r2-only write with the older Supabase bytes. Review r1 M1).
 //   inflight/<pid>-<n>   one open logical write (beginWrite .. endWrite). S4 waits until the folder is empty.
 // Every r2 write and delete first appends one JSON line to the write log (ART_WRITE_LOG, default <state>/art-writes.jsonl):
 // { t, op, key, md5, bytes, type }. A failed append fails the write before the PUT.
@@ -22,6 +24,7 @@ export const BUCKET = 'card-art';
 export const BACKENDS = ['supabase', 'r2'];
 export const REFUSED_FROZEN = 'refused: art-store frozen (R2-MOVE S4)';
 export const REFUSED_CUT = 'refused: cut to R2 (R2-MOVE)';
+export const REFUSED_R2_EARLY = 'refused: ART_STORE=r2 before the cut (R2-MOVE)';
 export const REFUSED_STAGE = 'refused: stage-faces writes Supabase storage (R2-MOVE)';
 export const DEFAULT_R2_PUBLIC_BASE = 'https://img.lionpridetcg.com';
 
@@ -88,7 +91,8 @@ export async function waitInflight({ env = process.env, timeoutMs = 600_000, pol
 
 let seq = 0;
 
-export function createArtStore({ db = null, env = process.env, vault = () => readR2Vault({ env }), endpoint = env.R2_ENDPOINT, fetchImpl, s3 = null } = {}) {
+// readStateFn: the state read (a test passes a spy to see the order in beginWrite, review r1 L1). Default readState.
+export function createArtStore({ db = null, env = process.env, vault = () => readR2Vault({ env }), endpoint = env.R2_ENDPOINT, fetchImpl, s3 = null, readStateFn = readState } = {}) {
   let s3p = s3 ? Promise.resolve(s3) : null;
   const r2 = () => {
     if (!s3p) {
@@ -102,8 +106,9 @@ export function createArtStore({ db = null, env = process.env, vault = () => rea
     return s3p;
   };
   const ownOpen = () => inflightFiles(env, process.pid).length > 0;
-  const state = () => readState(env); // the state files NOW, on every call (never cached: spec N1)
+  const state = () => readStateFn(env); // the state files NOW, on every call (never cached: spec N1)
   const cutRefused = (s, backend) => s.cutover && backend === 'supabase';
+  const r2Early = (s, backend) => backend === 'r2' && !s.cutover; // M1: R2 is written only after the cut (S4 step 5)
 
   // put / remove / ensureBucket: FROZEN refuses unless this process has an open logical write (it may finish, spec N2).
   function guard(label) {
@@ -111,6 +116,7 @@ export function createArtStore({ db = null, env = process.env, vault = () => rea
     const s = state();
     if (cutRefused(s, backend)) throw new Error(`${REFUSED_CUT} ${label}`);
     if (s.frozen && !ownOpen()) throw new Error(`${REFUSED_FROZEN} ${label}`);
+    if (r2Early(s, backend)) throw new Error(`${REFUSED_R2_EARLY} ${label}`);
     return backend;
   }
 
@@ -122,15 +128,17 @@ export function createArtStore({ db = null, env = process.env, vault = () => rea
 
   function beginWrite(label) {
     const backend = backendOf(env);
-    const s = state();
-    // A NEW logical write: refused under FROZEN. The label is printed (for a push: card id + tier), so the S4 REPORT lists it.
-    if (s.frozen) { console.log(`${REFUSED_FROZEN} ${label}`); throw new Error(`${REFUSED_FROZEN} ${label}`); }
-    if (cutRefused(s, backend)) { console.log(`${REFUSED_CUT} ${label}`); throw new Error(`${REFUSED_CUT} ${label}`); }
-    const d = join(s.dir, 'inflight');
+    // L1 (review r1): the in-flight file FIRST, then the state. A read of 'no FROZEN' then always comes after the file
+    // exists, so the S4 wait (FROZEN, then an empty inflight/) cannot miss a write that starts.
+    const d = join(stateDir(env), 'inflight');
     mkdirSync(d, { recursive: true });
     seq += 1;
     const file = join(d, `${process.pid}-${seq}`);
     writeFileSync(file, `${process.pid}\n${label}\n${new Date().toISOString()}\n`);
+    const s = state();
+    // A NEW logical write: refused under FROZEN. The label is printed (for a push: card id + tier), so the S4 REPORT lists it.
+    const why = s.frozen ? REFUSED_FROZEN : cutRefused(s, backend) ? REFUSED_CUT : r2Early(s, backend) ? REFUSED_R2_EARLY : null;
+    if (why) { rmSync(file, { force: true }); console.log(`${why} ${label}`); throw new Error(`${why} ${label}`); }
     return { file, label };
   }
   function endWrite(h) { if (h?.file) rmSync(h.file, { force: true }); }
