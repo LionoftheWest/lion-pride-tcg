@@ -25,8 +25,17 @@ export const RETRY_CODES = new Set(['40P01', '40001']);
 // The label of the practice (R3 SPEC 3.4 "New fields"): no reward, no board.
 export const LABEL = 'Practice (v2 test): no rewards';
 
+// HUNT-V2-POSTS: not_fighting on a LIVE day (hunt_v2_view day.live, the row mark) is not a practice. The round limit (ended_by cap) names
+// the cap of the SQL (balance v2_hunt.round_cap, the value combat_v2_advance reads; null when the balance is not loaded: no number).
+// A practice day keeps ERR.not_fighting.
+export function notFightingText(day, endedBy, cap) {
+  if (day?.live !== true) return ERR.not_fighting;
+  if ((endedBy ?? day?.ended_by) !== 'cap') return 'Your Hunt for today is over.';
+  const n = Number(cap);
+  return Number.isInteger(n) && n > 0 ? `Round limit reached (${n}). Your Hunt for today is over.` : 'Round limit reached. Your Hunt for today is over.';
+}
 // A refused answer: HTTP 400 with the message; every key of the answer (detail, cards, card) stays.
-const fail = (res, data) => res.status(400).json({ ...data, ok: false, message: ERR[data?.error] || data?.error || 'failed' });
+const fail = (res, data, msg) => res.status(400).json({ ...data, ok: false, message: msg || ERR[data?.error] || data?.error || 'failed' });
 const posId = (v) => { const n = Number(v); return Number.isInteger(n) && n > 0 ? n : null; };
 const idx = (v) => { const n = Number(v); return Number.isInteger(n) && n >= 0 && n < 10 ? n : null; };
 const autoMax = (v) => Math.min(AUTO_MAX, Math.max(1, Math.floor(Number(v)) || 1));
@@ -64,7 +73,7 @@ export function asRun(data) {
       state: { engine: 2, squad, fight: data.fight, info: data.info, units: data.units, phase: (data.status ?? data.day?.status) === 'active' ? 'fight' : 'over' } } };
 }
 
-export function registerHuntV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, huntOn, sharedCache }) {
+export function registerHuntV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, huntOn, sharedCache, roundCap = () => null }) {
   const refs = sharedCache ? sharedCache('huntV2Ref', { ttl: 300000 }) : timeCache(300000);
 
   // In order: 401, 403 off, 429 (a write), then ONE hunt_v2_view call: a tester, or D4 (an active practice day). Else 403 not_tester.
@@ -111,14 +120,14 @@ export function registerHuntV2Routes(app, { supabase, caller, rateLimit, getCata
     d.ref = await refs.get('ref', loadRef);
     return withCards(d);
   };
-  const rpc = async (res, fn, args) => {
+  const rpc = async (res, fn, args, view) => {
     let r = await supabase.rpc(fn, args);
     if (r.error && RETRY_CODES.has(r.error.code)) r = await supabase.rpc(fn, args);
     const { data, error } = r;
     if (error && RETRY_CODES.has(error.code)) return res.status(409).json({ ok: false, error: 'busy', message: ERR.busy });
     if (error) return res.status(500).json({ error: error.message });
     if (data?.ok === false && data.error === 'v1_today') return res.status(409).json({ ...data, message: ERR.v1_today });
-    if (!data?.ok) return fail(res, data);
+    if (!data?.ok) return fail(res, data, data?.error === 'not_fighting' ? notFightingText(view?.day, data.ended_by, roundCap()) : null);
     try { res.json(await show(data)); } catch (e) { res.status(500).json({ error: e.message }); }
   };
 
@@ -132,10 +141,10 @@ export function registerHuntV2Routes(app, { supabase, caller, rateLimit, getCata
   });
   app.post('/api/hunt/v2/act', async (req, res) => {
     const g = await gate(req, res, true); if (!g) return;
-    await rpc(res, 'hunt_v2_act', { p_player: g.player, p_choice: choiceOf(req.body) });
+    await rpc(res, 'hunt_v2_act', { p_player: g.player, p_choice: choiceOf(req.body) }, g.view);
   });
   app.post('/api/hunt/v2/auto', async (req, res) => {
     const g = await gate(req, res, true); if (!g) return;
-    await rpc(res, 'hunt_v2_auto', { p_player: g.player, p_max: autoMax(req.body?.max) });
+    await rpc(res, 'hunt_v2_auto', { p_player: g.player, p_max: autoMax(req.body?.max) }, g.view);
   });
 }
