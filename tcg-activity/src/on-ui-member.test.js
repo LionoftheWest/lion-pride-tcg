@@ -21,6 +21,10 @@ export const MUTATIONS = {
   test_button_live: ['ui-v2-dungeon.js', '(dg.v2can && !dg.v2live ? btn3', '(dg.v2can ? btn3'],
   // L-3: a missing row mark counts as live
   mark_missing_live: ['ui-v2-gauntlet2.js', 'v.run.live === true);   // review L-3', 'v.run.live !== false);   // review L-3'],
+  // R3-ON-FIX: the Hunt bar stops reading hunt.live_frac (the key of hunt_v2_out and hunt_v2_view)
+  hunt_bar_frac_key: ['ui-v2-dungeon.js', 'Number(h.live_frac)', 'Number(h.frac)'],
+  // R3-ON-FIX: the Hunt bar shows on a test day too (the rule stops reading huntLive)
+  hunt_bar_always: ['ui-v2-dungeon.js', "  if (!huntLive(v)) return `<div class=\"dg-prog\">", "  if (false) return `<div class=\"dg-prog\">"],
 };
 
 const name = process.env.MUTATE;
@@ -69,6 +73,33 @@ test('G-UI (a): no Practice / test / no rewards text in the member mode; the tes
   assert.equal(G.practiceLabel(member), null);
   assert.equal(G.practiceLabel({ ...member, live: false, day: { live: false } }), 'Practice (v2 test): no rewards');
   assert.match(D, /\(dg\.v2can && !dg\.v2live \? btn3\(\{ label: 'Play v2 \(test\)'/, 'the Dungeon test button only outside the member mode');
+});
+// R3-ON-FIX (POST-SWITCH-TRIAGE item 1): a REAL hunt_v2_start answer of a member live day (recorded on a local copy with
+// combat_v2_hunt_out_live.sql, tcg-activity/test-fixtures/hunt-v2-start-live.json) through the route shape (asRun) and the real bar code.
+const START = JSON.parse(readFileSync(join(here, '..', 'test-fixtures', 'hunt-v2-start-live.json'), 'utf8')).body;
+const { asRun } = await import('./hunt-v2-routes.js');
+// the real huntProgHTML of ui-v2-dungeon.js (the mutated text when a mutation names the file), with dg.v2 = the answer
+const huntBar = (v) => {
+  const m = D.match(/function huntProgHTML\(\) \{[\s\S]*?\n\}\n/);
+  assert.ok(m, 'huntProgHTML is in ui-v2-dungeon.js');
+  return new Function('dg', 'huntLive', 'esc', `${m[0]}\nreturn huntProgHTML();`)({ v2: v }, G.huntLive, (s) => String(s ?? ''));
+};
+test('R3-ON-FIX: the recorded member start answer shows no Practice label and the shared boss bar; the pre-fix shape shows the label', () => {
+  assert.equal(START.live, true, 'the recorded answer is a live member day');
+  const v = asRun({ ...START });
+  assert.equal(v.label, 'Practice (v2 test): no rewards', 'the route adds the label to every answer (only the screen rule hides it)');
+  assert.equal(G.huntLive(v), true);
+  assert.equal(G.practiceLabel(v), null, 'no Practice label');
+  const pct = Math.round(100 * START.hunt.live_frac);
+  const bar = huntBar(v);
+  assert.match(bar, /class="u3-hs-hp"/, 'the boss bar shows');
+  assert.ok(bar.includes(`--hp:${pct}%`) && bar.includes(`${pct}% HP`), `the bar = hunt.live_frac (${pct}%): ${bar}`);
+  // the answer of the live text before the fix: practice true, no live, no hunt
+  const old = { ...START, practice: true }; delete old.live; delete old.hunt;
+  const w = asRun(old);
+  assert.equal(G.huntLive(w), false);
+  assert.equal(G.practiceLabel(w), 'Practice (v2 test): no rewards', 'the pre-fix answer shows the label (the test depends on the live key)');
+  assert.doesNotMatch(huntBar(w), /u3-hs-hp/, 'the pre-fix answer shows no bar');
 });
 test('L-3: a missing row mark is not live (Dungeon run, Hunt day)', () => {
   assert.equal(G.isLive({ live: true, run: { id: 1 } }), false);

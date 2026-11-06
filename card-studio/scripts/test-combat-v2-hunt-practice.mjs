@@ -34,13 +34,16 @@ const RUN_H3 = process.env.H3 !== '0';
 const ON_FILE = read('../../tcg-bot/supabase/combat_v2_on_hunt.sql').replace(/notify pgrst[^\n]*\n/g, '');
 // HBP (combat_v2_hunt_boons.sql) replaces 3 R3-ON functions and adds hunt_v2_boon_plan: the final step applies it again after R3-ON when it was on
 // the copy before the run (the same F-1 lesson). HBP_MUT=h3_no_reapply (the HBP gate G-12 mutation) leaves it out, so the shape check must FAIL.
+// R3-ON-FIX (combat_v2_hunt_out_live.sql) replaces hunt_v2_out (an R3a function): the final step applies it again, last, when it was on the copy.
+const OUT_FILE = read('../../tcg-bot/supabase/combat_v2_hunt_out_live.sql').replace(/notify pgrst[^\n]*\n/g, '');
 const HBP_FILE = process.env.HBP_MUT === 'h3_no_reapply' ? '' : read('../../tcg-bot/supabase/combat_v2_hunt_boons.sql').replace(/notify pgrst[^\n]*\n/g, '');
 const SHAPE = `select coalesce((select string_agg(p.oid::regprocedure::text || '=' || md5(replace(pg_get_functiondef(p.oid), chr(13), '')), ' ' order by p.oid::regprocedure::text)
     from pg_proc p where p.pronamespace = 'public'::regnamespace and (p.proname like 'hunt\\_v2\\_%' or p.proname in ('hunt_attack', 'hunt_support'))), '') ||
   ' | ' || coalesce((select string_agg(column_name || ':' || data_type, ' ' order by column_name) from information_schema.columns
     where table_schema = 'public' and table_name = 'hunt_v2_days'), '') as shape,
   to_regprocedure('public.hunt_v2_shared(bigint, text, date, jsonb)') is not null as on_applied,
-  to_regprocedure('public.hunt_v2_boon_plan(jsonb, jsonb, numeric, jsonb, numeric)') is not null as hbp_applied;`;
+  to_regprocedure('public.hunt_v2_boon_plan(jsonb, jsonb, numeric, jsonb, numeric)') is not null as hbp_applied,
+  coalesce(obj_description(to_regprocedure('public.hunt_v2_out(bigint, text, date, jsonb)'), 'pg_proc'), '') like '%combat_v2_hunt_out_live.sql%' as out_applied;`;
 // H3 COMMITS the file on the copy. Only these mutations (each changes only hunt_v2_ objects, which the finally step drops) go into the H3
 // file; every other mutation is caught in the rolled-back blocks, and H3 then commits the CLEAN file. (Run 1 committed flag_on, v1_touched and
 // tags_dropped, which changed the copy outside R3: REPORT-r1 section 'Test defects'.)
@@ -705,7 +708,8 @@ async function runH3() {
   if (sh0.error) { add3(`H3 the hunt_v2_ objects could be read (${String(sh0.error).slice(0, 200)})`, false, null); return out; }
   const onApplied = sh0.rows[0].on_applied;
   const hbpApplied = sh0.rows[0].hbp_applied;
-  const restore = applied ? CLEAN + (onApplied ? '\n' + ON_FILE : '') + (onApplied && hbpApplied ? '\n' + HBP_FILE : '') : null;
+  const outApplied = sh0.rows[0].out_applied;
+  const restore = applied ? CLEAN + (onApplied ? '\n' + ON_FILE : '') + (onApplied && hbpApplied ? '\n' + HBP_FILE : '') + (onApplied && outApplied ? '\n' + OUT_FILE : '') : null;
   const T3 = (i) => lit(H3P[i - 1]);
   let squad;
   try {
