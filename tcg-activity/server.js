@@ -31,12 +31,13 @@ import { EFFECTS_SCHEMA, registerEffectRoutes } from './effects.js';
 import { REPORTS_ON, registerReportRoutes } from './reports.js';
 import { createLogs, clientInfo, newTutorialSteps, registerLogRoutes } from './logs.js';
 import { createImgCache } from './img-cache.js';
-import { createImgHandler } from './img-route.js';
+import { createImgHandler, createImgStats, parseImgMode } from './img-route.js';
 import { createBossFiles } from './boss-files.js';
 import { clientIp, createLimiter, createWhoAmI } from './guards.js';
 import { createBalance, ascendCost as costOf, dailyCardCap, publicBalance } from './balance.js';
 import { modelFor as bossModelFor } from './src/boss-models.js';
 import { mtToday } from './src/mt-time.js';
+import { v2DayFlag } from './src/hunt-v2-wait.js';
 import { ui3Css } from './src/ui3/css-parts.js';
 import { selectAll } from './src/select-all.js';
 import { rankByName } from './src/name-rank.js';
@@ -65,6 +66,10 @@ import { registerNotifRoutes } from './src/notif-routes.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(here, 'public');
+// R2-MOVE: the card-art store of /api/img (img-route.js). IMG_UPSTREAM is REQUIRED (supabase | r2-first | r2): unset or
+// unknown = no start, so a host with no value cannot serve broken images after the Supabase delete (spec H4).
+let IMG_MODE;
+try { IMG_MODE = parseImgMode(process.env); } catch (e) { console.error(e.message); process.exit(1); }
 
 // The bundle filename carries a content hash (main.<hash>.js) so a new build
 // gets a new URL. Discord's proxy / the webview can never serve a stale script.
@@ -255,18 +260,22 @@ const imgCache = process.env.IMG_CACHE === '1'
 // Members inside Discord share its proxy IPs, and a new member's first gallery view is a few
 // hundred misses: so a large burst (above the ~350 cards), then 2 a second.
 const imgMissLimit = createLimiter({ burst: 600, perSec: 2 });
-if (imgCache) {
-  let last = 0;
+// R2-MOVE: fallback / r2err / r2 counts (since the process start) are in the same hourly line, with or without the
+// disk cache. Each fallback ALSO prints its own `img-fallback` line at once (img-route.js), so a stop loses no event.
+const imgStats = createImgStats();
+{
+  let last = '';
   setInterval(() => {
-    const s = imgCache.stats;
-    if (s.hits + s.upstream === last) return;
-    last = s.hits + s.upstream;
-    console.log(`img-cache hits=${s.hits} upstream=${s.upstream} upstreamMB=${(s.upstreamBytes / 1e6).toFixed(1)} diskMB=${(imgCache.used() / 1e6).toFixed(1)}`);
+    const s = imgCache ? imgCache.stats : { hits: 0, upstream: 0, upstreamBytes: 0 };
+    const now = `${s.hits}/${s.upstream}/${imgStats.fallback}/${imgStats.r2}`;
+    if (now === last) return;
+    last = now;
+    console.log(`img-cache hits=${s.hits} upstream=${s.upstream} upstreamMB=${(s.upstreamBytes / 1e6).toFixed(1)} diskMB=${((imgCache ? imgCache.used() : 0) / 1e6).toFixed(1)} fallback=${imgStats.fallback} r2err=${imgStats.r2err} r2=${imgStats.r2}`);
   }, 3600_000).unref();
 }
 // The handler: img-route.js (moved unchanged). S1-FACE B11: the boss models and clips come from this server's disk when the
 // flag file /app/boss-files/ENABLED exists (boss-files.js; ops/deploy.sh mounts /srv/lptcg/boss-files); else today's path.
-app.get(/^\/api\/img\/(.+)/, createImgHandler({ supaHost: SUPA_HOST, imgCache, missLimit: imgMissLimit, clientIp, bossFiles: createBossFiles() }));
+app.get(/^\/api\/img\/(.+)/, createImgHandler({ supaHost: SUPA_HOST, imgMode: IMG_MODE, imgStats, imgCache, missLimit: imgMissLimit, clientIp, bossFiles: createBossFiles() }));
 
 // Discord avatar proxy: /api/avatar/<discord id>. The hash is saved at login
 // (players.avatar). Discord blocks unmapped fetches, so the picture comes through here.
@@ -512,7 +521,7 @@ app.post('/api/tutorial', async (req, res) => {
   res.json({ ok: true, tutorial: next });
 });
 
-app.get('/api/config', (req, res) => res.json({ clientId: CLIENT_ID, backUrl: CARD_BACK, features: { ascension: FEATURE_ASCENSION, hunt: FEATURE_HUNT } }));
+app.get('/api/config', (req, res) => res.json({ clientId: CLIENT_ID, backUrl: CARD_BACK, features: { ascension: FEATURE_ASCENSION, hunt: FEATURE_HUNT }, img: IMG_MODE.mode }));
 
 // Step 1 of login: swap the one-time OAuth code for the player's access token.
 app.post('/api/token', async (req, res) => {
@@ -942,7 +951,7 @@ app.get('/api/hunt', async (req, res) => {
   let cards, hpRows, myDamage, round;
   // The squad of the day, the unlock gate and the boss details do not depend on the view: they run in the same round trip
   // (before, the squad and the gate waited for the view: two database round trips in a row).
-  const [{ data: view, error: viewErr }, pw, bossMoves, { data: sqRow }, { data: gate }] = await Promise.all([
+  const [{ data: view, error: viewErr }, pw, bossMoves, { data: sqRow }, { data: gate }, v2q] = await Promise.all([
     supabase.rpc('hunt_view', { p_player: me.id, p_hunt: hunt.id, p_day: today }),
     cardPowersFor(me.id).then((data) => ({ data }), (e) => ({ error: e })), // combat power + HP of each copy (SQL card_combat)
     huntBossMoves(hunt.name),   // the boss details (hunt_boss_moves.sql), shared and cached
@@ -950,6 +959,10 @@ app.get('/api/hunt', async (req, res) => {
     supabase.from('hunt_squads').select('card_ids').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', today).maybeSingle(),
     // The unlock gate (adventure_gate.sql): null while the function is not live, so nothing locks.
     supabase.rpc('adventure_gate', { p_player: String(me.id) }),
+    // HUNT-FALSE-DOWN: a live v2 day of today. Its hunt_card_hp bridge rows are all downed at full HP: not a v1 squad (hunt-v2-wait.js).
+    // A failed read gives null (unknown), never false: v2DayFlag. The catch turns a rejected call into that error.
+    Promise.resolve(supabase.from('hunt_v2_days').select('day').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('day', today).eq('live', true).limit(1))
+      .catch((error) => ({ data: null, error })),
   ]);
   if (pw.error) return res.status(500).json({ error: pw.error.message });
   const powers = pw.data || {};
@@ -988,7 +1001,7 @@ app.get('/api/hunt', async (req, res) => {
   }).sort((a, b) => (a.downed - b.downed) || (b.matches - a.matches) || (b.power - a.power));
   // The daily card cap (balance daily_card_cap, the same value hunt_attack reads).
   const dailyCap = dailyCardCap(bal());
-  res.json({ hunt, roster, myDamage, usedToday: (hpRows || []).length, dailyCap, round, squad: sqRow?.card_ids || null, gate: gate || null, bossMoves });
+  res.json({ hunt, roster, myDamage, usedToday: (hpRows || []).length, dailyCap, round, squad: sqRow?.card_ids || null, gate: gate || null, bossMoves, v2day: v2DayFlag(v2q) });
 });
 
 // Send a card at the boss (once per card per day). Atomic + row-locked in the RPC.
@@ -2242,7 +2255,7 @@ const PORT = Number(process.env.PORT) || 4441;
 // off-box needs a direct connection. This keeps the port closed even if both
 // firewall layers were ever misconfigured (defense in depth).
 const HOST = process.env.BIND_HOST || '127.0.0.1';
-server.listen(PORT, HOST, () => console.log(`TCG Activity -> http://${HOST}:${PORT}`));
+server.listen(PORT, HOST, () => console.log(`TCG Activity -> http://${HOST}:${PORT} img=${IMG_MODE.mode}`));
 
 // A deploy stops the container with SIGTERM (ops/deploy.sh, docker stop). Stop taking new
 // connections and let the requests in flight finish: a SIGKILL cut a pack open mid-request

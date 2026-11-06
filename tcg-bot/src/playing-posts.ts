@@ -5,6 +5,8 @@ import { renderDungeonCard, dungeonLine, type DungeonScene } from './dungeon-car
 import { loadDungeonScene } from './dungeon-scene.js';
 import { launchActivityRow } from './ui/launch.js';
 import { utcToday as utcDay } from './store.js'; // the MT game day
+import { artKey, artVersion, r2Url } from './art-url.js';
+import { r2PublicBase } from './img-mode.js';
 
 // The "is playing" post (design 20, option B, Nathan 2026-09-30). The Activity tells the bot
 // when a member starts, does something, and leaves (/playing). ONE post per member per SESSION
@@ -84,11 +86,19 @@ export async function buf(url: string | null): Promise<Buffer | null> {
   } catch { return null; }
 }
 // Card art through the Activity's image cache (no new Supabase egress), else direct.
+// R2-MOVE: with IMG_UPSTREAM other than supabase, "direct" for a card-art URL is the R2 public domain, never the Supabase
+// host (the stored URL is only a logical name, I-4; after the Supabase delete that host has no file). G3b tests this.
 export async function art(imageUrl: string | null): Promise<Buffer | null> {
   if (!imageUrl) return null;
   const supa = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
   const cached = supa && imageUrl.startsWith(supa) ? `${ACTIVITY()}/api/img/${imageUrl.slice(supa.length + 1)}` : null;
-  return (cached && (await buf(cached))) || buf(imageUrl);
+  const viaProxy = cached && (await buf(cached));
+  if (viaProxy) return viaProxy;
+  if ((process.env.IMG_UPSTREAM || 'supabase') !== 'supabase' && supa && imageUrl.startsWith(`${supa}/`)) {
+    const key = artKey(imageUrl);
+    return key ? buf(r2Url(key, artVersion(imageUrl), r2PublicBase())) : null;
+  }
+  return buf(imageUrl);
 }
 
 // The banner's right side and line for what the member does now (Nathan, 2026-09-30):

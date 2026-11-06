@@ -5,8 +5,11 @@
 // - The key is the upstream URL, and only the ?v= version is kept (a changed file gets a
 //   new ?v or a new file name, the same rule as the browser's week-long cache). A v that is
 //   not short and plain is refused (null): each new v is a new Supabase fetch and disk copy.
-// - get(url, { allowMiss }): a miss that would fetch upstream first asks allowMiss() (the
+// - get(url, { allowMiss, fetcher }): a miss that would fetch upstream first asks allowMiss() (the
 //   per-IP miss limit in server.js); no = { status: 429 }. A hit never asks.
+// - R2-MOVE: the key stays the LOGICAL url in every IMG_UPSTREAM mode (a mode switch keeps the warm cache, spec D4).
+//   fetcher() = the upstream fetch of a miss (img-route.js picks R2 or Supabase); default fetchFn(url). The answer of
+//   a miss carries source = r.imgSource (the X-Img-Source header); a disk hit has none.
 // - Only 200 responses are stored. Many requests for one missing object share one fetch.
 // - Past maxBytes it still serves, but stops writing (the whole bucket is ~0.6 GB).
 import { createHash } from 'node:crypto';
@@ -28,7 +31,7 @@ export function createImgCache({ dir, maxBytes = 1.5e9, fetchFn = fetch }) {
 
   const save = (file, data) => { const tmp = `${file}.${process.pid}.tmp`; writeFileSync(tmp, data); renameSync(tmp, file); };
 
-  async function get(url, { allowMiss } = {}) {
+  async function get(url, { allowMiss, fetcher } = {}) {
     const key = createHash('sha256').update(url).digest('hex');
     const body = join(dir, key);
     try {
@@ -40,7 +43,7 @@ export function createImgCache({ dir, maxBytes = 1.5e9, fetchFn = fetch }) {
     if (allowMiss && !allowMiss()) return { status: 429 };
     const p = (async () => {
       stats.upstream += 1;
-      const r = await fetchFn(url);
+      const r = await (fetcher ? fetcher() : fetchFn(url));
       if (!r.ok) return { status: r.status };
       const buf = Buffer.from(await r.arrayBuffer());
       const type = r.headers.get('content-type') || 'application/octet-stream';
@@ -48,7 +51,7 @@ export function createImgCache({ dir, maxBytes = 1.5e9, fetchFn = fetch }) {
       if (used + buf.length <= maxBytes) {
         try { save(`${body}.type`, type); save(body, buf); used += buf.length; } catch { /* disk full: serve anyway */ }
       }
-      return { status: 200, type, buf };
+      return { status: 200, type, buf, source: r.imgSource };
     })().finally(() => inflight.delete(key));
     inflight.set(key, p);
     return p;

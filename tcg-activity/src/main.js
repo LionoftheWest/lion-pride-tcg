@@ -9,6 +9,7 @@
  */
 import { DiscordSDK } from '@discord/embedded-app-sdk';
 import { openSlots, squadDown, hasAttacker, noAction } from './squad-pick.js';
+import { huntV2Step, v2Waiter } from './hunt-v2-wait.js';
 import { setRewardsFrom } from './achievements.js';
 import { thumb, revealThumb, installImgFallback } from './thumb.js';
 import { mtToday, nextMtMidnightISO } from './mt-time.js';
@@ -740,7 +741,7 @@ function renderMain(view) {
   if (view === 'trading') { renderTradingV2(); return; }
   if (view === 'shop') { renderShopV2(); return; }
   if (view === 'dungeon') { renderDungeonV2(); return; }
-  if (view === 'battling' && features.hunt) { renderHunt(); return; }
+  if (view === 'battling' && features.hunt) { v2Wait.reset(); renderHunt(); return; } // review r2 N1: a new open of the Hunt starts a fresh wait
   el('main').innerHTML = '<div class="main-body"><div class="soon">⚔️<b>Battling is coming soon.</b><span>Put your cards head to head with the server.</span></div></div>';
 }
 
@@ -1378,7 +1379,12 @@ async function renderHunt() {
 // a tester while the flag is OFF gets 403 not_tester: huntV2 stays null and the v1 Hunt is unchanged.
 let huntV2 = null;
 async function loadHuntV2() {
-  try { const v = await api('/api/hunt/v2/view'); huntV2 = v?.ok ? v : null; } catch { huntV2 = null; }
+  // HUNT-FALSE-DOWN: keep why the answer failed (a 403 is permanent: the v1 rules; a network error or a 500 is transient: wait)
+  try {
+    const r = await fetch('/api/hunt/v2/view', { headers: { authorization: `Bearer ${token}` } });
+    const v = await r.json().catch(() => null);
+    huntV2 = v?.ok ? v : null; huntV2Err = huntV2 ? null : { status: r.status, error: v?.error || null };
+  } catch { huntV2 = null; huntV2Err = { status: 0, error: 'network' }; }
   return huntV2;
 }
 const huntV2Owns = (v) => !!(v?.ok && v.run && v.run.status === 'active' && v.fight);
@@ -1404,6 +1410,19 @@ function paintHuntV2() {
 }
 
 // Render the whole battle view from a data object (boss + phase + boss canvas + feed).
+// HUNT-FALSE-DOWN: the re-reads of a view that waits for the v2 answer (hunt-v2-wait.js: 3 s, 6 s, 12 s, then the Retry state).
+// Each re-read asks /api/hunt too, so a screen left open across the MT midnight gets the new day (review r1 L1).
+let huntV2Err = null;
+const v2Wait = v2Waiter({
+  load: async () => {
+    if (currentView !== 'battling') return;
+    const v2q = loadHuntV2(); let d = null;
+    try { d = await api('/api/hunt'); } catch { d = null; }
+    await v2q;
+    if (d && !d.error) huntCache = d;
+  },
+  paint: () => { if (currentView === 'battling' && huntCache) paintHuntView(huntCache); },
+});
 let huntResting = false; // the resting scene shows the last hunt's feed; do not poll it away
 let layoutSent = false;
 function sendLayoutDiag() {
@@ -1443,7 +1462,25 @@ function paintHuntView(d) {
     return;
   }
   // R3b / ON-UI: a v2 fight of today (practice or live) takes the Hunt view; a repaint of the poll keeps the fight that is on screen
-  if (huntV2Owns(huntV2)) { if (!(huntV2Active() && el('main').querySelector('.dg-fight'))) paintHuntV2(); return; }
+  if (huntV2Owns(huntV2)) { v2Wait.reset(); if (!(huntV2Active() && el('main').querySelector('.dg-fight'))) paintHuntV2(); return; }
+  // HUNT-FALSE-DOWN: a live v2 day exists, but the v2 answer did not load. The v1 roster holds only the bridge rows (every squad card
+  // downed at full HP): the v1 rule below showed "Your squad is down for today." Keep the v2 fight on screen, or wait, and ask again.
+  const v2step = huntV2Step(d, huntV2, huntV2Err);
+  if (v2step === 'wait' || v2step === 'reload') {
+    const keep = huntV2Active() && el('main').querySelector('.dg-fight');
+    if (v2Wait.stopped) {
+      // the existing "Could not load" state (show(), line ~678): no more automatic calls until the member taps Retry
+      if (!keep) {
+        el('main').innerHTML = '<div class="loading">Could not load this. <button class="v2-btn" id="viewRetry">Retry</button></div>';
+        el('viewRetry')?.addEventListener('click', () => { v2Wait.reset(); el('main').innerHTML = '<div class="main-body"><div class="loading">Summoning the hunt…</div></div>'; v2Wait.wait(); });
+      }
+    } else {
+      if (!keep) el('main').innerHTML = '<div class="main-body"><div class="loading">Summoning the hunt…</div></div>';
+      v2Wait.wait();
+    }
+    return;
+  }
+  v2Wait.reset();
   const v2over = huntV2Over(huntV2);
   if (v2over && huntLive(huntV2)) d = { ...d, myDamage: Number(huntV2.day?.credited) || 0 };
   huntState = d;

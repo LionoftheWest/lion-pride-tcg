@@ -11,6 +11,7 @@ const required = [
   'DISCORD_GUILD_ID',
   'SUPABASE_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
+  'IMG_UPSTREAM', // R2-MOVE: supabase | r2-first | r2 (img-mode.ts); the bot does not start without it
 ];
 
 console.log('Environment:');

@@ -17,17 +17,27 @@ KEY="${KEY:-$HOME/Downloads/ssh-key-2026-09-08.key}"
 VM_HOST="${VM_HOST:-lionpridetcg.duckdns.org}"
 
 # SRC = repo path, DIR = VM dir under /home/ubuntu, NAME = container + image, PATHS = what ships.
+HEALTH_PREV=""  # never taken from the caller's environment (review r2 N2): only the case below sets it
 case "$SVC" in
   activity) SRC=tcg-activity;               DIR=activity; NAME=tcg-activity; PATHS=".";
-            HEALTH='curl -fsS http://127.0.0.1:4441/api/config | grep -q "\"hunt\":true"' ;;  # false = the VM .env lost FEATURE_HUNT
+            # false = the VM .env lost FEATURE_HUNT. R2-MOVE: /api/config "img" = the IMG_UPSTREAM of the host .env (unset = the
+            # Activity does not start), and one image loads through /api/img (test: ops/deploy-health.test.sh). No single quote.
+            # HEALTH_PREV = the rollback check of the OLD image (review r1 M2): an Activity built before R2-MOVE has no "img"
+            # field, so it accepts no "img" field. When the field exists, it must match the host .env and one image must load
+            # (as in HEALTH, review r2 N1: an env-only deploy to a mode that does not serve rolls back to the same mode).
+            HEALTH_PREV='C=$(curl -fsS http://127.0.0.1:4441/api/config) && grep -q "\"hunt\":true" <<< "$C" && { ! grep -q "\"img\":" <<< "$C" || { M=$(grep -E ^IMG_UPSTREAM= /home/ubuntu/$DIR/.env | cut -d= -f2) && grep -q "\"img\":\"$M\"" <<< "$C" && curl -fsS -o /dev/null -w %{content_type} "http://127.0.0.1:4441/api/img/storage/v1/object/public/card-art/grid/cards/card-back.webp?v=health1" | grep -qx image/webp; }; }'
+            HEALTH='curl -fsS http://127.0.0.1:4441/api/config | grep -q "\"hunt\":true" && M=$(grep -E ^IMG_UPSTREAM= /home/ubuntu/$DIR/.env | cut -d= -f2) && curl -fsS http://127.0.0.1:4441/api/config | grep -q "\"img\":\"$M\"" && curl -fsS -o /dev/null -w %{content_type} "http://127.0.0.1:4441/api/img/storage/v1/object/public/card-art/grid/cards/card-back.webp?v=health1" | grep -qx image/webp' ;;
   bot)      SRC=tcg-bot;                    DIR=tcg-bot;  NAME=tcg-bot;
             PATHS="src package.json package-lock.json tsconfig.json Dockerfile";
             HEALTH='sudo docker logs tcg-bot 2>&1 | grep -q "Ready. Logged in"' ;;
   gallery)  SRC=card-studio/gallery-deploy; DIR=gallery;  NAME=card-gallery; PATHS=".";
-            HEALTH='curl -fsS -o /dev/null http://127.0.0.1:4331/' ;;
+            # R2-MOVE: /api/gallery answers with a backUrl (GALLERY_ART unset = the gallery does not start).
+            HEALTH='curl -fsS -o /dev/null http://127.0.0.1:4331/ && curl -fsS http://127.0.0.1:4331/api/gallery | grep -q "\"backUrl\":\"http"' ;;
   backup)   SRC=ops/backup;                 DIR=backups/bin; NAME=; PATHS="." ;;  # scripts + crontab, no container
   *) echo "unknown service: $SVC (use activity, bot, gallery, or backup)"; exit 2 ;;
 esac
+# The rollback check: HEALTH_PREV where a service sets one (the activity), else the same HEALTH.
+HEALTH_PREV="${HEALTH_PREV:-${HEALTH:-}}"
 
 cd "$(git rev-parse --show-toplevel)"
 
@@ -83,7 +93,7 @@ fi
 git archive --format=tar "$SHA:$SRC" $PATHS | $SSH "rm -rf ~/$DIR.new && mkdir ~/$DIR.new && tar -x -C ~/$DIR.new"
 
 # 3. On the VM: build, swap, health check, roll back on failure, lock the secrets.
-$SSH "SVC='$SVC' DIR='$DIR' NAME='$NAME' SHA='$SHA' SHORT='$SHORT' HEALTH='$HEALTH' FORCE='${FORCE_UNHEALTHY:-}' STANDBY='$STANDBY' bash -s" <<'REMOTE'
+$SSH "SVC='$SVC' DIR='$DIR' NAME='$NAME' SHA='$SHA' SHORT='$SHORT' HEALTH='$HEALTH' HEALTH_PREV='$HEALTH_PREV' FORCE='${FORCE_UNHEALTHY:-}' STANDBY='$STANDBY' bash -s" <<'REMOTE'
 set -euo pipefail
 cd /home/ubuntu
 # Backup VM, bot: a running bot here is a live failover. Do not touch it.
@@ -91,6 +101,12 @@ if [ "${STANDBY:-}" = 1 ] && [ "$(sudo docker inspect -f '{{.State.Running}}' "$
   echo "STOP: $NAME is RUNNING on this box (a failover is active). Run ops/failover/failback.sh first."; exit 1
 fi
 cp -p "$DIR/.env" "$DIR.new/.env"
+# STANDBY_ENV_BEGIN (R2-MOVE N3; test: ops/deploy-health.test.sh extracts this block)
+# The standby bot is created STOPPED, so no health check runs for it: refuse an .env without a valid IMG_UPSTREAM here.
+if [ "${STANDBY:-}" = 1 ] && ! grep -qE '^IMG_UPSTREAM=(supabase|r2-first|r2)$' "$DIR.new/.env"; then
+  rm -rf "$DIR.new"; echo "STANDBY ENV: IMG_UPSTREAM missing (supabase | r2-first | r2) in /home/ubuntu/$DIR/.env - nothing changed"; exit 1
+fi
+# STANDBY_ENV_END
 echo "$SHA" > "$DIR.new/.deployed-commit"
 
 echo "-- build $NAME:$SHORT (--no-cache: a cached build layer once served a stale bundle)"
@@ -162,9 +178,13 @@ run() {
   sudo docker run -d --init --name "$NAME" --network host --restart unless-stopped \
     --log-opt max-size=20m --log-opt max-file=3 $VOL --env-file "/home/ubuntu/$DIR/.env" "$1" >/dev/null
 }
+# HEALTHY_BEGIN (R2-MOVE review r1 M2; test: ops/deploy-health.test.sh extracts this block)
+# "healthy new" checks the NEW build (HEALTH). "healthy" checks the rollback, the OLD image (HEALTH_PREV).
 # FORCE=1 fails only the NEW build's check, so the rollback check stays real.
-healthy() { [ "${1:-}" = new ] && [ "$FORCE" = 1 ] && return 1
-            for _ in $(seq 1 20); do sleep 3; if eval "$HEALTH"; then return 0; fi; done; return 1; }
+healthy() { local h=$HEALTH_PREV; [ "${1:-}" = new ] && h=$HEALTH
+            [ "${1:-}" = new ] && [ "$FORCE" = 1 ] && return 1
+            for _ in $(seq 1 20); do sleep 3; if eval "$h"; then return 0; fi; done; return 1; }
+# HEALTHY_END
 lock() { chmod 600 /home/ubuntu/*/.env /home/ubuntu/*.tgz 2>/dev/null || true; stat -c '%a %n' /home/ubuntu/*/.env; }
 
 sudo docker tag "$NAME:latest" "$NAME:prev"
