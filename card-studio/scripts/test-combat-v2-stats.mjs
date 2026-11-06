@@ -244,7 +244,9 @@ try {
   const get = (n) => results.find((r) => r.case === n).got;
   // 1. the ported formula checks (the expected values of checks.mjs, and the same values from the simulator formulas with the database numbers)
   const asc = get('ASC');
-  ASC.forEach(([r, s, v], i) => say(Math.abs(Number(asc[i]) - v) <= 0.01 && near(asc[i], F.ascCp(cfg, r, s)), `asc.${r}.${s}: ASC-3 CP of ${r} ${s}* = ${v} (got ${Number(asc[i]).toFixed(4)})`, `got ${asc[i]}`));
+  // EVT-2 B4 (Nathan 2026-11-05 Q3b): promo = full_art (v2_asc.alias.promo), so a 2-star promo = 100 x (1 + 0.875 x 0.5) = 143.75; before: normal = 50.
+  const ascWant = (r, v) => (r === 'promo' && cfg.v2_asc?.alias?.promo === 'full_art' ? 143.75 : v);
+  ASC.forEach(([r, s, v0], i) => { const v = ascWant(r, v0); say(Math.abs(Number(asc[i]) - v) <= 0.01 && near(asc[i], F.ascCp(cfg, r, s)), `asc.${r}.${s}: ASC-3 CP of ${r} ${s}* = ${v} (got ${Number(asc[i]).toFixed(4)})`, `got ${asc[i]}`); });
   const st = get('STAT50'); const sim = F.stats(cfg, 50, ALLPTS);
   for (const [id, what, want, got, simv] of [['stat.atk', 'flat Attack: +3 CP a point (10 points)', 80, st.atk, sim.cp], ['stat.hp', 'HP = 50 + 1.5 x CP_base + 8 a point', 205, st.hp, sim.maxHp],
     ['stat.def', 'Defense 3% a point, cap 30% (12 points)', 0.30, st.def, sim.def], ['stat.crt', 'crit 10% + 4% a point', 0.50, st.crt, sim.crit],

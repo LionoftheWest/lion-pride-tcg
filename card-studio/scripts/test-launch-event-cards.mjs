@@ -53,7 +53,8 @@ begin
   insert into player_cards (player_id, card_id, quantity) values ('tst_lc_b', 378, 1) on conflict do nothing;
   r := play_card_effect('tst_lc_b', 378, 'tst_lc_a');
   if not coalesce((r->>'ok')::boolean, false) or r->>'outcome' is distinct from 'applied' then bad := bad || 'crasher play ' || coalesce(r::text, 'none') || '; '; end if;
-  if (r->>'ready_at')::timestamptz < now() + interval '167 hours' then bad := bad || 'crasher cooldown ' || (r->>'ready_at') || '; '; end if;
+  -- EVT-2 B4 (Nathan 2026-11-05 Q3b): event = the full_art cd (0.75), so 168 h -> 126 h; the limit follows balance effect_tiers.
+  if (r->>'ready_at')::timestamptz < now() + make_interval(hours => (168 * coalesce((balance_get('effect_tiers')->'event'->>'cd')::numeric, 1))::int - 1) then bad := bad || 'crasher cooldown ' || (r->>'ready_at') || '; '; end if;
   insert into player_cards (player_id, card_id, quantity) values ('tst_lc_a', att, 1) on conflict do nothing;
   -- The fights need a live boss: its own (rolled back), because the launch boss is defeated.
   insert into hunts (name, tier, weak_points, resist_points, hp_max, hp_remaining, closes_at) values ('Test Boss', 'Normal', '[]', '[]', 500000, 500000, now() + interval '1 day') returning id into hb;
