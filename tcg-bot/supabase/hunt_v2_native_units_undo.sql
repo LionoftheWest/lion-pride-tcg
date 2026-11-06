@@ -1,5 +1,5 @@
 -- hunt_v2_native_units_undo.sql (2026-11-06): the undo of hunt_v2_native_units.sql (HUNT-V2-NATIVE). It puts back the origin/main text of
--- spawn_hunt, hunt_v2_start, hunt_v2_live_credit, hunt_attack, hunt_support, balance_check_combat_v2.
+-- spawn_hunt, hunt_v2_start, hunt_v2_live_credit, hunt_attack, hunt_support, and drops the trigger hunt_unit_flag_guard and its function.
 -- A Hunt spawned in v2 units keeps its stats.unit mark. After the undo it gets the v1 scale hp_max / private max again (about 1, because
 -- its hp_max is the v2 max), and the v1 fight is open for it again. Use the undo between Hunts. Undo hunt_ach_damage_v2.sql first.
 -- Idempotent. GUARD as the forward file.
@@ -12,8 +12,7 @@ begin
     ('public.hunt_v2_start(text, bigint[])', '398e21c9c00dd9eddfbdf539969cf676', '697a15815650016e31aada64dd7c76b0'),
     ('public.hunt_v2_live_credit(bigint, text, date, jsonb)', '2e2f2b28bf7309ed1053610593128c40', '4ffdae766232988ab62fa3c8e4a63910'),
     ('public.hunt_attack(text, bigint, bigint)', '7f71eebe29b73b15f7c46d2b7a44c4b0', 'a06988245cde70262687cda817b5ad81'),
-    ('public.hunt_support(text, bigint, bigint, bigint)', 'e3f4fa9d381f6e8779e6151830a3c2ae', '8ac711106f43f78bfaf11246d2b5768d'),
-    ('public.balance_check_combat_v2()', 'b8cbfbaee3f3d1e4ed3874fec3323407', '79229ab288c19b7ada3b676b44da59fd')
+    ('public.hunt_support(text, bigint, bigint, bigint)', 'e3f4fa9d381f6e8779e6151830a3c2ae', '8ac711106f43f78bfaf11246d2b5768d')
   ) x(fn, old_md5, new_md5) loop
     select md5(replace(pg_get_functiondef(f.fn::regprocedure), chr(13), '')) into strict m;
     if m not in (f.old_md5, f.new_md5) then
@@ -851,49 +850,7 @@ begin
     || case when cardinality(v_ctr) > 0 then jsonb_build_object('countered', to_jsonb(v_ctr)) else '{}'::jsonb end;
 end $fn$;
 
-create or replace function public.balance_check_combat_v2()
- RETURNS trigger
- LANGUAGE plpgsql
- SET search_path TO 'public'
-AS $fn$
-declare spec jsonb := balance_v2_spec(new.key); errs text[]; v jsonb := new.value; r text; i int;
-begin
-  if spec is null then
-    if new.key like 'v2\_%' then raise exception 'balance %: a combat v2 key needs a shape in balance_v2_spec (a fixed shape for every v2 key)', new.key; end if;
-    return new;
-  end if;
-  errs := balance_shape_errors(v, spec, '');
-  if cardinality(errs) = 0 then
-    if new.key = 'v2_asc' then
-      -- ASC-3: the curve goes from 0 (0 stars) to 1 (5 stars) and never falls; the 0-star base is never above the 5-star top; every card rarity has a
-      -- base or an alias (promo = normal, event = full_art).
-      if (v->'curve'->>0)::numeric <> 0 or (v->'curve'->>5)::numeric <> 1 then errs := errs || 'curve must start at 0 and end at 1'::text; end if;
-      for i in 1..5 loop
-        if (v->'curve'->>i)::numeric < (v->'curve'->>(i - 1))::numeric then errs := errs || format('curve.%s is below curve.%s', i, i - 1); end if;
-      end loop;
-      for r in select x from jsonb_object_keys(v->'base') x loop
-        if (v->'base'->>r)::numeric > (v->'top'->>r)::numeric then errs := errs || format('base.%s is above top.%s', r, r); end if;
-      end loop;
-      select string_agg(e::text, ', ') into r from unnest(enum_range(null::card_rarity)) e
-       where not (v->'base' ? e::text) and not (v->'alias' ? e::text);
-      if r is not null then errs := errs || format('no base and no alias for the rarity %s', r); end if;
-    elsif new.key = 'v2_enemy' then
-      -- The boss move chances add up to 1 (the simulator picks one move with one random number over these shares).
-      if abs((select sum((v->'boss_moves'->>m)::numeric) from unnest(array['strike', 'slam', 'drain', 'stun', 'enrage', 'curse', 'regenerate']) m) - 1) > 0.001 then
-        errs := errs || 'boss_moves: strike + slam + drain + stun + enrage + curse + regenerate must add up to 1'::text;
-      end if;
-    elsif new.key = 'v2_synergy' then
-      -- SYN: the steps of a count never go down: element small_at <= big_at; each set small_at <= big_at <= top_at
-      if (v->'element'->>'small_at')::int > (v->'element'->>'big_at')::int then errs := errs || 'element: small_at must not be above big_at'::text; end if;
-      for r in select x from jsonb_object_keys(v->'sets') x loop
-        if (v->'sets'->r->>'small_at')::int > (v->'sets'->r->>'big_at')::int or (v->'sets'->r->>'big_at')::int > (v->'sets'->r->>'top_at')::int then
-          errs := errs || format('sets.%s: small_at <= big_at <= top_at is needed', r);
-        end if;
-      end loop;
-    end if;
-  end if;
-  if cardinality(errs) > 0 then raise exception 'balance %: %', new.key, array_to_string(errs, '; '); end if;
-  return new;
-end $fn$;
+drop trigger if exists hunt_unit_flag_guard on public.balance;
+drop function if exists public.hunt_unit_flag_guard();
 
 notify pgrst, 'reload schema';

@@ -1,5 +1,5 @@
 // HUNT-V2-NATIVE (Nathan 2026-11-06): the old achievements dmg1k / hit500 count in v2 damage. The goal comes from the server
-// (stats.need = balance v2_ach_damage.old, hunt_ach_damage_v2.sql), the values from the SQL (ach_damage_rows). No number in the client.
+// (stats.need = balance ach_damage_v2.old, hunt_ach_damage_v2.sql), the values from the SQL (ach_damage_rows). No number in the client.
 //   node --test src/achievements-damage.test.js        a mutation: MUTATE=<name> node --test src/achievements-damage.test.js
 //   MUTATE=all node src/achievements-damage.test.js    the baseline and every mutation in one run (each must fail)
 import test from 'node:test';
@@ -42,7 +42,7 @@ async function load() {
 }
 const { measure, achievementList } = await load();
 
-// balance v2_ach_damage.old of hunt_ach_damage_v2.sql: floor(1000 x 0.45305), floor(500 x 0.45305)
+// balance ach_damage_v2.old of hunt_ach_damage_v2.sql: floor(1000 x 0.45305), floor(500 x 0.45305)
 const NEED = { dmg1k: 453, hit500: 226 };
 const one = (stats, key) => measure([], stats, []).find((a) => a.key === key);
 

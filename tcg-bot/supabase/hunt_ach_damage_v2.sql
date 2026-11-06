@@ -6,7 +6,8 @@
 --   closed after 148564, so this is the one-time conversion of the stored history; every new point is real v2 damage.
 -- The tiers: each v1 number x v1_x, rounded DOWN. A member with v1 value V >= tier T has round(V x v1_x) >= floor(T x v1_x): nobody loses
 --   a tier (and the live read-only count of the PR shows 0 members with a lower tier, a claimed tier above the new tier, or another old_paid).
--- The one source: balance v2_ach_damage (a fixed shape in balance_v2_spec, balance_log records each change). The trigger
+-- The one source: balance ach_damage_v2 (a fixed shape and limits, checked by its trigger with balance_shape_errors; balance_log records
+--   each change). The key has no v2_ prefix, so the shared balance_v2_spec (which other files guard) does not change. The trigger
 --   ach_damage_sync writes its numbers into achievement_tracks (heavy, bighit: tiers, step) and achievement_switch_map (dmg1k, hit500:
 --   proves) in the same transaction, so every reader of those tables (ach_tier_need, achievement_view, achievement_gallery,
 --   ach_tier_paid_before, claim_achievement_tiers) gets the v2 numbers with no change. The tiers must rise (the trigger refuses otherwise).
@@ -18,7 +19,6 @@ do $g$
 declare m text; f record;
 begin
   for f in select * from (values
-    ('public.balance_v2_spec(text)', 'ef1b0b00cc0b6e1997b4299ee373cd21', '173e97d55993d1cd4e4a1719fe422744'),
     ('public.ach_track_values(text)', '14927afaf886b134383f4c72ec987925', '626bcac9dd629e817d22ea5642de274c')
   ) x(fn, old_md5, new_md5) loop
     select md5(replace(pg_get_functiondef(f.fn::regprocedure), chr(13), '')) into strict m;
@@ -29,153 +29,13 @@ begin
 end $g$;
 -- GUARD-END
 
--- ============================================================ 1. the shape of the balance key
-create or replace function public.balance_v2_spec(p_key text)
- RETURNS jsonb
- LANGUAGE sql
- IMMUTABLE
- SET search_path TO 'public'
-AS $fn$
-  select case p_key
-  when 'combat_v2' then '{"gauntlet": "bool", "dungeon": "bool", "hunt": "bool", "progress": "bool", "testers": ["set", "discord_id", 0, 20]}'::jsonb
-  when 'v2_stats' then '{
-    "max_per_stat": "int 1 20",
-    "atk": {"flat": "num 0 10"},
-    "def": {"pct": "num 0 0.1", "cap": "num 0 0.6"},
-    "hp":  {"flat": "num 0 30"},
-    "crd": {"base": "num 1 4", "pct": "num 0 0.5"},
-    "crt": {"base": "num 0 0.5", "pct": "num 0 0.2", "cap": "num 0 1"},
-    "abl": {"pct": "num 0 0.2"},
-    "ddg": {"pct": "num 0 0.1", "cap": "num 0 0.6", "area_x": "num 0 1"},
-    "acc": {"pct": "num 0 0.1"},
-    "spd": {"pct": "num 0 0.1"}}'::jsonb
-  when 'v2_card_hp' then '{"base": "num 1 200", "per_cp": "num 0 5"}'::jsonb
-  when 'v2_asc' then '{
-    "base": {"normal": "num 1 500", "illustrated_rare": "num 1 500", "secret_rare": "num 1 500", "full_art": "num 1 500", "gold": "num 1 500"},
-    "top":  {"normal": "num 1 500", "illustrated_rare": "num 1 500", "secret_rare": "num 1 500", "full_art": "num 1 500", "gold": "num 1 500"},
-    "curve": ["list", "num 0 1", 6, 6],
-    "alias": {"promo": "enum normal|illustrated_rare|secret_rare|full_art|gold", "event": "enum normal|illustrated_rare|secret_rare|full_art|gold"}}'::jsonb
-  when 'v2_level' then '{"max_level": "int 1 100", "points_per_level": "int 1 5", "converge_d": "num 0 1", "target_cp": "num 1 1000"}'::jsonb
-  when 'card_level' then '{"xp_hunt_day": "int 0 100", "xp_dungeon_run": "int 0 100", "cost_base": "int 1 100", "cost_per_level": "int 0 20",
-    "catchup_x": "num 1 5", "catchup_top": "int 1 20"}'::jsonb
-  when 'v2_support' then '{"basic_x": "num 0 1", "power_ref": "num 1 500", "power_exp": "num 0 1",
-    "enabler_extra_stack": ["set", "enum normal|illustrated_rare|secret_rare|full_art|gold|promo|event", 0, 7], "area_one_foe_x": "num 0 1"}'::jsonb
-  when 'v2_speed' then '{
-    "role_base": {"breaker": "num 1 100", "striker": "num 1 100", "flurry": "num 1 100", "finisher": "num 1 100", "survivor": "num 1 100", "cleaver": "num 1 100",
-                  "warden": "num 1 100", "medic": "num 1 100", "controller": "num 1 100", "spotter": "num 1 100", "herald": "num 1 100", "artillery": "num 1 100"},
-    "act_at": "num 10 1000", "status_min_x": "num 0.1 1", "safety_max_x": "num 1 3", "max_actions_per_step": "int 1 10"}'::jsonb
-  when 'v2_charge' then '{"attacker": "int 0 5", "support": "int 0 5", "start": "int 0 5"}'::jsonb
-  when 'v2_hit' then '{"miss": "num 0 0.5", "roll_min": "num 0.5 1", "roll_span": "num 0 1", "resolve_acc": "num 0 0.1", "min_dmg": "int 0 10"}'::jsonb
-  when 'v2_roles' then '{
-    "breaker":    {"pierce": "num 0 1", "shield_x": "num 1 5"},
-    "striker":    {"crit_add": "num 0 0.5", "critx_add": "num 0 2"},
-    "flurry":     {"extra_chance": "num 0 1", "extra_x": "num 0 2"},
-    "finisher":   {"line": "num 0 1", "bonus": "num 0 3"},
-    "survivor":   {"lifesteal": "num 0 1", "cap_maxhp": "num 0 1"},
-    "cleaver":    {"splash": "num 0 1", "hunt_bonus": "num 0 1", "hunt_area_x": "num 0 1"},
-    "warden":     {"ally_dr": "num 0 0.5", "taunt_w": "num 1 10"},
-    "medic":      {"heal_after": "num 0 0.5"},
-    "controller": {"resolve_ignore": "num 0 1", "dur_add": "int 0 5"},
-    "spotter":    {"basic_expose": "num 0 1", "basic_expose_dur": "int 1 10"},
-    "herald":     {"basic_empower": "num 0 1"},
-    "artillery":  {"basic_x": "num 0 1", "true_strike": "bool"}}'::jsonb
-  when 'v2_status' then '{
-    "poison":    {"tick": "num 0 0.2", "burst_at": "int 2 10", "burst": "num 0 1", "dur": "int 1 50", "dur_card": "int 1 50", "ignore_shield": "bool"},
-    "burn":      {"tick_x": "num 0 5", "max": "int 1 20", "decay": "int 0 5", "heal_x": "num 0 1", "vs_healer_x": "num 1 5", "ignore_shield": "bool"},
-    "stunned":   {"max_life": "int 1 50", "max_life_card": "int 1 50"},
-    "frozen":    {"max_life": "int 1 50", "max_life_card": "int 1 50"},
-    "sleep":     {"dur": "int 1 50", "dur_card": "int 1 50"},
-    "paralyzed": {"dur": "int 1 50", "dur_card": "int 1 50", "fail": "num 0 1"},
-    "blinded":   {"miss": "num 0 1", "dur": "int 1 50", "dur_card": "int 1 50"},
-    "confused":  {"chance": "num 0 1", "self_x": "num 0 2", "dur": "int 1 50", "dur_card": "int 1 50"},
-    "slowed":    {"x": "num 0.1 1", "dur": "int 1 50", "dur_card": "int 1 50"},
-    "quickened": {"x": "num 1 3", "dur": "int 1 50", "dur_card": "int 1 50"},
-    "chill":     {"dmg": "num 0 0.5", "spd": "num 0 0.5", "freeze_at": "int 2 10", "dur": "int 1 50", "dur_card": "int 1 50"},
-    "exposed":   {"cap": "num 0 3", "dur": "int 1 50", "dur_card": "int 1 50"},
-    "weakened":  {"cap": "num 0 1", "dur": "int 1 50", "dur_card": "int 1 50"},
-    "mark":      {"dur": "int 1 50"},
-    "shielded":  {"cap_maxhp": "num 0 3"},
-    "empowered": {"cap": "num 0 5", "stack": "bool", "stack_cap": "num 0 5"},
-    "focused":   {"dur": "int 1 50"},
-    "enraged":   {"x": "num 1 3", "dur": "int 1 50"},
-    "hunt_ref_hp": "num 1 100000"}'::jsonb
-  when 'v2_control' then '{"immune": "int 0 20", "immune_card": "int 0 50", "boss_immune": "int 0 20", "boss_max_dur": "int 1 10"}'::jsonb
-  when 'v2_enemy' then '{
-    "hunt": {
-      "Normal": {"hp": "int 1000 1000000", "atk": "num 1 1000", "def": "num 0 0.6", "evasion": "num 0 0.5", "resolve": "num 0 1", "keen": "num 0 1", "speed": "num 1 400", "atk_x": "num 0.1 3", "signatures": "int 0 5"},
-      "Heroic": {"hp": "int 1000 1000000", "atk": "num 1 1000", "def": "num 0 0.6", "evasion": "num 0 0.5", "resolve": "num 0 1", "keen": "num 0 1", "speed": "num 1 400", "atk_x": "num 0.1 3", "signatures": "int 0 5"},
-      "Mythic": {"hp": "int 1000 1000000", "atk": "num 1 1000", "def": "num 0 0.6", "evasion": "num 0 0.5", "resolve": "num 0 1", "keen": "num 0 1", "speed": "num 1 400", "atk_x": "num 0.1 3", "signatures": "int 0 5"}},
-    "boss_heal_ref": "num 1 100000",
-    "boss_moves": {"strike": "num 0 1", "strike_x": "num 0 5", "slam": "num 0 1", "slam_x": "num 0 5", "drain": "num 0 1", "drain_x": "num 0 5", "drain_heal": "num 0 0.2",
-      "stun": "num 0 1", "stun_x": "num 0 5", "enrage": "num 0 1", "enrage_x": "num 1 3", "enrage_dur": "int 1 20", "curse": "num 0 1", "curse_weaken": "num 0 1",
-      "curse_dur": "int 1 50", "regenerate": "num 0 1", "regenerate_heal": "num 0 0.2", "regenerate_heal_rage": "num 0 0.2", "cycle": "int 2 30",
-      "cataclysm_x": "num 0 5", "rage_at": "num 0 1", "rage_x": "num 1 3"},
-    "signature_pool": ["set", "enum purify|ironhide|true_strike|shatter|regrowth|frost_aura|thick_hide|unstoppable|venom|burning|sunder|slowing|elusive|toxic_born|fireborn|frostborn|steadfast|dispeller", 1, 18],
-    "mechanics": {
-      "purify": {"every": "int 1 10"}, "ironhide": {"crit_x": "num 0 1"}, "true_strike": {}, "shatter": {"shield_x": "num 1 5"},
-      "regrowth": {"heal": "num 0 0.2", "below_half_x": "num 1 5", "boss_heal": "num 0 0.05"}, "frost_aura": {"chill": "int 1 5"}, "thick_hide": {"expose_cap": "num 0 1"},
-      "unstoppable": {"control_fail": "num 0 1"}, "venom": {"poison": "int 1 5", "chance": "num 0 1"}, "burning": {"burn": "int 1 5"}, "sunder": {"pierce": "num 0 1"},
-      "slowing": {"chance": "num 0 1"}, "elusive": {},
-      "toxic_born": {"immune": ["set", "enum poison|burn|stunned|frozen|sleep|paralyzed|blinded|confused|slowed|chill|exposed|weakened|mark", 1, 13]},
-      "fireborn":   {"immune": ["set", "enum poison|burn|stunned|frozen|sleep|paralyzed|blinded|confused|slowed|chill|exposed|weakened|mark", 1, 13]},
-      "frostborn":  {"immune": ["set", "enum poison|burn|stunned|frozen|sleep|paralyzed|blinded|confused|slowed|chill|exposed|weakened|mark", 1, 13]},
-      "steadfast": {"dr": "num 0 1", "kinds": "int 1 13"}, "dispeller": {"x": "num 0 1"}},
-    "asc3_hp_x": "num 0.5 5", "weak_role_x": "num 0 1",
-    "weak_role_rules": {"controller": {"damage_x": "num 0 1", "control_add": "int 0 5"}}}'::jsonb
-  when 'v2_dungeon' then '{
-    "round_cap": "int 1 200", "hp_x": "num 0.1 5", "atk_x": "num 0.1 5",
-    "growth": {"hp": "num 1 3", "atk": "num 1 3", "room": "num 0 1", "early_floors": "int 0 30", "early_hp": "num 0.1 1", "early_atk": "num 0.1 1"},
-    "kinds": {
-      "fight":    {"hp": "num 0.1 10", "atk": "num 0.1 10", "def": "num 0 0.6", "speed": "num 1 400", "passives": "int 0 5", "charge": "bool"},
-      "horde":    {"hp": "num 0.1 10", "atk": "num 0.1 10", "def": "num 0 0.6", "speed": "num 1 400", "passives": "int 0 5", "charge": "bool"},
-      "elite":    {"hp": "num 0.1 10", "atk": "num 0.1 10", "def": "num 0 0.6", "speed": "num 1 400", "passives": "int 0 5", "charge": "bool"},
-      "miniboss": {"hp": "num 0.1 10", "atk": "num 0.1 10", "def": "num 0 0.6", "speed": "num 1 400", "passives": "int 0 5", "charge": "bool"},
-      "guardian": {"hp": "num 0.1 10", "atk": "num 0.1 10", "def": "num 0 0.6", "speed": "num 1 400", "passives": "int 0 5", "charge": "bool"}},
-    "foe_resolve": {"fight": "num 0 1", "horde": "num 0 1", "elite": "num 0 1", "miniboss": "num 0 1", "guardian": "num 0 1"},
-    "foe_evasion_per_floor": "num 0 0.1", "foe_evasion_max": "num 0 0.5",
-    "pool_moves": {"cycle": "int 2 30", "cataclysm_x": "num 0 5", "heavy_x": "num 0 5", "flurry_x": "num 0 5", "slam_x": "num 0 5", "stun_x": "num 0 5",
-      "drain_x": "num 0 5", "drain_heal": "num 0 1", "poison_x": "num 0 5", "regenerate_heal": "num 0 1", "regenerate_heal_rage": "num 0 1", "guard": "num 0 1",
-      "curse_weaken": "num 0 1"},
-    "passive_pool": ["set", "enum purify|ironhide|true_strike|shatter|regrowth|frost_aura|thick_hide|unstoppable|venom|burning|sunder|slowing|elusive|toxic_born|fireborn|frostborn|steadfast|dispeller", 1, 18],
-    "moves_v2": {"hellfire": {"x": "num 0 5", "burn": "int 1 5"}, "frost_punch": {"x": "num 0 5", "chill": "int 1 5"}, "squeeze": {"x": "num 0 5", "status": "enum poison|burn|stunned|frozen|sleep|paralyzed|blinded|confused|slowed|chill|exposed|weakened|mark"},
-      "rattle": {"exposed": "num 0 1"}, "infect": {"x": "num 0 5", "poison": "int 1 5", "no_heal": "int 1 50"}},
-    "monster_passives": {"kinds": ["set", "enum fight|horde|elite|miniboss|guardian", 1, 5], "pack": {"kinds": ["set", "enum fight|horde|elite|miniboss|guardian", 1, 5]}},
-    "passive_params": {"bulwark": {"every": "int 2 10", "guard": "num 0 1"}, "plaguebearer": {"poison": "int 1 5"}, "undying": {"hp": "num 0 1"},
-      "volatile_core": {"x": "num 0 5"}, "pack": {"atk_per_foe": "num 0 0.5"}}}'::jsonb
-  when 'v2_hunt' then '{"round_cap": "int 1 200"}'::jsonb
-  when 'v2_synergy' then '{
-    "element":  {"small_at": "int 2 8", "big_at": "int 2 8", "small": "num 1 1.5", "big": "num 1 1.5"},
-    "chart":    {"bonus": "num 1 2"},
-    "affinity": {"step": "num 0 0.3", "cap": "num 0 1"},
-    "sets":     {"forbidden_pride": {"small_at": "int 2 8", "big_at": "int 2 8", "top_at": "int 2 8", "small": "num 1 2", "big": "num 1 2", "top": "num 1 2",
-                                    "head": "enum ottozone-s-head"}}}'::jsonb
-  when 'v2_pp' then '{
-    "budget": "num 1 50", "tolerance": "num 0 5",
-    "ref": {"enemy_def": "num 0 1", "miss": "num 0 1", "foes_other": "num 0 5", "crit_share": "num 0 1", "frozen_share": "num 0 1", "shield_share": "num 0 1",
-            "stacks": "num 0 10", "kinds": "num 0 10", "payoff": "num 0 2", "heal_value": "num 0 2"},
-    "status_pp": {"poison": "num 0 100", "burn": "num 0 100", "chill": "num 0 100", "mark": "num 0 100", "exposed": "num 0 100", "weakened": "num 0 100",
-                  "stunned": "num 0 100", "frozen": "num 0 100", "sleep": "num 0 100", "paralyzed": "num 0 100", "blinded": "num 0 100", "confused": "num 0 100",
-                  "slowed": "num 0 100", "shield_self": "num 0 100", "empower_ally": "num 0 100"},
-    "support_pp": {"shield": "num 0 200", "shield_all": "num 0 200", "heal": "num 0 200", "heal_all": "num 0 200", "empower": "num 0 200", "rally": "num 0 200",
-                   "quicken": "num 0 200", "focus_crit": "num 0 200", "focus_crd": "num 0 200", "smite": "num 0 200", "cleanse": "num 0 200", "dispel": "num 0 200",
-                   "consume": "num 0 200", "cure": "num 0 200"}}'::jsonb
-  when 'v2_power' then '{
-    "k": {"breaker": "num 0.2 5", "striker": "num 0.2 5", "flurry": "num 0.2 5", "finisher": "num 0.2 5", "survivor": "num 0.2 5", "cleaver": "num 0.2 5",
-          "warden": "num 0.2 5", "medic": "num 0.2 5", "controller": "num 0.2 5", "spotter": "num 0.2 5", "herald": "num 0.2 5", "artillery": "num 0.2 5"},
-    "abl_x": "num 0 1", "support_abl_ref": "num 0 100", "ddg_x": "num 0 1",
-    "value": {"smite": "num 0 2", "dot": "num 0 2", "control": "num 0 2"}, "scale": "num 0.00001 1"}'::jsonb
-  when 'v2_convert' then '{"ratios": {"attack": "num 0 10", "vitality": "num 0 10", "precision": "num 0 10", "potency": "num 0 10", "haste": "num 0 10"}, "to": {"attack": "enum atk|def|hp|crd|crt|abl|ddg|acc|spd", "vitality": "enum atk|def|hp|crd|crt|abl|ddg|acc|spd", "precision": "enum atk|def|hp|crd|crt|abl|ddg|acc|spd", "potency": "enum atk|def|hp|crd|crt|abl|ddg|acc|spd", "haste": "enum atk|def|hp|crd|crt|abl|ddg|acc|spd"}, "round": "enum up|down|nearest", "level_per_star": "int 1 6", "dead_on_attacker": ["set", "enum attack|vitality|precision|potency|haste", 0, 5], "topup": {"attack": {"v1": "enum cp|hp", "v2": "enum atk|hp"}, "vitality": {"v1": "enum cp|hp", "v2": "enum atk|hp"}}}'::jsonb   -- M1e
-  when 'v2_ach_damage' then '{"v1_x":"num 0.01 1","heavy":{"tiers":["list","int 1 100000000",5,5],"step":"int 1 100000000"},"bighit":{"tiers":["list","int 1 100000000",5,5]},"old":{"dmg1k":"int 1 100000000","hit500":"int 1 100000000"}}'::jsonb   -- hunt_ach_damage_v2.sql
-  end;
-$fn$;
-
 -- ============================================================ 2. the one calculation of the damage values
 create or replace function public.ach_damage_rows(p_player text default null)
 returns table (player_id text, heavy bigint, bighit bigint)
 language plpgsql stable set search_path = public as $fn$
-declare x numeric := (balance_get('v2_ach_damage')->>'v1_x')::numeric;
+declare x numeric := (balance_get('ach_damage_v2')->>'v1_x')::numeric;
 begin
-  if x is null then raise exception 'ach_damage_rows: no balance value v2_ach_damage.v1_x'; end if;
+  if x is null then raise exception 'ach_damage_rows: no balance value ach_damage_v2.v1_x'; end if;
   -- a Hunt in v2 units (hunts.stats.unit = 'v2'): the real damage; a Hunt in v1 units: damage x v1_x. heavy = the sum, bighit = the largest row
   return query
     select hh.player_id, round(sum(hh.damage * k.f))::bigint, round(max(hh.damage * k.f))::bigint
@@ -185,6 +45,7 @@ begin
      group by hh.player_id;
 end $fn$;
 revoke all on function public.ach_damage_rows(text) from public, anon, authenticated;
+comment on function public.ach_damage_rows(text) is $cm$[achievements] The Hunt damage of each member (or of p_player) in v2 numbers: a Hunt in v2 units (hunts.stats.unit = 'v2') counts its real damage, an older Hunt counts damage x balance ach_damage_v2.v1_x. heavy = the sum, bighit = the largest hunt_hits row. The one calculation for ach_track_values and the Activity (board, profile, dmg1k / hit500). hunt_ach_damage_v2.sql.$cm$;
 grant execute on function public.ach_damage_rows(text) to service_role;
 
 create or replace function public.ach_track_values(p_player text)
@@ -270,31 +131,45 @@ begin
 end $fn$;
 
 -- ============================================================ 3. the balance key -> the achievement tables (one source)
-create or replace function public.ach_damage_sync() returns trigger
+create or replace function public.ach_damage_copy(v jsonb) returns void
 language plpgsql set search_path = public as $fn$
-declare v jsonb := new.value; i int;
 begin
-  for i in 1 .. 4 loop
-    if (v->'heavy'->'tiers'->>i)::int <= (v->'heavy'->'tiers'->>(i - 1))::int or (v->'bighit'->'tiers'->>i)::int <= (v->'bighit'->'tiers'->>(i - 1))::int then
-      raise exception 'balance v2_ach_damage: the tiers must rise (heavy.tiers and bighit.tiers)';
-    end if;
-  end loop;
   update achievement_tracks set tiers = array(select (z #>> '{}')::int from jsonb_array_elements(v->'heavy'->'tiers') z), step = (v->'heavy'->>'step')::int where key = 'heavy';
   update achievement_tracks set tiers = array(select (z #>> '{}')::int from jsonb_array_elements(v->'bighit'->'tiers') z) where key = 'bighit';
   update achievement_switch_map set proves = (v->'old'->>'dmg1k')::int where old_key = 'dmg1k';
   update achievement_switch_map set proves = (v->'old'->>'hit500')::int where old_key = 'hit500';
+end $fn$;
+revoke all on function public.ach_damage_copy(jsonb) from public, anon, authenticated;
+comment on function public.ach_damage_copy(jsonb) is $cm$[achievements] Copies the numbers of balance key ach_damage_v2 into achievement_tracks (heavy, bighit: tiers, step) and achievement_switch_map (dmg1k, hit500: proves). Called by the trigger ach_damage_sync and once by hunt_ach_damage_v2.sql. hunt_ach_damage_v2.sql.$cm$;
+
+create or replace function public.ach_damage_sync() returns trigger
+language plpgsql set search_path = public as $fn$
+declare v jsonb := new.value; i int; errs text[];
+begin
+  -- the fixed shape and the limits (balance_shape_errors, the shape checker of the balance table)
+  errs := balance_shape_errors(v, '{"v1_x":"num 0.01 1","heavy":{"tiers":["list","int 1 100000000",5,5],"step":"int 1 100000000"},"bighit":{"tiers":["list","int 1 100000000",5,5]},"old":{"dmg1k":"int 1 100000000","hit500":"int 1 100000000"}}'::jsonb, '');
+  if cardinality(errs) > 0 then raise exception 'balance ach_damage_v2: %', array_to_string(errs, '; '); end if;
+  for i in 1 .. 4 loop
+    if (v->'heavy'->'tiers'->>i)::int <= (v->'heavy'->'tiers'->>(i - 1))::int or (v->'bighit'->'tiers'->>i)::int <= (v->'bighit'->'tiers'->>(i - 1))::int then
+      raise exception 'balance ach_damage_v2: the tiers must rise (heavy.tiers and bighit.tiers)';
+    end if;
+  end loop;
+  perform ach_damage_copy(v);
   return new;
 end $fn$;
 revoke all on function public.ach_damage_sync() from public, anon, authenticated;
+comment on function public.ach_damage_sync() is $cm$[achievements] Trigger of balance key ach_damage_v2: checks its fixed shape and that the tiers rise, then copies the heavy / bighit tiers into achievement_tracks and the dmg1k / hit500 goals into achievement_switch_map (the balance key is the one source). hunt_ach_damage_v2.sql.$cm$;
 drop trigger if exists ach_damage_sync on public.balance;
-create trigger ach_damage_sync after insert or update on public.balance for each row when (new.key = 'v2_ach_damage') execute function public.ach_damage_sync();
+create trigger ach_damage_sync after insert or update on public.balance for each row when (new.key = 'ach_damage_v2') execute function public.ach_damage_sync();
 
 do $b$
 begin
   perform set_config('balance.by', 'nathan', true);
-  insert into public.balance (key, value, note) values ('v2_ach_damage', '{"v1_x":0.45305,"heavy":{"tiers":[1132,4530,18122,45305,113262],"step":45305},"bighit":{"tiers":[181,407,724,1177,1812]},"old":{"dmg1k":453,"hit500":226}}'::jsonb,
+  insert into public.balance (key, value, note) values ('ach_damage_v2', '{"v1_x":0.45305,"heavy":{"tiers":[1132,4530,18122,45305,113262],"step":45305},"bighit":{"tiers":[181,407,724,1177,1812]},"old":{"dmg1k":453,"hit500":226}}'::jsonb,
     'The damage achievements in v2 numbers (Nathan 2026-11-06, hunt_ach_damage_v2.sql). v1_x: a Hunt in v1 units (up to 148564) counts its damage x v1_x (the Warlord v2 max / v1 max). heavy (lifetime damage) and bighit (the largest hit row): the 5 tiers (and the heavy step after tier 5), the v1 numbers x v1_x rounded down. old: the proof of the old achievements dmg1k / hit500 (achievement_switch_map) and their goal in the Activity. A change is copied to achievement_tracks and achievement_switch_map (trigger ach_damage_sync); the tiers must rise.')
   on conflict (key) do nothing;
+  -- the tables get the numbers of the row also when the row was already there (a second run after the undo)
+  perform ach_damage_copy((select value from public.balance where key = 'ach_damage_v2'));
 end $b$;
 
 notify pgrst, 'reload schema';

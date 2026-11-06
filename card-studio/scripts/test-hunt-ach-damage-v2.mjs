@@ -1,12 +1,12 @@
 import './localdb-guard.mjs';
 /**
  * Acceptance test for tcg-bot/supabase/hunt_ach_damage_v2.sql (HUNT-V2-NATIVE part 2, Nathan 2026-11-06 option B: the damage achievements
- * heavy, bighit, dmg1k, hit500 count in v2 numbers; the tiers in v2 units in balance v2_ach_damage; nobody loses an earned tier).
+ * heavy, bighit, dmg1k, hit500 count in v2 numbers; the tiers in v2 units in balance ach_damage_v2; nobody loses an earned tier).
  * LOCAL copy only. One DO block per request, undone by its final RAISE: NO lasting change.
  *   LOCALDB=1 LAB_LOCK_OWNER=<you> node --import ./scripts/localdb-preload.mjs scripts/test-hunt-ach-damage-v2.mjs    must PASS
  *   MUTATE=<name> ...   must FAIL;   MUTATE=all ...   the baseline, then every mutation (each must FAIL), in one run
  * Cases:
- *   D1 the balance row v2_ach_damage (the exact numbers, a note) and its copy in achievement_tracks (heavy, bighit) and achievement_switch_map
+ *   D1 the balance row ach_damage_v2 (the exact numbers, a note) and its copy in achievement_tracks (heavy, bighit) and achievement_switch_map
  *   D2 ach_damage_rows: a v1-unit Hunt counts x v1_x, a v2-unit Hunt x 1; heavy = round(the sum), bighit = round(the largest row);
  *      ach_track_values and ach_damage_rows(null) give the same numbers
  *   D3 nobody loses a tier: members at each old tier edge (the tier, the tier - 1, the steps after tier 5; v1 rows only) reach at least the
@@ -16,7 +16,7 @@ import './localdb-guard.mjs';
  *      unknown key, a v1_x out of its limits are refused
  *   D5 achievement_view (the member's tracks ON): the value of heavy = ach_damage_rows, the tiers = the balance tiers
  *   D6 ach_damage_rows: no EXECUTE for anon / authenticated; the file runs a second time; the guard refuses an unknown text; the undo puts the
- *      origin/main tables back
+ *      origin/main tables back; the undo, then the file again: the tables get the v2 numbers again (the balance row was kept)
  */
 import { readFileSync, appendFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -37,8 +37,9 @@ const MUT = {
   proof_too_high: ['"hit500":226', '"hit500":228'],
   sync_no_tracks: ["  update achievement_tracks set tiers = array(select (z #>> '{}')::int from jsonb_array_elements(v->'heavy'->'tiers') z), step = (v->'heavy'->>'step')::int where key = 'heavy';\n", ''],
   sync_no_proves: ["  update achievement_switch_map set proves = (v->'old'->>'dmg1k')::int where old_key = 'dmg1k';\n", ''],
-  sync_no_rising: ["      raise exception 'balance v2_ach_damage: the tiers must rise (heavy.tiers and bighit.tiers)';\n", ''],
+  sync_no_rising: ["      raise exception 'balance ach_damage_v2: the tiers must rise (heavy.tiers and bighit.tiers)';\n", ''],
   spec_open: ['"heavy":{"tiers":["list","int 1 100000000",5,5]', '"heavy":{"tiers":["list","int 1 100000000",5,6]'],
+  no_copy_on_rerun: ["  perform ach_damage_copy((select value from public.balance where key = 'ach_damage_v2'));\n", ''],
   guard_missing: [/do \$g\$\ndeclare m text; f record;[\s\S]*?-- GUARD-END\n/, ''],
 };
 function mutate(src, name) {
@@ -92,7 +93,8 @@ begin
       'g1', (t.v->>'heavy')::bigint >= (select proves from achievement_switch_map where old_key = 'dmg1k'),
       'g2', (t.v->>'bighit')::bigint >= (select proves from achievement_switch_map where old_key = 'hit500')))
       from players p cross join lateral (select ach_track_values(p.id) v) t where p.username = 'tst had' $x$;
-  -- the origin/main state (no file), then the file
+  -- the origin/main state (no file: on a copy that has the file, its undo first, rolled back with the block), then the file
+  if to_regprocedure('public.ach_damage_rows(text)') is not null then execute $u$${UNDO}$u$; end if;
   o := pg_temp.state();
   execute $m$${mig}$m$;
   nw := pg_temp.state();
@@ -110,10 +112,10 @@ const X = 36244 / 80000;
 
 const B1 = (mig, mutated) => block(mig, String.raw`
   -- D1
-  ${add('D1 balance v2_ach_damage: v1_x 0.45305, heavy [1132,4530,18122,45305,113262] step 45305, bighit [181,407,724,1177,1812], old dmg1k 453 hit500 226, a note',
+  ${add('D1 balance ach_damage_v2: v1_x 0.45305, heavy [1132,4530,18122,45305,113262] step 45305, bighit [181,407,724,1177,1812], old dmg1k 453 hit500 226, a note',
     `(select value = '{"v1_x":0.45305,"heavy":{"tiers":[1132,4530,18122,45305,113262],"step":45305},"bighit":{"tiers":[181,407,724,1177,1812]},"old":{"dmg1k":453,"hit500":226}}'::jsonb
-       and note like 'The damage achievements in v2 numbers%' from balance where key = 'v2_ach_damage')`,
-    `(select value from balance where key = 'v2_ach_damage')`)}
+       and note like 'The damage achievements in v2 numbers%' from balance where key = 'ach_damage_v2')`,
+    `(select value from balance where key = 'ach_damage_v2')`)}
   ${add('D1 the copy: achievement_tracks heavy / bighit and achievement_switch_map dmg1k / hit500 have the balance numbers',
     `(select tiers = '{1132,4530,18122,45305,113262}' and step = 45305 from achievement_tracks where key = 'heavy')
      and (select tiers = '{181,407,724,1177,1812}' and step is null from achievement_tracks where key = 'bighit')
@@ -146,22 +148,22 @@ const B1 = (mig, mutated) => block(mig, String.raw`
     `(select jsonb_object_agg(k, jsonb_build_array(o->k->'ph', nw->k->'ph', o->k->'pb', nw->k->'pb')) from jsonb_object_keys(o) k where (o->k->'ph') <> (nw->k->'ph') or (o->k->'pb') <> (nw->k->'pb'))`)}
   -- D4
   ${sub(String.raw`
-    c := (select count(*) from balance_log where key = 'v2_ach_damage');
-    update balance set value = jsonb_set(value, '{heavy,tiers}', '[1000,4000,18000,45000,113000]') where key = 'v2_ach_damage';
+    c := (select count(*) from balance_log where key = 'ach_damage_v2');
+    update balance set value = jsonb_set(value, '{heavy,tiers}', '[1000,4000,18000,45000,113000]') where key = 'ach_damage_v2';
     ${add('D4 a change of the balance row is copied to achievement_tracks in the same transaction and written to balance_log',
-      `(select tiers = '{1000,4000,18000,45000,113000}' from achievement_tracks where key = 'heavy') and (select count(*) from balance_log where key = 'v2_ach_damage') = c + 1`,
+      `(select tiers = '{1000,4000,18000,45000,113000}' from achievement_tracks where key = 'heavy') and (select count(*) from balance_log where key = 'ach_damage_v2') = c + 1`,
       `(select to_jsonb(tiers) from achievement_tracks where key = 'heavy')`)}`)}
   ${sub(String.raw`
-    update balance set value = jsonb_set(value, '{old,hit500}', '200') where key = 'v2_ach_damage';
+    update balance set value = jsonb_set(value, '{old,hit500}', '200') where key = 'ach_damage_v2';
     ${add('D4 a change of old.hit500 is copied to achievement_switch_map', `(select proves from achievement_switch_map where old_key = 'hit500') = 200`)}`)}
   ${sub(String.raw`
-    begin update balance set value = jsonb_set(value, '{bighit,tiers}', '[181,407,407,1177,1812]') where key = 'v2_ach_damage'; msg := null; exception when others then msg := sqlerrm; end;
+    begin update balance set value = jsonb_set(value, '{bighit,tiers}', '[181,407,407,1177,1812]') where key = 'ach_damage_v2'; msg := null; exception when others then msg := sqlerrm; end;
     ${add('D4 tiers that do not rise are refused', `msg like '%the tiers must rise%'`, 'to_jsonb(msg)')}
-    begin update balance set value = jsonb_set(value, '{heavy,tiers}', '[1,2,3,4,5,6]') where key = 'v2_ach_damage'; msg := null; exception when others then msg := sqlerrm; end;
+    begin update balance set value = jsonb_set(value, '{heavy,tiers}', '[1,2,3,4,5,6]') where key = 'ach_damage_v2'; msg := null; exception when others then msg := sqlerrm; end;
     ${add('D4 6 tiers are refused (the shape: exactly 5)', `msg like '%heavy.tiers must have 5 to 5 items%'`, 'to_jsonb(msg)')}
-    begin update balance set value = value || '{"extra": 1}' where key = 'v2_ach_damage'; msg := null; exception when others then msg := sqlerrm; end;
+    begin update balance set value = value || '{"extra": 1}' where key = 'ach_damage_v2'; msg := null; exception when others then msg := sqlerrm; end;
     ${add('D4 an unknown key is refused', `msg like '%unknown key extra%'`, 'to_jsonb(msg)')}
-    begin update balance set value = jsonb_set(value, '{v1_x}', '1.5') where key = 'v2_ach_damage'; msg := null; exception when others then msg := sqlerrm; end;
+    begin update balance set value = jsonb_set(value, '{v1_x}', '1.5') where key = 'ach_damage_v2'; msg := null; exception when others then msg := sqlerrm; end;
     ${add('D4 a v1_x out of its limits (0.01 to 1) is refused', `msg like '%v1_x must be from 0.01 to 1%'`, 'to_jsonb(msg)')}`)}
   -- D5
   ${sub(String.raw`
@@ -175,7 +177,7 @@ const B1 = (mig, mutated) => block(mig, String.raw`
     `not has_function_privilege('anon', 'public.ach_damage_rows(text)', 'EXECUTE') and not has_function_privilege('authenticated', 'public.ach_damage_rows(text)', 'EXECUTE')
      and has_function_privilege('service_role', 'public.ach_damage_rows(text)', 'EXECUTE')`)}
   begin execute $m$${mutated ? noGuard(mig) : mig}$m$; msg := null; exception when others then msg := sqlerrm; end;
-  ${add('D6 the file runs a second time with no error and keeps the balance row', `msg is null and (select value->'heavy'->>'step' from balance where key = 'v2_ach_damage') = '45305'`, 'to_jsonb(msg)')}
+  ${add('D6 the file runs a second time with no error and keeps the balance row', `msg is null and (select value->'heavy'->>'step' from balance where key = 'ach_damage_v2') = '45305'`, 'to_jsonb(msg)')}
   ${sub(String.raw`
     execute replace(pg_get_functiondef('public.ach_track_values(text)'::regprocedure), 'AS $function$', 'AS $function$ ');
     begin execute $m$${mig}$m$; msg := null; exception when others then msg := sqlerrm; end;
@@ -187,6 +189,14 @@ const B1 = (mig, mutated) => block(mig, String.raw`
        and (select tiers = '{400,900,1600,2600,4000}' from achievement_tracks where key = 'bighit')
        and (select proves from achievement_switch_map where old_key = 'dmg1k') = 1000 and (select proves from achievement_switch_map where old_key = 'hit500') = 500
        and to_regprocedure('public.ach_damage_rows(text)') is null and pg_temp.state() = o`)}`)}
+  ${sub(String.raw`
+    execute $u$${mutated ? noGuard(UNDO) : UNDO}$u$;
+    execute $m$${mutated ? noGuard(mig) : mig}$m$;
+    ${add('D6 the undo, then the file again (the balance row was kept): achievement_tracks and achievement_switch_map get the v2 numbers again',
+      `(select tiers = '{1132,4530,18122,45305,113262}' and step = 45305 from achievement_tracks where key = 'heavy')
+       and (select tiers = '{181,407,724,1177,1812}' from achievement_tracks where key = 'bighit')
+       and (select proves from achievement_switch_map where old_key = 'hit500') = 226`,
+      `(select jsonb_agg(jsonb_build_array(key, tiers, step)) from achievement_tracks where key in ('heavy', 'bighit'))`)}`)}
 `, mutated);
 
 async function run(mig, mutated = false) {

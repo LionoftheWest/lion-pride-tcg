@@ -355,9 +355,9 @@ const getBalance = createBalance(async () => {
 let BAL = null; // set before every API call (the middleware above)
 const bal = () => { if (!BAL) throw new Error('balance: not loaded'); return BAL; };
 const ascendCost = (rarity, asc) => costOf(bal(), rarity, asc);
-// HUNT-V2-NATIVE (hunt_ach_damage_v2.sql): the goals of the old achievements dmg1k / hit500 in v2 damage (balance v2_ach_damage.old).
-// The damage values come from ONE SQL calculation (ach_damage_rows): a v1-unit Hunt x v2_ach_damage.v1_x, a v2-unit Hunt as it is.
-const achNeed = () => BAL?.v2_ach_damage?.old || null;
+// HUNT-V2-NATIVE (hunt_ach_damage_v2.sql): the goals of the old achievements dmg1k / hit500 in v2 damage (balance ach_damage_v2.old).
+// The damage values come from ONE SQL calculation (ach_damage_rows): a v1-unit Hunt x ach_damage_v2.v1_x, a v2-unit Hunt as it is.
+const achNeed = () => BAL?.ach_damage_v2?.old || null;
 
 // Phase 2: The Pride Hunt (weekly co-op raid). Flag-gated.
 const FEATURE_HUNT = process.env.FEATURE_HUNT === '1';

@@ -145,6 +145,8 @@ const NEW_FNS = ['balance_shape_errors', 'balance_v2_spec', 'balance_check_comba
   'combat_v2_dungeon_foe', 'hunt_boss_v2_card',   // E7 combat_v2_monsters.sql
   'combat_v2_auto', 'combat_v2_auto_target', 'combat_v2_auto_charging', 'combat_v2_auto_pays', 'combat_v2_auto_makes', 'combat_v2_autopick', 'combat_v2_autopick_choose', 'combat_v2_autopick_pair', 'auto_v2_spec', 'balance_check_auto_v2',   // E8 combat_v2_auto.sql
   'card_power_v2_numbers', 'card_power_v2_families', 'card_power_v2', 'combat_v2_squad_value',   // E9 combat_v2_power.sql (the Power number reads v2_power, v2_hit, v2_enemy and v2_support by design; no fight reads it)
+  'hunt_unit_flag_guard',   // HUNT-V2-NATIVE hunt_v2_native_units.sql (review r1 M3): the trigger that refuses combat_v2.hunt OFF during a v2-unit Hunt
+  'spawn_hunt',   // HUNT-V2-NATIVE hunt_v2_native_units.sql: with combat_v2.hunt ON the shared boss is made in v2 units (combat_v2_on hunt, combat_v2_hunt_boss)
   'card_progress_v2_check',   // M1a combat_v2_progress_tables.sql: the limits of a stored v2 progress row (v2_level, v2_stats, card_level); no fight reads it
   'card_level_xp_at', 'card_level_of_xp', 'card_level_xp_award',   // M1b combat_v2_progress_math.sql: the XP of a level and of a fight-day (card_level, v2_level); no fight reads it
   'spend_stat_points', 'reset_stat_points', 'buy_shop_item', 'shop_today',   // M1d combat_v2_progress_freeze_v1.sql: the v1 spend and reset refuse, the Shop reset routes to v2 and shop_today shows its free reset, when combat_v2_on progress is ON

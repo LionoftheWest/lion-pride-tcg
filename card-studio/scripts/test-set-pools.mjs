@@ -90,6 +90,10 @@ declare res jsonb := '[]'; ok boolean; n int; m int; x bigint; v jsonb; w jsonb;
   pool_before bigint[]; s1_before jsonb; psets_before jsonb; badges_before jsonb; spawn_before jsonb; spawn_after jsonb;
   s2 bigint[]; five bigint[]; five_nums jsonb; subj bigint; aid0 bigint; fields jsonb;
 begin
+  -- HUNT-V2-NATIVE (hunt_v2_native_units.sql): with combat_v2.hunt ON spawn_hunt makes a v2-unit boss; this test checks the v1 spawn, so the
+  -- flag is OFF in this rolled-back block (no open v2-unit Hunt on a copy before the next spawn)
+  perform set_config('balance.by', 'tst_v1_spawn', true);
+  update balance set value = jsonb_set(value, '{hunt}', 'false') where key = 'combat_v2' and value->'hunt' = 'true'::jsonb;
   ${FIX}
   select player_id into top from player_cards group by player_id order by count(*) desc, player_id limit 1;
   select array_agg(id order by id) into pool_before from draw_pool;

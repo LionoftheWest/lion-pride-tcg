@@ -14,7 +14,7 @@ const owned = (set) => set.filter((c) => c.owned).length;
 // "Own n of these cards": the set is every matching card, the goal is n of them.
 const ownN = (pick, n) => (cards) => { const set = cards.filter(pick); return { have: Math.min(owned(set), n), need: n, set }; };
 const stat = (key, n) => (cards, st) => ({ have: Math.min(Number(st?.[key]) || 0, n), need: n, set: null });
-// HUNT-V2-NATIVE: a goal from the server (stats.need, balance v2_ach_damage.old: the v2 damage numbers). No goal = not done.
+// HUNT-V2-NATIVE: a goal from the server (stats.need, balance ach_damage_v2.old: the v2 damage numbers). No goal = not done.
 // text(n) = the description with the goal of the member.
 const statNeed = (key, goal, text) => (cards, st) => {
   const n = Number(st?.need?.[goal]);

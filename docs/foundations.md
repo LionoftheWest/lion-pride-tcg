@@ -664,7 +664,7 @@ A Hunt with no `stats.unit` (every Hunt up to 148564) keeps the old conversion u
   After the stop, nobody can fight that Hunt until it ends: `hunt_attack` and `hunt_support` answer `v2_on` for a v2-unit Hunt, and
   `hunt_v2_start` needs the flag (or a tester). A force key with another id is refused.
 - **The damage achievements** (`heavy`, `bighit`, the old `dmg1k`, `hit500`) count in v2 numbers (`hunt_ach_damage_v2.sql`). The one
-  source is the balance key `v2_ach_damage`. Its trigger copies the tiers into `achievement_tracks` and the old goals into
+  source is the balance key `ach_damage_v2`. Its trigger copies the tiers into `achievement_tracks` and the old goals into
   `achievement_switch_map`. Change the numbers in the balance key, never in those tables.
 - **Tests that apply an older Hunt file again** (`combat_v2_on_hunt.sql`, `combat_v2_hunt_boons.sql`) first take the native file off and put
   it back after (`test-combat-v2-on-hunt.mjs`, `test-combat-v2-hunt-practice.mjs` H3, `test-combat-v2-hunt-boons.mjs`). A new test that does

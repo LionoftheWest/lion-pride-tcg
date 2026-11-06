@@ -32,6 +32,10 @@ if (mig.includes('$m$') || mig.includes('$t$')) throw new Error('the migration m
 const body = String.raw`do $t$ declare
   bad text := ''; h bigint; rec record; before jsonb; after jsonb; tier text; want bigint; cfg jsonb;
 begin
+  -- HUNT-V2-NATIVE (hunt_v2_native_units.sql): with combat_v2.hunt ON spawn_hunt makes a v2-unit boss; this test checks the v1 spawn, so the
+  -- flag is OFF in this rolled-back block (no open v2-unit Hunt on a copy before the next spawn)
+  perform set_config('balance.by', 'tst_v1_spawn', true);
+  update balance set value = jsonb_set(value, '{hunt}', 'false') where key = 'combat_v2' and value->'hunt' = 'true'::jsonb;
   -- The boss that is live now (if any), before the file runs.
   select jsonb_build_object('id', id, 'hp_max', hp_max, 'hp_remaining', hp_remaining, 'hp_share', hp_share) into before
     from hunts where status = 'active' order by id desc limit 1;
