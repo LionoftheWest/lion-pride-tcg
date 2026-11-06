@@ -62,6 +62,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { finishEnabled } from './src/dungeon-finish.js';
 import { statsPayload, parseSpendV2, statV2Allowed } from './src/stats-v2.js';
+import { registerNotifRoutes } from './src/notif-routes.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(here, 'public');
@@ -109,6 +110,7 @@ const BOT_INTERNAL_URL = (process.env.BOT_INTERNAL_URL || 'http://127.0.0.1:4451
 // In-app notification (shown on the Activity's bell).
 async function notify(userId, kind, message) {
   try { await supabase.rpc('notify_player', { p_player: userId, p_kind: kind, p_message: message }); } catch { /* ignore */ }
+  notifRoutes.bustCount(userId); // the new note shows in the bell at the next poll (DB-MEM A3 cache)
 }
 // Post a directed event to the public notifications channel (via the bot). The
 // message should @mention the person who needs to see it: `<@id>`.
@@ -217,7 +219,8 @@ app.use((req, res, next) => {
 // LOADTEST runs print it too (ROUTE_TIMING_MS shortens the window for a test).
 const routeTiming = createRouteTiming({
   windowMs: Number(process.env.ROUTE_TIMING_MS || 300_000),
-  extra: () => 'shared caches ' + Object.entries(sharedCaches).map(([k, c]) => `${k}=${c.stats.hit}/${c.stats.stale}/${c.stats.miss}`).join(' ') + ' (hit/stale/miss)',
+  extra: () => 'shared caches ' + Object.entries(sharedCaches).map(([k, c]) => `${k}=${c.stats.hit}/${c.stats.stale}/${c.stats.miss}`).join(' ') + ' (hit/stale/miss)'
+    + ` notif-count=${notifRoutes.stats.hit}/${notifRoutes.stats.miss} (hit/miss, DB-MEM A3: the real hit rate)`,
 });
 app.use(routeTiming.middleware);
 routeTiming.timer();
@@ -585,7 +588,7 @@ function userCache(opts) { const c = makeTtlCache(opts); memberCaches.push(c); r
 // one load at a time (single flight), dropped by time (ttl) and by sharedCaches[name].bust(key) after the writes that change it.
 const sharedCaches = {};
 function sharedCache(name, opts) { return (sharedCaches[name] = makeTtlCache(opts)); }
-function bustUser(userId) { collCache.delete(userId); ownedCache.delete(userId); packStatusCache.delete(userId); achViewCache.delete(String(userId)); for (const c of memberCaches) c.bust(String(userId)); }
+function bustUser(userId) { collCache.delete(userId); ownedCache.delete(userId); packStatusCache.delete(userId); achViewCache.delete(String(userId)); for (const c of memberCaches) c.bust(String(userId)); notifRoutes.bustCount(userId); }
 // card_powers(member) is the heaviest read (172 ms live): the power, HP and combat numbers of every copy. It changes only when the
 // member's cards, stars or stat points change (all of which call bustUser), so 10 s is safe. Used by the collection, the Hunt and the auto-pick.
 const powersCache = userCache({ ttl: 10000 });
@@ -1946,6 +1949,8 @@ registerEffectRoutes(app, { supabase, caller, rateLimit, toProxyImg, getBalance 
 registerReportRoutes(app, { supabase, caller, rateLimit, targets: appLogs.on }); // targets: player_reports.target_id (logs_app.sql)
 registerHallRoutes(app, { supabase, caller, rateLimit, notify, announce, bustUser, getCatalogBase, hallOn, postsOn: hallPostsOn });
 registerShopRoutes(app, { supabase, caller, rateLimit, bustUser, getCatalogBase, shardsOn, userCache });
+// The bell count (10 s per member, DB-MEM A3; bustUser and notify drop it) and "mark all read" (src/notif-routes.js).
+const notifRoutes = registerNotifRoutes(app, { supabase, caller, rateLimit, readAtOn: () => appLogs.on });
 registerEventsRoutes(app, { supabase, caller, eventsOn, sharedCache, artUrl: (u) => (SUPA_HOST && String(u).startsWith(SUPA_HOST + '/') ? toProxyImg(u) : null) });
 const dungeonCaches = registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun: dungeonPing, userCache, sharedCache });
 // R1c: /api/gauntlet/v2/* (Combat v2). R1-ON: a v2 write drops the member's cached Gauntlet view and, at a run end, the board.
@@ -2175,18 +2180,7 @@ app.get('/api/notifications', async (req, res) => {
   res.json({ items, gifts: gifts || [], unread: items.filter((n) => !n.read).length + (gifts || []).length });
 });
 
-// Only the red number of the bell, for the 45 s poll: the same count as /api/notifications
-// (the unread among the newest 30, plus the unredeemed gifts up to 20) with no joins and no text.
-app.get('/api/notifications/count', async (req, res) => {
-  const me = await caller(req);
-  if (!me) return res.status(401).json({ error: 'not authenticated' });
-  const [n, g] = await Promise.all([
-    supabase.from('notifications').select('read').eq('player_id', me.id).order('created_at', { ascending: false }).limit(30),
-    supabase.from('gift_claims').select('id', { count: 'exact', head: true }).eq('player_id', me.id).is('claimed_at', null),
-  ]);
-  if (n.error) return res.status(500).json({ error: n.error.message });
-  res.json({ unread: (n.data || []).filter((x) => !x.read).length + Math.min(g.count || 0, 20) });
-});
+// GET /api/notifications/count (the red number of the bell, the 45 s poll): src/notif-routes.js.
 
 // Redeem a gift: its packs go to the OPEN balance (claim_gift: once, only the owner).
 app.post('/api/gifts/claim', async (req, res) => {
@@ -2198,22 +2192,15 @@ app.post('/api/gifts/claim', async (req, res) => {
   let packs = 0, cards = 0, shards = 0;
   for (const id of ids) {
     const { data, error } = await supabase.rpc('claim_gift', { p_player: String(me.id), p_id: id });
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) { notifRoutes.bustCount(me.id); return res.status(500).json({ error: error.message }); } // an earlier id may be claimed
     if (data?.ok) { packs += data.packs || 0; shards += data.shards || 0; if (data.card_id) cards += 1; } // a card gift: 0 packs, 1 card
   }
   if (packs || cards) bustUser(me.id);
+  notifRoutes.bustCount(me.id); // a claimed gift (also a Shards-only one) leaves the bell count
   res.json({ ok: packs + cards + shards > 0, packs, cards, shards });
 });
 
-// Mark all the caller's notifications as read.
-app.post('/api/notifications/read', async (req, res) => {
-  const me = await caller(req);
-  if (!me) return res.status(401).json({ error: 'not authenticated' });
-  if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
-  // read_at (logs_app.sql) only with the app logs on: the column comes with that migration.
-  await supabase.from('notifications').update(appLogs.on ? { read: true, read_at: new Date().toISOString() } : { read: true }).eq('player_id', me.id).eq('read', false);
-  res.json({ ok: true });
-});
+// POST /api/notifications/read (mark all read, drops the cached count): src/notif-routes.js.
 
 // Decline (recipient) or cancel (sender) a pending swap.
 app.post('/api/trade/resolve', async (req, res) => {

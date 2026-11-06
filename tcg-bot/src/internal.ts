@@ -9,7 +9,7 @@ import { launchActivityRow } from './ui/launch.js';
 import { postRarePulls } from './pull-posts.js';
 import { cleanTradeSpec, tradePicture } from './trade-pictures.js';
 import { AttachmentBuilder } from 'discord.js';
-import { adminIdsFromEnv, dmAdmins } from './admin-alert.js';
+import { adminIdsFromEnv, channelAlert, dmAdmins, postAdminChannel, type ChannelClient } from './admin-alert.js';
 
 // A tiny internal HTTP server, reachable ONLY from other processes on the same
 // VM (it binds to 127.0.0.1, and the container runs with --network host). It lets
@@ -83,6 +83,7 @@ export function startInternalServer(client: Client): void {
           count?: number;
           set?: string | null;
           kind?: string;
+          to?: string;
           event?: string;
           activity?: unknown;
           userIds?: string[];
@@ -104,8 +105,17 @@ export function startInternalServer(client: Client): void {
           return json(200, { ok, of: ids.length });
         }
         // Admin alert: a private DM to ADMIN_USER_IDS (a VM job failed, for example the nightly backup).
+        // to: 'channel' (DB-MEM M1, the DB memory watcher): a post in the admin channel tcg-admin-alerts. If that post
+        // fails, the DMs go out instead, so the alert is not lost. Nothing delivered = 502 (the caller tries again later).
         if (route === '/admin-alert') {
           if (!body.message) return json(400, { error: 'missing message' });
+          if (body.to === 'channel') {
+            const r = await channelAlert(String(body.message), {
+              postChannel: (m) => postAdminChannel(client as unknown as ChannelClient, m),
+              dm: (m) => dmAdmins(client, adminIdsFromEnv(), m),
+            });
+            return json(r.status, r.body);
+          }
           return json(200, { sent: await dmAdmins(client, adminIdsFromEnv(), String(body.message)) });
         }
         // Announce: post a directed event to the public notifications channel.

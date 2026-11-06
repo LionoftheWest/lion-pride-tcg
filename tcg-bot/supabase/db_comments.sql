@@ -907,7 +907,7 @@ do $logs$ begin
     comment on function public.gift_admin_log() is $c$[admin] Trigger (after insert on gift_claims, once per statement): writes one admin_actions row per admin gift group of the statement (reasons admin, event, launch_gift), with the gift ids. The actor is from_id (the admin, source bot), else balance_who (source sql).$c$;
     comment on column public.notifications.read_at is $c$When the member read the note. Null = unread, or read before the write path existed (the column came 2026-10-07; the Activity write path is a separate change).$c$;
     comment on column public.player_reports.target_id is $c$The member that the report is about (players.id), else null. Null when that member row is deleted.$c$;
-    comment on function public.prune_old_rows() is $c$Deletes old rows: bell notes after 365 days, posted hunt_events after 365, ended discord_effects after 365, cron run details after 90 (logs_sql.sql, 2026-10-07; was 30 / 90 / 30 / 30 / 14). The logs (settings_log, profile_log, wishlist_log, stat_point_log, admin_actions) are never pruned. The pg_cron job prune-old-rows runs it each day. Returns the counts.$c$;
+    comment on function public.prune_old_rows() is $c$Deletes old rows: bell notes after 365 days, posted hunt_events after 365, ended discord_effects after 365, cron run details after 7 (dbmem_cron_history_7d.sql, 2026-11-06; logs_sql.sql 2026-10-07 had 90). The logs (settings_log, profile_log, wishlist_log, stat_point_log, admin_actions) are never pruned. The pg_cron job prune-old-rows runs it each day. Returns the counts.$c$;
   end if;
 end $logs$;
 

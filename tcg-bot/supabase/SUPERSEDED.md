@@ -13,7 +13,7 @@ and `lockdown_grants.sql`, as `apply-sql.mjs` does). Data statements (insert, up
 a DO block that writes rows) do NOT run. Then the function md5s, the tables, the enums and the cron calls are
 compared with live. "live = `x.sql`" names the newest file that gives the live version.
 
-## Superseded files (168)
+## Superseded files (169)
 
 | File | Reasons | Notes |
 |---|---|---|
@@ -151,6 +151,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `hunt_view.sql` | SUPERSEDED: reverts `public.hunt_view(text, bigint, date)` (live = `f3_one_combat_math.sql`) |  |
 | `hunt_weak_tag_coverage.sql` | SUPERSEDED: brings back `public.spawn_hunt(integer)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
 | `launch_event_cards.sql` | SUPERSEDED: reverts `public.claim_gift(text, bigint)` (live = `pack_ledger_strict.sql`); reverts `public.claim_tutorial_reward(text)` (live = `pack_ledger_strict.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_v2_native_units.sql`); reverts `public.play_card_effect(text, bigint, text)` (live = `balance_economy.sql`) |  |
+| `logs_sql.sql` | SUPERSEDED: reverts `public.prune_old_rows()` (live = `dbmem_cron_history_7d.sql`) |  |
 | `member_card_gifts_redeem.sql` | SUPERSEDED: reverts `public.claim_gift(text, bigint)` (live = `pack_ledger_strict.sql`); reverts `public.gift_card(text, text, bigint)` (live = `card_ledger.sql`) |  |
 | `mt_clock.sql` | SUPERSEDED: reverts `public.add_voice_minutes(text[])` (live = `game_vars_readers.sql`); reverts `public.claim_daily(text, text)` (live = `game_vars_all.sql`); reverts `public.dailies_tasks(text)` (live = `combat_v2_on_dungeon.sql`); reverts `public.dailies_view(text)` (live = `game_vars_all.sql`); reverts `public.earned_today(text)` (live = `pack_ledger_strict.sql`); reverts `public.hunt_attack(text, bigint, bigint)` (live = `hunt_v2_native_units.sql`); reverts `public.hunt_support(text, bigint, bigint, bigint)` (live = `hunt_v2_native_units.sql`); reverts `public.play_card_effect(text, bigint, text)` (live = `balance_economy.sql`); reverts `public.playing_today(text)` (live = `card_decisions.sql`); reverts `public.reset_stat_points(text, bigint)` (live = `combat_v2_progress_freeze_v1.sql`) |  |
 | `notifications.sql` | SUPERSEDED: brings back `public.notify_all(text, text)`, which live does not have | changes function grants that lockdown_grants.sql does not put back |
@@ -164,7 +165,7 @@ compared with live. "live = `x.sql`" names the newest file that gives the live v
 | `perf_dungeon_view.sql` | SUPERSEDED: reverts `public.dungeon_view_core(text, boolean)` (live = `season_best_day_tie.sql`) |  |
 | `perf_five_slow_calls.sql` | SUPERSEDED: reverts `public.ach_track_values(text)` (live = `hunt_ach_damage_v2.sql`); reverts `public.card_powers(text)` (live = `f3_one_power_number.sql`); reverts `public.dungeon_view_core(text, boolean)` (live = `season_best_day_tie.sql`); reverts `public.gauntlet_view(text)` (live = `combat_v2_on_gauntlet.sql`) | a re-run stops at an error today: perf_five_slow_calls.sql: the live card_powers changed since this file was built. Rebuild it from the live text. |
 | `playing_posts.sql` | SUPERSEDED: reverts `public.playing_today(text)` (live = `card_decisions.sql`) |  |
-| `prune_old_rows.sql` | SUPERSEDED: reverts `public.prune_old_rows()` (live = `logs_sql.sql`) |  |
+| `prune_old_rows.sql` | SUPERSEDED: reverts `public.prune_old_rows()` (live = `dbmem_cron_history_7d.sql`) |  |
 | `pull_feed_source.sql` | SUPERSEDED: reverts `public.accept_trade(bigint, text)` (live = `trade_request.sql`); reverts `public.add_card_to_player(text, bigint, text)` (live = `card_ledger.sql`); reverts `public.gift_card(text, text, bigint)` (live = `card_ledger.sql`) |  |
 | `roster_stats.sql` | SUPERSEDED: reverts `public.roster_snapshot()` (live = `f3_one_power_number.sql`); reverts `public.roster_stats()` (live = `f3_one_power_number.sql`); reverts `public.roster_top_players(integer)` (live = `f3_one_power_number.sql`) |  |
 | `runs_per_day.sql` | SUPERSEDED: reverts `public.dungeon_board(date, integer)` (live = `combat_v2_on_dungeon.sql`); reverts `public.dungeon_start(text, bigint[])` (live = `combat_v2_on_dungeon.sql`); reverts `public.dungeon_view_core(text, boolean)` (live = `season_best_day_tie.sql`); reverts `public.gauntlet_start(text)` (live = `combat_v2_gauntlet_run.sql`); reverts `public.gauntlet_view(text)` (live = `combat_v2_on_gauntlet.sql`) | a re-run stops at an error today: runs_per_day.sql: the live public.dungeon_start(text, bigint[]) changed since this file was built. Rebuild it from the live text. |
@@ -220,6 +221,7 @@ a one-time grant or a settings value would run again.
 - `d191_set_rewards.sql`: achievement_claims, balance, players
 - `daily_raid_board.sql`: cron.job
 - `db_comments.sql`: a DO block
+- `dbmem_cron_history_7d.sql`: cron.job
 - `discord_effects_on.sql`: effect_primitives
 - `dungeon_balance_medium.sql`: balance, set_config()
 - `dungeon_gauntlet_prizes_up.sql`: balance, set_config()
@@ -240,7 +242,6 @@ a one-time grant or a settings value would run again.
 - `hunt_ach_damage_v2.sql`: balance (DO block)
 - `hunt_damage_trace.sql`: hunt_adjustments (DO block)
 - `ledger_reasons.sql`: ledger_reasons
-- `logs_sql.sql`: cron.job
 - `perf_prepare_day.sql`: cron.job
 - `player_reports.sql`: settings
 - `raid_makeup_oct1.sql`: give_gift(), hunt_adjustments
