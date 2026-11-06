@@ -11,10 +11,15 @@ import { startVoiceDailies } from './voice-dailies.js';
 import { startDiscordEffects, discordEffectsEnabled, onEffectMessage, onEffectVoice, isVoiceJoin, tick as effectsTick } from './discord-effects.js';
 import { clientOptions, startGuildLog } from './guild-log.js';
 import type { Command } from './types.js';
+import { parseImgMode } from './img-mode.js';
 
 // GuildMessages lets the bot count activity. MessageContent (a privileged intent, on in the Developer
 // Portal; effects_spread.sql) gives the text of a message: only the Parrot and SpongeBob pranks read it,
 // and only the next message of their target. GuildMembers (privileged) only with FEATURE_GUILD_MEMBERS_INTENT (guild-log.ts).
+// R2-MOVE: IMG_UPSTREAM is required (supabase | r2-first | r2). Unset or unknown = no start (img-mode.ts, spec H4).
+let IMG: ReturnType<typeof parseImgMode>;
+try { IMG = parseImgMode(process.env); } catch (e) { console.error((e as Error).message); process.exit(1); }
+
 const client = new Client(clientOptions());
 
 const commands = new Collection<string, Command>();
@@ -23,7 +28,7 @@ for (const command of await loadCommands()) {
 }
 
 client.once(Events.ClientReady, (ready) => {
-  console.log(`Ready. Logged in as ${ready.user.tag}.`);
+  console.log(`Ready. Logged in as ${ready.user.tag}. img=${IMG.mode}`);
   startHuntNotifier(ready); // drain the hunt_events outbox to the notifications channel
   startEffectNotifier(ready); // post every card boon/prank/neutral play (flag FEATURE_CARD_EFFECT_POSTS)
   startAuctionPosts(ready); // an auction start / end picture (flag FEATURE_AUCTION_POSTS)

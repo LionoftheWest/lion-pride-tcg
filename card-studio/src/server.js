@@ -23,6 +23,11 @@ import { getArtist, setArtist } from './artists.js';
 import { getSource, setSource, artFile, resolveArtFile } from './artsources.js';
 import { checkTierSetChange, homeLiveSet, tierSetOrNull } from './tier-set.js';
 import { getCards, getCard, addCard, updateCard, deleteCard, slotDetails, setSlotDetails, subjectType, isSetId } from './cardstore.js';
+import { backendOf, DEFAULT_R2_PUBLIC_BASE } from './art-store.js';
+import { r2FromLogical } from './art-url.js';
+// R2-MOVE (R11): the live image URL that the admin grid loads in the browser. ART_STORE=r2 (after the cut) = the R2 public
+// domain; else the stored (logical) URL as before. The row is never changed (I-4).
+const studioArtUrl = (u) => (backendOf(process.env) === 'r2' ? r2FromLogical(u, process.env.R2_PUBLIC_BASE || DEFAULT_R2_PUBLIC_BASE) : u);
 
 // Injected into a card render when ?edit=1: drag to pan, scroll to zoom, and
 // report the framing back to the studio window.
@@ -120,7 +125,7 @@ app.get('/api/cards', async (req, res) => {
   for (const row of dbCards || []) {
     const key = row.subject?.key;
     if (!key) continue;
-    (live[key] ||= {})[row.rarity] = row.image_url;
+    (live[key] ||= {})[row.rarity] = studioArtUrl(row.image_url); // R2-MOVE: the admin grid (public/admin/cards.js) reads the store of ART_STORE
     (liveSet[key] ||= {})[row.rarity] = { set: row.set_id, number: row.set_number };
   }
   const pools = {};
