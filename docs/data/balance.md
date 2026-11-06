@@ -24,13 +24,14 @@ The triggers on `balance` check each change:
 - `balance_check_runs` (`balance_check_runs()`): Trigger (before insert or update on balance): dungeon_runs_per_day and gauntlet_runs_per_day must be whole numbers from 1 to 10.
 - `balance_check_settings` (`balance_check_settings()`): Trigger (before insert, update on balance): the shapes of the keys dungeon, gauntlet and adventure_gate (balance_settings_numbers.sql) and dungeon_rewards.chest_rarity. dungeon: squad, budget, floors, round_cap and rules.budget whole numbers of at least 1; a cost for every card rarity; hp_growth, atk_growth, foe_mult hp / atk above 0; rest_heal and rest_revive shares from 0 to 1; fight_min and horde_min whole numbers 1 to 8; fight_spread and horde_spread whole numbers 1 to 4; early_floors a whole number 0 to 30; early_hp and early_atk from 0.1 to 1; foe_heal_cap from 0 to 5; room_weights numbers that add up to more than 0. gauntlet: budget a whole number of at least 1; room_weights the same, without treasure. adventure_gate: attackers a whole number. dungeon_rewards.chest_rarity: tiers 1 to 5, each 3 numbers that add up to more than 0.
 - `balance_check_stat_labels` (`balance_check_stat_labels()`): Trigger (before insert, update on balance): stat_labels must have the five stats, each with a label (1 to 12 characters), a short (1 to 4) and a text with {n} exactly once (f3_stat_labels.sql).
+- `balance_check_stat_labels_v2` (`balance_check_stat_labels_v2()`): Trigger (before insert, update on balance): stat_labels_v2 must have the 9 v2 stats (atk, def, hp, crd, crt, abl, ddg, acc, spd), each with only a label (1 to 14 characters) and a short (1 to 4) (stat_v2.sql).
 - `balance_log_write` (`balance_log_write()`): Trigger (after insert, update on balance): writes a balance_log row with the old value, the new value and balance_who. Writes nothing when the value and the note did not change.
 
 - The shape of a value stays the same: an update cannot remove a leaf or change its type (see `balance_check`).
 
 ## Keys
 
-[ability_v2](#key-ability-v2), [achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [auto_v2](#key-auto-v2), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [card_level](#key-card-level), [combat](#key-combat), [combat_v2](#key-combat-v2), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [enemy_v2](#key-enemy-v2), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_labels](#key-stat-labels), [stat_points](#key-stat-points), [support](#key-support), [v2_asc](#key-v2-asc), [v2_card_hp](#key-v2-card-hp), [v2_charge](#key-v2-charge), [v2_control](#key-v2-control), [v2_convert](#key-v2-convert), [v2_dungeon](#key-v2-dungeon), [v2_enemy](#key-v2-enemy), [v2_hit](#key-v2-hit), [v2_hunt](#key-v2-hunt), [v2_level](#key-v2-level), [v2_power](#key-v2-power), [v2_pp](#key-v2-pp), [v2_roles](#key-v2-roles), [v2_speed](#key-v2-speed), [v2_stats](#key-v2-stats), [v2_status](#key-v2-status), [v2_support](#key-v2-support), [v2_synergy](#key-v2-synergy), [welcome_packs](#key-welcome-packs)
+[ability_v2](#key-ability-v2), [achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [auto_v2](#key-auto-v2), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [card_level](#key-card-level), [combat](#key-combat), [combat_v2](#key-combat-v2), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [enemy_v2](#key-enemy-v2), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_labels](#key-stat-labels), [stat_labels_v2](#key-stat-labels-v2), [stat_points](#key-stat-points), [support](#key-support), [v2_asc](#key-v2-asc), [v2_card_hp](#key-v2-card-hp), [v2_charge](#key-v2-charge), [v2_control](#key-v2-control), [v2_convert](#key-v2-convert), [v2_dungeon](#key-v2-dungeon), [v2_enemy](#key-v2-enemy), [v2_hit](#key-v2-hit), [v2_hunt](#key-v2-hunt), [v2_level](#key-v2-level), [v2_power](#key-v2-power), [v2_pp](#key-v2-pp), [v2_roles](#key-v2-roles), [v2_speed](#key-v2-speed), [v2_stats](#key-v2-stats), [v2_status](#key-v2-status), [v2_support](#key-v2-support), [v2_synergy](#key-v2-synergy), [welcome_packs](#key-welcome-packs)
 
 <a id="key-ability-v2"></a>
 
@@ -1367,11 +1368,11 @@ Shape: `object { dungeon: boolean, gauntlet: boolean, hunt: boolean, progress: b
 
 ```json
 {
-  "hunt": false,
-  "dungeon": false,
+  "hunt": true,
+  "dungeon": true,
   "testers": [],
-  "gauntlet": false,
-  "progress": false
+  "gauntlet": true,
+  "progress": true
 }
 ```
 
@@ -2542,6 +2543,55 @@ Shape: `object { attack: object { label: string, short: string, text: string }, 
     "text": "your card lands critical hits more often (+{n}% chance for each point)",
     "label": "Crit",
     "short": "CRT"
+  }
+}
+```
+
+<a id="key-stat-labels-v2"></a>
+
+### stat_labels_v2
+
+The names of the 9 combat v2 stats as a player reads them (UI-67 03 Stat icons, approved 2026-10-19; stat_v2.sql, STAT-V2). The key is the stored v2 stat (atk, def, hp, crd, crt, abl, ddg, acc, spd, the columns of card_progress_v2) and does not change; label = the name on the stat screen, short = the chip form (at most 4 letters). Read by the Activity through the public balance (/api/flags). No fight reads this key. Limits: balance_check_stat_labels_v2 (all 9 stats, a label of 1 to 14 characters, a short of 1 to 4). Not named v2_stat_labels: a v2_ key needs a shape in balance_v2_spec, which has no text type.
+
+Shape: `object { abl: object { label: string, short: string }, acc: object { label: string, short: string }, atk: object { label: string, short: string }, crd: object { label: string, short: string }, crt: object { label: string, short: string }, ddg: object { label: string, short: string }, def: object { label: string, short: string }, hp: object { label: string, short: string }, spd: object { label: string, short: string } }`
+
+```json
+{
+  "hp": {
+    "label": "HP",
+    "short": "HP"
+  },
+  "abl": {
+    "label": "Ability",
+    "short": "ABL"
+  },
+  "acc": {
+    "label": "Accuracy",
+    "short": "ACC"
+  },
+  "atk": {
+    "label": "Attack",
+    "short": "ATK"
+  },
+  "crd": {
+    "label": "Crit Damage",
+    "short": "CRD"
+  },
+  "crt": {
+    "label": "Crit %",
+    "short": "CRT"
+  },
+  "ddg": {
+    "label": "Dodge",
+    "short": "DDG"
+  },
+  "def": {
+    "label": "Defense",
+    "short": "DEF"
+  },
+  "spd": {
+    "label": "Speed",
+    "short": "SPD"
   }
 }
 ```
