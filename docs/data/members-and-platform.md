@@ -872,7 +872,7 @@ Trigger (after a players row change with a new username, avatar, title, frame, s
 - Returns: `jsonb`
 - Security definer: no
 
-Deletes old rows: bell notes after 365 days, posted hunt_events after 365, ended discord_effects after 365, cron run details after 90 (logs_sql.sql, 2026-10-07; was 30 / 90 / 30 / 30 / 14). The logs (settings_log, profile_log, wishlist_log, stat_point_log, admin_actions) are never pruned. The pg_cron job prune-old-rows runs it each day. Returns the counts.
+Deletes old rows: bell notes after 365 days, posted hunt_events after 365, ended discord_effects after 365, cron run details after 7 (dbmem_cron_history_7d.sql, 2026-11-06; was 90). The logs (settings_log, profile_log, wishlist_log, stat_point_log, admin_actions) are never pruned. The pg_cron job prune-old-rows runs it each day. Returns the counts.
 
 <a id="fn-record-activity-text-date"></a>
 
