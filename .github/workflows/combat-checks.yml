@@ -34,6 +34,9 @@ jobs:
       - name: Test the checks (each one fails on a planted violation)
         if: success() || failure()
         run: node --test ci/combat/combat-checks.test.mjs
+      - name: Hunt false-down test (HUNT-FALSE-DOWN; the baseline and every mutation in one run, no dependencies)
+        if: success() || failure()
+        run: MUTATE=all node tcg-activity/src/hunt-false-down.test.js
       - name: C1 no combat number outside balance
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

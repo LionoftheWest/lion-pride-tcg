@@ -46,13 +46,3 @@ export function noAction(cards, selIds, round) {
   if (!standing.length || standing.some((c) => ATTACKERS.has(c.type))) return false;
   return standing.every((c) => (c.cdReady || 0) > (round || 0));
 }
-
-// HUNT-FALSE-DOWN (Nathan, 2026-11-06: "my squad was down on the hunt even though it wasn't"). A live v2 day writes one bridge
-// row per squad card into hunt_card_hp with downed = true at full HP (hunt_v2_start, combat_v2_on_hunt.sql), so the v1 readers
-// count the day. /api/hunt then shows all 8 cards downed, and squadDown() above says "down". Only the v2 answer
-// (/api/hunt/v2/view) knows the real day. When /api/hunt says a live v2 day exists today (d.v2day) and the v2 answer did not
-// load (an error, a dropped request: huntV2 is null) or has no day row, the screen waits for the v2 answer. It never reads
-// the bridge rows as a v1 squad.
-export function v2DayUnread(d, v) {
-  return !!d?.v2day && !(v?.ok && v.day);
-}
