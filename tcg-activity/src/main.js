@@ -1386,6 +1386,9 @@ const huntV2Owns = (v) => !!(v?.ok && v.run && v.run.status === 'active' && v.fi
 // the member's damage is in the approved "Your hunt · Damage" tile (live: day.credited, to confirm against the R3-ON SQL).
 const huntV2Over = (v) => !!(v?.ok && (v.run?.status === 'over' || v.day?.status === 'over'));
 const huntV2CanStart = (v) => !!(v?.ok && (v.tester === true || v.live === true) && v.can_start === true);
+// UI-18 FIX: the lobby member mode reads the view flag live (every member while combat v2 is ON). The day row (huntLive) is null before the
+// first start of the day, so huntLive kept the v1 Enter battle (v1 hunt_attack refuses with v2_on) and showed Practice v2 to every member.
+const huntV2Member = (v) => !!(v?.ok && v.live === true);
 async function startHuntV2(btn) {
   if (btn.disabled) return;
   btn.disabled = true; btn.setAttribute('aria-busy', 'true');
@@ -2200,8 +2203,8 @@ function huntSelectV3HTML(d) {
   else act = ui3Button({ label: 'Select your squad', variant: 'primary', data: { hpick: '1' } });
   // R3b: the tester "Practice v2" button; ON-UI member mode (live): the v2 fight is THE Hunt fight of the day, so Start replaces Enter battle
   // (the same two states as v1: Select your squad, then Edit + Enter battle; only the Enter battle target changes)
-  if (huntV2?.ok && huntLive(huntV2) && !squad.ko && squad.locked && picks.length) act = `${ui3Button({ label: 'Edit', data: { hpick: '1' } })}${ui3Button({ label: 'Enter battle', icon: 'swords', variant: 'primary', disabled: !huntV2CanStart(huntV2), data: { h2start: '1' } })}`;
-  else if (huntV2CanStart(huntV2) && !huntLive(huntV2)) act += ui3IconButton({ icon: 'swords', label: 'Practice v2', data: { h2start: '1' } });   // tester only: an icon button keeps the approved row width
+  if (huntV2Member(huntV2) && !squad.ko && squad.locked && picks.length) act = `${ui3Button({ label: 'Edit', data: { hpick: '1' } })}${ui3Button({ label: 'Enter battle', icon: 'swords', variant: 'primary', disabled: !huntV2CanStart(huntV2), data: { h2start: '1' } })}`;
+  else if (huntV2CanStart(huntV2) && !huntV2Member(huntV2)) act += ui3IconButton({ icon: 'swords', label: 'Practice v2', data: { h2start: '1' } });   // tester only: an icon button keeps the approved row width
   return `<div class="u3-hunt">${stage}
     <section class="u3-hs-squad">
       <div class="u3-hs-info">
