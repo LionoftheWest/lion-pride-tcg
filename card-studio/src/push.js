@@ -14,6 +14,7 @@ import { getFrame } from './frames.js';
 import { makeThumbs, gridObject, revealObject } from './thumbs.js';
 import { getArtist } from './artists.js';
 import { publicUrl } from './storage-url.js';
+import { createArtStore } from './art-store.js';
 import { slotDetails, subjectType, CARD_TYPES, cardSetId } from './cardstore.js';
 import { setMoveProblem, tierSetId, planTierSets, planSets, writeTierRow } from './tier-set.js';
 
@@ -32,9 +33,12 @@ const ENCODE_SCRIPT = join(ROOT, 'blender', 'encode.py');
 // Which tiers render through Blender (animated foil / metallic) vs. ship a
 // static PNG is defined per tier in rarity.js (the `animated` flag).
 
+// R2-MOVE (W1): every storage write goes through src/art-store.js (Supabase or R2 by ART_STORE; the freeze and cut files).
+// One logical write = ONE tier: main + grid + reveal + the row write. Under FROZEN a new tier does not start.
+const artStore = () => createArtStore({ db: supabase });
+
 async function ensureBucket() {
-  const { error } = await supabase.storage.createBucket(BUCKET, { public: true });
-  if (error && !/exist/i.test(error.message)) throw error;
+  await artStore().ensureBucket();
 }
 
 // Spawn Blender and count each rendered frame (it prints "Saved: …f_0001.png")
@@ -161,40 +165,48 @@ export async function pushCard(card, artFor, outDir, onProgress) {
     if (!ANIMATED.has(rarity)) bump(4, rarity);
     const object = `cards/${card.id}-${rarity}.${file.endsWith('.webp') ? 'webp' : 'png'}`;
     const buffer = readFileSync(file);
-
-    const { error: ue } = await supabase.storage
-      .from(BUCKET)
-      .upload(object, buffer, { contentType, upsert: true });
-    if (ue) throw new Error(`upload ${rarity}: ${ue.message}`);
-    // Its thumbnails (src/thumbs.js): the still grid copy, and the animated reveal copy.
+    // Its thumbnails (src/thumbs.js): the still grid copy, and the animated reveal copy (made before the write starts).
     const th = await makeThumbs(buffer);
-    for (const [obj, buf] of [[gridObject(object), th.grid], [revealObject(object), th.reveal]]) {
-      if (!buf) continue;
-      const { error: te } = await supabase.storage.from(BUCKET).upload(obj, buf, { contentType: 'image/webp', upsert: true });
-      if (te) throw new Error(`thumbnail ${rarity}: ${te.message}`);
-    }
+    const url = await storeTier({ store: artStore(), db: supabase, cardId: card.id, rarity, object, buffer, contentType, thumbs: th, writeRow: async (url) => {
+      // One row per subject and rarity (the subject is this card: key = card.id). A reprint in another set is a
+      // set_pool row of that set, not a new row here.
+      const existing = liveRows.get(rarity) || null;
 
-    const url = `${publicUrl(supabase, BUCKET, object)}?v=${Date.now()}`; // the base that received the upload (local or live)
-
-    // One row per subject and rarity (the subject is this card: key = card.id). A reprint in another set is a
-    // set_pool row of that set, not a new row here.
-    const existing = liveRows.get(rarity) || null;
-
-    // This tier's own description / event; the draw-pool rule comes from the tier's flags in rarity.js.
-    // The set is per tier (tierSetId: its own set, else the home set); the database keeps cards.season = 'Season ' + the set's season (card_sets.sql),
-    // so the season is not sent.
-    const rowEvent = needsPeriod(rarity) ? (det.event || null) : null;
-    const inPool = inDrawPool(rarity);
-    // Tradeability is per tier now (det.tradeable): gold never trades, every
-    // other tier follows its own portal toggle.
-    const tradeable = det.tradeable !== false;
-    // Every write is checked (F-2 item 6): an error stops the push and shows in the push status. A new tier is inserted with
-    // its own set (it gets its own number there); an existing tier keeps the row it has.
-    await writeTierRow({
-      db: supabase, existing, subjectId: subject.id, rarity,
-      fields: { name: card.name, lore: det.lore, artist_credit: artist || null, set_id: plan.get(rarity).setId, event: rowEvent, image_url: url, in_draw_pool: inPool, tradeable, source: 'draw' },
-    });
+      // This tier's own description / event; the draw-pool rule comes from the tier's flags in rarity.js.
+      // The set is per tier (tierSetId: its own set, else the home set); the database keeps cards.season = 'Season ' + the set's season (card_sets.sql),
+      // so the season is not sent.
+      const rowEvent = needsPeriod(rarity) ? (det.event || null) : null;
+      const inPool = inDrawPool(rarity);
+      // Tradeability is per tier now (det.tradeable): gold never trades, every
+      // other tier follows its own portal toggle.
+      const tradeable = det.tradeable !== false;
+      // Every write is checked (F-2 item 6): an error stops the push and shows in the push status. A new tier is inserted with
+      // its own set (it gets its own number there); an existing tier keeps the row it has.
+      await writeTierRow({
+        db: supabase, existing, subjectId: subject.id, rarity,
+        fields: { name: card.name, lore: det.lore, artist_credit: artist || null, set_id: plan.get(rarity).setId, event: rowEvent, image_url: url, in_draw_pool: inPool, tradeable, source: 'draw' },
+      });
+    } });
     results.push({ rarity, url, animated: ANIMATED.has(rarity) });
   }
   return results;
+}
+
+/**
+ * R2-MOVE (W1): one tier = ONE logical write of the art store: the main image, the grid copy, the reveal copy, then the
+ * row (writeRow(url)). Under FROZEN it does not start (refused, no request); a write that started finishes (spec N2).
+ * The row gets the LOGICAL address (I-4: the Supabase form in every backend; each reader maps it). Returns the url.
+ * test-art-store.mjs runs it with a stub store (no render).
+ */
+export async function storeTier({ store, db, cardId, rarity, object, buffer, contentType, thumbs, writeRow }) {
+  return store.withWrite(`push ${cardId} ${rarity}`, async () => {
+    try { await store.put(object, buffer, contentType); } catch (e) { throw new Error(`upload ${rarity}: ${e.message}`); }
+    for (const [obj, buf] of [[gridObject(object), thumbs.grid], [revealObject(object), thumbs.reveal]]) {
+      if (!buf) continue;
+      try { await store.put(obj, buf, 'image/webp'); } catch (e) { throw new Error(`thumbnail ${rarity}: ${e.message}`); }
+    }
+    const url = `${publicUrl(db, BUCKET, object)}?v=${Date.now()}`; // the base that received the upload (local or live)
+    await writeRow(url);
+    return url;
+  });
 }

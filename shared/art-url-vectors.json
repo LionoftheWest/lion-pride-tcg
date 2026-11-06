@@ -1,0 +1,32 @@
+{
+  "_note": "R2-MOVE: the vectors of artKey / r2Url / r2FromLogical. Read by tcg-activity/art-url.test.js, tcg-bot/src/art-url.test.ts and card-studio/scripts/test-art-store.mjs (card-studio/src/art-url.js and card-studio/gallery-deploy/src/art-url.js).",
+  "supabase": "https://kgvdqqehefezbypozvrh.supabase.co",
+  "r2Base": "https://img.lionpridetcg.com",
+  "key": [
+    { "in": "https://kgvdqqehefezbypozvrh.supabase.co/storage/v1/object/public/card-art/cards/abc-common.png?v=1730000000000", "key": "card-art/cards/abc-common.png", "v": "1730000000000" },
+    { "in": "https://kgvdqqehefezbypozvrh.supabase.co/storage/v1/object/public/card-art/cards/face2/abc-gold.webp?v=5", "key": "card-art/cards/face2/abc-gold.webp", "v": "5" },
+    { "in": "storage/v1/object/public/card-art/grid/cards/card-back.webp", "key": "card-art/grid/cards/card-back.webp", "v": null },
+    { "in": "/api/img/storage/v1/object/public/card-art/reveal/cards/x-fullart.webp?v=r2m1", "key": "card-art/reveal/cards/x-fullart.webp", "v": "r2m1" },
+    { "in": "https://kgvdqqehefezbypozvrh.supabase.co/storage/v1/object/public/card-art/boss/models/warrok-z2.glb", "key": "card-art/boss/models/warrok-z2.glb", "v": null },
+    { "in": "https://kgvdqqehefezbypozvrh.supabase.co/storage/v1/object/public/card-art/sets/s1-still.png?v=9", "key": "card-art/sets/s1-still.png", "v": "9" },
+    { "in": "https://kgvdqqehefezbypozvrh.supabase.co/storage/v1/object/public/report-shots/a.png", "key": null, "v": null },
+    { "in": "https://kgvdqqehefezbypozvrh.supabase.co/storage/v1/object/sign/card-art/cards/a.png", "key": null, "v": null },
+    { "in": "storage/v1/object/public/card-art/../secret.png", "key": null, "v": null },
+    { "in": "storage/v1/object/public/card-art/cards//a.png", "key": null, "v": null },
+    { "in": "storage/v1/object/public/card-art/cards/a%2e.png", "key": null, "v": null },
+    { "in": "storage/v1/object/public/card-art/", "key": null, "v": null },
+    { "in": "", "key": null, "v": null },
+    { "in": null, "key": null, "v": null }
+  ],
+  "r2": [
+    { "key": "card-art/cards/abc-common.png", "v": "1730000000000", "out": "https://img.lionpridetcg.com/card-art/cards/abc-common.png?v=1730000000000" },
+    { "key": "card-art/boss/models/warrok-z2.glb", "v": null, "out": "https://img.lionpridetcg.com/card-art/boss/models/warrok-z2.glb" },
+    { "key": "card-art/grid/cards/card-back.webp", "v": "r2m1", "out": "https://img.lionpridetcg.com/card-art/grid/cards/card-back.webp?v=r2m1" }
+  ],
+  "logical": [
+    { "in": "https://kgvdqqehefezbypozvrh.supabase.co/storage/v1/object/public/card-art/cards/abc-common.png?v=1730000000000", "out": "https://img.lionpridetcg.com/card-art/cards/abc-common.png?v=1730000000000" },
+    { "in": "https://kgvdqqehefezbypozvrh.supabase.co/storage/v1/object/public/card-art/cards/card-back.png", "out": "https://img.lionpridetcg.com/card-art/cards/card-back.png" },
+    { "in": "https://example.com/other.png", "out": "https://example.com/other.png" },
+    { "in": null, "out": null }
+  ]
+}

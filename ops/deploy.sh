@@ -19,12 +19,15 @@ VM_HOST="${VM_HOST:-lionpridetcg.duckdns.org}"
 # SRC = repo path, DIR = VM dir under /home/ubuntu, NAME = container + image, PATHS = what ships.
 case "$SVC" in
   activity) SRC=tcg-activity;               DIR=activity; NAME=tcg-activity; PATHS=".";
-            HEALTH='curl -fsS http://127.0.0.1:4441/api/config | grep -q "\"hunt\":true"' ;;  # false = the VM .env lost FEATURE_HUNT
+            # false = the VM .env lost FEATURE_HUNT. R2-MOVE: /api/config "img" = the IMG_UPSTREAM of the host .env (unset = the
+            # Activity does not start), and one image loads through /api/img (test: ops/deploy-health.test.sh). No single quote.
+            HEALTH='curl -fsS http://127.0.0.1:4441/api/config | grep -q "\"hunt\":true" && M=$(grep -E ^IMG_UPSTREAM= /home/ubuntu/$DIR/.env | cut -d= -f2) && curl -fsS http://127.0.0.1:4441/api/config | grep -q "\"img\":\"$M\"" && curl -fsS -o /dev/null -w %{content_type} "http://127.0.0.1:4441/api/img/storage/v1/object/public/card-art/grid/cards/card-back.webp?v=health1" | grep -qx image/webp' ;;
   bot)      SRC=tcg-bot;                    DIR=tcg-bot;  NAME=tcg-bot;
             PATHS="src package.json package-lock.json tsconfig.json Dockerfile";
             HEALTH='sudo docker logs tcg-bot 2>&1 | grep -q "Ready. Logged in"' ;;
   gallery)  SRC=card-studio/gallery-deploy; DIR=gallery;  NAME=card-gallery; PATHS=".";
-            HEALTH='curl -fsS -o /dev/null http://127.0.0.1:4331/' ;;
+            # R2-MOVE: /api/gallery answers with a backUrl (GALLERY_ART unset = the gallery does not start).
+            HEALTH='curl -fsS -o /dev/null http://127.0.0.1:4331/ && curl -fsS http://127.0.0.1:4331/api/gallery | grep -q "\"backUrl\":\"http"' ;;
   backup)   SRC=ops/backup;                 DIR=backups/bin; NAME=; PATHS="." ;;  # scripts + crontab, no container
   *) echo "unknown service: $SVC (use activity, bot, gallery, or backup)"; exit 2 ;;
 esac
@@ -91,6 +94,12 @@ if [ "${STANDBY:-}" = 1 ] && [ "$(sudo docker inspect -f '{{.State.Running}}' "$
   echo "STOP: $NAME is RUNNING on this box (a failover is active). Run ops/failover/failback.sh first."; exit 1
 fi
 cp -p "$DIR/.env" "$DIR.new/.env"
+# STANDBY_ENV_BEGIN (R2-MOVE N3; test: ops/deploy-health.test.sh extracts this block)
+# The standby bot is created STOPPED, so no health check runs for it: refuse an .env without a valid IMG_UPSTREAM here.
+if [ "${STANDBY:-}" = 1 ] && ! grep -qE '^IMG_UPSTREAM=(supabase|r2-first|r2)$' "$DIR.new/.env"; then
+  rm -rf "$DIR.new"; echo "STANDBY ENV: IMG_UPSTREAM missing (supabase | r2-first | r2) in /home/ubuntu/$DIR/.env - nothing changed"; exit 1
+fi
+# STANDBY_ENV_END
 echo "$SHA" > "$DIR.new/.deployed-commit"
 
 echo "-- build $NAME:$SHORT (--no-cache: a cached build layer once served a stale bundle)"

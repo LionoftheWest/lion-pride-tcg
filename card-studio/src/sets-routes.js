@@ -12,6 +12,7 @@
 import express from 'express';
 import { isSetId } from './cardstore.js';
 import { publicUrl } from './storage-url.js';
+import { createArtStore } from './art-store.js';
 
 const BUCKET = 'card-art';
 const MAX_ART = 20 * 1024 * 1024; // 20 MB, before base64
@@ -100,17 +101,21 @@ export function setsRouter({ db, env = process.env }) {
     if (se) return fail(res, se);
     if (!set) return res.status(404).json({ ok: false, error: `no set ${id}` });
     const object = `packs/${id}-${kind}.${ext}`;
-    const { error: be } = await db.storage.createBucket(BUCKET, { public: true }); // as push.js ensureBucket
-    if (be && !/exist/i.test(be.message)) return fail(res, `bucket: ${be.message}`);
-    const { error: ue } = await db.storage.from(BUCKET).upload(object, buf, { contentType: m[1], upsert: true });
-    if (ue) return fail(res, `upload: ${ue.message}`);
-    const url = `${publicUrl(db, BUCKET, object)}?v=${Date.now()}`; // the base that received the upload (local or live)
-    if (kind === 'clip') return res.json({ ok: true, kind, url });
-    const before = (({ id: i, name, code, pack_color, released_at, pullable, sort, season, pack_art_url, cover_card_id }) =>
-      ({ id: i, name, code, pack_color, released_at, pullable, sort, season, pack_art_url, cover_card_id }))(set);
-    const { data, error } = await db.rpc('admin_set_save', { p_actor: actor(), p_set: { id, pack_art_url: url }, p_before: before, p_reason: 'pack art upload' });
-    if (error) return fail(res, error);
-    res.json({ ok: true, kind, url, ...data });
+    // R2-MOVE (W2): one logical write of the art store (the upload and the row); Supabase or R2 by ART_STORE + the state files.
+    const store = createArtStore({ db, env });
+    let h;
+    try { h = store.beginWrite(`pack-art ${id} ${kind}`); } catch (e) { return fail(res, e.message); }
+    try {
+      try { await store.ensureBucket(); } catch (e) { return fail(res, e.message); } // as push.js ensureBucket
+      try { await store.put(object, buf, m[1]); } catch (e) { return fail(res, `upload: ${e.message}`); }
+      const url = `${publicUrl(db, BUCKET, object)}?v=${Date.now()}`; // the LOGICAL address (I-4); the base that received the upload (local or live)
+      if (kind === 'clip') return res.json({ ok: true, kind, url });
+      const before = (({ id: i, name, code, pack_color, released_at, pullable, sort, season, pack_art_url, cover_card_id }) =>
+        ({ id: i, name, code, pack_color, released_at, pullable, sort, season, pack_art_url, cover_card_id }))(set);
+      const { data, error } = await db.rpc('admin_set_save', { p_actor: actor(), p_set: { id, pack_art_url: url }, p_before: before, p_reason: 'pack art upload' });
+      if (error) return fail(res, error);
+      res.json({ ok: true, kind, url, ...data });
+    } finally { store.endWrite(h); }
   });
 
   return r;
