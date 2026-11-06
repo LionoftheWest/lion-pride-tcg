@@ -30,6 +30,7 @@ export const MUTATIONS = {
   routes_credit_v1: ['hunt-v2-routes.js', 'const d = asRun({ ...scaleAnswer(data, f), label: LABEL });', 'const d = asRun({ ...data, label: LABEL });'],
   header_keeps_atk: ['main.js', 'const atk = !v2 && Number(h.stats?.atk) > 0', 'const atk = Number(h.stats?.atk) > 0'],
   header_keeps_weak: ['main.js', "const weak = v2 ? '' : (h.weak_points", 'const weak = (h.weak_points'],
+  header_row_collapses: ['main.js', "<div class=\"u3-hs-facts${v2 ? ' is-v2' : ''}\">", '<div class="u3-hs-facts">'],
   window_keeps_facts: ['main.js', "    ${v2 ? '' : `<dl class=\"u3-bw__facts\">", "    ${false ? '' : `<dl class=\"u3-bw__facts\">"],
   window_keeps_moves: ['main.js', 'const moves = v2 ? [] : [', 'const moves = false ? [] : ['],
 };
@@ -161,6 +162,9 @@ test('UI-17 header, v2 ON (the server answer): the fight scale, no v1 ATK, no We
   const on = header(S.scaleHunt(H, F));
   assert.match(on, /<span>25,401 \/ 36,244 HP<\/span>/);
   assert.doesNotMatch(on, /80,000|ATK|Weak to/);
+  assert.ok(on.includes('<div class="u3-hs-facts is-v2"></div>'), 'the empty facts row keeps one chip height (90-ui-17-v2.css)');
+  const css = readFileSync(join(here, '../public/ui3/90-ui-17-v2.css'), 'utf8');
+  assert.ok(css.includes('.u3-hs-facts.is-v2::before { content: "\\200b"; display: inline-flex;'), 'the row rule');
   const off = header(H);
   const pct = (s) => s.match(/--hp:(\d+)%/)[1];
   assert.equal(pct(on), pct(off));
@@ -169,6 +173,7 @@ test('UI-17 header, flag OFF: today\'s header (v1 numbers, ATK 73, Weak to)', ()
   const off = header(H);
   assert.match(off, /<span>56,066 \/ 80,000 HP<\/span>/);
   assert.match(off, /ATK 73/); assert.match(off, /Weak to/);
+  assert.match(off, /<div class="u3-hs-facts"><span class="u3-hs-atk">/);
 });
 test('UI-20 boss window, v2 ON (Nathan "Yes"): the fight scale, no Attack, Weakness, Resistance, Passive or Move pool', () => {
   const on = bossWindow(S.scaleHunt(H, F));

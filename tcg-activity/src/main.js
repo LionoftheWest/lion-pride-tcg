@@ -2224,7 +2224,7 @@ function huntSelectV3HTML(d) {
   const stage = `<section class="u3-hs-stage" role="button" tabindex="0" data-boss aria-label="Boss details: ${esc(h.name)}">
     <div class="u3-hs-text">
       <div class="u3-hs-title"><span class="u3-hs-tier">${esc(tier)}</span>${huntNameRow(h.name)}</div>
-      <div class="u3-hs-facts">${atk}${weak ? `<span class="u3-label">Weak to</span>${weak}` : ''}</div>
+      <div class="u3-hs-facts${v2 ? ' is-v2' : ''}">${atk}${weak ? `<span class="u3-label">Weak to</span>${weak}` : ''}</div>
       <div class="u3-hs-hp" role="img" aria-label="${pct}% HP"><i style="--hp:${pct}%"></i><span>${huntNum(h.hp_remaining)} / ${huntNum(h.hp_max)} HP</span></div>
       <div class="u3-hs-left">${cdSpan(h.closes_at, 'Beat in', 'closes countdown')}</div>
       <div class="u3-hs-top" id="u3HsTop">${huntTopHTML()}</div>
