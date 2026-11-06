@@ -2,7 +2,8 @@
 //   node scripts/r2-copy.mjs                    the plan only (no write)
 //   node scripts/r2-copy.mjs --live             S2: copy every object whose R2 ETag is not the DB eTag
 //   node scripts/r2-copy.mjs --live --delta     S4 step 2 (needs FROZEN): the same, and DELTA-DEL of R2 keys not in the DB
-//   node scripts/r2-copy.mjs --live --reverse   I-5 rollback: every write-log key R2 -> Supabase (a del line: delete there)
+//       --max-deletes <n>                       allow more than 200 DELTA-DEL (default limit 200, see DELTA_DEL_MAX)
+//   node scripts/r2-copy.mjs --live --reverse   I-5 rollback (needs FROZEN): every write-log key R2 -> Supabase (a del line: delete there)
 //   --keys a,b                                  only these names (cards/x.png, ...)
 // Sources in order (spec G1): (1) the S1 backup file when its MD5 = eTag; (2) the Activity proxy (no Supabase egress for a
 // cached key); (3) the Supabase authenticated GET with ?cb=<random>. Each must give MD5 = eTag (3 tries for 2 and 3; a 429
@@ -20,6 +21,10 @@ const DEFAULT_BACKUP = 'C:/Users/vaugh/lptcg-pipeline/items/S1-FACE/work/backup'
 const DEFAULT_PROXY = 'https://play.lionpridetcg.com/app/api/img';
 const DEFAULT_WORK = 'C:/Users/vaugh/lptcg-pipeline/items/R2-MOVE/work';
 const CACHE = 'public, max-age=604800';
+// The DELTA-DEL limit (review r1 L5). A DELTA-DEL is an R2 key whose object was deleted in Supabase between S2 and S4. Each
+// one is part of the S2..S4 delta, and the spec expects that delta below 200 objects. So more than 200 deletes means a
+// short DB list (a failed or partial listDbObjects), not real deletes: refuse before ANY write. --max-deletes <n> overrides.
+export const DELTA_DEL_MAX = 200;
 
 async function getOk(url, headers = {}) {
   try {
@@ -59,7 +64,7 @@ async function putTries(s3, key, buf, contentType) {
   throw last;
 }
 
-export async function copy({ env = process.env, live = false, delta = false, keys = null, out = console.log } = {}) {
+export async function copy({ env = process.env, live = false, delta = false, keys = null, maxDeletes = DELTA_DEL_MAX, out = console.log } = {}) {
   const st = readState(env);
   if (st.cutover) { out('refused: cut to R2 (CUTOVER exists: R2 is newer than Supabase; use --reverse)'); return 2; }
   if (delta && !st.frozen) { out('refused: --delta without FROZEN (R2-MOVE S4 step 1)'); return 2; }
@@ -68,6 +73,13 @@ export async function copy({ env = process.env, live = false, delta = false, key
   let objs = await listDbObjects(db);
   if (keys) objs = objs.filter((o) => keys.includes(o.name));
   const r2 = new Map((await s3.list(`${BUCKET}/`)).map((o) => [o.key, o.etag]));
+  // The DELTA-DEL list is known before any write: over the limit = refused, nothing copied, nothing deleted.
+  const dbKeys = new Set(objs.map((o) => o.key));
+  const dels = delta && !keys ? [...r2.keys()].filter((k) => !dbKeys.has(k)) : [];
+  if (dels.length > maxDeletes) {
+    out(`refused: DELTA-DEL ${dels.length} > ${maxDeletes} (a short DB list?). Check the list, then run again with --max-deletes ${dels.length}`);
+    return 2;
+  }
   const versions = await rowVersions(db);
   const work = env.R2_WORK_DIR || DEFAULT_WORK;
   const rec = live ? join(work, `copy-${new Date().toISOString().replace(/[:.]/g, '-')}.jsonl`) : null;
@@ -86,7 +98,6 @@ export async function copy({ env = process.env, live = false, delta = false, key
     appendFileSync(rec, `${JSON.stringify({ t: new Date().toISOString(), key: o.key, src: got.src, bytes: got.buf.length, md5: o.eTag })}\n`);
   }
   if (delta && !keys) {
-    const dbKeys = new Set(objs.map((o) => o.key));
     for (const k of r2.keys()) {
       if (dbKeys.has(k)) continue;
       if (!live) { out(`PLAN DELTA-DEL ${k}`); continue; }
@@ -102,6 +113,8 @@ export async function copy({ env = process.env, live = false, delta = false, key
 
 /** I-5: every key of the write log, R2 -> Supabase (a key whose last line is del: removed in Supabase). */
 export async function reverse({ env = process.env, live = false, out = console.log } = {}) {
+  // I-5 step 1 is FROZEN (review r1 L2): a writer that runs during the reverse can write R2 after its key was copied.
+  if (live && !readState(env).frozen) { out('refused: --reverse --live without FROZEN (I-5 step 1)'); return 2; }
   const db = dbClient(env);
   const s3 = await getS3(env);
   const log = readWriteLog(writeLogPath(env));
@@ -133,7 +146,9 @@ async function main() {
     assertProject(process.env.SUPABASE_URL);
     const keys = a.val('--keys') ? a.val('--keys').split(',').filter(Boolean) : null;
     if (a.has('--reverse')) return await reverse({ live: a.has('--live') });
-    return await copy({ live: a.has('--live'), delta: a.has('--delta'), keys });
+    const md = a.val('--max-deletes');
+    if (md !== null && !/^[0-9]+$/.test(md)) { console.log(`refused: --max-deletes ${md} (a whole number)`); return 2; }
+    return await copy({ live: a.has('--live'), delta: a.has('--delta'), keys, maxDeletes: md === null ? DELTA_DEL_MAX : Number(md) });
   } catch (e) {
     console.log(e.message.startsWith('refused') ? e.message : `COPY ERROR ${e.message}`);
     return 2;

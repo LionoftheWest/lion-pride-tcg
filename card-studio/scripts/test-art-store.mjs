@@ -66,7 +66,7 @@ await new Promise((r) => s3.listen(0, '127.0.0.1', r));
 const S3 = `http://127.0.0.1:${s3.address().port}`;
 const TEST_VAULT = () => ({ accountId: 'test', accessKeyId: 'AKIATESTTESTTESTTEST', secretAccessKey: 'test-secret-not-real', bucket: 'lptcg-media-test' });
 
-const { createArtStore, checkArtState, readState, waitInflight, inflightFiles, REFUSED_FROZEN, REFUSED_CUT, REFUSED_STAGE } = await import('../src/art-store.js');
+const { createArtStore, checkArtState, readState, waitInflight, inflightFiles, REFUSED_FROZEN, REFUSED_CUT, REFUSED_R2_EARLY, REFUSED_STAGE } = await import('../src/art-store.js');
 
 // A fresh state folder + env for each case.
 function caseEnv(extra = {}) {
@@ -264,7 +264,7 @@ async function withOwnEnv(dir, fn) {
 
 // ---- N1: one instance (one process, like the Studio server): a write, then FROZEN, then a new logical write -> refused --
 {
-  const env = caseEnv({ ART_STORE: 'r2' });
+  const env = caseEnv({ ART_STORE: 'r2' }); touch(env, 'CUTOVER'); // r2 writes only after the cut (M1)
   const { db } = mockDb(); const store = r2Store(env, db); const rows = [];
   await storeTier(tierArgs(store, db, rows));
   touch(env, 'FROZEN');
@@ -275,10 +275,10 @@ async function withOwnEnv(dir, fn) {
 
 // ---- N2: FROZEN created between the main PUT and the grid PUT: the push finishes; the next push is refused --------------
 {
-  const env = caseEnv({ ART_STORE: 'r2' });
+  const env = caseEnv({ ART_STORE: 'r2' }); touch(env, 'CUTOVER'); // r2 writes only after the cut (M1)
   const { db } = mockDb(); const store = r2Store(env, db); const rows = [];
   const s0 = s3Log.length;
-  onPut = (path) => { if (path === 'card-art/cards/zz-gold.webp') touch(env, 'FROZEN'); };
+  onPut =(path) => { if (path === 'card-art/cards/zz-gold.webp') touch(env, 'FROZEN'); };
   let err = ''; try { await storeTier(tierArgs(store, db, rows)); } catch (e) { err = e.message; }
   onPut = null;
   const puts = s3Log.slice(s0).filter((r) => r.method === 'PUT').map((r) => r.path);
@@ -302,6 +302,47 @@ async function withOwnEnv(dir, fn) {
   const w3 = await waitInflight({ env: env3, timeoutMs: 300, pollMs: 100, log: () => {} });
   rmSync(h.file, { force: true });
   check('N2: a write in flight of a live process -> the S4 wait times out and removes nothing', !w3.ok && w3.left.length === 1 && w3.stale.length === 0, JSON.stringify(w3));
+}
+
+// ---- M1 (review r1): ART_STORE=r2 with NO CUTOVER (before S4) -> refused, no write anywhere ----------------------------------
+// Before the cut an r2-only write is lost: the proxy still reads Supabase, and the next r2-copy overwrites R2 with the
+// older Supabase bytes. The reviewer's probe (before this fix) gave "WROTE; r2 puts=1; supabase uploads=0".
+{
+  const env = caseEnv({ ART_STORE: 'r2' }); // no CUTOVER, no FROZEN
+  const { db, calls } = mockDb(); const rows = []; const s0 = s3Log.length; const n0 = supaLog.length;
+  let e1 = ''; try { await storeTier(tierArgs(r2Store(env, db), db, rows)); } catch (e) { e1 = e.message; }
+  let e2 = ''; try { await r2Store(env, db).put('cards/x.png', Buffer.from('x'), 'image/png'); } catch (e) { e2 = e.message; }
+  let e3 = ''; try { await r2Store(env, db).remove(['cards/x.png']); } catch (e) { e3 = e.message; }
+  check('ART_STORE=r2 without CUTOVER: push, put and remove refused (refused: line), 0 R2 requests, 0 Supabase calls, no log line, no row, inflight empty',
+    e1 === `${REFUSED_R2_EARLY} push zz gold` && e2 === `${REFUSED_R2_EARLY} cards/x.png` && e3 === `${REFUSED_R2_EARLY} cards/x.png`
+    && s3Log.length === s0 && supaLog.length === n0 && calls.length === 0 && logLines(env).length === 0 && rows.length === 0 && inflightFiles(env).length === 0,
+    JSON.stringify({ e1, e2, e3, r2: s3Log.length - s0, calls }));
+}
+
+// ---- L1 (review r1): beginWrite writes its in-flight file BEFORE it reads the state ---------------------------------------
+// The spy writes FROZEN right after the state read (the Stager at the worst moment) and counts the in-flight files that the
+// S4 wait would see at that time. Old order (read, then file): 0 files = the wait ends while this write starts.
+{
+  const env = caseEnv({ ART_STORE: 'supabase' });
+  const seen = [];
+  const spy = (e) => { const s = readState(e); if (!seen.length) { touch(e, 'FROZEN'); seen.push(inflightFiles(e).length); } return s; };
+  const store = createArtStore({ env, readStateFn: spy });
+  let h = null, err = ''; try { h = store.beginWrite('push race gold'); } catch (e) { err = e.message; }
+  check('L1: FROZEN written right after the beginWrite state read -> the in-flight file already exists (the S4 wait sees the write)',
+    !err && seen[0] === 1 && inflightFiles(env).length === 1, JSON.stringify({ err, seen }));
+  store.endWrite(h);
+  let err2 = ''; try { store.beginWrite('push race common'); } catch (e) { err2 = e.message; }
+  check('L1: a beginWrite refused under FROZEN leaves no in-flight file', err2 === `${REFUSED_FROZEN} push race common` && inflightFiles(env).length === 0, `${err2} ${inflightFiles(env)}`);
+}
+
+// ---- L3 (review r1): under FROZEN only the OWN open write lets a bare put through, not another process's file -------------
+{
+  const env = caseEnv({ ART_STORE: 'supabase' }); touch(env, 'FROZEN');
+  mkdirSync(join(env.ART_STATE_DIR, 'inflight'), { recursive: true });
+  writeFileSync(join(env.ART_STATE_DIR, 'inflight', '999999-1'), '999999\npush other gold\n');
+  const { db, calls } = mockDb();
+  let err = ''; try { await createArtStore({ db, env }).put('cards/x.png', Buffer.from('x'), 'image/png'); } catch (e) { err = e.message; }
+  check('L3: FROZEN + an in-flight file of ANOTHER pid + a bare put -> refused, 0 storage calls', err === `${REFUSED_FROZEN} cards/x.png` && calls.length === 0, `${err} ${JSON.stringify(calls)}`);
 }
 
 // ---- no vault, a failed log append ---------------------------------------------------------------------------------------
