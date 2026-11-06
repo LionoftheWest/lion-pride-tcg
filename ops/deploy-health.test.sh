@@ -62,16 +62,29 @@ P=$(sed -n "/^  activity)/,/;;/p" deploy.sh | grep -o "HEALTH_PREV='.*'")
 eval "$P"; HP=$HEALTH_PREV
 case "$HP" in *"'"*) no "HEALTH_PREV holds a single quote";; *) ok "no single quote in HEALTH_PREV";; esac
 HP_T=${HP//\/home\/ubuntu\//$T\/home\/}
-case_p() { # name, .env content, config json, expected
+case_p() { # name, .env content, config json, expected [, image type (default image/webp) [, 1 = the image route fails]]
   printf '%s\n' "$2" > "$T/home/activity/.env"
-  out=$(STUB_CONFIG="$3" STUB_TYPE=image/webp remote "$HP_T" activity 2>&1)
+  out=$(STUB_CONFIG="$3" STUB_TYPE="${5:-image/webp}" STUB_IMG_FAIL="${6:-}" remote "$HP_T" activity 2>&1)
   [ "$out" = "$4" ] && ok "activity rollback: $1 -> $4" || no "activity rollback: $1 (want $4, got: $out)"
 }
+# Review r2 N1: an env-only deploy (same code) to a mode that does not serve images rolls back to the SAME mode. The
+# rollback must load one image too, else deploy.sh prints "ROLLED BACK ... (healthy)" while members get broken images.
+case_p "a new build, img = the .env, the image route fails" "IMG_UPSTREAM=r2" "${CFG}\"img\":\"r2\"}" UNHEALTHY image/webp 1
+case_p "a new build, img = the .env, the image is text/html" "IMG_UPSTREAM=r2" "${CFG}\"img\":\"r2\"}" UNHEALTHY text/html
 case_p "an old build (no img field)" "IMG_UPSTREAM=supabase" '{"features":{"hunt":true}}' HEALTHY
 case_p "a new build, img = the .env" "IMG_UPSTREAM=supabase" "${CFG}\"img\":\"supabase\"}" HEALTHY
 case_p "a new build, img differs from the .env" "IMG_UPSTREAM=r2" "${CFG}\"img\":\"supabase\"}" UNHEALTHY
 case_p "an old build, hunt false" "IMG_UPSTREAM=supabase" '{"features":{"hunt":false}}' UNHEALTHY
 case_p "no answer from /api/config" "IMG_UPSTREAM=supabase" "" UNHEALTHY
+# Review r2 N2: HEALTH_PREV is never taken from the caller's environment. The block from the clear line to the default
+# runs with an exported HEALTH_PREV; bot and gallery must get their own HEALTH, the activity its own HEALTH_PREV.
+CB=$(sed -n '/^HEALTH_PREV=""/,/^HEALTH_PREV="\${HEALTH_PREV/p' deploy.sh)
+prev_for() { HEALTH_PREV='echo from-env' SVC="$1" bash -c "$CB
+printf '%s' \"\$HEALTH_PREV\"" 2>&1; }
+{ [ -n "$CB" ] && [ "$(prev_for bot)" = 'sudo docker logs tcg-bot 2>&1 | grep -q "Ready. Logged in"' ] \
+  && case "$(prev_for gallery)" in *4331/api/gallery*) true;; *) false;; esac \
+  && case "$(prev_for activity)" in *'<<< "$C"'*) true;; *) false;; esac; } \
+  && ok "deploy.sh: an exported HEALTH_PREV is ignored (bot, gallery, activity)" || no "deploy.sh: an exported HEALTH_PREV is used (bot: $(prev_for bot))"
 # The wiring: deploy.sh sends HEALTH_PREV to the VM, and healthy() uses HEALTH for "new" and HEALTH_PREV for the rollback.
 grep -q "HEALTH='\$HEALTH' HEALTH_PREV='\$HEALTH_PREV' " deploy.sh && ok "deploy.sh passes HEALTH_PREV to the VM" || no "deploy.sh passes HEALTH_PREV to the VM"
 HB=$(sed -n '/^# HEALTHY_BEGIN/,/^# HEALTHY_END/p' deploy.sh)
