@@ -60,6 +60,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { finishEnabled } from './src/dungeon-finish.js';
+import { statsPayload, parseSpendV2, statV2Allowed } from './src/stats-v2.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(here, 'public');
@@ -443,6 +444,22 @@ async function uiV3On(id) {
   return c.enabled === true || (Array.isArray(c.users) && c.users.map(String).includes(String(id)));
 }
 
+// STAT-V2 (UI-10, stat_v2.sql): settings.stat_v2 = {"enabled": bool, "users": [ids]}, read once a minute like ui_v3 (a failed read keeps the
+// last value; off at start). The rule is the SQL stat_v2_on: the GLOBAL combat_v2.progress (the balance cache) AND (enabled OR listed).
+// On: /api/collection sends the v2 stat lines (card_stats_v2_for) and /api/stats/spend and /reset call stat_v2_spend / stat_v2_reset.
+let statV2Cache = { at: 0, cfg: { enabled: false, users: [] } };
+async function statV2On(id) {
+  if (Date.now() - statV2Cache.at >= 60000) {
+    await singleFlight('statV2', async () => {
+      try {
+        const { data, error } = await supabase.from('settings').select('value').eq('key', 'stat_v2').maybeSingle();
+        if (!error) statV2Cache = { at: Date.now(), cfg: data?.value || { enabled: false, users: [] } };
+      } catch { /* keep the last value */ }
+    });
+  }
+  return statV2Allowed(BAL?.combat_v2?.progress, statV2Cache.cfg, id);
+}
+
 app.get('/api/flags', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
@@ -456,8 +473,8 @@ app.get('/api/flags', async (req, res) => {
     avatarHash.set(String(me.id), { hash, at: Date.now() });
     supabase.from('players').update({ avatar: hash }).eq('id', me.id).then(() => {}, () => {});
   }
-  const [{ data: tut }, uiV3, tradeRequest] = await Promise.all([supabase.from('players').select('tutorial').eq('id', String(me.id)).maybeSingle(), uiV3On(me.id), tradeRequestOn()]);
-  res.json({ balance: BAL ? publicBalance(BAL) : null, uiV2: true, uiV3, mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), trade2: trade2On(me.id), tradeRequest, hall: hallOn(me.id), shards: shardsOn(me.id), dungeon: dungeonOn(me.id), events: eventsOn(me.id), finish: finishOn(me.id), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
+  const [{ data: tut }, uiV3, tradeRequest, statV2] = await Promise.all([supabase.from('players').select('tutorial').eq('id', String(me.id)).maybeSingle(), uiV3On(me.id), tradeRequestOn(), statV2On(me.id)]);
+  res.json({ balance: BAL ? publicBalance(BAL) : null, uiV2: true, uiV3, statV2, mobile: MOBILE_UI_ALL || MOBILE_UI_USERS.has(String(me.id)), trade2: trade2On(me.id), tradeRequest, hall: hallOn(me.id), shards: shardsOn(me.id), dungeon: dungeonOn(me.id), events: eventsOn(me.id), finish: finishOn(me.id), welcomed, tutorial: tut?.tutorial || {}, reports: REPORTS_ON });
 });
 
 // The first-time walkthrough (tutorial.sql; designs 21 + 22): mark a step done, skip it,
@@ -582,12 +599,14 @@ app.get('/api/collection', async (req, res) => {
   const cached = collCache.get(me.id);
   if (cached && Date.now() - cached.at < COLL_TTL) return res.json(cached.payload);
   // The total power and the stat points ride in the same round trip (before they ran after the card list).
-  const [{ data, error }, pw, [cpRes, stRes]] = await Promise.all([supabase
+  const [{ data, error }, pw, [cpRes, stRes, st2Res]] = await Promise.all([supabase
     .from('player_cards')
     .select(`quantity, ascension, card:cards(id, name, rarity, image_url, artist_credit, lore, season, event, tradeable, ${SET_COLS}, subject:subjects(name, type, cp_mod, tags, ability${EFFECT_COLS}))`)
     .eq('player_id', me.id),
   cardPowersFor(me.id).then((data) => ({ data }), (e) => ({ error: e })), // power + HP of each copy (SQL: the one CP source)
-  Promise.allSettled([supabase.rpc('my_collection_power', { p_player_id: me.id }), supabase.rpc('card_stats_for', { p_player: me.id })])]);
+  Promise.allSettled([supabase.rpc('my_collection_power', { p_player_id: me.id }), supabase.rpc('card_stats_for', { p_player: me.id }),
+    // STAT-V2: {on: false} while stat_v2_on is false for the member; a failed or missing function = the v1 payload
+    supabase.rpc('card_stats_v2_for', { p_player: me.id })])]);
   if (error || pw.error) return res.status(500).json({ error: (error || pw.error).message });
   const powers = pw.data || {};
   // Can ascend = the FREE copies (a copy in a trade offer, an auction or a bid is held) cover the cost
@@ -632,11 +651,8 @@ app.get('/api/collection', async (req, res) => {
   // only formula; while the flag is off (or the function is not live) there is no stats key.
   if (cpRes.status === 'fulfilled' && cpRes.value.data != null) totalPower = Number(cpRes.value.data);
   const st = stRes.status === 'fulfilled' && !stRes.value.error ? stRes.value.data : null;
-  let stats = null;
-  if (st?.on) {
-    stats = { on: true, week: st.week, resetUsed: st.reset_week === st.week };
-    for (const c of cards) { const x = st.cards?.[String(c.id)]; if (x) c.stat = x; }
-  }
+  const st2 = st2Res.status === 'fulfilled' && !st2Res.value.error ? st2Res.value.data : null;
+  const { stats } = statsPayload(cards, st, st2); // src/stats-v2.js: flag off = the v1 payload of before
   const payload = { user: { id: me.id, name: me.global_name || me.username }, cards, power: totalPower, stats };
   collCache.set(me.id, { at: Date.now(), payload });
   res.json(payload);
@@ -664,6 +680,15 @@ app.post('/api/stats/spend', async (req, res) => {
   const me = await caller(req);
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
+  // STAT-V2: the flag on = the 9 v2 stats (src/stats-v2.js parseSpendV2, cap = balance v2_stats.max_per_stat) and stat_v2_spend
+  if (await statV2On(me.id)) {
+    const p = parseSpendV2(req.body, bal().v2_stats?.max_per_stat);
+    if (p.error) return res.status(400).json({ error: p.error });
+    const { data, error } = await supabase.rpc('stat_v2_spend', { p_player: me.id, p_card: p.cardId, p_add: p.add });
+    if (error) return res.status(500).json({ error: error.message });
+    if (data?.ok) bustUser(me.id);
+    return res.json(data);
+  }
   const cardId = Number(req.body?.cardId);
   const add = {};
   for (const k of STAT_KEYS) {
@@ -684,7 +709,8 @@ app.post('/api/stats/reset', async (req, res) => {
   if (!rateLimit(me.id)) return res.status(429).json({ error: 'slow down' });
   const cardId = Number(req.body?.cardId);
   if (!cardId) return res.status(400).json({ error: 'bad card' });
-  const { data, error } = await supabase.rpc('reset_stat_points', { p_player: me.id, p_card: cardId });
+  // STAT-V2: the flag on = the v2 reset (stat_v2_reset: the free week, then a v2 gift)
+  const { data, error } = await supabase.rpc(await statV2On(me.id) ? 'stat_v2_reset' : 'reset_stat_points', { p_player: me.id, p_card: cardId });
   if (error) return res.status(500).json({ error: error.message });
   if (data?.ok) bustUser(me.id);
   res.json(data);
