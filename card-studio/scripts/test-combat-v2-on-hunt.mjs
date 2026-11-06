@@ -8,6 +8,8 @@ import './localdb-guard.mjs';
  * SYN: when the copy has no combat_v2_synergy, each block makes a stand-in that returns the state (HO2b plants its own stand-in).
  *   LOCALDB=1 LOCALDB_ENV=... node --import ./scripts/localdb-preload.mjs scripts/test-combat-v2-on-hunt.mjs       must PASS
  *   MUTATE=<name> ...   must FAIL; MUTATE=all ...   the baseline, then every mutation (each must FAIL)
+ *   MUTATE=all_out      R3-ON-FIX (combat_v2_hunt_out_live.sql, cases HL1-HL4): the baseline (ONLY=OUT), then every OUT_MUT mutation (each must FAIL)
+ *   ONLY=OUT            only block B5 (HL1-HL4) and no H: PARTIAL, not a gate result
  *   DAYS=<n>            the seeded live days of HO2 (default 20, the spec number); STARTS=<n> the seeded starts of HO2b (default 50)
  */
 import { readFileSync, appendFileSync } from 'node:fs';
@@ -23,6 +25,11 @@ let r3a = R3A;
 const CLEAN = mig;
 const HBP_FILE = read('../../tcg-bot/supabase/combat_v2_hunt_boons.sql');   // applied again by the mutated-H finally step when it was on the copy
 let hbpBefore = false;
+// R3-ON-FIX (combat_v2_hunt_out_live.sql) replaces hunt_v2_out (an R3a function): each block applies it after this file; the mutated-H finally
+// step applies it again when it was on the copy before the run
+const OUT_CLEAN = read('../../tcg-bot/supabase/combat_v2_hunt_out_live.sql');
+let outFix = OUT_CLEAN;
+let outBefore = false;
 const DAYS = Number(process.env.DAYS || 20), STARTS = Number(process.env.STARTS || 50);
 
 // ---------------------------------------------------------------------------------------------------------- the mutations
@@ -53,6 +60,15 @@ const MUT = {
   guard_missing: [/do \$g\$\ndeclare m text; f record;[\s\S]*?-- GUARD-END\n/, ''],
   grant_anon: ['comment on function public.hunt_v2_view(text) is $cm$[combat] Combat v2 Hunt (20.21 R3-ON', 'grant execute on function public.hunt_v2_credit(jsonb, jsonb, numeric) to anon;\ncomment on function public.hunt_v2_view(text) is $cm$[combat] Combat v2 Hunt (20.21 R3-ON'],
   pick_level_zero: ['      u := dungeon_v2_unit(p_player, rr.card_id, bu);', '      u := combat_v2_card_unit(rr.card_id, bu);'],
+};
+// R3-ON-FIX: one mutation per key of the answer (HL1-HL4 must FAIL on each); MUTATE=all_out runs them with ONLY=OUT
+const OUT_MUT = {
+  out_no_live: ["'live', v_live, 'practice', not v_live,", "'practice', not v_live,"],
+  out_practice_true: ["'practice', not v_live,", "'practice', true,"],
+  out_no_hunt: ["      'hunt', (select jsonb_build_object('id', h.id, 'name', h.name, 'tier', h.tier, 'closes_at', h.closes_at,\n                 'live_frac', h.hp_remaining::numeric / h.hp_max) from public.hunts h where h.id = p_hunt),\n", ''],
+  out_frac_before_credit: ["'live_frac', h.hp_remaining::numeric / h.hp_max)", "'live_frac', (h.hp_remaining + coalesce((p_extra->'credit'->>'total')::numeric, 0)) / h.hp_max)"],
+  out_live_from_flag: ['  v_live := coalesce(r.live, false);', "  v_live := combat_v2_on('hunt');"],
+  out_live_always: ['  v_live := coalesce(r.live, false);', '  v_live := true;'],
 };
 const R3A_MUT = {
   map_exact_name: ["   where lower(x.name) = lower(regexp_replace(p_name, '^The ', '', 'i')) or lower(x.name) = lower(p_name);", '   where x.name = p_name;'],
@@ -96,18 +112,37 @@ if (process.env.MUTATE === 'all') {
   console.log(ok ? `mutations: baseline PASS, all ${Object.keys(ALL).length} caught` : 'mutations: FAIL (a red baseline or a mutation not caught)');
   process.exit(ok ? 0 : 1);
 }
+if (process.env.MUTATE === 'all_out') {
+  let ok = true;
+  const runOne = (name) => spawnSync(process.execPath, process.execArgv.concat([fileURLToPath(import.meta.url)]), { env: { ...process.env, MUTATE: name, ONLY: 'OUT', LOCALDB_QUIET: '1' }, encoding: 'utf8', maxBuffer: 1 << 26 });
+  const base = runOne('');
+  const bl = (base.stdout || '').trim().split(/\r?\n/).pop() || '';
+  const bok = base.status === 0 && /^PARTIAL/.test(bl);
+  console.log(`baseline (no mutation, ONLY=OUT)   ${bok ? 'PASS' : 'FAIL'}  ${bl.slice(0, 160)}`);
+  if (!bok) { ok = false; console.log((base.stdout || '').split(/\r?\n/).filter((l) => /^FAIL/.test(l)).join('\n').slice(0, 3000)); }
+  for (const name of Object.keys(OUT_MUT)) {
+    const r = runOne(name);
+    const line = (r.stdout || '').trim().split(/\r?\n/).pop() || '';
+    const caught = r.status !== 0 && /FAILED/.test(line);
+    if (!caught) ok = false;
+    const why = (r.stdout || '').split(/\r?\n/).find((l) => /^FAIL/.test(l)) || (r.stderr || '').trim().split(/\r?\n/).pop() || '';
+    console.log(`mutation ${name.padEnd(24)} ${caught ? 'caught (test FAILS)' : 'NOT CAUGHT'}  ${line.slice(0, 40)}  ${why.slice(0, 150)}`);
+  }
+  console.log(ok ? `mutations: baseline PASS, all ${Object.keys(OUT_MUT).length} caught` : 'mutations: FAIL (a red baseline or a mutation not caught)');
+  process.exit(ok ? 0 : 1);
+}
 if (process.env.MUTATE) {
   const name = process.env.MUTATE;
-  const m = MUT[name] || R3A_MUT[name];
+  const m = MUT[name] || R3A_MUT[name] || OUT_MUT[name];
   if (!m) throw new Error(`no mutation ${name}`);
   const [a, b] = m;
-  const src = MUT[name] ? mig : r3a;
+  const src = MUT[name] ? mig : R3A_MUT[name] ? r3a : outFix;
   const n = a instanceof RegExp ? (src.match(new RegExp(a.source, 'g')) || []).length : src.split(a).length - 1;
   if (n !== 1) throw new Error(`the mutation ${name} does not match exactly once (${n})`);
   const out = a instanceof RegExp ? src.replace(a, b) : src.split(a).join(b);
-  if (MUT[name]) mig = out; else r3a = out;
+  if (MUT[name]) mig = out; else if (R3A_MUT[name]) r3a = out; else outFix = out;
 }
-for (const s of [mig, r3a]) if (['$m$', '$t$', '$x$', '$w$', '$n$'].some((x) => s.includes(x))) throw new Error('the SQL must not contain $m$, $t$, $x$, $w$ or $n$');
+for (const s of [mig, r3a, outFix]) if (['$m$', '$t$', '$x$', '$w$', '$n$'].some((x) => s.includes(x))) throw new Error('the SQL must not contain $m$, $t$, $x$, $w$ or $n$');
 
 // ---------------------------------------------------------------------------------------------------------- the shared SQL
 const lit = (s) => `'${s.replace(/'/g, "''")}'`;
@@ -178,6 +213,7 @@ declare ${DECL}; ${extra}
 begin
   ${PRE}
   execute $m$${mig}$m$;
+  execute $m$${outFix}$m$;
   ${WORLD}
   ${body}
   raise exception 'RESULT:%', jsonb_build_object('syn', syn_on, 'rows', res)::text;
@@ -417,6 +453,66 @@ const B4 = (from, to) => block(String.raw`
   res := out;
 `);
 
+// ---------------------------------------------------------------------------------------------------------- B5: HL1-HL4 (R3-ON-FIX, the answer keys)
+// POST-SWITCH-TRIAGE item 1: the start, act and auto answers of a LIVE member day must say live true, practice false, and carry the shared
+// boss bar (hunt.live_frac) read AFTER the credit of the call; a tester practice day keeps practice true. The client rule huntLive reads
+// v.live and v.day.live (tcg-activity/src/ui-v2-gauntlet2.js).
+const B5 = block(String.raw`
+  -- an answer of hunt_v2_out: ok, live = w, practice = not w, day.live = w, hunt = this Hunt with live_frac = the boss HP now (after the call)
+  create function pg_temp.ans_ok(a jsonb, w boolean, h bigint) returns boolean language sql as $x$
+    select coalesce((a->>'ok')::boolean, false) and a->'live' = to_jsonb(w) and a->'practice' = to_jsonb(not w) and a->'day'->'live' = to_jsonb(w)
+      and (a->'hunt'->>'id')::bigint = h and (a->'hunt'->>'live_frac')::numeric = (select hp_remaining::numeric / hp_max from hunts where id = h)
+      and a->'hunt' ? 'name' and a->'hunt' ? 'tier' and a->'hunt' ? 'closes_at' $x$;
+  create function pg_temp.keys_of(a jsonb) returns jsonb language sql as $x$
+    select jsonb_build_object('live', a->'live', 'practice', a->'practice', 'day_live', a->'day'->'live', 'hunt', a->'hunt', 'credit', a->'credit'->'total', 'err', a->'error') $x$;
+  create function pg_temp.choice(p text) returns jsonb language plpgsql as $x$
+  declare f jsonb := (pg_temp.vrow(p)).state->'fight'; d jsonb := combat_v2_auto(f, f->'ext'->'turn', combat_v2_enemy_numbers(), null);
+  begin return jsonb_build_object('use', d->'use', 'target', d->'target', 'ally', d->'ally'); end $x$;
+  -- HL1 a member (not a tester), the flag ON: start, act, auto
+  ${sub(String.raw`
+    perform pg_temp.flag(true);
+    perform setseed(0.31);
+    a := hunt_v2_start(${M(20)}, sq);
+    ${add('HL1 member live day: the START answer has live true, practice false, day.live true, hunt (id, name, tier, closes_at) and live_frac = the boss HP after the call',
+      `pg_temp.ans_ok(a, true, hid) and (a->>'status') = 'active'`, `pg_temp.keys_of(a)`)}
+    x := hunt_v2_act(${M(20)}, pg_temp.choice(${M(20)}));
+    ${add('HL1 member live day: the ACT answer has live true, practice false, day.live true, hunt.live_frac = the boss HP after the credit of the act',
+      `pg_temp.ans_ok(x, true, hid)`, `pg_temp.keys_of(x)`)}
+    y := hunt_v2_auto(${M(20)}, 3);
+    ${add('HL1 member live day: the AUTO answer has live true, practice false, day.live true, hunt.live_frac = the boss HP after the credit of the auto',
+      `pg_temp.ans_ok(y, true, hid)`, `pg_temp.keys_of(y)`)}
+    ${add('HL1 the bar moves with the credit: the act + auto credit > 0, and the auto answer live_frac = (32000 - every hunt_hits damage) / 80000 < 0.4',
+      `coalesce((y->'credit'->>'total')::bigint, 0) + coalesce((x->'credit'->>'total')::bigint, 0) > 0
+       and (y->'hunt'->>'live_frac')::numeric < 0.4 and (y->'hunt'->>'live_frac')::numeric = (32000 - (select coalesce(sum(damage), 0) from hunt_hits where hunt_id = hid)) / 80000.0`,
+      `jsonb_build_object('act', pg_temp.keys_of(x), 'auto', pg_temp.keys_of(y), 'hits', (select coalesce(sum(damage), 0) from hunt_hits where hunt_id = hid))`)}
+    -- HL4 the view during the active day: the same hunt object as the answer (the shape of hunt_v2_view), live = the flag
+    o := hunt_v2_view(${M(20)});
+    ${add('HL4 the hunt object of the answer = the hunt object of hunt_v2_view (same keys, same values); the view keeps live true, practice false',
+      `o->'hunt' = hunt_v2_out(hid, ${M(20)}, hunt_v2_today(), '{}'::jsonb)->'hunt' and o->'live' = 'true'::jsonb and o->'practice' = 'false'::jsonb`,
+      `jsonb_build_object('view', o->'hunt', 'out', hunt_v2_out(hid, ${M(20)}, hunt_v2_today(), '{}'::jsonb)->'hunt')`)}
+  `)}
+  -- HL2 a tester practice day, the flag OFF: practice true, live false (start, act, auto)
+  ${sub(String.raw`
+    perform setseed(0.31);
+    a := hunt_v2_start(${T(3)}, sq);
+    x := hunt_v2_act(${T(3)}, pg_temp.choice(${T(3)}));
+    y := hunt_v2_auto(${T(3)}, 3);
+    ${add('HL2 tester practice day (flag OFF): the start, act and auto answers have live false, practice true, day.live false; no shared write (live_frac stays 32000 / 80000)',
+      `pg_temp.ans_ok(a, false, hid) and pg_temp.ans_ok(x, false, hid) and pg_temp.ans_ok(y, false, hid) and (y->'hunt'->>'live_frac')::numeric = 0.4`,
+      `jsonb_build_object('start', pg_temp.keys_of(a), 'act', pg_temp.keys_of(x), 'auto', pg_temp.keys_of(y))`)}
+  `)}
+  -- HL3 the mark, not the flag: a live day started with the flag ON answers live true after the flag goes OFF
+  ${sub(String.raw`
+    perform pg_temp.flag(true);
+    perform setseed(0.31);
+    a := hunt_v2_start(${M(21)}, sq);
+    perform pg_temp.flag(false);
+    y := hunt_v2_auto(${M(21)}, 3);
+    ${add('HL3 a live day after the flag goes OFF (rollback): the auto answer still has live true, practice false (the day mark, INV-ON-1)',
+      `(a->>'ok')::boolean and pg_temp.ans_ok(y, true, hid)`, `jsonb_build_object('start', pg_temp.keys_of(a), 'auto', pg_temp.keys_of(y))`)}
+  `)}
+`);
+
 // ---------------------------------------------------------------------------------------------------------- H: HO4b, HO7 (two real connections)
 // The M1d / R3a H3 method: real requests on pooled connections, a COMMITTED sample (members 043xx, sample Hunts marked weak_points
 // ["r3on_h_sample"], the flag combat_v2.hunt ON), removed in a finally step (the flag back to OFF). The copy must have R3-ON applied; an H
@@ -508,9 +604,11 @@ async function runH() {
   try {
     const pre = await hq(hCleanup); if (pre.error) throw new Error('cleanup: ' + pre.error);
     const st = await hq(`select to_regprocedure('public.hunt_v2_shared(bigint, text, date, jsonb)') is not null as applied,
-      to_regprocedure('public.hunt_v2_boon_plan(jsonb, jsonb, numeric, jsonb, numeric)') is not null as hbp;`);
+      to_regprocedure('public.hunt_v2_boon_plan(jsonb, jsonb, numeric, jsonb, numeric)') is not null as hbp,
+      coalesce(obj_description('public.hunt_v2_out(bigint, text, date, jsonb)'::regprocedure, 'pg_proc'), '') like '%combat_v2_hunt_out_live.sql%' as out_fix;`);
     if (!st.rows?.[0]?.applied) throw new Error('R3-ON (combat_v2_on_hunt.sql) is not applied on this copy');
     hbpBefore = st.rows[0].hbp === true;
+    outBefore = st.rows[0].out_fix === true;
     if (mutated) { const m = await hq(`do $h$ begin execute ${Q}${r3a}${Q}; execute ${Q}${mig}${Q}; end $h$;`); if (m.error) throw new Error('apply the mutated file: ' + m.error); }
     const setup = await hq(String.raw`do $x$ declare sq bigint[]; begin
       perform set_config('tcg.skip_welcome', 'on', true);
@@ -680,7 +778,7 @@ async function runH() {
     const c = await hq(hCleanup);
     let r = { error: null };
     // HBP (combat_v2_hunt_boons.sql) replaces 3 R3-ON functions: when it was on the copy before the run, apply it again after the clean R3-ON file
-    if (mutated) r = await hq(`do $h$ begin execute ${Q}${R3A}${Q}; execute ${Q}${CLEAN}${Q};${hbpBefore ? ` execute ${Q}${HBP_FILE}${Q};` : ''} end $h$;`);
+    if (mutated) r = await hq(`do $h$ begin execute ${Q}${R3A}${Q}; execute ${Q}${CLEAN}${Q};${hbpBefore ? ` execute ${Q}${HBP_FILE}${Q};` : ''}${outBefore ? ` execute ${Q}${OUT_CLEAN}${Q};` : ''} end $h$;`);
     const left = await hq(`select (select count(*) from public.players where id = any(array[${HP.map(HL).join(', ')}])) + (select count(*) from public.hunts where weak_points = '${HMARK}'::jsonb)
       + (select count(*) from public.balance_log where changed_by = '${HBY}') + (select count(*) from pg_proc where proname in ('r3on_h_real_step', 'r3on_h_synstub')) n,
       (select value->>'hunt' from public.balance where key = 'combat_v2') flag;`);
@@ -699,7 +797,8 @@ const run = async (label, sql) => {
   try { const j = JSON.parse(await runBlock(sql)); if (synOn === null) synOn = j.syn; return j.rows; }
   catch (e) { say(false, `${label}: the test block raised (the file did not apply?)`, String(e.message).slice(0, 1500)); return null; }
 };
-if (process.env.ONLY !== 'HO7e') {
+if (process.env.ONLY === 'OUT') { const r5 = await run('B5', B5); if (r5) show(r5); }
+else if (process.env.ONLY !== 'HO7e') {
 const r1 = await run('B1', B1); if (r1) show(r1);
 console.log(`     SYN on the copy: ${synOn ? 'yes' : 'no (a stand-in combat_v2_synergy that returns the state)'}`);
 const rows2 = [];
@@ -716,11 +815,12 @@ for (let a = 1; a <= STARTS; a += 10) { const r = await run(`B4 ${a}`, B4(a, Mat
 say(rows4.length === STARTS && rows4.every((r) => !r.raised && r.ok),
   `HO2b ${rows4.length} seeded live starts: a start with a boss HP decrease writes its scaled credit (${rows4.filter((r) => r.dec).length} had one); a start with none changes no shared row (only the bridge rows)`,
   JSON.stringify(rows4.filter((r) => r.raised || !r.ok).slice(0, 2)).slice(0, 900));
+const r5 = await run('B5', B5); if (r5) show(r5);
 }
-if (process.env.H !== '0') { for (const r of await runH()) say(r.ok, r.name, String(JSON.stringify(r.got ?? null)).slice(0, 900)); }
+if (process.env.H !== '0' && process.env.ONLY !== 'OUT') { for (const r of await runH()) say(r.ok, r.name, String(JSON.stringify(r.got ?? null)).slice(0, 900)); }
 else console.log('SKIP H (H=0): NOT a gate result');
-// Review r1 F-3: only the full gate prints "PASS all 30". ONLY, H=0, or fewer DAYS / STARTS / ROUNDS than the spec print PARTIAL (not a gate result).
-const GATE_N = 30;
+// Review r1 F-3: only the full gate prints "PASS all 37" (30 + R3-ON-FIX HL1-HL4: 7). ONLY, H=0, or fewer DAYS / STARTS / ROUNDS than the spec print PARTIAL (not a gate result).
+const GATE_N = 37;
 const partial = !!process.env.ONLY || process.env.H === '0' || DAYS < 20 || STARTS < 50 || ROUNDS < 20 || total !== GATE_N;
 console.log(fail ? `${fail} of ${total} FAILED` : partial ? `PARTIAL ${total} of ${GATE_N} passed (ONLY=${process.env.ONLY || '-'}, H=${process.env.H ?? '1'}, DAYS ${DAYS}, STARTS ${STARTS}, ROUNDS ${ROUNDS}): NOT a gate result` : `PASS all ${total}`);
 process.exitCode = fail ? 1 : 0;

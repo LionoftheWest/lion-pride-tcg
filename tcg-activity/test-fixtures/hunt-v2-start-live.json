@@ -1,0 +1,1076 @@
+{
+ "_about": "A hunt_v2_start answer of a sample member (not a tester) with combat_v2.hunt ON, recorded 2026-11-06 on local copy 3 (refreshed from live) with combat_v2_hunt_out_live.sql (R3-ON-FIX) applied, in a rolled-back block (sample Hunt 80000 HP, 52000 left; seed 0.31). Game data only: no member id. Record again with card-studio/scripts/test-combat-v2-on-hunt.mjs world or a rolled-back block when hunt_v2_out changes.",
+ "body": {
+  "ok": true,
+  "day": {
+   "day": "2026-11-06",
+   "boss": "warlord",
+   "live": true,
+   "squad": [
+    24,
+    29,
+    34,
+    39,
+    44,
+    49
+   ],
+   "steps": 1,
+   "damage": 0,
+   "status": "active",
+   "hunt_id": 148573,
+   "credited": 0,
+   "ended_at": null,
+   "ended_by": null,
+   "start_hp": 23558.6,
+   "started_at": "2026-11-06T08:42:22.613294+00:00"
+  },
+  "log": [
+   {
+    "k": "clock",
+    "hp": [],
+    "skip": false,
+    "actor": {
+     "id": 0,
+     "side": "enemy"
+    },
+    "clock": 1,
+    "ended": [],
+    "event": "act",
+    "ticks": [],
+    "reason": null
+   },
+   {
+    "k": "act",
+    "hp": [
+     {
+      "id": 24,
+      "down": false,
+      "side": "card",
+      "after": 67.85235477569336,
+      "before": 85.25,
+      "shield_after": 0,
+      "shield_before": 0
+     },
+     {
+      "id": 29,
+      "down": false,
+      "side": "card",
+      "after": 75.52466288796595,
+      "before": 89.75,
+      "shield_after": 0,
+      "shield_before": 0
+     },
+     {
+      "id": 34,
+      "down": false,
+      "side": "card",
+      "after": 71.25434304294122,
+      "before": 86.375,
+      "shield_after": 0,
+      "shield_before": 0
+     },
+     {
+      "id": 39,
+      "down": false,
+      "side": "card",
+      "after": 75.62441892113463,
+      "before": 89.75,
+      "shield_after": 0,
+      "shield_before": 0
+     },
+     {
+      "id": 44,
+      "down": false,
+      "side": "card",
+      "after": 72.18723044611507,
+      "before": 89.375,
+      "shield_after": 0,
+      "shield_before": 0
+     },
+     {
+      "id": 49,
+      "down": false,
+      "side": "card",
+      "after": 70.99602897585241,
+      "before": 84.5,
+      "shield_after": 0,
+      "shield_before": 0
+     }
+    ],
+    "move": "slam",
+    "actor": {
+     "id": 0,
+     "side": "enemy"
+    }
+   },
+   {
+    "k": "clock",
+    "hp": [],
+    "skip": false,
+    "actor": {
+     "id": 49,
+     "side": "card"
+    },
+    "clock": 1,
+    "ended": [],
+    "event": "act",
+    "ticks": [],
+    "reason": null
+   }
+  ],
+  "won": null,
+  "boss": {
+   "key": "warlord",
+   "name": "Rage-Quit Warlord",
+   "tier": "Heroic",
+   "bring": [
+    "mark_hunt"
+   ],
+   "resists": [
+    {
+     "label": "Exposed",
+     "status": "exposed"
+    },
+    {
+     "label": "Weakened",
+     "status": "weakened"
+    },
+    {
+     "label": "Mark",
+     "status": "mark"
+    }
+   ],
+   "weak_to": [
+    "role:controller"
+   ],
+   "counters": [
+    "crit_chain"
+   ],
+   "signature": [
+    {
+     "key": "ironhide",
+     "text": "Unless this enemy is Marked, cards have {crit_x} of their crit chance against it.",
+     "label": "Ironhide",
+     "mythic": false,
+     "numbers": {
+      "crit_x": 0
+     }
+    }
+   ]
+  },
+  "hunt": {
+   "id": 148573,
+   "name": "The Rage-Quit Warlord",
+   "tier": "Heroic",
+   "closes_at": "2026-11-08T08:42:22.613294+00:00",
+   "live_frac": 0.65
+  },
+  "info": {
+   "24": {
+    "name": "Final Act",
+    "role": "finisher",
+    "text": "Hit the target for 155%. Deals +50% damage to targets that are below 30% HP or Confused.",
+    "class": "attacker",
+    "needs_ally": false
+   },
+   "29": {
+    "name": "Thunderbolt",
+    "role": "striker",
+    "text": "Hit the target for 150% with +20% crit chance. Crits have a 50% chance to Paralyze the target.",
+    "class": "attacker",
+    "needs_ally": false
+   },
+   "34": {
+    "name": "MY SWAMP",
+    "role": "breaker",
+    "text": "Hit the target for 145%. Deals triple damage to shields. Shield this card for 30% of the damage dealt.",
+    "class": "attacker",
+    "needs_ally": false
+   },
+   "39": {
+    "name": "Lock On",
+    "role": "striker",
+    "text": "Hit for 155%. This hit never misses. This hit has a 60% chance to Mark the target for +30% damage.",
+    "class": "attacker",
+    "needs_ally": false
+   },
+   "44": {
+    "name": "Sun Salutation",
+    "role": "survivor",
+    "text": "Hit for 155%. Heal for 40% of the damage. This hit has a 60% chance to Blind the target.",
+    "class": "attacker",
+    "needs_ally": false
+   },
+   "49": {
+    "name": "Rapid Fire",
+    "role": "flurry",
+    "text": "Strike 3 times for 50% each. The strikes never miss. Deals +30% damage to Paralyzed targets.",
+    "class": "attacker",
+    "needs_ally": false
+   }
+  },
+  "live": true,
+  "need": {
+   "24": 2,
+   "29": 2,
+   "34": 2,
+   "39": 2,
+   "44": 2,
+   "49": 2
+  },
+  "actor": {
+   "id": 49,
+   "side": "card"
+  },
+  "event": "choose",
+  "fight": {
+   "v": 2,
+   "ext": {
+    "turn": {
+     "id": 49,
+     "side": "card"
+    }
+   },
+   "mode": "hunt",
+   "cards": {
+    "24": {
+     "hp": 67.85235477569336,
+     "abl": 1,
+     "acc": 0,
+     "atk": 23.5,
+     "crd": 2,
+     "crt": 0.1,
+     "ddg": 0,
+     "def": 0,
+     "max": 85.25,
+     "spd": 0,
+     "syn": {
+      "aff_n": 0,
+      "aff_x": 1,
+      "set_n": 0,
+      "set_x": 1,
+      "elem_n": 1,
+      "elem_x": 1,
+      "aff_tag": null
+     },
+     "down": false,
+     "held": 0,
+     "role": "finisher",
+     "tags": {
+      "beats": [
+       "physical"
+      ],
+      "piece": null,
+      "family": "origin:pokemon",
+      "element": "psychic"
+     },
+     "class": "attacker",
+     "meter": 86.58,
+     "power": 1,
+     "speed": 17,
+     "active": {
+      "blocks": [
+       {
+        "k": "hit",
+        "x": 1.55
+       },
+       {
+        "k": "execute",
+        "v": 0.5,
+        "line": 0.3
+       },
+       {
+        "k": "line_status",
+        "statuses": [
+         "confused"
+        ]
+       }
+      ]
+     },
+     "charge": 0,
+     "status": {},
+     "extra_stack": 0
+    },
+    "29": {
+     "hp": 75.52466288796595,
+     "abl": 1,
+     "acc": 0,
+     "atk": 26.5,
+     "crd": 2,
+     "crt": 0.1,
+     "ddg": 0,
+     "def": 0,
+     "max": 89.75,
+     "spd": 0,
+     "syn": {
+      "aff_n": 0,
+      "aff_x": 1,
+      "set_n": 0,
+      "set_x": 1,
+      "elem_n": 2,
+      "elem_x": 1,
+      "aff_tag": null
+     },
+     "down": false,
+     "held": 0,
+     "role": "striker",
+     "tags": {
+      "beats": [
+       "air",
+       "water"
+      ],
+      "piece": null,
+      "family": "origin:smash",
+      "element": "lightning"
+     },
+     "class": "attacker",
+     "meter": 93.92,
+     "power": 1,
+     "speed": 17,
+     "active": {
+      "blocks": [
+       {
+        "k": "hit",
+        "x": 1.5
+       },
+       {
+        "k": "crit_add",
+        "v": 0.2
+       },
+       {
+        "k": "on_crit",
+        "chance": 0.5,
+        "status": "paralyzed"
+       }
+      ]
+     },
+     "charge": 0,
+     "status": {},
+     "extra_stack": 0
+    },
+    "34": {
+     "hp": 71.25434304294122,
+     "abl": 1,
+     "acc": 0,
+     "atk": 24.25,
+     "crd": 2,
+     "crt": 0.1,
+     "ddg": 0,
+     "def": 0,
+     "max": 86.375,
+     "spd": 0,
+     "syn": {
+      "aff_n": 0,
+      "aff_x": 1,
+      "set_n": 0,
+      "set_x": 1,
+      "elem_n": 0,
+      "elem_x": 1,
+      "aff_tag": null
+     },
+     "down": false,
+     "held": 0,
+     "role": "breaker",
+     "tags": {
+      "beats": [],
+      "piece": null,
+      "family": "origin:smash",
+      "element": null
+     },
+     "class": "attacker",
+     "meter": 69.03,
+     "power": 1,
+     "speed": 16,
+     "active": {
+      "blocks": [
+       {
+        "k": "hit",
+        "x": 1.45
+       },
+       {
+        "k": "shield_break",
+        "x": 3
+       },
+       {
+        "k": "guard_up",
+        "v": 0.3
+       }
+      ]
+     },
+     "charge": 0,
+     "status": {},
+     "extra_stack": 0
+    },
+    "39": {
+     "hp": 75.62441892113463,
+     "abl": 1,
+     "acc": 0,
+     "atk": 26.5,
+     "crd": 2,
+     "crt": 0.1,
+     "ddg": 0,
+     "def": 0,
+     "max": 89.75,
+     "spd": 0,
+     "syn": {
+      "aff_n": 0,
+      "aff_x": 1,
+      "set_n": 0,
+      "set_x": 1,
+      "elem_n": 1,
+      "elem_x": 1,
+      "aff_tag": null
+     },
+     "down": false,
+     "held": 0,
+     "role": "striker",
+     "tags": {
+      "beats": [
+       "arcane"
+      ],
+      "piece": null,
+      "family": "origin:smash",
+      "element": "metal"
+     },
+     "class": "attacker",
+     "meter": 107.23,
+     "power": 1,
+     "speed": 17,
+     "active": {
+      "blocks": [
+       {
+        "k": "hit",
+        "x": 1.55
+       },
+       {
+        "k": "true_strike"
+       },
+       {
+        "k": "apply",
+        "value": 0.3,
+        "chance": 0.6,
+        "status": "mark"
+       }
+      ]
+     },
+     "charge": 0,
+     "status": {},
+     "extra_stack": 0
+    },
+    "44": {
+     "hp": 72.18723044611507,
+     "abl": 1,
+     "acc": 0,
+     "atk": 26.25,
+     "crd": 2,
+     "crt": 0.1,
+     "ddg": 0,
+     "def": 0,
+     "max": 89.375,
+     "spd": 0,
+     "syn": {
+      "aff_n": 0,
+      "aff_x": 1,
+      "set_n": 0,
+      "set_x": 1,
+      "elem_n": 0,
+      "elem_x": 1,
+      "aff_tag": null
+     },
+     "down": false,
+     "held": 0,
+     "role": "survivor",
+     "tags": {
+      "beats": [],
+      "piece": null,
+      "family": "origin:smash",
+      "element": null
+     },
+     "class": "attacker",
+     "meter": 24.92,
+     "power": 1,
+     "speed": 15,
+     "active": {
+      "blocks": [
+       {
+        "k": "hit",
+        "x": 1.55
+       },
+       {
+        "k": "lifesteal",
+        "v": 0.4
+       },
+       {
+        "k": "apply",
+        "chance": 0.6,
+        "status": "blinded"
+       }
+      ]
+     },
+     "charge": 0,
+     "status": {},
+     "extra_stack": 0
+    },
+    "49": {
+     "hp": 70.99602897585241,
+     "abl": 1,
+     "acc": 0,
+     "atk": 23,
+     "crd": 2,
+     "crt": 0.1,
+     "ddg": 0,
+     "def": 0,
+     "max": 84.5,
+     "spd": 0,
+     "syn": {
+      "aff_n": 0,
+      "aff_x": 1,
+      "set_n": 0,
+      "set_x": 1,
+      "elem_n": 2,
+      "elem_x": 1,
+      "aff_tag": null
+     },
+     "acts": 1,
+     "down": false,
+     "held": 0,
+     "role": "flurry",
+     "tags": {
+      "beats": [
+       "air",
+       "water"
+      ],
+      "piece": null,
+      "family": "origin:smash",
+      "element": "lightning"
+     },
+     "class": "attacker",
+     "meter": 7.67,
+     "power": 1,
+     "speed": 18,
+     "active": {
+      "blocks": [
+       {
+        "k": "strikes",
+        "n": 3,
+        "x": 0.5
+       },
+       {
+        "k": "true_strike"
+       },
+       {
+        "k": "payoff_dmg",
+        "v": 0.3,
+        "status": "paralyzed"
+       }
+      ]
+     },
+     "charge": 0,
+     "status": {},
+     "extra_stack": 0
+    }
+   },
+   "clock": 1,
+   "facts": {
+    "cards": {},
+    "passives": []
+   },
+   "marks": {},
+   "round": 0,
+   "squad": [
+    24,
+    29,
+    34,
+    39,
+    44,
+    49
+   ],
+   "enemies": [
+    {
+     "hp": 23558.6,
+     "atk": 45,
+     "def": 0.1,
+     "max": 36244,
+     "acts": 1,
+     "boss": "warlord",
+     "down": false,
+     "keen": 0,
+     "turn": 1,
+     "meter": 31.27,
+     "speed": 85,
+     "charge": 0,
+     "healer": false,
+     "moves2": [
+      {
+       "k": "enrage",
+       "x": 1.4,
+       "id": "tilt",
+       "dur": 2
+      },
+      {
+       "k": "cleanse_self",
+       "id": "alt_f4"
+      },
+      {
+       "k": "spiral",
+       "id": "rage_spiral",
+       "dur": 2,
+       "max": 3,
+       "per": 0.2
+      },
+      {
+       "k": "area",
+       "x": 0.35,
+       "id": "flame",
+       "vs_last_debuffer": 2
+      }
+     ],
+     "params": {
+      "ironhide": {
+       "crit_x": 0
+      }
+     },
+     "status": {},
+     "evasion": 0.04,
+     "resists": [
+      "exposed",
+      "weakened",
+      "mark"
+     ],
+     "resolve": 0.1,
+     "mechanics": [
+      "ironhide"
+     ],
+     "weak_role": "controller",
+     "counter_share": 0.4
+    }
+   ]
+  },
+  "order": [
+   {
+    "id": 49,
+    "side": "card",
+    "ready": false
+   },
+   {
+    "id": 39,
+    "side": "card",
+    "clock": 1,
+    "ready": false
+   },
+   {
+    "id": 0,
+    "side": "enemy",
+    "clock": 2
+   },
+   {
+    "id": 29,
+    "side": "card",
+    "clock": 2,
+    "ready": false
+   },
+   {
+    "id": 24,
+    "side": "card",
+    "clock": 2,
+    "ready": false
+   },
+   {
+    "id": 0,
+    "side": "enemy",
+    "clock": 3
+   },
+   {
+    "id": 34,
+    "side": "card",
+    "clock": 3,
+    "ready": false
+   },
+   {
+    "id": 0,
+    "side": "enemy",
+    "clock": 5
+   },
+   {
+    "id": 0,
+    "side": "enemy",
+    "clock": 6
+   },
+   {
+    "id": 0,
+    "side": "enemy",
+    "clock": 7
+   }
+  ],
+  "steps": 1,
+  "units": {
+   "24": {
+    "hp": 85.25,
+    "abl": 1,
+    "acc": 0,
+    "atk": 23.5,
+    "crd": 2,
+    "crt": 0.1,
+    "ddg": 0,
+    "def": 0,
+    "max": 85.25,
+    "spd": 0,
+    "down": false,
+    "held": 0,
+    "role": "finisher",
+    "tags": {
+     "beats": [
+      "physical"
+     ],
+     "piece": null,
+     "family": "origin:pokemon",
+     "element": "psychic"
+    },
+    "class": "attacker",
+    "meter": 0,
+    "power": 1,
+    "speed": 17,
+    "active": {
+     "blocks": [
+      {
+       "k": "hit",
+       "x": 1.55
+      },
+      {
+       "k": "execute",
+       "v": 0.5,
+       "line": 0.3
+      },
+      {
+       "k": "line_status",
+       "statuses": [
+        "confused"
+       ]
+      }
+     ]
+    },
+    "charge": 0,
+    "status": {},
+    "extra_stack": 0
+   },
+   "29": {
+    "hp": 89.75,
+    "abl": 1,
+    "acc": 0,
+    "atk": 26.5,
+    "crd": 2,
+    "crt": 0.1,
+    "ddg": 0,
+    "def": 0,
+    "max": 89.75,
+    "spd": 0,
+    "down": false,
+    "held": 0,
+    "role": "striker",
+    "tags": {
+     "beats": [
+      "air",
+      "water"
+     ],
+     "piece": null,
+     "family": "origin:smash",
+     "element": "lightning"
+    },
+    "class": "attacker",
+    "meter": 0,
+    "power": 1,
+    "speed": 17,
+    "active": {
+     "blocks": [
+      {
+       "k": "hit",
+       "x": 1.5
+      },
+      {
+       "k": "crit_add",
+       "v": 0.2
+      },
+      {
+       "k": "on_crit",
+       "chance": 0.5,
+       "status": "paralyzed"
+      }
+     ]
+    },
+    "charge": 0,
+    "status": {},
+    "extra_stack": 0
+   },
+   "34": {
+    "hp": 86.375,
+    "abl": 1,
+    "acc": 0,
+    "atk": 24.25,
+    "crd": 2,
+    "crt": 0.1,
+    "ddg": 0,
+    "def": 0,
+    "max": 86.375,
+    "spd": 0,
+    "down": false,
+    "held": 0,
+    "role": "breaker",
+    "tags": {
+     "beats": [],
+     "piece": null,
+     "family": "origin:smash",
+     "element": null
+    },
+    "class": "attacker",
+    "meter": 0,
+    "power": 1,
+    "speed": 16,
+    "active": {
+     "blocks": [
+      {
+       "k": "hit",
+       "x": 1.45
+      },
+      {
+       "k": "shield_break",
+       "x": 3
+      },
+      {
+       "k": "guard_up",
+       "v": 0.3
+      }
+     ]
+    },
+    "charge": 0,
+    "status": {},
+    "extra_stack": 0
+   },
+   "39": {
+    "hp": 89.75,
+    "abl": 1,
+    "acc": 0,
+    "atk": 26.5,
+    "crd": 2,
+    "crt": 0.1,
+    "ddg": 0,
+    "def": 0,
+    "max": 89.75,
+    "spd": 0,
+    "down": false,
+    "held": 0,
+    "role": "striker",
+    "tags": {
+     "beats": [
+      "arcane"
+     ],
+     "piece": null,
+     "family": "origin:smash",
+     "element": "metal"
+    },
+    "class": "attacker",
+    "meter": 0,
+    "power": 1,
+    "speed": 17,
+    "active": {
+     "blocks": [
+      {
+       "k": "hit",
+       "x": 1.55
+      },
+      {
+       "k": "true_strike"
+      },
+      {
+       "k": "apply",
+       "value": 0.3,
+       "chance": 0.6,
+       "status": "mark"
+      }
+     ]
+    },
+    "charge": 0,
+    "status": {},
+    "extra_stack": 0
+   },
+   "44": {
+    "hp": 89.375,
+    "abl": 1,
+    "acc": 0,
+    "atk": 26.25,
+    "crd": 2,
+    "crt": 0.1,
+    "ddg": 0,
+    "def": 0,
+    "max": 89.375,
+    "spd": 0,
+    "down": false,
+    "held": 0,
+    "role": "survivor",
+    "tags": {
+     "beats": [],
+     "piece": null,
+     "family": "origin:smash",
+     "element": null
+    },
+    "class": "attacker",
+    "meter": 0,
+    "power": 1,
+    "speed": 15,
+    "active": {
+     "blocks": [
+      {
+       "k": "hit",
+       "x": 1.55
+      },
+      {
+       "k": "lifesteal",
+       "v": 0.4
+      },
+      {
+       "k": "apply",
+       "chance": 0.6,
+       "status": "blinded"
+      }
+     ]
+    },
+    "charge": 0,
+    "status": {},
+    "extra_stack": 0
+   },
+   "49": {
+    "hp": 84.5,
+    "abl": 1,
+    "acc": 0,
+    "atk": 23,
+    "crd": 2,
+    "crt": 0.1,
+    "ddg": 0,
+    "def": 0,
+    "max": 84.5,
+    "spd": 0,
+    "down": false,
+    "held": 0,
+    "role": "flurry",
+    "tags": {
+     "beats": [
+      "air",
+      "water"
+     ],
+     "piece": null,
+     "family": "origin:smash",
+     "element": "lightning"
+    },
+    "class": "attacker",
+    "meter": 0,
+    "power": 1,
+    "speed": 18,
+    "active": {
+     "blocks": [
+      {
+       "k": "strikes",
+       "n": 3,
+       "x": 0.5
+      },
+      {
+       "k": "true_strike"
+      },
+      {
+       "k": "payoff_dmg",
+       "v": 0.3,
+       "status": "paralyzed"
+      }
+     ]
+    },
+    "charge": 0,
+    "status": {},
+    "extra_stack": 0
+   }
+  },
+  "allies": [
+   24,
+   29,
+   34,
+   39,
+   44,
+   49
+  ],
+  "credit": {
+   "boons": null,
+   "cards": {},
+   "total": 0,
+   "extras": [],
+   "written": false
+  },
+  "damage": 0,
+  "engine": 2,
+  "played": 0,
+  "status": "active",
+  "targets": [
+   0
+  ],
+  "ended_by": null,
+  "practice": false,
+  "squad_hp": {
+   "hp": 433.4390390497026,
+   "max": 525
+  },
+  "hp_changes": [
+   {
+    "id": 24,
+    "down": false,
+    "side": "card",
+    "after": 67.85235477569336,
+    "before": 85.25,
+    "shield_after": 0,
+    "shield_before": 0
+   },
+   {
+    "id": 29,
+    "down": false,
+    "side": "card",
+    "after": 75.52466288796595,
+    "before": 89.75,
+    "shield_after": 0,
+    "shield_before": 0
+   },
+   {
+    "id": 34,
+    "down": false,
+    "side": "card",
+    "after": 71.25434304294122,
+    "before": 86.375,
+    "shield_after": 0,
+    "shield_before": 0
+   },
+   {
+    "id": 39,
+    "down": false,
+    "side": "card",
+    "after": 75.62441892113463,
+    "before": 89.75,
+    "shield_after": 0,
+    "shield_before": 0
+   },
+   {
+    "id": 44,
+    "down": false,
+    "side": "card",
+    "after": 72.18723044611507,
+    "before": 89.375,
+    "shield_after": 0,
+    "shield_before": 0
+   },
+   {
+    "id": 49,
+    "down": false,
+    "side": "card",
+    "after": 70.99602897585241,
+    "before": 84.5,
+    "shield_after": 0,
+    "shield_before": 0
+   }
+  ],
+  "steps_left": 39,
+  "status_lines": {}
+ }
+}
