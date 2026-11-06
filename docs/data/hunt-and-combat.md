@@ -2908,7 +2908,7 @@ F-3: Team CP, the fight value and the synergy groups of a squad (GET /api/hunt/s
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Hunt practice (20.20 R3): the answer of a practice function: the day, the boss card (hunt_boss_v2_card), damage, steps, status, the fight, info, units, practice true, the given fields and the screen fields of dungeon_v2_screen. Reads only. combat_v2_hunt_practice.sql.
+[combat] Combat v2 Hunt (20.20 R3, R3-ON-FIX): the answer of hunt_v2_start, hunt_v2_act and hunt_v2_auto: live = the mark of the day row (hunt_v2_days.live, never the flag), practice = not live, hunt (id, name, tier, closes_at, live_frac = the shared boss HP fraction, read after the credit of the call), the day, the boss card (hunt_boss_v2_card), damage, steps, status, the fight, info, units, the given fields and the screen fields of dungeon_v2_screen. Reads only. combat_v2_hunt_out_live.sql.
 
 <a id="fn-hunt-v2-save-bigint-text-date-jsonb-text-jsonb"></a>
 
