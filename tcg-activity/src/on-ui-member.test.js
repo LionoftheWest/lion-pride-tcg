@@ -25,6 +25,10 @@ export const MUTATIONS = {
   hunt_bar_frac_key: ['ui-v2-dungeon.js', 'Number(h.live_frac)', 'Number(h.frac)'],
   // R3-ON-FIX: the Hunt bar shows on a test day too (the rule stops reading huntLive)
   hunt_bar_always: ['ui-v2-dungeon.js', "  if (!huntLive(v)) return `<div class=\"dg-prog\">", "  if (false) return `<div class=\"dg-prog\">"],
+  // UI-18 FIX: the lobby member mode reads the day row again (day null before the first start -> the v1 Enter battle)
+  lobby_reads_day: ['main.js', 'if (huntV2Member(huntV2) && !squad.ko', 'if (huntV2?.ok && huntLive(huntV2) && !squad.ko'],
+  // UI-18 FIX: the Practice v2 icon shows in the member mode too
+  practice_icon_live: ['main.js', '(huntV2CanStart(huntV2) && !huntV2Member(huntV2)) act +=', '(huntV2CanStart(huntV2)) act +='],
 };
 
 const name = process.env.MUTATE;
@@ -106,4 +110,36 @@ test('L-3: a missing row mark is not live (Dungeon run, Hunt day)', () => {
   assert.equal(G.isLive({ live: true, run: { id: 1, live: true } }), true);
   assert.equal(G.huntLive({ live: true, day: { status: 'active' } }), false);
   assert.equal(G.huntLive({ live: true, day: { live: true } }), true);
+});
+// UI-18 FIX (2026-11-06): the Hunt lobby of a live member BEFORE the first start of the day. hunt_v2_view (combat_v2_on_hunt.sql) gives
+// 'live' = the flag (every member) and 'day' = null until hunt_v2_start makes the day row. The shape below is the jsonb_build_object of
+// hunt_v2_view with no day row (keys copied from the SQL, not recorded). The real lobby lines of main.js run with stub buttons.
+const M = source('main.js');
+const lobby = (v, sq = { ko: false, locked: true }) => {
+  const pick = (re, what) => { const m = M.match(re); assert.ok(m, `${what} is in main.js`); return m[0]; };
+  const fns = [pick(/const huntV2CanStart = .*\n/, 'huntV2CanStart'), pick(/const huntV2Member = .*\n/, 'huntV2Member')].join('');
+  const rule = pick(/ {2}if \(huntV2[^\n]*h2start[^\n]*\n {2}else if \(huntV2CanStart[^\n]*\n/, 'the lobby rule');
+  const b = (o) => `[${o.label}|${Object.keys(o.data || {}).join(',')}${o.disabled ? '|disabled' : ''}]`;
+  return new Function('huntV2', 'squad', 'picks', 'ui3Button', 'ui3IconButton', 'huntLive',
+    `${fns}let act = "[Edit|hpick][Enter battle|henter]";\n${rule}return act;`)(v, sq, [1], b, b, G.huntLive);
+};
+const VIEW_NO_DAY = { ok: true, tester: false, live: true, practice: false, hunt: { id: 41, name: 'Boss', tier: 'Normal', closes_at: null, live_frac: 0.9 },
+  boss: { key: 'boss' }, day: null, can_start: true };
+test('UI-18 FIX: a live member with no day row yet: Enter battle starts v2 (h2start), no v1 henter, no Practice v2', () => {
+  assert.equal(G.huntLive(VIEW_NO_DAY), false, 'the day rule alone is false before the first start (the defect)');
+  const act = lobby(VIEW_NO_DAY);
+  assert.match(act, /\[Enter battle\|h2start\]/);
+  assert.doesNotMatch(act, /henter/);
+  assert.doesNotMatch(act, /Practice v2/);
+  assert.match(lobby({ ...VIEW_NO_DAY, can_start: false }), /\[Enter battle\|h2start\|disabled\]/, 'no start left: disabled, still not v1');
+  assert.match(lobby({ ...VIEW_NO_DAY, tester: true }), /\[Enter battle\|h2start\]/, 'a tester on a live day is a member too');
+  assert.doesNotMatch(lobby({ ...VIEW_NO_DAY, tester: true }), /Practice v2/);
+  assert.doesNotMatch(lobby(VIEW_NO_DAY, { ko: false, locked: false }), /Practice v2/, 'no squad locked yet: no Practice v2 either');
+});
+test('UI-18 FIX: a tester practice view (flag OFF) keeps the v1 Enter battle and the Practice v2 icon; no view keeps v1 only', () => {
+  const act = lobby({ ...VIEW_NO_DAY, tester: true, live: false, practice: true });
+  assert.match(act, /\[Enter battle\|henter\]/);
+  assert.match(act, /\[Practice v2\|h2start\]/);
+  assert.match(lobby({ ...VIEW_NO_DAY, tester: true, live: false }, { ko: false, locked: false }), /\[Practice v2\|h2start\]/, 'no squad locked: the icon too');
+  assert.equal(lobby(null), '[Edit|hpick][Enter battle|henter]', 'flag OFF, not a tester (view 403): v1 unchanged');
 });
