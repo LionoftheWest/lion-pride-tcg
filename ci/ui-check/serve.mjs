@@ -135,6 +135,9 @@ function derivedStatV2(body) {
   return { ...body, cards, stats };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/collection' && c.ci_col === 'points9' && body?.cards, make: (body) => derivedStatV2(body) });
+// The public balance key stat_labels_v2 (the seed of stat_v2.sql, fixtures/stat-labels-v2.json): the recorded /api/flags has no balance.
+const STAT_LABELS_V2 = JSON.parse(readFileSync(join(here, 'fixtures', 'stat-labels-v2.json'), 'utf8'));
+DERIVED.push({ when: (p, c, body) => p === '/api/flags' && c.ci_col === 'points9' && body, make: (body) => ({ ...body, balance: { ...(body.balance || {}), stat_labels_v2: STAT_LABELS_V2 } }) });
 // UI-52: the Gauntlet after a run (cookie ci_dungeon = g-over): the run is over (the squad fell on floor 4), as in the approved frame:
 // 4F Room 1, week best 4F R1, rank #1, 62 turns, the next run in 10:27:13. The prizes come from the recorded lobby answer.
 function derivedGauntletOver(body) {
