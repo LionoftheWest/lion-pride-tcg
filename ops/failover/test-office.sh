@@ -124,7 +124,8 @@ reset_vm() { # fresh VM folder, running bot, clean logs and clock
 }
 deploy() { # VAR=value ... <svc> ; output in $OUT, exit code in $RC
   local svc="${*: -1}"; set -- "${@:1:$#-1}"
-  OUT=$(cd "$T/repo" && env PATH="$T/bin:$PATH" KEY=/dev/null "$@" bash ops/deploy.sh "$svc" 2>&1); RC=$?
+  # timeout: a deploy.sh that loops (a mutant with no wait cap; the fake sleep returns at once) fails its case, not the run.
+  OUT=$(cd "$T/repo" && env PATH="$T/bin:$PATH" KEY=/dev/null "$@" timeout 120 bash ops/deploy.sh "$svc" 2>&1); RC=$?
 }
 dcalls() { grep -c . "$T/log/docker"; }
 has() { printf '%s' "$OUT" | grep -qF -- "$1"; }
