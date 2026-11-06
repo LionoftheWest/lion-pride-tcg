@@ -7,17 +7,21 @@ import './localdb-guard.mjs';
  *   MUTATE=<name> ...   must FAIL;   MUTATE=all ...   the baseline, then every mutation (each must FAIL), in one run
  * Cases:
  *   N1  flag ON: spawn_hunt makes each tier in v2 units: hp_max = hp_remaining = round(combat_v2_hunt_boss(tier, key).max),
- *       stats.unit = 'v2', stats.v1_hp = the v1 tier size (balance boss_hp), stats.atk and hp_share as before
+ *       stats.unit = 'v2', stats.atk and hp_share as before
  *   N1b flag ON, no v2 boss for the name: v1 units, no mark
  *   N2  flag OFF: spawn_hunt gives the same row as the origin/main function (undo file) with the same random seed
- *   N2b flag ON: spawn_hunt gives the same row as origin/main except hp_max, hp_remaining and stats.unit / stats.v1_hp
+ *   N2b flag ON: spawn_hunt gives the same row as origin/main except hp_max, hp_remaining and stats.unit
  *   N3  a v2-unit day: the private copy starts at hp = hp_remaining, max = hp_max; every call credits 1:1 (hunt_hits delta = shared HP
  *       delta = round(the private decreases)); also when the copy max differs from hp_max (a v2 Hunt is never converted)
  *   N3b a v2-unit Hunt with a fractional v2 max: the member who takes the last HP defeats the boss (hp 0, defeated)
  *   N4  the current-unit row (no stats.unit, hp_max 80000): every call still converts x hp_max / private max
  *   N4b the same with the flag OFF after the start (the live day goes on): still converts
- *   N5  ach_track_values heavy / bighit: a v1-unit Hunt counts x 1, a v2-unit Hunt x v1_hp / hp_max; a member with only v1 rows has the
- *       origin/main values
+ *   N3c (review r1 L1) a tester practice on an ended v2-unit Hunt: the copy is the boss function max at full HP (not the shared numbers)
+ *   N4c (review r1 L1) a v2-unit row, the flag OFF after the start (the force key), the copy max not hp_max: still 1:1
+ *   N7  (review r1 M3) combat_v2.hunt does not go OFF while an open Hunt is in v2 units (balance_check_combat_v2), except with the force key
+ *       balance.hunt_off_force = that Hunt id in the same transaction (a wrong id is refused); an open v1-unit Hunt: OFF as before.
+ *       hunt_attack and hunt_support answer v2_on for a v2-unit Hunt with the flag OFF and write nothing; a v1-unit Hunt is not refused.
+ *   (The damage achievements: test-hunt-ach-damage-v2.mjs.)
  *   N6  the file changes no row of hunts (the live Hunt keeps its numbers), runs a second time, and the guard refuses an unknown text
  */
 import { readFileSync, appendFileSync } from 'node:fs';
@@ -33,20 +37,31 @@ const UNDO = read('../../tcg-bot/supabase/hunt_v2_native_units_undo.sql');
 const MUT = {
   spawn_never_v2: ["  if combat_v2_on('hunt') then\n    v_key := hunt_v2_boss_key(v_name);", "  if false then\n    v_key := hunt_v2_boss_key(v_name);"],
   spawn_ignores_flag: ["  if combat_v2_on('hunt') then\n    v_key := hunt_v2_boss_key(v_name);", "  if true then\n    v_key := hunt_v2_boss_key(v_name);"],
-  spawn_no_mark: ["jsonb_build_object('unit', 'v2', 'v1_hp', v_v1hp)", "jsonb_build_object('v1_hp', v_v1hp)"],
-  spawn_v1hp_wrong: ["jsonb_build_object('unit', 'v2', 'v1_hp', v_v1hp)", "jsonb_build_object('unit', 'v2', 'v1_hp', v_hp)"],
+  spawn_no_mark: ["case when v_unit = 'v2' then jsonb_build_object('unit', 'v2') else '{}'::jsonb end", "'{}'::jsonb"],
   spawn_no_key_v2: ["    if v_key is not null then v_hp := ", "    if true then v_hp := "],
   start_no_copy: ["  if not v_practice and h.stats->>'unit' = 'v2' then boss := boss || ", "  if false then boss := boss || "],
   credit_always_convert: ["case when v_unit = 'v2' then 1 else v_hpmax / v_max end", "v_hpmax / v_max"],
   credit_never_convert: ["case when v_unit = 'v2' then 1 else v_hpmax / v_max end", "1"],
-  ach_no_scale: ["case when h.stats->>'unit' = 'v2' then (h.stats->>'v1_hp')::numeric / h.hp_max else 1 end", "1::numeric"],
-  ach_scale_all: ["case when h.stats->>'unit' = 'v2' then (h.stats->>'v1_hp')::numeric / h.hp_max else 1 end", "coalesce((h.stats->>'v1_hp')::numeric, 80000) / h.hp_max"],
-  ach_bighit_sum: ["'bighit', coalesce(round(max(x.damage * f.k)), 0)", "'bighit', coalesce(round(max(x.damage)), 0)"],
+  // review r1 L1: the reviewer's two surviving mutations
+  start_copy_in_practice: ["  if not v_practice and h.stats->>'unit' = 'v2' then boss := boss || ", "  if h.stats->>'unit' = 'v2' then boss := boss || "],
+  credit_unit_needs_flag: ["case when v_unit = 'v2' then 1 else v_hpmax / v_max end", "case when v_unit = 'v2' and combat_v2_on('hunt') then 1 else v_hpmax / v_max end"],
+  // review r1 M3
+  flag_off_no_refusal: ["    if hid is not null and coalesce(current_setting('balance.hunt_off_force', true), '') is distinct from hid::text then", "    if false then"],
+  flag_off_any_force: ["    if hid is not null and coalesce(current_setting('balance.hunt_off_force', true), '') is distinct from hid::text then", "    if hid is not null and coalesce(current_setting('balance.hunt_off_force', true), '') = '' then"],
+  flag_off_open_v1_refused: ["x.stats->>'unit' = 'v2' order by x.id desc limit 1;", "true order by x.id desc limit 1;"],
+  attack_no_unit: ["  if (select x.stats->>'unit' from hunts x where x.id = p_hunt) = 'v2' then return jsonb_build_object('ok', false, 'error', 'v2_on'); end if;\n", '', 1],
+  support_no_unit: ["  if (select x.stats->>'unit' from hunts x where x.id = p_hunt) = 'v2' then return jsonb_build_object('ok', false, 'error', 'v2_on'); end if;\n", '', 2],
   guard_missing: [/do \$g\$\ndeclare m text; f record;[\s\S]*?-- GUARD-END\n/, ''],
 };
 function mutate(src, name) {
-  const [a, b] = MUT[name];
+  const [a, b, nth] = MUT[name];
   const n = a instanceof RegExp ? (src.match(new RegExp(a.source, 'g')) || []).length : src.split(a).length - 1;
+  if (nth) {
+    // the nth of exactly 2 matches (the same line in hunt_attack, then in hunt_support)
+    if (n !== 2) throw new Error(`the mutation ${name} must match exactly twice (${n})`);
+    const parts = src.split(a);
+    return parts.slice(0, nth).join(a) + b + parts.slice(nth).join(a);
+  }
   if (n !== 1) throw new Error(`the mutation ${name} does not match exactly once (${n})`);
   const out = a instanceof RegExp ? src.replace(a, b) : src.split(a).join(b);
   return out;
@@ -101,7 +116,7 @@ const WORLD = String.raw`
       -- the private copy max differs from hp_max (a day whose copy came from the boss function): the credit must not read it for a v2 Hunt
       update hunt_v2_days set state = jsonb_set(state, '{fight,enemies,0,max}', to_jsonb(tamper_max)) where hunt_id = hid and player_id = p and day = rw.day;
     end if;
-    if off_after_start then perform pg_temp.flag(false); end if;
+    if off_after_start then perform set_config('balance.hunt_off_force', hid::text, true); perform pg_temp.flag(false); end if;
     lg := a->'log';
     for n in 1 .. 4 loop
       sc := case when scm = 0 then (select hp_max from hunts where id = hid)::numeric / (rw.state->'fight'->'enemies'->0->>'max')::numeric else coalesce(scm, 1) end;
@@ -151,9 +166,8 @@ const B1 = (mig, mutated) => block(mig, String.raw`
       hid := spawn_hunt(7, t);
       select * into rw from hunts where id = hid;
       mx := (combat_v2_hunt_boss(t, hunt_v2_boss_key(rw.name))->>'max')::numeric;
-      ${add("N1 flag ON: spawn_hunt makes the tier in v2 units (hp_max = hp_remaining = round(v2 max), unit v2, v1_hp = boss_hp, atk, hp_share)",
+      ${add("N1 flag ON: spawn_hunt makes the tier in v2 units (hp_max = hp_remaining = round(v2 max), unit v2, atk, hp_share)",
         `hunt_v2_boss_key(rw.name) is not null and rw.hp_max = round(mx) and rw.hp_remaining = rw.hp_max and rw.stats->>'unit' = 'v2'
-         and (rw.stats->>'v1_hp')::bigint = greatest((balance_get('boss_hp')->>'floor')::bigint, balance_num('boss_hp', t)::bigint)
          and rw.stats ? 'atk' and rw.hp_share = (balance_get('boss_hp')->>'heal_share')::bigint`,
         `jsonb_build_object('tier', t, 'name', rw.name, 'hp_max', rw.hp_max, 'v2max', mx, 'stats', rw.stats, 'hp_share', rw.hp_share)`)}`)}
   end loop;
@@ -163,7 +177,7 @@ const B1 = (mig, mutated) => block(mig, String.raw`
     hid := spawn_hunt(7, 'Heroic');
     select * into rw from hunts where id = hid;
     ${add('N1b flag ON, no v2 boss for the name: v1 units (balance boss_hp), no unit mark',
-      `rw.hp_max = greatest((balance_get('boss_hp')->>'floor')::bigint, balance_num('boss_hp', 'Heroic')::bigint) and not (rw.stats ? 'unit') and not (rw.stats ? 'v1_hp')`,
+      `rw.hp_max = greatest((balance_get('boss_hp')->>'floor')::bigint, balance_num('boss_hp', 'Heroic')::bigint) and not (rw.stats ? 'unit')`,
       `jsonb_build_object('hp_max', rw.hp_max, 'stats', rw.stats)`)}`)}
   -- N2 / N2b: the same seed with the origin/main function (the undo file, rolled back) and with this file
   foreach t in array array['off', 'on'] loop
@@ -186,9 +200,9 @@ const B1 = (mig, mutated) => block(mig, String.raw`
         ${add('N2 flag OFF: spawn_hunt gives the same row as origin/main (same seed): v1 units, no mark', `row0 is not null and row1 = row0 and not ((row1->'stats') ? 'unit')`,
           `jsonb_build_object('before', row0, 'after', row1)`)}
       else
-        ${add('N2b flag ON: spawn_hunt gives the origin/main row except hp_max, hp_remaining and stats.unit / stats.v1_hp',
+        ${add('N2b flag ON: spawn_hunt gives the origin/main row except hp_max, hp_remaining and stats.unit',
           `row0 is not null and (row1 - array['hp_max', 'hp_remaining', 'stats']) = (row0 - array['hp_max', 'hp_remaining', 'stats'])
-           and (row1->'stats') - array['unit', 'v1_hp'] = row0->'stats' and (row1->'stats'->>'v1_hp')::bigint = (row0->>'hp_max')::bigint
+           and (row1->'stats') - 'unit' = row0->'stats' and row1->'stats'->>'unit' = 'v2'
            and (row1->>'hp_max')::bigint <> (row0->>'hp_max')::bigint`,
           `jsonb_build_object('before', row0, 'after', row1)`)}
       end if;`)}
@@ -213,7 +227,7 @@ const B2 = (mig, mutated) => block(mig, String.raw`
   ${sub(String.raw`
     insert into hunts (name, tier, weak_points, hp_max, hp_remaining, opens_at, closes_at, status, stats)
       values ('The ' || (select name from hunt_bosses_v2 where key = fk), ftier, '[]'::jsonb, round(mx), round(round(mx) * 0.4), now() - interval '1 hour', now() + interval '2 days', 'active',
-              jsonb_build_object('atk', 50, 'unit', 'v2', 'v1_hp', 80000)) returning id into hid;
+              jsonb_build_object('atk', 50, 'unit', 'v2')) returning id into hid;
     h0 := (select hp_remaining from hunts where id = hid);
     perform setseed(0.1);
     row0 := pg_temp.day(${M(1)}, hid, sq, null);
@@ -227,7 +241,7 @@ const B2 = (mig, mutated) => block(mig, String.raw`
   ${sub(String.raw`
     insert into hunts (name, tier, weak_points, hp_max, hp_remaining, opens_at, closes_at, status, stats)
       values ('The ' || bn, 'Heroic', '[]'::jsonb, round(mx), round(round(mx) * 0.4), now() - interval '1 hour', now() + interval '2 days', 'active',
-              jsonb_build_object('atk', 50, 'unit', 'v2', 'v1_hp', 80000)) returning id into hid;
+              jsonb_build_object('atk', 50, 'unit', 'v2')) returning id into hid;
     perform setseed(0.2);
     row0 := pg_temp.day(${M(2)}, hid, sq, null, false, round(mx) / 2.0);
     ${add('N3 a v2-unit Hunt is never converted: with a copy max of hp_max / 2 every later call still credits 1:1',
@@ -237,7 +251,7 @@ const B2 = (mig, mutated) => block(mig, String.raw`
     mx := coalesce((combat_v2_hunt_boss(ftier, fk)->>'max')::numeric, 0);
     insert into hunts (name, tier, weak_points, hp_max, hp_remaining, opens_at, closes_at, status, stats)
       values ('The ' || (select name from hunt_bosses_v2 where key = fk), ftier, '[]'::jsonb, round(mx), 40, now() - interval '1 hour', now() + interval '2 days', 'active',
-              jsonb_build_object('atk', 50, 'unit', 'v2', 'v1_hp', 80000)) returning id into hid;
+              jsonb_build_object('atk', 50, 'unit', 'v2')) returning id into hid;
     perform setseed(0.3);
     row0 := pg_temp.day(${M(3)}, hid, sq, null);
     select * into rw from hunts where id = hid;
@@ -265,32 +279,68 @@ const B2 = (mig, mutated) => block(mig, String.raw`
       `(row0->>'calls')::int >= 2 and jsonb_array_length(row0->'bad') = 0 and (row0->>'hits')::bigint > 0`, 'row0')}`)}
 `, mutated);
 
-// ---------------------------------------------------------------------------------------------------------- B3: ach_track_values (N5)
+// ---------------------------------------------------------------------------------------------------------- B3: N3c, N4c (review r1 L1), N7 (M3)
 const B3 = (mig, mutated) => block(mig, String.raw`
+  -- N3c: a tester (flag OFF, no active Hunt) practises against the newest Hunt, an ENDED v2-unit Hunt with 100 HP left
   ${sub(String.raw`
-    -- a v1-unit Hunt (no mark, Normal 70000) and a v2-unit Hunt (hp_max 36244, v1_hp 80000), both ended
+    perform pg_temp.flag(false);
+    update balance set value = jsonb_set(value, '{testers}', (coalesce(value->'testers', '[]'::jsonb) || jsonb_build_array(${M(6)}::text))) where key = 'combat_v2';
+    mx := (combat_v2_hunt_boss('Heroic', bk)->>'max')::numeric;
     insert into hunts (name, tier, weak_points, hp_max, hp_remaining, opens_at, closes_at, status, stats)
-      values ('The ' || bn, 'Normal', '[]'::jsonb, 70000, 0, now() - interval '9 days', now() - interval '8 days', 'expired', jsonb_build_object('atk', 50)) returning id into h0;
+      values ('The ' || bn, 'Heroic', '[]'::jsonb, round(mx), 100, now() + interval '1 hour', now() - interval '1 minute', 'expired',
+              jsonb_build_object('atk', 50, 'unit', 'v2')) returning id into hid;
+    a := hunt_v2_start(${M(6)}, sq);
+    rw := pg_temp.vrow(${M(6)});
+    ${add('N3c a tester practice on an ended v2-unit Hunt: not live, the copy is the boss function max at full HP (not hp_remaining 100)',
+      `(a->>'ok')::boolean and rw.hunt_id = hid and not rw.live and rw.start_hp = mx and (rw.state->'fight'->'enemies'->0->>'max')::numeric = mx`,
+      `jsonb_build_object('a', a->'error', 'start_hp', rw.start_hp, 'max', mx, 'live', rw.live)`)}`)}
+  -- N4c: a v2-unit row, the flag OFF after the start (the force key), the copy max = hp_max / 2: every call still 1:1
+  ${sub(String.raw`
+    perform pg_temp.flag(true);
+    mx := (combat_v2_hunt_boss('Heroic', bk)->>'max')::numeric;
     insert into hunts (name, tier, weak_points, hp_max, hp_remaining, opens_at, closes_at, status, stats)
-      values ('The ' || bn, 'Heroic', '[]'::jsonb, 36244, 0, now() - interval '3 days', now() - interval '2 days', 'expired',
-              jsonb_build_object('atk', 50, 'unit', 'v2', 'v1_hp', 80000)) returning id into h1;
-    insert into hunt_hits (hunt_id, player_id, card_id, hit_date, damage) values
-      (h0, ${M(6)}, na[1], current_date - 9, 1000), (h0, ${M(6)}, na[2], current_date - 9, 600),
-      (h1, ${M(6)}, na[1], current_date - 3, 3624), (h1, ${M(6)}, na[2], current_date - 3, 100),
-      (h0, ${M(5)}, na[1], current_date - 9, 2500), (h0, ${M(5)}, na[2], current_date - 9, 450);
-    a := ach_track_values(${M(6)});
-    ${add('N5 heavy = v1 damage x 1 + v2 damage x v1_hp / hp_max; bighit = the largest row on that scale',
-      `(a->>'heavy')::numeric = round(1600 + 3724 * 80000 / 36244.0) and (a->>'bighit')::numeric = round(3624 * 80000 / 36244.0)`,
-      `jsonb_build_object('heavy', a->'heavy', 'bighit', a->'bighit', 'want_heavy', round(1600 + 3724 * 80000 / 36244.0), 'want_bighit', round(3624 * 80000 / 36244.0))`)}
-    x := ach_track_values(${M(5)});
-    begin
-      execute $u$${mutated ? noGuard(UNDO) : UNDO}$u$;
-      e := ach_track_values(${M(5)});
-      raise exception 'hvn_keep:%', e::text;
-    exception when others then if sqlerrm like 'hvn_keep:%' then e := substr(sqlerrm, 10)::jsonb; else e := to_jsonb(sqlerrm); end if;
-    end;
-    ${add('N5 a member with only v1-unit rows has exactly the origin/main values (every track)', `x = e and (x->>'heavy')::numeric = 2950 and (x->>'bighit')::numeric = 2500`,
-      `jsonb_build_object('now', x, 'before', e)`)}`)}
+      values ('The ' || bn, 'Heroic', '[]'::jsonb, round(mx), round(round(mx) * 0.4), now() - interval '1 hour', now() + interval '2 days', 'active',
+              jsonb_build_object('atk', 50, 'unit', 'v2')) returning id into hid;
+    perform setseed(0.4);
+    row0 := pg_temp.day(${M(5)}, hid, sq, null, true, round(mx) / 2.0);
+    ${add('N4c a v2-unit row, the flag OFF after the start (force key), a copy max of hp_max / 2: every call still credits 1:1',
+      `(row0->>'calls')::int >= 2 and jsonb_array_length(row0->'bad') = 0 and (select value->>'hunt' from balance where key = 'combat_v2') = 'false'`, 'row0')}`)}
+  -- N7 (M3): the flag does not go OFF while an open Hunt is in v2 units
+  ${sub(String.raw`
+    perform pg_temp.flag(true);
+    perform set_config('balance.hunt_off_force', '', true);
+    insert into hunts (name, tier, weak_points, hp_max, hp_remaining, opens_at, closes_at, status, stats)
+      values ('The ' || bn, 'Heroic', '[]'::jsonb, 36244, 20000, now() - interval '1 hour', now() + interval '2 days', 'active',
+              jsonb_build_object('atk', 50, 'unit', 'v2')) returning id into hid;
+    begin perform pg_temp.flag(false); msg := null; exception when others then msg := sqlerrm; end;
+    ${add('N7 an open v2-unit Hunt: combat_v2.hunt OFF is refused with the Hunt id and the force key in the message; the flag stays ON',
+      `msg like 'balance combat_v2: hunt cannot go OFF while the Hunt ' || hid || ' is open in v2 units%' and msg like '%balance.hunt_off_force%' and (select value->>'hunt' from balance where key = 'combat_v2') = 'true'`, 'to_jsonb(msg)')}
+    perform set_config('balance.hunt_off_force', (hid + 1)::text, true);
+    begin perform pg_temp.flag(false); msg := null; exception when others then msg := sqlerrm; end;
+    ${add('N7 the force key with another Hunt id is refused', `msg like 'balance combat_v2: hunt cannot go OFF%'`, 'to_jsonb(msg)')}
+    perform set_config('balance.hunt_off_force', hid::text, true);
+    begin perform pg_temp.flag(false); msg := null; exception when others then msg := sqlerrm; end;
+    ${add('N7 the force key = the Hunt id in the same transaction: OFF is allowed (the emergency stop)',
+      `msg is null and (select value->>'hunt' from balance where key = 'combat_v2') = 'false'`, 'to_jsonb(msg)')}
+    -- the v1 writers with the flag OFF: a v2-unit Hunt is refused and nothing is written
+    h0 := (select hp_remaining from hunts where id = hid);
+    s0 := (select count(*) from hunt_hits where hunt_id = hid) + (select count(*) from hunt_card_hp where hunt_id = hid);
+    a := hunt_attack(${M(1)}, hid, na[1]);
+    x := hunt_support(${M(1)}, hid, sup[1], na[1]);
+    ${add('N7 the flag OFF (forced), a v2-unit Hunt: hunt_attack and hunt_support answer v2_on and write nothing (HP, hunt_hits, hunt_card_hp)',
+      `a->>'error' = 'v2_on' and x->>'error' = 'v2_on' and (select hp_remaining from hunts where id = hid) = h0
+       and (select count(*) from hunt_hits where hunt_id = hid) + (select count(*) from hunt_card_hp where hunt_id = hid) = s0`,
+      `jsonb_build_object('attack', a, 'support', x)`)}`)}
+  ${sub(String.raw`
+    perform pg_temp.flag(true);
+    perform set_config('balance.hunt_off_force', '', true);
+    insert into hunts (name, tier, weak_points, hp_max, hp_remaining, opens_at, closes_at, status, stats)
+      values ('The ' || bn, 'Heroic', '[]'::jsonb, 80000, 32000, now() - interval '1 hour', now() + interval '2 days', 'active', jsonb_build_object('atk', 50)) returning id into hid;
+    begin perform pg_temp.flag(false); msg := null; exception when others then msg := sqlerrm; end;
+    a := hunt_attack(${M(2)}, hid, na[1]);
+    ${add('N7 an open v1-unit Hunt (no mark): OFF needs no force key, and hunt_attack is not refused as v2 (the v1 fight as before)',
+      `msg is null and (select value->>'hunt' from balance where key = 'combat_v2') = 'false' and a->>'error' is distinct from 'v2_on'`,
+      `jsonb_build_object('msg', msg, 'attack', a)`)}`)}
 `, mutated);
 
 // ---------------------------------------------------------------------------------------------------------- the run

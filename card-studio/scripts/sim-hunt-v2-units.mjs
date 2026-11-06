@@ -35,7 +35,7 @@ begin
   insert into hunts (name, tier, weak_points, hp_max, hp_remaining, opens_at, closes_at, status, stats)
     values (${lit(NAME)}, ${lit(TIER)}, '[]'::jsonb,
             ${unit === 'v2' ? 'round(mx)' : 'v1hp'}, ${unit === 'v2' ? 'round(mx)' : 'v1hp'}, now() - interval '1 hour', now() + interval '6 days', 'active',
-            jsonb_build_object('atk', 50)${unit === 'v2' ? " || jsonb_build_object('unit', 'v2', 'v1_hp', v1hp)" : ''}) returning id into hid;
+            jsonb_build_object('atk', 50)${unit === 'v2' ? " || jsonb_build_object('unit', 'v2')" : ''}) returning id into hid;
   for d in 1 .. ${Number(DAYS)} loop
     plays := 0;
     nd := case when ${Number(PER_DAY)} > 0 then least(${Number(PER_DAY)}, cardinality(roster)) else cardinality(roster) end;

@@ -14,6 +14,13 @@ const owned = (set) => set.filter((c) => c.owned).length;
 // "Own n of these cards": the set is every matching card, the goal is n of them.
 const ownN = (pick, n) => (cards) => { const set = cards.filter(pick); return { have: Math.min(owned(set), n), need: n, set }; };
 const stat = (key, n) => (cards, st) => ({ have: Math.min(Number(st?.[key]) || 0, n), need: n, set: null });
+// HUNT-V2-NATIVE: a goal from the server (stats.need, balance v2_ach_damage.old: the v2 damage numbers). No goal = not done.
+// text(n) = the description with the goal of the member.
+const statNeed = (key, goal, text) => (cards, st) => {
+  const n = Number(st?.need?.[goal]);
+  if (!(n > 0)) return { have: 0, need: 1, set: null };
+  return { have: Math.min(Number(st?.[key]) || 0, n), need: n, set: null, desc: text(n.toLocaleString('en-US')) };
+};
 const el = (e) => (c) => cardElement(c.tags) === e;
 
 function versions(cards) {
@@ -100,8 +107,10 @@ export const BASE_ACHIEVEMENTS = [
   // The Pride Hunt
   { key: 'hunt1', group: 'Hunt', icon: '⚔', name: 'First Blood', desc: 'Join a hunt', rule: stat('huntsJoined', 1) },
   { key: 'hunt4', group: 'Hunt', icon: '🗡', name: 'Hunt Regular', desc: 'Join 4 hunts', rule: stat('huntsJoined', 4) },
-  { key: 'dmg1k', group: 'Hunt', icon: '💥', name: 'Heavy Hitter', desc: 'Deal 1,000 damage in hunts', rule: stat('totalDamage', 1000) },
-  { key: 'hit500', group: 'Hunt', icon: '🎯', name: 'Big Hit', desc: 'Land a 500 damage hit', rule: stat('bestHit', 500) },
+  { key: 'dmg1k', group: 'Hunt', icon: '💥', name: 'Heavy Hitter', desc: 'Deal damage in hunts',
+    rule: statNeed('totalDamage', 'dmg1k', (n) => `Deal ${n} damage in hunts`) },
+  { key: 'hit500', group: 'Hunt', icon: '🎯', name: 'Big Hit', desc: 'Land a big hit in a hunt',
+    rule: statNeed('bestHit', 'hit500', (n) => `Land a ${n} damage hit`) },
   { key: 'slay1', group: 'Hunt', icon: '🐉', name: 'Titan Slayer', desc: 'Help defeat a boss', rule: stat('bossesDefeated', 1) },
   { key: 'slay3', group: 'Hunt', icon: '💀', name: 'Boss Breaker', desc: 'Help defeat 3 bosses', rule: stat('bossesDefeated', 3) },
 
@@ -135,7 +144,7 @@ export function achievementList(sets) {
 export function measure(cards, stats, sets) {
   return achievementList(sets).map((a) => {
     const r = a.rule(cards, stats || {});
-    return { ...a, have: r.have, need: Math.max(1, r.need), set: r.set, done: r.have >= Math.max(1, r.need) };
+    return { ...a, desc: r.desc || a.desc, have: r.have, need: Math.max(1, r.need), set: r.set, done: r.have >= Math.max(1, r.need) };
   }).sort((a, b) => (a.done - b.done) || (b.have / b.need - a.have / a.need));
 }
 
