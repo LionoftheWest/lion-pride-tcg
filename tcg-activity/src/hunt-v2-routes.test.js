@@ -34,6 +34,11 @@ export const MUTATIONS = {
   no_retry: ['    if (r.error && RETRY_CODES.has(r.error.code)) r = await supabase.rpc(fn, args);\n', ''],
   no_live_gate: ['    if (data?.ok && data.live === true) return { player, view: data };', ''],
   v1_touched: ['  const refs = sharedCache', "  app.get('/api/hunt', (req, res, next) => next());\n  const refs = sharedCache"],
+  // HUNT-V2-POSTS (the live round-limit text)
+  live_text_off: ['notFightingText(view?.day, data.ended_by, roundCap())', 'notFightingText(null, data.ended_by, roundCap())'],
+  practice_live_text: ['  if (day?.live !== true) return ERR.not_fighting;\n', ''],
+  cap_literal: ['  const n = Number(cap);', '  const n = 40;'],
+  cap_any_end: ["  if ((endedBy ?? day?.ended_by) !== 'cap') return 'Your Hunt for today is over.';\n", ''],
 };
 
 if (process.env.MUTATE === 'all') {
@@ -64,7 +69,7 @@ async function loadModule() {
   console.log(`# MUTATE=${name} (${file})`);
   return import(pathToFileURL(file).href);
 }
-const { registerHuntV2Routes, AUTO_MAX, LABEL } = await loadModule();
+const { registerHuntV2Routes, AUTO_MAX, LABEL, notFightingText } = await loadModule();
 
 // The messages of the spec errors (R3 SPEC 3.4), held here and not read from the module.
 const CODES = ['no_hunt', 'no_v2_boss', 'already', 'squad_size', 'not_owned', 'no_v2', 'no_day', 'not_fighting', 'hunt_over', 'bad_state', 'bad_choice', 'bad_max'];
@@ -89,7 +94,7 @@ const baseRpc = (opts = {}) => (name) => {
   return { data: { ok: true }, error: null };
 };
 
-function harness({ rpc = baseRpc(), me = { id: '77' }, rateOk = true, on = true } = {}) {
+function harness({ rpc = baseRpc(), me = { id: '77' }, rateOk = true, on = true, cap } = {}) {
   const stack = []; const calls = []; const reads = [];
   const add = (method) => (path, ...hs) => { for (const h of hs) stack.push({ method, path, h }); };
   const app = { get: add('GET'), post: add('POST'), use: () => { throw new Error('the module must not add middleware'); } };
@@ -101,7 +106,7 @@ function harness({ rpc = baseRpc(), me = { id: '77' }, rateOk = true, on = true 
   };
   const supabase = { rpc: async (name, args) => { calls.push({ name, args: clone(args) }); return rpc(name, args); }, from: query };
   const sharedCache = (name, { ttl }) => makeTtlCache({ ttl });
-  registerHuntV2Routes(app, { supabase, caller: async () => me, rateLimit: () => rateOk, getCatalogBase: async () => clone(CATALOG), huntOn: () => on, sharedCache });
+  registerHuntV2Routes(app, { supabase, caller: async () => me, rateLimit: () => rateOk, getCatalogBase: async () => clone(CATALOG), huntOn: () => on, sharedCache, ...(cap === undefined ? {} : { roundCap: () => cap }) });
   const call = async (method, path, { body = {}, query = {} } = {}) => {
     const out = { status: 200, body: undefined };
     const res = { status(c) { out.status = c; return res; }, json(b) { out.body = clone(b); return res; } };
@@ -238,4 +243,40 @@ test('ON-UI: live (flag ON) lets a member who is not a tester in; v1_today answe
   const r = await h.call('POST', '/api/hunt/v2/start', { body: {} });
   assert.equal(r.status, 409);
   assert.equal(r.body.message, 'You already played in the old fight today.');
+});
+
+// HUNT-V2-POSTS: not_fighting after the round limit on a LIVE day says the Hunt of today is over and names the cap of the balance
+// (v2_hunt.round_cap, passed as roundCap); a practice day keeps the practice text. The texts are held here, not read from the module.
+const PRACTICE_TEXT = 'Your practice of today ended.';
+test('HUNT-V2-POSTS: not_fighting on a live day (cap) names the balance round cap; other live ends; practice keeps its text', async () => {
+  const over = (live, ended_by) => ({ hunt_id: 7, day: '2026-11-06', squad: [11, 12], status: 'over', ended_by, live });
+  const run = async ({ live, ended_by, cap, p = '/api/hunt/v2/act', tester = true }) => {
+    const h = harness({ cap, rpc: (name) => (name === 'hunt_v2_view' ? { data: { ...viewOf({ tester, day: over(live, ended_by) }), live }, error: null }
+      : { data: { ok: false, error: 'not_fighting', ended_by }, error: null }) });
+    const r = await h.call('POST', p, { body: {} });
+    assert.equal(r.status, 400); assert.equal(r.body.error, 'not_fighting'); assert.equal(r.body.ended_by, ended_by);
+    return r.body.message;
+  };
+  for (const p of ['/api/hunt/v2/act', '/api/hunt/v2/auto']) {
+    assert.equal(await run({ live: true, ended_by: 'cap', cap: 40, p }), 'Round limit reached (40). Your Hunt for today is over.', p);
+    assert.equal(await run({ live: true, ended_by: 'cap', cap: 25, p }), 'Round limit reached (25). Your Hunt for today is over.', p);
+    assert.equal(await run({ live: true, ended_by: 'cap', cap: null, p }), 'Round limit reached. Your Hunt for today is over.', p);
+    assert.equal(await run({ live: true, ended_by: 'squad_down', cap: 40, p }), 'Your Hunt for today is over.', p);
+    assert.equal(await run({ live: false, ended_by: 'cap', cap: 40, p }), PRACTICE_TEXT, p);
+    assert.equal(await run({ live: false, ended_by: 'squad_down', cap: 40, p }), PRACTICE_TEXT, p);
+  }
+  // with no roundCap passed (the default): no number
+  assert.equal(await run({ live: true, ended_by: 'cap', cap: undefined }), 'Round limit reached. Your Hunt for today is over.');
+  // the pure text: the day ended_by when the answer has none; a missing day = practice
+  assert.equal(notFightingText({ live: true, ended_by: 'cap' }, undefined, 40), 'Round limit reached (40). Your Hunt for today is over.');
+  assert.equal(notFightingText(null, 'cap', 40), PRACTICE_TEXT);
+  assert.equal(notFightingText({ live: 'true', ended_by: 'cap' }, 'cap', 40), PRACTICE_TEXT);
+});
+
+test('HUNT-V2-POSTS: server.js passes roundCap from the balance key v2_hunt.round_cap (the value combat_v2_advance reads)', () => {
+  const src = readFileSync(join(here, '..', 'server.js'), 'utf8');
+  const line = src.split(/\r?\n/).find((l) => l.startsWith('registerHuntV2Routes(app,'));
+  assert.ok(line && line.includes('roundCap: () => BAL?.v2_hunt?.round_cap ?? null'), line);
+  const adv = readFileSync(join(here, '..', '..', 'db', 'schema', 'functions', 'combat_v2_advance.sql'), 'utf8');
+  assert.ok(adv.includes("when p->>'mode' = 'hunt' then (p_b->'v2_hunt'->>'round_cap')::int"), 'the SQL hunt cap is balance v2_hunt.round_cap');
 });

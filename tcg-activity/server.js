@@ -1942,7 +1942,7 @@ registerEventsRoutes(app, { supabase, caller, eventsOn, sharedCache, artUrl: (u)
 const dungeonCaches = registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun: dungeonPing, userCache, sharedCache });
 // R1c: /api/gauntlet/v2/* (Combat v2). R1-ON: a v2 write drops the member's cached Gauntlet view and, at a run end, the board.
 registerGauntletV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, sharedCache, onRunChange: dungeonCaches.gauntletRunChanged });
-registerHuntV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, huntOn: () => FEATURE_HUNT, sharedCache });   // R3b: /api/hunt/v2/* the Hunt v2 practice of Combat v2 testers
+registerHuntV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, huntOn: () => FEATURE_HUNT, sharedCache, roundCap: () => BAL?.v2_hunt?.round_cap ?? null });   // R3b: /api/hunt/v2/* the Hunt v2 practice of Combat v2 testers
 registerDungeonV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, sharedCache });   // R2b: /api/dungeon/v2/* for Combat v2 testers
 const cardShape = (c) => c && { id: c.id, name: c.name, rarity: c.rarity, image_url: toProxyImg(c.image_url) };
 
