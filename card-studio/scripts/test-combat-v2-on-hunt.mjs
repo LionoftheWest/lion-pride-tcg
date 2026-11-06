@@ -30,6 +30,9 @@ let hbpBefore = false;
 const OUT_CLEAN = read('../../tcg-bot/supabase/combat_v2_hunt_out_live.sql');
 let outFix = OUT_CLEAN;
 let outBefore = false;
+// HUNT-HEADER-V2 (hunt_v2_view_boss_max.sql) replaces hunt_v2_view (an R3-ON function): the mutated-H finally step applies it again when it was on
+const VIEW_FIX = read('../../tcg-bot/supabase/hunt_v2_view_boss_max.sql');
+let viewBefore = false;
 const DAYS = Number(process.env.DAYS || 20), STARTS = Number(process.env.STARTS || 50);
 
 // ---------------------------------------------------------------------------------------------------------- the mutations
@@ -605,10 +608,12 @@ async function runH() {
     const pre = await hq(hCleanup); if (pre.error) throw new Error('cleanup: ' + pre.error);
     const st = await hq(`select to_regprocedure('public.hunt_v2_shared(bigint, text, date, jsonb)') is not null as applied,
       to_regprocedure('public.hunt_v2_boon_plan(jsonb, jsonb, numeric, jsonb, numeric)') is not null as hbp,
-      coalesce(obj_description('public.hunt_v2_out(bigint, text, date, jsonb)'::regprocedure, 'pg_proc'), '') like '%combat_v2_hunt_out_live.sql%' as out_fix;`);
+      coalesce(obj_description('public.hunt_v2_out(bigint, text, date, jsonb)'::regprocedure, 'pg_proc'), '') like '%combat_v2_hunt_out_live.sql%' as out_fix,
+      coalesce(obj_description('public.hunt_v2_view(text)'::regprocedure, 'pg_proc'), '') like '%hunt_v2_view_boss_max.sql%' as view_fix;`);
     if (!st.rows?.[0]?.applied) throw new Error('R3-ON (combat_v2_on_hunt.sql) is not applied on this copy');
     hbpBefore = st.rows[0].hbp === true;
     outBefore = st.rows[0].out_fix === true;
+    viewBefore = st.rows[0].view_fix === true;
     if (mutated) { const m = await hq(`do $h$ begin execute ${Q}${r3a}${Q}; execute ${Q}${mig}${Q}; end $h$;`); if (m.error) throw new Error('apply the mutated file: ' + m.error); }
     const setup = await hq(String.raw`do $x$ declare sq bigint[]; begin
       perform set_config('tcg.skip_welcome', 'on', true);
@@ -778,7 +783,7 @@ async function runH() {
     const c = await hq(hCleanup);
     let r = { error: null };
     // HBP (combat_v2_hunt_boons.sql) replaces 3 R3-ON functions: when it was on the copy before the run, apply it again after the clean R3-ON file
-    if (mutated) r = await hq(`do $h$ begin execute ${Q}${R3A}${Q}; execute ${Q}${CLEAN}${Q};${hbpBefore ? ` execute ${Q}${HBP_FILE}${Q};` : ''}${outBefore ? ` execute ${Q}${OUT_CLEAN}${Q};` : ''} end $h$;`);
+    if (mutated) r = await hq(`do $h$ begin execute ${Q}${R3A}${Q}; execute ${Q}${CLEAN}${Q};${hbpBefore ? ` execute ${Q}${HBP_FILE}${Q};` : ''}${outBefore ? ` execute ${Q}${OUT_CLEAN}${Q};` : ''}${viewBefore ? ` execute ${Q}${VIEW_FIX}${Q};` : ''} end $h$;`);
     const left = await hq(`select (select count(*) from public.players where id = any(array[${HP.map(HL).join(', ')}])) + (select count(*) from public.hunts where weak_points = '${HMARK}'::jsonb)
       + (select count(*) from public.balance_log where changed_by = '${HBY}') + (select count(*) from pg_proc where proname in ('r3on_h_real_step', 'r3on_h_synstub')) n,
       (select value->>'hunt' from public.balance where key = 'combat_v2') flag;`);
