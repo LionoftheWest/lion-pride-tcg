@@ -13,12 +13,12 @@ const filter = process.argv[2] || '';
 const tests = readdirSync(join(root, 'scripts')).filter((f) => /^test-.*\.mjs$/.test(f) && f !== 'test-all-local.mjs' && f.includes(filter)).sort();
 // Tests that need the migration file they check: the NEWEST file that defines the function.
 // The Hunt tests run on the CURRENT functions (combat_core.sql replaced hunt_attack / hunt_support; the older
-// files would put the pre-core versions back inside the test). logs_sql.sql (the current prune_old_rows) is applied because the local
+// files would put the pre-core versions back inside the test). the newest prune_old_rows file is applied because the local
 // copy has no pg_cron jobs and no API-role revokes (the dump does not carry them); its function is the live one.
 const ARGS = {
   'test-hunt-loop-caps.mjs': ['--live'],
   'test-hunt-squad-done.mjs': ['live'],
-  'test-prune-old-rows.mjs': ['../tcg-bot/supabase/logs_sql.sql'], // the current prune_old_rows (365 days, 2026-10-07)
+  'test-prune-old-rows.mjs': ['../tcg-bot/supabase/dbmem_cron_history_7d.sql'], // the current prune_old_rows (365 days; cron 7 days, DB-MEM 2026-11-06)
   'test-events.mjs': ['../tcg-bot/supabase/events.sql'], // a fresh local copy has no pg_cron jobs: the file makes event-tick inside the test
   'test-achievement-tracks.mjs': ['--live'],
   'test-adventure-dailies.mjs': ['--live'],

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { adminAlertText, adminIdsFromEnv, dmAdmins } from './admin-alert.js';
+import { adminAlertText, adminIdsFromEnv, dmAdmins, postAdminChannel, resetAdminChannelCache, ADMIN_ALERT_CHANNEL_DEFAULT, type ChannelClient } from './admin-alert.js';
 
 test('the admin ids come from ADMIN_USER_IDS; anything that is not a Discord id is ignored', () => {
   assert.deepEqual(adminIdsFromEnv({ ADMIN_USER_IDS: ' 123456789012345678 , ,abc,98765432109876543\r' }), ['123456789012345678', '98765432109876543']);
@@ -27,4 +27,46 @@ test('each admin gets a DM with no mentions; a failed DM does not stop the other
   assert.deepEqual(sent.map((s) => s.id), ['111111', '333333']);
   assert.deepEqual(sent[0].body.allowedMentions, { parse: [] });
   assert.match(sent[0].body.content, /backup FAILED/);
+});
+
+// DB-MEM M1: the post in the admin channel (tcg-admin-alerts).
+function fakeClient(chans: Array<{ id: string; name: string; guild: string; fail?: boolean }>) {
+  const posts: Array<{ id: string; body: { content: string; allowedMentions: unknown } }> = []; let byId = 0; let byList = 0;
+  const mk = (c: { id: string; name: string; fail?: boolean }) => ({ id: c.id, name: c.name, isTextBased: () => true,
+    send: async (body: { content: string; allowedMentions: unknown }) => { if (c.fail) throw new Error('Missing Access'); posts.push({ id: c.id, body }); } });
+  const guilds = [...new Set(chans.map((c) => c.guild))].map((g) => ({ id: g, channels: { fetch: async () => { byList += 1; return new Map(chans.filter((c) => c.guild === g).map((c) => [c.id, mk(c)])); } } }));
+  const client = {
+    channels: { fetch: async (id: string) => { byId += 1; const c = chans.find((x) => x.id === id); return c ? mk(c) : null; } },
+    guilds: { cache: { values: () => guilds.values() } },
+  } as unknown as ChannelClient;
+  return { client, posts, counts: () => ({ byId, byList }) };
+}
+
+test('the channel post: found by the name tcg-admin-alerts (default), no mentions, the ops prefix', async () => {
+  resetAdminChannelCache();
+  assert.equal(ADMIN_ALERT_CHANNEL_DEFAULT, 'tcg-admin-alerts');
+  const f = fakeClient([{ id: '10', name: 'general', guild: 'G' }, { id: '11', name: 'tcg-admin-alerts', guild: 'G' }]);
+  assert.equal(await postAdminChannel(f.client, 'DB memory WARN @everyone', { DISCORD_GUILD_ID: 'G' }), true);
+  assert.deepEqual(f.posts.map((p) => p.id), ['11']);
+  assert.deepEqual(f.posts[0].body.allowedMentions, { parse: [] });
+  assert.match(f.posts[0].body.content, /^\*\*\[Lion Pride TCG ops\]\*\* DB memory WARN/);
+  await postAdminChannel(f.client, 'second', { DISCORD_GUILD_ID: 'G' });
+  assert.equal(f.counts().byList, 1, 'the channel found by name is kept (no second list call)');
+});
+test('the channel post: ADMIN_ALERT_CHANNEL_ID wins; another guild is not searched; a missing channel returns false', async () => {
+  resetAdminChannelCache();
+  const f = fakeClient([{ id: '11', name: 'tcg-admin-alerts', guild: 'G' }, { id: '21', name: 'tcg-admin-alerts', guild: 'OTHER' }, { id: '30', name: 'ops', guild: 'G' }]);
+  assert.equal(await postAdminChannel(f.client, 'x', { ADMIN_ALERT_CHANNEL_ID: '30' }), true);
+  assert.deepEqual(f.posts.map((p) => p.id), ['30']);
+  resetAdminChannelCache();
+  const g = fakeClient([{ id: '21', name: 'tcg-admin-alerts', guild: 'OTHER' }]);
+  assert.equal(await postAdminChannel(g.client, 'x', { DISCORD_GUILD_ID: 'G' }), false);
+  assert.equal(g.posts.length, 0);
+  resetAdminChannelCache();
+  assert.equal(await postAdminChannel(g.client, 'x', { ADMIN_ALERT_CHANNEL_ID: '99' }), false, 'a wrong id does not fall back to a name');
+});
+test('the channel post: a refused send returns false and does not throw', async () => {
+  resetAdminChannelCache();
+  const f = fakeClient([{ id: '11', name: 'tcg-admin-alerts', guild: 'G', fail: true }]);
+  assert.equal(await postAdminChannel(f.client, 'x', {}), false);
 });
