@@ -2,6 +2,14 @@
 
 Decision: Nathan, 2026-10-11. The old Oracle free AMD micro VM is a warm backup of the main VM.
 
+> **Option B (NO-SERVER, Nathan 2026-11-06).** The main VM is terminated. The backup VM is the permanent home of the bot.
+> - A bot runs only on the host that the settings row `bot_home` names (`"backup"` now). Never start `tcg-bot` on another host by hand.
+> - `ops/deploy.sh` needs `TARGET=backup` (or `TARGET=office`). A bot deploy reads `bot_home_state()` and runs the normal path
+>   (health check, slash commands) only when the row names the target. It stops when the row names the other host, is missing,
+>   or cannot be read.
+> - `ops/failover/failback.sh` refuses. The bot moves only by hand: NO-SERVER spec 4.5 (`card-studio/scripts/bot-home.mjs`, Nathan's GO).
+> - The rest of this page is the old design (main VM + standby). It stays for the history and for the Activity tunnel steps.
+
 | | Main VM | Backup VM |
 |---|---|---|
 | Name | `lionpridetcg.duckdns.org` | none (IP only) |
@@ -38,15 +46,15 @@ Decision: Nathan, 2026-10-11. The old Oracle free AMD micro VM is a warm backup 
 After each main deploy, the deploy script prints the command. Run it by hand:
 
 ```
-TARGET=backup ops/deploy.sh activity     # or gallery
-TARGET=backup ops/deploy.sh bot          # builds the image, creates the container, does NOT start it
+TARGET=backup ops/deploy.sh activity     # or gallery, or backup (the DB backup scripts)
+TARGET=backup ops/deploy.sh bot          # only when bot_home = "backup": build, swap, health check, slash commands
 ```
 
 `TARGET=backup` uses `BACKUP_IP` (default `137.131.48.8`) and never the DNS name. All safety checks stay:
 it refuses uncommitted or unpushed code, builds with `--no-cache` on the box, runs the health check and rollback
-(Activity, gallery), and sets `.env` to mode 600. For the bot it refuses to run if `tcg-bot` is RUNNING on the
-backup (a failover is active), and it checks that the container state is `created`. It does not register slash
-commands. `TARGET=backup ops/deploy.sh backup` is refused (the database backup runs on the main VM).
+(Activity, gallery, bot), and sets `.env` to mode 600. For the bot (NO-SERVER P0b) it reads `bot_home_state()` first and
+stops before any docker call unless the row names `backup`. It refuses a bot `.env` without a valid `IMG_UPSTREAM`.
+The bot container gets `-e BOT_HOST=backup` and the state folder `/home/ubuntu/tcg-bot-state` (mode 700) at `/state`.
 
 ## Fail over
 

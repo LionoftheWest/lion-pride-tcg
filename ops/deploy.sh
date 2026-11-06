@@ -5,16 +5,19 @@
 #   health check (auto rollback) -> register slash commands (bot) -> chmod 600 secrets.
 #
 # Usage:  ops/deploy.sh <activity|bot|gallery|backup>   (backup: the nightly DB backup scripts, ops/backup)
-# Env:    ALLOW_BRANCH=1     deploy a pushed commit that is not on origin/main yet
+# Env:    TARGET=backup|office  REQUIRED (NO-SERVER P0b). backup = the backup VM (BACKUP_IP, default 137.131.48.8): activity,
+#                            gallery, bot, backup. office = the office VM (192.168.50.10 through OFFICE_JUMP): activity, bot.
+#                            The DNS name never chooses the target.
+#         ALLOW_BRANCH=1     deploy a pushed commit that is not on origin/main yet
 #         FORCE_UNHEALTHY=1  fail the health check on purpose (tests the rollback)
-#         TARGET=backup      deploy to the warm backup VM (BACKUP_IP, default 137.131.48.8) and not to the main VM.
-#                            Same checks. The bot is only built and created STOPPED (a standby): two bots would
-#                            double-post. No slash-command registration. See docs/ops/backup-vm.md.
+# The bot (option B, NO-SERVER 4.6): a bot deploy reads bot_home_state() (the settings row bot_home, through the Supabase
+# REST RPC with the key of the bot .env on that host) and deploys ONLY when the row names TARGET. It STOPS before any
+# docker call when the row names the other host, is missing, or cannot be read. One bot runs: on the host that the row
+# names. Move the bot only with card-studio/scripts/bot-home.mjs (Nathan's GO). Test: ops/failover/test-office.sh (C5).
 set -euo pipefail
 
 SVC="${1:?usage: ops/deploy.sh <activity|bot|gallery|backup>}"
 KEY="${KEY:-$HOME/Downloads/ssh-key-2026-09-08.key}"
-VM_HOST="${VM_HOST:-lionpridetcg.duckdns.org}"
 
 # SRC = repo path, DIR = VM dir under /home/ubuntu, NAME = container + image, PATHS = what ships.
 case "$SVC" in
@@ -30,6 +33,15 @@ case "$SVC" in
             HEALTH='curl -fsS -o /dev/null http://127.0.0.1:4331/ && curl -fsS http://127.0.0.1:4331/api/gallery | grep -q "\"backUrl\":\"http"' ;;
   backup)   SRC=ops/backup;                 DIR=backups/bin; NAME=; PATHS="." ;;  # scripts + crontab, no container
   *) echo "unknown service: $SVC (use activity, bot, gallery, or backup)"; exit 2 ;;
+esac
+
+JUMP=""
+case "${TARGET:-}" in
+  backup) IP="${BACKUP_IP:-137.131.48.8}" ;;
+  office) IP=192.168.50.10; JUMP="-J ${OFFICE_JUMP:-vaugh@10.0.0.220}"
+          case "$SVC" in activity|bot) ;; *) echo "STOP: TARGET=office deploys only activity or bot (not $SVC)."; exit 2 ;; esac ;;
+  "") echo "STOP: TARGET is required: TARGET=backup or TARGET=office (NO-SERVER P0b: the DNS name never chooses the target)."; exit 2 ;;
+  *) echo "STOP: unknown TARGET '${TARGET}' (use: backup or office)"; exit 2 ;;
 esac
 
 cd "$(git rev-parse --show-toplevel)"
@@ -48,23 +60,14 @@ if ! git merge-base --is-ancestor "$SHA" origin/main; then
   else echo "STOP: $SHORT is not on origin/main. Merge first, or set ALLOW_BRANCH=1 for a test deploy."; exit 1; fi
 fi
 
-STANDBY=""
-case "${TARGET:-}" in
-  "") IP=$(nslookup "$VM_HOST" 2>/dev/null | awk '/^Address/ {a=$2} END {print a}')
-      [ -n "$IP" ] || { echo "STOP: cannot resolve $VM_HOST"; exit 1; } ;;
-  backup) # A fixed IP: after a failover the name points at this box, and the name must never choose the target.
-      [ "$SVC" != backup ] || { echo "STOP: TARGET=backup does not ship the database backup scripts (they run on the main VM)."; exit 2; }
-      IP="${BACKUP_IP:-137.131.48.8}"
-      [ "$SVC" = bot ] && STANDBY=1 ;;
-  *) echo "STOP: unknown TARGET '${TARGET}' (use: backup, or leave it empty for the main VM)"; exit 2 ;;
-esac
-SSH="ssh -i $KEY -o BatchMode=yes -o ConnectTimeout=20 ubuntu@$IP"
+SSH="ssh -i $KEY -o BatchMode=yes -o ConnectTimeout=20 -o ServerAliveInterval=15 -o ServerAliveCountMax=4 $JUMP ubuntu@$IP"
 echo "== deploy $SVC @ $SHORT -> $IP:/home/ubuntu/$DIR"
 
 # One deploy of a target at a time (2026-10-15: two deploys of the Activity ran at once; each moved the folders, the
 # container started with no .env, and the Activity was down for 84 s). mkdir is atomic: the second deploy stops here.
 # A lock with no deploy running (a killed run): read the owner line, then remove it by hand.
-LOCKD="/home/ubuntu/.deploy-$DIR.lock"
+# DIR=backups/bin has a slash: without the replace, mkdir failed (no folder .deploy-backups), so it looked like a running deploy.
+LOCKD="/home/ubuntu/.deploy-${DIR//\//-}.lock"
 if ! $SSH "mkdir '$LOCKD' 2>/dev/null && echo '$SHORT $(date -u +%FT%TZ)' > '$LOCKD/owner'"; then
   echo "STOP: another deploy of $DIR is running on $IP (lock: $($SSH "cat '$LOCKD/owner' 2>/dev/null" || true))."
   echo "If no deploy runs (a killed run), remove the lock: ssh ubuntu@$IP rm -rf $LOCKD"
@@ -86,42 +89,66 @@ fi
 git archive --format=tar "$SHA:$SRC" $PATHS | $SSH "rm -rf ~/$DIR.new && mkdir ~/$DIR.new && tar -x -C ~/$DIR.new"
 
 # 3. On the VM: build, swap, health check, roll back on failure, lock the secrets.
-$SSH "SVC='$SVC' DIR='$DIR' NAME='$NAME' SHA='$SHA' SHORT='$SHORT' HEALTH='$HEALTH' FORCE='${FORCE_UNHEALTHY:-}' STANDBY='$STANDBY' bash -s" <<'REMOTE'
+$SSH "SVC='$SVC' DIR='$DIR' NAME='$NAME' SHA='$SHA' SHORT='$SHORT' HEALTH='$HEALTH' FORCE='${FORCE_UNHEALTHY:-}' TARGET='$TARGET' bash -s" <<'REMOTE'
 set -euo pipefail
 cd /home/ubuntu
-# Backup VM, bot: a running bot here is a live failover. Do not touch it.
-if [ "${STANDBY:-}" = 1 ] && [ "$(sudo docker inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null || true)" = true ]; then
-  echo "STOP: $NAME is RUNNING on this box (a failover is active). Run ops/failover/failback.sh first."; exit 1
+# BOT_HOME_BEGIN (NO-SERVER P0b; test: ops/failover/test-office.sh C5)
+# The bot runs only on the host that settings.bot_home names. Read bot_home_state() BEFORE any change. The key is in the
+# curl config on stdin (curl -K -), never in a command line (ps). Any other answer shape = unreadable = STOP.
+bot_home_read() {
+  local url key body h a
+  url=$(grep -E '^SUPABASE_URL=' "$DIR/.env" | tail -1 | cut -d= -f2- | tr -d "\"'\r")
+  key=$(grep -E '^SUPABASE_SERVICE_ROLE_KEY=' "$DIR/.env" | tail -1 | cut -d= -f2- | tr -d "\"'\r")
+  [ -n "$url" ] && [ -n "$key" ] || { echo "(no SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY in /home/ubuntu/$DIR/.env)" >&2; return 1; }
+  body=$(printf 'header = "apikey: %s"\nheader = "Authorization: Bearer %s"\nheader = "Content-Type: application/json"\n' "$key" "$key" \
+    | curl -fsS --max-time 10 -K - -X POST -d '{}' "${url%/}/rest/v1/rpc/bot_home_state") || return 1
+  echo "bot_home_state() = $body" >&2
+  h=$(printf '%s' "$body" | grep -oE '"home"[[:space:]]*:[[:space:]]*"(backup|office)"' | grep -oE '(backup|office)"$' | tr -d '"')
+  a=$(printf '%s' "$body" | grep -oE '"age_s"[[:space:]]*:[[:space:]]*[0-9]+' | grep -oE '[0-9]+$')
+  [ -n "$h" ] && [ -n "$a" ] || return 1
+  echo "$h $a"
+}
+home_stop() { rm -rf "$DIR.new"; echo "STOP: $1 Nothing changed."; exit 1; }
+if [ "$SVC" = bot ]; then
+  waited=0
+  while :; do
+    if ! r=$(bot_home_read); then home_stop "bot_home unreadable (row missing, read error, or another answer)."; fi
+    read -r home age <<<"$r"
+    if [ "$home" != "$TARGET" ]; then home_stop "bot home is $home (this deploy targets $TARGET)."; fi
+    [ "$age" -ge 130 ] && break
+    if [ "$waited" -ge 180 ]; then home_stop "bot_home changed $age s ago and is still not 130 s old after a 180 s wait."; fi
+    s=$((130 - age)); [ $((waited + s)) -le 180 ] || s=$((180 - waited))
+    echo "-- bot_home changed $age s ago: wait $s s (the bot settles 120 s after a move)"; sleep "$s"; waited=$((waited + s))
+  done
+  echo "-- bot_home names $TARGET (age $age s): deploy here"
 fi
+# BOT_HOME_END
 cp -p "$DIR/.env" "$DIR.new/.env"
-# STANDBY_ENV_BEGIN (R2-MOVE N3; test: ops/deploy-health.test.sh extracts this block)
-# The standby bot is created STOPPED, so no health check runs for it: refuse an .env without a valid IMG_UPSTREAM here.
-if [ "${STANDBY:-}" = 1 ] && ! grep -qE '^IMG_UPSTREAM=(supabase|r2-first|r2)$' "$DIR.new/.env"; then
-  rm -rf "$DIR.new"; echo "STANDBY ENV: IMG_UPSTREAM missing (supabase | r2-first | r2) in /home/ubuntu/$DIR/.env - nothing changed"; exit 1
+# BOT_ENV_BEGIN (R2-MOVE N3; test: ops/deploy-health.test.sh extracts this block)
+# The bot exits at its start without a valid IMG_UPSTREAM (tcg-bot/src/index.ts). Refuse it here, before any change.
+if [ "$SVC" = bot ] && ! grep -qE '^IMG_UPSTREAM=(supabase|r2-first|r2)$' "$DIR.new/.env"; then
+  rm -rf "$DIR.new"; echo "BOT ENV: IMG_UPSTREAM missing (supabase | r2-first | r2) in /home/ubuntu/$DIR/.env - nothing changed"; exit 1
 fi
-# STANDBY_ENV_END
+# BOT_ENV_END
+if [ "$SVC" = bot ]; then
+  # The bot state folder (/state in the container). A future backoff in it is cleared: the read above worked and names
+  # this host, and a deploy must not wait for an old backoff (NO-SERVER N6-10).
+  SD=/home/ubuntu/tcg-bot-state; SF="$SD/bot-home.json"
+  mkdir -p "$SD"; chmod 700 "$SD"
+  if [ -f "$SF" ]; then
+    bu=$(grep -oE '"backoff_until"[[:space:]]*:[[:space:]]*"[^"]*"' "$SF" | sed -E 's/.*"([^"]*)"$/\1/' || true)
+    echo "-- state file: backoff until ${bu:-none}"
+    if [ -n "$bu" ] && [ "$(date -u -d "$bu" +%s 2>/dev/null || echo 9999999999)" -gt "$(date -u +%s)" ]; then
+      printf '{"backoff_until":null,"cleared_by":"deploy %s"}\n' "$SHORT" > "$SF.tmp" && mv -f "$SF.tmp" "$SF"
+      echo "-- cleared the backoff (bot_home names $TARGET)"
+    fi
+  fi
+fi
 echo "$SHA" > "$DIR.new/.deployed-commit"
 
 echo "-- build $NAME:$SHORT (--no-cache: a cached build layer once served a stale bundle)"
 if ! sudo docker build --no-cache -q -t "$NAME:$SHORT" "$DIR.new" > /tmp/deploy-build.log 2>&1; then
   tail -25 /tmp/deploy-build.log; rm -rf "$DIR.new"; echo "BUILD FAILED - nothing changed"; exit 1
-fi
-
-# Backup VM, bot: keep the new image ready and create the container STOPPED (a standby).
-# ops/failover/watch-main.sh runs "docker start tcg-bot" when the main VM is down.
-if [ "${STANDBY:-}" = 1 ]; then
-  sudo docker image inspect "$NAME:latest" >/dev/null 2>&1 && sudo docker tag "$NAME:latest" "$NAME:prev"
-  rm -rf "$DIR.prev"; [ -d "$DIR" ] && mv "$DIR" "$DIR.prev"; mv "$DIR.new" "$DIR"
-  sudo docker rm -f "$NAME" >/dev/null 2>&1 || true
-  sudo docker create --init --name "$NAME" --network host --restart unless-stopped     --log-opt max-size=20m --log-opt max-file=3 --env-file "/home/ubuntu/$DIR/.env" "$NAME:$SHORT" >/dev/null
-  sudo docker tag "$NAME:$SHORT" "$NAME:latest"
-  sudo docker images "$NAME" --format '{{.Tag}}' | grep -vxE "latest|prev|$SHORT" | xargs -r -I{} sudo docker rmi -f "$NAME:{}" >/dev/null || true
-  sudo docker image prune -f >/dev/null || true
-  chmod 600 /home/ubuntu/*/.env 2>/dev/null || true; stat -c '%a %n' /home/ubuntu/*/.env
-  echo "standby state: $(sudo docker inspect -f '{{.State.Status}}' "$NAME") (must be: created)"
-  [ "$(sudo docker inspect -f '{{.State.Status}}' "$NAME")" = created ] || { echo "STANDBY NOT STOPPED - check now"; exit 1; }
-  echo "DEPLOYED $NAME @ $SHORT (STANDBY: built, container created, NOT started)"
-  exit 0
 fi
 
 # The Activity's /api/img disk cache (IMG_CACHE=1) lives on the host, so a deploy does
@@ -153,6 +180,8 @@ if [ "$SVC" = activity ]; then
   BVOL=$(boss_vol /srv/lptcg/boss-files) || { echo "-- deploy refused (boss-files), nothing changed"; rm -rf "$DIR.new"; sudo docker rmi -f "$NAME:$SHORT" >/dev/null 2>&1 || true; exit 1; }
   VOL="$VOL $BVOL"
 fi
+# The bot: its host name and its state folder, for the new container AND the rollback (run "$NAME:prev").
+if [ "$SVC" = bot ]; then VOL="-e BOT_HOST=$TARGET -v /home/ubuntu/tcg-bot-state:/state"; fi
 # Swap the container:
 # - docker stop sends SIGTERM, so the Activity finishes the requests in flight (server.js);
 #   rm -f was a SIGKILL that cut a pack open. --init forwards the signal (node is not PID 1).
@@ -199,9 +228,3 @@ lock
 echo "-- last database backup: $(cat /home/ubuntu/backups/last-success 2>/dev/null || echo 'NONE (ops/backup/README.md)')"
 echo "DEPLOYED $NAME @ $SHORT (healthy)"
 REMOTE
-# Main VM only: the backup VM is a separate step, run by hand (the reviewer decides).
-if [ -z "${TARGET:-}" ]; then
-  echo
-  echo "To update the BACKUP VM to the same commit, run:"
-  echo "  ${ALLOW_BRANCH:+ALLOW_BRANCH=1 }TARGET=backup ops/deploy.sh $SVC"
-fi
