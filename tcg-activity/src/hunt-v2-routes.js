@@ -7,6 +7,8 @@
 // The gate: ONE hunt_v2_view call; its tester bit, else D4 (an active practice day of today plays on). A non-tester gets 403 not_tester and
 // no other RPC call (G6). No v1 route changes: this module registers only paths under /api/hunt/v2 and changes no shared object.
 
+import { scaleNum } from './hunt-v2-scale.js';
+
 // A request bound, not a combat number: the SQL ends the call at the fight end or at v2_hunt.round_cap first.
 export const AUTO_MAX = 1000;
 
@@ -64,7 +66,16 @@ export function asRun(data) {
       state: { engine: 2, squad, fight: data.fight, info: data.info, units: data.units, phase: (data.status ?? data.day?.status) === 'active' ? 'fight' : 'over' } } };
 }
 
-export function registerHuntV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, huntOn, sharedCache }) {
+/** HUNT-HEADER-V2: the shared-scale numbers of a v2 answer on the v2 fight scale (factor f of hunt_fight_scale): day.credited and credit.total. */
+export function scaleAnswer(data, f) {
+  if (!f || !data) return data;
+  const d = { ...data };
+  if (d.day && d.day.credited != null) d.day = { ...d.day, credited: scaleNum(d.day.credited, f) };
+  if (d.credit && d.credit.total != null) d.credit = { ...d.credit, total: scaleNum(d.credit.total, f) };
+  return d;
+}
+
+export function registerHuntV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, huntOn, sharedCache, huntScales }) {
   const refs = sharedCache ? sharedCache('huntV2Ref', { ttl: 300000 }) : timeCache(300000);
 
   // In order: 401, 403 off, 429 (a write), then ONE hunt_v2_view call: a tester, or D4 (an active practice day). Else 403 not_tester.
@@ -107,7 +118,9 @@ export function registerHuntV2Routes(app, { supabase, caller, rateLimit, getCata
     return { statuses, roles, mechanics };
   };
   const show = async (data) => {
-    const d = asRun({ ...data, label: LABEL });
+    const hid = data?.hunt?.id ?? data?.day?.hunt_id;
+    const f = huntScales && hid ? await huntScales.one(hid) : null;   // HUNT-HEADER-V2: the member's damage on the v2 fight scale
+    const d = asRun({ ...scaleAnswer(data, f), label: LABEL });
     d.ref = await refs.get('ref', loadRef);
     return withCards(d);
   };

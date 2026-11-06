@@ -1683,7 +1683,10 @@ function openBossWindowV3() {
     .map((x) => `<span class="u3-bw-passive">${ui3Icon('skull', { size: 'sm' })}${esc(x.label || String(x.kind).charAt(0).toUpperCase() + String(x.kind).slice(1))}</span>`).join('');
   const none = '<span class="u3-bw-none">None</span>';
   const fact = (k, v) => `<div><dt>${k}</dt><dd>${v || none}</dd></div>`;
-  const moves = [...(d.bossMoves || []).map((m) => [m.name, m.text]), ...BOSS_MOVES];
+  // HUNT-HEADER-V2 (Nathan 2026-11-06 "Yes"): with the v2 Hunt (scale 'v2') the v1 Attack, Weakness, Resistance, Passive and Move pool are
+  // hidden; the v2 fight shows none of them
+  const v2 = h.scale === 'v2';
+  const moves = v2 ? [] : [...(d.bossMoves || []).map((m) => [m.name, m.text]), ...BOSS_MOVES];
   const host = document.createElement('div');
   host.id = 'u3BossWin';
   host.innerHTML = `<div class="u3-scrim u3-bw-scrim" data-u3-scrim><section class="u3-bw" role="dialog" aria-modal="true" aria-labelledby="u3BwT" tabindex="-1">
@@ -1692,10 +1695,10 @@ function openBossWindowV3() {
     <div class="u3-bw__close">${ui3IconButton({ icon: 'x', label: 'Close', data: { bwclose: '1' } })}</div>
     <div class="u3-bw__art"><canvas id="u3BwCanvas"></canvas></div>
     <div class="u3-bw__hp" role="img" aria-label="${pct}% HP"><i style="--hp:${pct}%"></i><span>${defeated ? 'Defeated' : `${huntNum(h.hp_remaining)} / ${huntNum(h.hp_max)} HP`}</span></div>
-    <dl class="u3-bw__facts">${fact('Attack', Number(h.stats?.atk) > 0 ? `<span class="u3-hs-atk">${ui3Icon('swords', { size: 'sm' })}ATK ${Number(h.stats.atk)}</span>` : '')}
+    ${v2 ? '' : `<dl class="u3-bw__facts">${fact('Attack', Number(h.stats?.atk) > 0 ? `<span class="u3-hs-atk">${ui3Icon('swords', { size: 'sm' })}ATK ${Number(h.stats.atk)}</span>` : '')}
       ${fact('Weakness', chips(h.weak_points, 'u3-hs-weak'))}${fact('Resistance', chips(h.resist_points, 'u3-bw-resist'))}${fact('Passive', passives)}</dl>
-    <span class="u3-label u3-bw__mlabel">Move pool</span>
-    <ul class="u3-bw__moves">${moves.map(([n, t]) => `<li><b>${esc(n)}</b><span>${esc(t)}</span></li>`).join('')}</ul>
+    <span class="u3-label u3-bw__mlabel">Move pool</span>`}
+    <ul class="u3-bw__moves"${v2 ? ' hidden' : ''}>${moves.map(([n, t]) => `<li><b>${esc(n)}</b><span>${esc(t)}</span></li>`).join('')}</ul>
     <div class="u3-bw__mpager"></div>
   </section></div>`;
   document.body.appendChild(host);
@@ -2213,13 +2216,15 @@ function huntSelectV3HTML(d) {
   const roster = d.roster || [];
   const picks = [...squad.sel].map((id) => roster.find((c) => Number(c.id) === Number(id))).filter(Boolean);
   const pct = Math.max(0, Math.min(100, Math.round((100 * h.hp_remaining) / h.hp_max)));
-  const weak = (h.weak_points || []).map((w) => `<span class="u3-hs-weak">${esc(tagLabel(w.value))}</span>`).join('');
-  const atk = Number(h.stats?.atk) > 0 ? `<span class="u3-hs-atk">${ui3Icon('swords', { size: 'sm' })}ATK ${Number(h.stats.atk)}</span>` : '';
+  // HUNT-HEADER-V2: the server sends the v2 fight scale (scale 'v2', hunt-v2-scale.js); the v2 fight shows no ATK and no Weak to
+  const v2 = h.scale === 'v2';
+  const weak = v2 ? '' : (h.weak_points || []).map((w) => `<span class="u3-hs-weak">${esc(tagLabel(w.value))}</span>`).join('');
+  const atk = !v2 && Number(h.stats?.atk) > 0 ? `<span class="u3-hs-atk">${ui3Icon('swords', { size: 'sm' })}ATK ${Number(h.stats.atk)}</span>` : '';
   const tier = HUNT_TIER_NUM[h.tier] ? `Tier ${HUNT_TIER_NUM[h.tier]}` : h.tier;
   const stage = `<section class="u3-hs-stage" role="button" tabindex="0" data-boss aria-label="Boss details: ${esc(h.name)}">
     <div class="u3-hs-text">
       <div class="u3-hs-title"><span class="u3-hs-tier">${esc(tier)}</span>${huntNameRow(h.name)}</div>
-      <div class="u3-hs-facts">${atk}${weak ? `<span class="u3-label">Weak to</span>${weak}` : ''}</div>
+      <div class="u3-hs-facts${v2 ? ' is-v2' : ''}">${atk}${weak ? `<span class="u3-label">Weak to</span>${weak}` : ''}</div>
       <div class="u3-hs-hp" role="img" aria-label="${pct}% HP"><i style="--hp:${pct}%"></i><span>${huntNum(h.hp_remaining)} / ${huntNum(h.hp_max)} HP</span></div>
       <div class="u3-hs-left">${cdSpan(h.closes_at, 'Beat in', 'closes countdown')}</div>
       <div class="u3-hs-top" id="u3HsTop">${huntTopHTML()}</div>
