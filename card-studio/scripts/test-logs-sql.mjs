@@ -134,12 +134,12 @@ begin
   insert into notifications (player_id, kind, message, read, created_at) values ('${A}', 'tst', 'x', true, now() - interval '31 days') returning id into i; ids := ids || i;
   insert into notifications (player_id, kind, message, read, created_at) values ('${A}', 'tst', 'x', false, now() - interval '364 days') returning id into i; ids := ids || i;
   insert into notifications (player_id, kind, message, read, created_at) values ('${A}', 'tst', 'x', true, now() - interval '366 days') returning id into i; ids := ids || i;
-  insert into cron.job_run_details (runid, jobid, status, start_time, end_time) values ((select coalesce(max(runid), 0) + 1 from cron.job_run_details), v_job, 'succeeded', now() - interval '89 days', now() - interval '89 days') returning runid into i; ids := ids || i;
+  insert into cron.job_run_details (runid, jobid, status, start_time, end_time) values ((select coalesce(max(runid), 0) + 1 from cron.job_run_details), v_job, 'succeeded', now() - interval '6 days', now() - interval '6 days') returning runid into i; ids := ids || i;
   insert into cron.job_run_details (runid, jobid, status, start_time, end_time) values ((select coalesce(max(runid), 0) + 1 from cron.job_run_details), v_job, 'succeeded', now() - interval '91 days', now() - interval '91 days') returning runid into i; ids := ids || i;
   perform prune_old_rows();
   res := res || jsonb_build_object('case', 'retention: a read note 31 days old and an unread note 364 days old stay, a note 366 days old goes', 'ok',
     exists (select 1 from notifications where id = ids[1]) and exists (select 1 from notifications where id = ids[2]) and not exists (select 1 from notifications where id = ids[3]));
-  res := res || jsonb_build_object('case', 'retention: a cron run 89 days old stays, 91 days old goes', 'ok',
+  res := res || jsonb_build_object('case', 'retention: a cron run 6 days old stays, 91 days old goes (90 days here; 7 days since dbmem_cron_history_7d.sql)', 'ok',
     exists (select 1 from cron.job_run_details where runid = ids[4]) and not exists (select 1 from cron.job_run_details where runid = ids[5]));
 
   -- 9. lockdown -------------------------------------------------------------------------------------
@@ -183,7 +183,7 @@ if (args.includes('--mutate') && MIG) {
     ['admin gift hook: event gifts skipped', "('admin', 'event', 'launch_gift')", "('admin', 'launch_gift')"],
     ['admin_actions: a second undo allowed', 'create unique index if not exists admin_actions_one_undo', 'create index if not exists admin_actions_one_undo'],
     ['retention: notes 30 days again', "where created_at < now() - interval '365 days'", "where created_at < now() - interval '30 days'"],
-    ['retention: cron 14 days again', "interval '90 days'", "interval '14 days'"],
+    ['retention: cron 5 days', "interval '90 days'", "interval '5 days'"],
     ['lockdown: profile_log RLS off', 'alter table public.profile_log enable row level security;', 'alter table public.profile_log disable row level security;'],
   ];
   let caught = 0;
