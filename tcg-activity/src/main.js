@@ -8,7 +8,7 @@
  * whole session. The old v1 screens were removed on 2026-10-03.
  */
 import { DiscordSDK } from '@discord/embedded-app-sdk';
-import { openSlots, squadDown, hasAttacker, noAction } from './squad-pick.js';
+import { openSlots, squadDown, hasAttacker, noAction, v2DayUnread } from './squad-pick.js';
 import { setRewardsFrom } from './achievements.js';
 import { thumb, revealThumb, installImgFallback } from './thumb.js';
 import { mtToday, nextMtMidnightISO } from './mt-time.js';
@@ -1404,6 +1404,7 @@ function paintHuntV2() {
 }
 
 // Render the whole battle view from a data object (boss + phase + boss canvas + feed).
+let v2Retry = null; // HUNT-FALSE-DOWN: one pending re-read of the v2 answer
 let huntResting = false; // the resting scene shows the last hunt's feed; do not poll it away
 let layoutSent = false;
 function sendLayoutDiag() {
@@ -1444,6 +1445,13 @@ function paintHuntView(d) {
   }
   // R3b / ON-UI: a v2 fight of today (practice or live) takes the Hunt view; a repaint of the poll keeps the fight that is on screen
   if (huntV2Owns(huntV2)) { if (!(huntV2Active() && el('main').querySelector('.dg-fight'))) paintHuntV2(); return; }
+  // HUNT-FALSE-DOWN: a live v2 day exists, but the v2 answer did not load. The v1 roster holds only the bridge rows (every squad card
+  // downed at full HP): the v1 rule below showed "Your squad is down for today." Keep the v2 fight on screen, or wait, and ask again.
+  if (v2DayUnread(d, huntV2)) {
+    if (!(huntV2Active() && el('main').querySelector('.dg-fight'))) el('main').innerHTML = '<div class="main-body"><div class="loading">Summoning the hunt…</div></div>';
+    if (!v2Retry) v2Retry = setTimeout(() => { v2Retry = null; if (currentView === 'battling') loadHuntV2().then(() => { if (currentView === 'battling' && huntCache) paintHuntView(huntCache); }); }, 3000);
+    return;
+  }
   const v2over = huntV2Over(huntV2);
   if (v2over && huntLive(huntV2)) d = { ...d, myDamage: Number(huntV2.day?.credited) || 0 };
   huntState = d;

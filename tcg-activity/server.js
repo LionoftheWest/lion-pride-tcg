@@ -939,7 +939,7 @@ app.get('/api/hunt', async (req, res) => {
   let cards, hpRows, myDamage, round;
   // The squad of the day, the unlock gate and the boss details do not depend on the view: they run in the same round trip
   // (before, the squad and the gate waited for the view: two database round trips in a row).
-  const [{ data: view, error: viewErr }, pw, bossMoves, { data: sqRow }, { data: gate }] = await Promise.all([
+  const [{ data: view, error: viewErr }, pw, bossMoves, { data: sqRow }, { data: gate }, { data: v2row }] = await Promise.all([
     supabase.rpc('hunt_view', { p_player: me.id, p_hunt: hunt.id, p_day: today }),
     cardPowersFor(me.id).then((data) => ({ data }), (e) => ({ error: e })), // combat power + HP of each copy (SQL card_combat)
     huntBossMoves(hunt.name),   // the boss details (hunt_boss_moves.sql), shared and cached
@@ -947,6 +947,8 @@ app.get('/api/hunt', async (req, res) => {
     supabase.from('hunt_squads').select('card_ids').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', today).maybeSingle(),
     // The unlock gate (adventure_gate.sql): null while the function is not live, so nothing locks.
     supabase.rpc('adventure_gate', { p_player: String(me.id) }),
+    // HUNT-FALSE-DOWN: a live v2 day of today. Its hunt_card_hp bridge rows are all downed at full HP: not a v1 squad (squad-pick.js v2DayUnread).
+    supabase.from('hunt_v2_days').select('day').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('day', today).eq('live', true).limit(1),
   ]);
   if (pw.error) return res.status(500).json({ error: pw.error.message });
   const powers = pw.data || {};
@@ -985,7 +987,7 @@ app.get('/api/hunt', async (req, res) => {
   }).sort((a, b) => (a.downed - b.downed) || (b.matches - a.matches) || (b.power - a.power));
   // The daily card cap (balance daily_card_cap, the same value hunt_attack reads).
   const dailyCap = dailyCardCap(bal());
-  res.json({ hunt, roster, myDamage, usedToday: (hpRows || []).length, dailyCap, round, squad: sqRow?.card_ids || null, gate: gate || null, bossMoves });
+  res.json({ hunt, roster, myDamage, usedToday: (hpRows || []).length, dailyCap, round, squad: sqRow?.card_ids || null, gate: gate || null, bossMoves, v2day: (v2row || []).length > 0 });
 });
 
 // Send a card at the boss (once per card per day). Atomic + row-locked in the RPC.
