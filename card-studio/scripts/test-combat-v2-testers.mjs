@@ -252,7 +252,8 @@ begin
      and p.proname <> all (array['dungeon_v2_start', 'dungeon_v2_view', 'hunt_v2_start', 'hunt_v2_view', 'hunt_attack', 'hunt_support'])   -- R2a combat_v2_dungeon_run.sql: the tester gate of the v2 Dungeon run (combat_v2_on dungeon, 2-argument form)   -- + R3a combat_v2_hunt_practice.sql: the tester gate of the v2 Hunt practice (combat_v2_on hunt)   -- + R3-ON combat_v2_on_hunt.sql: the v1 Hunt attack and support refuse with the flag hunt ON (one-argument form)
      and p.proname <> all (array['dungeon_start', 'dungeon_v2_unit'])   -- R2-ON combat_v2_on_dungeon.sql: dungeon_start refuses v2_on (combat_v2_on dungeon), dungeon_v2_unit reads combat_v2_on progress (N-7b live level)
      and p.proname <> all (array['combat_v2_convert', 'card_progress_v2_fight'])   -- M1e combat_v2_convert.sql: the conversion runs only with progress ON (1-argument form) and the fight level is 0 with progress OFF
-     and p.proname <> all (array['stat_v2_on']);   -- STAT-V2 stat_v2.sql: the v2 stat screen flag reads the GLOBAL progress flag (1-argument form)
+     and p.proname <> all (array['stat_v2_on'])   -- STAT-V2 stat_v2.sql: the v2 stat screen flag reads the GLOBAL progress flag (1-argument form)
+     and p.proname <> all (array['spawn_hunt']);   -- HUNT-V2-NATIVE hunt_v2_native_units.sql: the spawn reads the GLOBAL hunt flag (1-argument form): v2 units when ON
   res := res || jsonb_build_object('case', 'no function calls combat_v2_on (either form) except the new reader', 'ok', cardinality(bad) = 0, 'callers', bad);
 
   -- 7. server only

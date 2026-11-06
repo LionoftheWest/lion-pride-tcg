@@ -1,0 +1,175 @@
+-- hunt_ach_damage_v2.sql (2026-11-06): item HUNT-V2-NATIVE, part 2: the damage achievements (heavy, bighit, the old dmg1k and hit500)
+-- count in v2 numbers. Nathan 2026-11-06: progress = real v2 damage, the tiers in v2 units in the balance table, each member's shown total
+-- changes one time. Needs nothing else; hunt_v2_native_units.sql (part 1) marks the v2 Hunts (hunts.stats.unit = 'v2').
+-- The switch (one-time conversion, the Warlord factor): a Hunt in v2 units counts its real damage (x 1). A Hunt in v1 units (every Hunt
+--   up to and with 148564) counts its damage x v1_x = 36244 / 80000 = 0.45305 (the v2 max / the v1 max of the Warlord). The v1 Hunts are
+--   closed after 148564, so this is the one-time conversion of the stored history; every new point is real v2 damage.
+-- The tiers: each v1 number x v1_x, rounded DOWN. A member with v1 value V >= tier T has round(V x v1_x) >= floor(T x v1_x): nobody loses
+--   a tier (and the live read-only count of the PR shows 0 members with a lower tier, a claimed tier above the new tier, or another old_paid).
+-- The one source: balance ach_damage_v2 (a fixed shape and limits, checked by its trigger with balance_shape_errors; balance_log records
+--   each change). The key has no v2_ prefix, so the shared balance_v2_spec (which other files guard) does not change. The trigger
+--   ach_damage_sync writes its numbers into achievement_tracks (heavy, bighit: tiers, step) and achievement_switch_map (dmg1k, hit500:
+--   proves) in the same transaction, so every reader of those tables (ach_tier_need, achievement_view, achievement_gallery,
+--   ach_tier_paid_before, claim_achievement_tiers) gets the v2 numbers with no change. The tiers must rise (the trigger refuses otherwise).
+-- ach_damage_rows(p_player) is the one calculation of the values: ach_track_values and the Activity (board, profile, dmg1k / hit500) read it.
+-- Idempotent (the balance row is inserted once; a second run keeps a later change). Server only. GUARD: the origin/main text or this file's.
+-- Undo: hunt_ach_damage_v2_undo.sql. Test: card-studio/scripts/test-hunt-ach-damage-v2.mjs (rolled back; MUTATE=all).
+
+do $g$
+declare m text; f record;
+begin
+  for f in select * from (values
+    ('public.ach_track_values(text)', '14927afaf886b134383f4c72ec987925', '626bcac9dd629e817d22ea5642de274c')
+  ) x(fn, old_md5, new_md5) loop
+    select md5(replace(pg_get_functiondef(f.fn::regprocedure), chr(13), '')) into strict m;
+    if m not in (f.old_md5, f.new_md5) then
+      raise exception 'hunt_ach_damage_v2.sql: the live % changed since this file was built. Rebuild it from the live text.', f.fn;
+    end if;
+  end loop;
+end $g$;
+-- GUARD-END
+
+-- ============================================================ 2. the one calculation of the damage values
+create or replace function public.ach_damage_rows(p_player text default null)
+returns table (player_id text, heavy bigint, bighit bigint)
+language plpgsql stable set search_path = public as $fn$
+declare x numeric := (balance_get('ach_damage_v2')->>'v1_x')::numeric;
+begin
+  if x is null then raise exception 'ach_damage_rows: no balance value ach_damage_v2.v1_x'; end if;
+  -- a Hunt in v2 units (hunts.stats.unit = 'v2'): the real damage; a Hunt in v1 units: damage x v1_x. heavy = the sum, bighit = the largest row
+  return query
+    select hh.player_id, round(sum(hh.damage * k.f))::bigint, round(max(hh.damage * k.f))::bigint
+      from hunt_hits hh join hunts h on h.id = hh.hunt_id
+     cross join lateral (select case when h.stats->>'unit' = 'v2' then 1::numeric else x end as f) k
+     where p_player is null or hh.player_id = p_player
+     group by hh.player_id;
+end $fn$;
+revoke all on function public.ach_damage_rows(text) from public, anon, authenticated;
+comment on function public.ach_damage_rows(text) is $cm$[achievements] The Hunt damage of each member (or of p_player) in v2 numbers: a Hunt in v2 units (hunts.stats.unit = 'v2') counts its real damage, an older Hunt counts damage x balance ach_damage_v2.v1_x. heavy = the sum, bighit = the largest hunt_hits row. The one calculation for ach_track_values and the Activity (board, profile, dmg1k / hit500). hunt_ach_damage_v2.sql.$cm$;
+grant execute on function public.ach_damage_rows(text) to service_role;
+
+create or replace function public.ach_track_values(p_player text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE
+ SET search_path TO 'public'
+AS $fn$
+declare v jsonb := '{}'::jsonb; n bigint; dv jsonb := coalesce(shard_cfg()->'dupe_values', '{}'::jsonb);
+begin
+  -- Collection (draw-pool cards only: Event cards do not count)
+  -- ach_has_element once per different subject (perf_five_slow_calls.sql): it depends only on the subject's tags.
+  with o as materialized (
+    select c.rarity, c.subject_id from player_cards pc join cards c on c.id = pc.card_id
+     where pc.player_id = p_player and pc.quantity > 0 and c.id in (select id from draw_pool)),
+  e as materialized (select s.id, ach_has_element(s.tags) el from subjects s where s.id in (select o.subject_id from o))
+  select jsonb_build_object(
+           'collector', count(*),
+           'shine', count(*) filter (where o.rarity in ('illustrated_rare', 'secret_rare', 'full_art', 'gold')),
+           'elementalist', count(*) filter (where e.el))
+    into v
+    from o left join e on e.id = o.subject_id;
+  select count(*) into n from (
+    select c.subject_id from cards c left join player_cards pc on pc.card_id = c.id and pc.player_id = p_player and pc.quantity > 0
+     where c.id in (select id from draw_pool) group by c.subject_id having count(*) >= 2 and count(pc.card_id) = count(*)) x;
+  v := v || jsonb_build_object('fullsets', n);
+  -- The 3-argument stat_pt with balance stat_points.max_per_stat read once (perf_five_slow_calls.sql), not once per card and stat.
+  v := v || (select jsonb_build_object(
+      'ascension', coalesce(sum(pc.ascension), 0),
+      'trainer', coalesce(sum(stat_pt(pc.stat_points, 'attack', m.mx) + stat_pt(pc.stat_points, 'vitality', m.mx) + stat_pt(pc.stat_points, 'precision', m.mx)
+                              + stat_pt(pc.stat_points, 'potency', m.mx) + stat_pt(pc.stat_points, 'haste', m.mx)), 0))
+    from player_cards pc cross join lateral (select (select balance_num('stat_points', 'max_per_stat')::int) mx) m
+   where pc.player_id = p_player and pc.quantity > 0);
+  -- Packs
+  v := v || jsonb_build_object('packs', (select count(*) from pack_ledger where player_id = p_player and reason = 'opened'));
+  v := v || jsonb_build_object('generous',
+      (select coalesce(sum(-amount), 0) from pack_ledger where player_id = p_player and reason = 'gift_sent')
+    + (select count(*) from gift_claims where from_id = p_player and kind = 'card' and reason = 'member_gift'));
+  -- Market
+  -- The trade ledger (offers + auctions), as tradesDone in server.js.
+  v := v || jsonb_build_object('trader', (select count(*) from card_trades where from_id = p_player or to_id = p_player));
+  v := v || jsonb_build_object('market',
+      (select count(*) from trade_offers where status = 'accepted' and listing_id is not null and (from_id = p_player or to_id = p_player))
+    + (select count(*) from auctions where status = 'sold' and seller_id = p_player)
+    + (select count(*) from auction_bids where status = 'won' and bidder_id = p_player));
+  v := v || jsonb_build_object('wish', (select count(*) from wish_grants where giver_id = p_player));
+  -- Shards (earned: not admin or event gifts, not the Shop, not the achievement Shards themselves)
+  v := v || jsonb_build_object('shards', (select coalesce(sum(amount), 0) from shard_ledger
+      where player_id = p_player and amount > 0 and reason not in ('admin', 'event', 'milestone', 'shop')));
+  v := v || jsonb_build_object('shopper', (select count(*) from shop_purchases where player_id = p_player));
+  -- A 'dupes' row holds the Shards; the copies = Shards / the rarity's value per copy.
+  v := v || jsonb_build_object('recycler', (select coalesce(sum(round(l.amount::numeric / nullif((dv->>c.rarity::text)::numeric, 0))), 0)
+      from shard_ledger l join cards c on c.id::text = l.ref_id
+     where l.player_id = p_player and l.reason = 'dupes' and l.ref_kind = 'card'));
+  -- Dailies
+  v := v || jsonb_build_object('grind',
+      -- every claim except the plain chat daily (before pack_ledger_strict.sql: daily_claims + the chat bonus flags)
+      (select count(*) from daily_claims where player_id = p_player and task <> 'chat'));
+  v := v || jsonb_build_object('streak', (select coalesce(max(run_len), 0) from (
+      select count(*) run_len from (select day, day - (row_number() over (order by day))::int g
+                                from (select distinct day from daily_claims where player_id = p_player and task = 'checkin') d) x
+       group by g) y));
+  v := v || jsonb_build_object('voice', (select count(*) from (
+      select day from daily_claims where player_id = p_player and task = 'voice'
+      union select day from daily_claims where player_id = p_player and task = 'chat_bonus') d));
+  -- Raid
+  -- Joined = own committed cards (hunt_card_hp), as huntsJoined in server.js: a Raid Crasher credit
+  -- row in hunt_hits is raid damage only (trade_ledger_raid_credit.sql). Damage stays on hunt_hits.
+  -- hunt_ach_damage_v2.sql (Nathan 2026-11-06): heavy and bighit in v2 numbers, from the one function ach_damage_rows (also the Activity board and profile)
+  v := v || coalesce((select jsonb_build_object('heavy', d.heavy, 'bighit', d.bighit) from ach_damage_rows(p_player) d), jsonb_build_object('heavy', 0, 'bighit', 0));
+  v := v || jsonb_build_object('raider', (select count(distinct hunt_id) from hunt_card_hp where player_id = p_player));
+  v := v || jsonb_build_object('slayer', (select count(*) from hunts h where h.status = 'defeated'
+      and exists (select 1 from hunt_card_hp x where x.hunt_id = h.id and x.player_id = p_player)));
+  -- The prize order of settle_hunt: total damage, then the first hit.
+  v := v || jsonb_build_object('podium', (select count(*) from (
+      select x.player_id, sum(x.damage) dmg, row_number() over (partition by x.hunt_id order by sum(x.damage) desc, min(x.id)) rk
+        from hunt_hits x join hunts h on h.id = x.hunt_id and h.settled_at is not null
+       group by x.hunt_id, x.player_id) r where r.player_id = p_player and r.rk <= 3 and r.dmg > 0));
+  -- Social
+  v := v || (select jsonb_build_object('prankster', count(*) filter (where kind = 'prank'), 'vibes', count(*) filter (where kind = 'boon'))
+               from card_plays where player_id = p_player);
+  return v;
+end $fn$;
+
+-- ============================================================ 3. the balance key -> the achievement tables (one source)
+create or replace function public.ach_damage_copy(v jsonb) returns void
+language plpgsql set search_path = public as $fn$
+begin
+  update achievement_tracks set tiers = array(select (z #>> '{}')::int from jsonb_array_elements(v->'heavy'->'tiers') z), step = (v->'heavy'->>'step')::int where key = 'heavy';
+  update achievement_tracks set tiers = array(select (z #>> '{}')::int from jsonb_array_elements(v->'bighit'->'tiers') z) where key = 'bighit';
+  update achievement_switch_map set proves = (v->'old'->>'dmg1k')::int where old_key = 'dmg1k';
+  update achievement_switch_map set proves = (v->'old'->>'hit500')::int where old_key = 'hit500';
+end $fn$;
+revoke all on function public.ach_damage_copy(jsonb) from public, anon, authenticated;
+comment on function public.ach_damage_copy(jsonb) is $cm$[achievements] Copies the numbers of balance key ach_damage_v2 into achievement_tracks (heavy, bighit: tiers, step) and achievement_switch_map (dmg1k, hit500: proves). Called by the trigger ach_damage_sync and once by hunt_ach_damage_v2.sql. hunt_ach_damage_v2.sql.$cm$;
+
+create or replace function public.ach_damage_sync() returns trigger
+language plpgsql set search_path = public as $fn$
+declare v jsonb := new.value; i int; errs text[];
+begin
+  -- the fixed shape and the limits (balance_shape_errors, the shape checker of the balance table)
+  errs := balance_shape_errors(v, '{"v1_x":"num 0.01 1","heavy":{"tiers":["list","int 1 100000000",5,5],"step":"int 1 100000000"},"bighit":{"tiers":["list","int 1 100000000",5,5]},"old":{"dmg1k":"int 1 100000000","hit500":"int 1 100000000"}}'::jsonb, '');
+  if cardinality(errs) > 0 then raise exception 'balance ach_damage_v2: %', array_to_string(errs, '; '); end if;
+  for i in 1 .. 4 loop
+    if (v->'heavy'->'tiers'->>i)::int <= (v->'heavy'->'tiers'->>(i - 1))::int or (v->'bighit'->'tiers'->>i)::int <= (v->'bighit'->'tiers'->>(i - 1))::int then
+      raise exception 'balance ach_damage_v2: the tiers must rise (heavy.tiers and bighit.tiers)';
+    end if;
+  end loop;
+  perform ach_damage_copy(v);
+  return new;
+end $fn$;
+revoke all on function public.ach_damage_sync() from public, anon, authenticated;
+comment on function public.ach_damage_sync() is $cm$[achievements] Trigger of balance key ach_damage_v2: checks its fixed shape and that the tiers rise, then copies the heavy / bighit tiers into achievement_tracks and the dmg1k / hit500 goals into achievement_switch_map (the balance key is the one source). hunt_ach_damage_v2.sql.$cm$;
+drop trigger if exists ach_damage_sync on public.balance;
+create trigger ach_damage_sync after insert or update on public.balance for each row when (new.key = 'ach_damage_v2') execute function public.ach_damage_sync();
+
+do $b$
+begin
+  perform set_config('balance.by', 'nathan', true);
+  insert into public.balance (key, value, note) values ('ach_damage_v2', '{"v1_x":0.45305,"heavy":{"tiers":[1132,4530,18122,45305,113262],"step":45305},"bighit":{"tiers":[181,407,724,1177,1812]},"old":{"dmg1k":453,"hit500":226}}'::jsonb,
+    'The damage achievements in v2 numbers (Nathan 2026-11-06, hunt_ach_damage_v2.sql). v1_x: a Hunt in v1 units (up to 148564) counts its damage x v1_x (the Warlord v2 max / v1 max). v1_x is the one-time conversion: do not change it after the switch (the tiers do not follow it). heavy (lifetime damage) and bighit (the largest hit row): the 5 tiers (and the heavy step after tier 5), the v1 numbers x v1_x rounded down. old: the proof of the old achievements dmg1k / hit500 (achievement_switch_map) and their goal in the Activity. A change is copied to achievement_tracks and achievement_switch_map (trigger ach_damage_sync); the tiers must rise.')
+  on conflict (key) do nothing;
+  -- the tables get the numbers of the row also when the row was already there (a second run after the undo)
+  perform ach_damage_copy((select value from public.balance where key = 'ach_damage_v2'));
+end $b$;
+
+notify pgrst, 'reload schema';

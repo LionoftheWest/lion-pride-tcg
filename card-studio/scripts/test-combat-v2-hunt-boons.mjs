@@ -24,6 +24,16 @@ const CLEAN = mig;
 // the guard of the file: [function, the md5 of the text that this file makes]
 const GUARD_NEW = [...CLEAN.matchAll(/\('public\.([^']+)', '[0-9a-f]{32}', '([0-9a-f]{32})'\)/g)].map((m) => [m[1], m[2]]);
 if (GUARD_NEW.length !== 3) throw new Error('the guard of the file must name 3 functions with their md5 (' + GUARD_NEW.length + ')');
+// HUNT-V2-NATIVE (review r1 M1): hunt_v2_native_units.sql replaces hunt_v2_live_credit after this file, so this file's guard refuses the copy.
+// A block takes the native file off first (its undo, rolled back with the block), applies this file, and does not put
+// the native file back: the block checks this file alone, as before (rolled back with the block). The H harness takes the native file off before its
+// committed mutated apply and puts it back in its finally step.
+const NATIVE = read('../../tcg-bot/supabase/hunt_v2_native_units.sql');
+const NATIVE_UNDO = read('../../tcg-bot/supabase/hunt_v2_native_units_undo.sql');
+const NATIVE_LC = (NATIVE.match(/\('public\.hunt_v2_live_credit\(bigint, text, date, jsonb\)', '[0-9a-f]{32}', '([0-9a-f]{32})'\)/) || [])[1];
+if (!NATIVE_LC) throw new Error('the guard of hunt_v2_native_units.sql must name hunt_v2_live_credit with its md5');
+for (const t of [NATIVE, NATIVE_UNDO]) if (t.includes('$nu$')) throw new Error('the native files must not contain $nu$');
+const NATIVE_ON = `md5(replace(pg_get_functiondef('public.hunt_v2_live_credit(bigint, text, date, jsonb)'::regprocedure), chr(13), '')) = '${NATIVE_LC}'`;
 const SEEDS = Number(process.env.SEEDS || 20), LOGS = Number(process.env.LOGS || 50), ROUNDS = Number(process.env.ROUNDS || 20);
 
 // ---------------------------------------------------------------------------------------------------------- the mutations (spec 6, 8.6)
@@ -209,12 +219,14 @@ const DECL = `res jsonb := '[]'; b jsonb; a jsonb; a2 jsonb; x jsonb; y jsonb; e
   bk text; bn text; hid bigint; sq bigint[]; na bigint[]; sup bigint[]; rw public.hunt_v2_days; before jsonb; after jsonb; h0 bigint; h1 bigint;
   sh0 jsonb; sh1 jsonb; sc numeric; out jsonb; row0 jsonb; lg jsonb; c0 bigint; c1 bigint; cap numeric; L jsonb; sq3 jsonb; r1 bigint; r2 bigint; r3 bigint; r4 bigint;
   fx0 jsonb; pl jsonb; p0 bigint; p1 bigint; ca0 bigint; ca1 bigint; cl0 jsonb; cl1 jsonb; tc text; oc text; f jsonb; mx numeric; mo numeric; d0 jsonb; d1 jsonb;
-  party_used int; crash_used int; rally_used int; hs numeric[]`;
+  party_used int; crash_used int; rally_used int; hs numeric[]; native_on boolean`;
 const block = (body) => String.raw`do $t$
 #variable_conflict use_column
 declare ${DECL};
 begin
   ${PRE}
+  native_on := ${NATIVE_ON};
+  if native_on then execute $nu$${NATIVE_UNDO}$nu$; end if;
   execute $m$${mig}$m$;
   ${WORLD}
   ${body}
@@ -671,6 +683,7 @@ const retryCall = async (sql) => {
 async function runH({ mig: hmig, CLEAN: hclean, ROUNDS: R, mutated }) {
   const out = []; const add3 = (name, ok, got) => out.push({ name, ok, got });
   const Q = '$' + 'm' + '$';
+  let nativeOn = false;   // HUNT-V2-NATIVE (review r1 M1): the native file was on the copy before H
   let pn = 0; const nextP = () => HP[++pn];
   const liveP = async (where, sq = SQ_SQL, who = null) => {
     for (let t = 0; t < 4; t++) {
@@ -685,6 +698,8 @@ async function runH({ mig: hmig, CLEAN: hclean, ROUNDS: R, mutated }) {
     const pre = await hq(hCleanup); if (pre.error) throw new Error('cleanup: ' + pre.error);
     const st = await one(`select to_regprocedure('public.hunt_v2_boon_plan(jsonb, jsonb, numeric, jsonb, numeric)') is not null as applied;`);
     if (!st?.applied) throw new Error('HBP (combat_v2_hunt_boons.sql) is not applied on this copy');
+    nativeOn = (await one(`select ${NATIVE_ON} as on;`))?.on === true;
+    if (mutated && nativeOn) { const u = await hq(`do $h$ begin execute ${Q}${NATIVE_UNDO}${Q}; end $h$;`); if (u.error) throw new Error('take the native file off: ' + u.error); }
     if (mutated) { const m = await hq(`do $h$ begin execute ${Q}${hmig}${Q}; end $h$;`); if (m.error) throw new Error('apply the mutated file: ' + m.error); }
     const setup = await hq(String.raw`do $x$ declare sq bigint[]; begin
       perform set_config('tcg.skip_welcome', 'on', true);
@@ -854,6 +869,11 @@ async function runH({ mig: hmig, CLEAN: hclean, ROUNDS: R, mutated }) {
       const m = await one(`select string_agg(md5(replace(pg_get_functiondef(('public.' || z)::regprocedure), chr(13), '')), ',' order by z) s from unnest(array[${GUARD_NEW.map(([fn]) => lit(fn)).join(', ')}]) z;`);
       const want = GUARD_NEW.slice().sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([, x]) => x).join(',');
       if (!r.error && m?.s !== want) r = { error: `the clean file is not back: ${m?.s} <> ${want}` };
+      if (!r.error && nativeOn) {
+        const n = await hq(`do $h$ begin execute ${Q}${NATIVE}${Q}; end $h$;`);
+        if (n.error) r = { error: 'put the native file back: ' + n.error };
+        else if ((await one(`select ${NATIVE_ON} as on;`))?.on !== true) r = { error: 'the native file is not back' };
+      }
     }
     const left = await one(`select (select count(*) from public.players where id = any(array[${[...HP, HPR].map(HL).join(', ')}])) + (select count(*) from public.hunts where weak_points = '${HMARK}'::jsonb)
       + (select count(*) from public.balance_log where changed_by = '${HBY}') + (select count(*) from pg_proc where proname in ('hbp_h_real_step', 'hbp_h_real_out', 'hbp_h_synstub'))

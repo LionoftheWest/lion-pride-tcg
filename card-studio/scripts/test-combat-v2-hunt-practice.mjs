@@ -37,13 +37,34 @@ const ON_FILE = read('../../tcg-bot/supabase/combat_v2_on_hunt.sql').replace(/no
 // R3-ON-FIX (combat_v2_hunt_out_live.sql) replaces hunt_v2_out (an R3a function): the final step applies it again, last, when it was on the copy.
 const OUT_FILE = read('../../tcg-bot/supabase/combat_v2_hunt_out_live.sql').replace(/notify pgrst[^\n]*\n/g, '');
 const HBP_FILE = process.env.HBP_MUT === 'h3_no_reapply' ? '' : read('../../tcg-bot/supabase/combat_v2_hunt_boons.sql').replace(/notify pgrst[^\n]*\n/g, '');
+// HUNT-V2-NATIVE (review r1 M2): hunt_v2_native_units.sql replaces hunt_v2_start, hunt_v2_live_credit, hunt_attack and hunt_support after HBP.
+// The final step applies it again, last, when it was on the copy before the run (the F-1 lesson); SHAPE reads it (native_applied).
+// HBP_MUT=h3_no_native (a mutation of this gate) leaves it out, so the shape check must FAIL.
+const NATIVE_FILE = process.env.HBP_MUT === 'h3_no_native' ? '' : read('../../tcg-bot/supabase/hunt_v2_native_units.sql').replace(/notify pgrst[^\n]*\n/g, '');
+const NATIVE_LC = (read('../../tcg-bot/supabase/hunt_v2_native_units.sql').match(/\('public\.hunt_v2_live_credit\(bigint, text, date, jsonb\)', '[0-9a-f]{32}', '([0-9a-f]{32})'\)/) || [])[1];
+if (!NATIVE_LC) throw new Error('the guard of hunt_v2_native_units.sql must name hunt_v2_live_credit with its md5');
+// HUNT-V2-NATIVE (review r1 M2/M3): hunt_v2_native_units.sql changes hunt_attack and hunt_support, which the R3-ON guard lists. Before R3-ON
+// is applied again, V1_ORIGIN (the origin/main text of the two functions, from the native undo file) is applied when the native file is on
+// (NATIVE_ON: the md5 of hunt_attack is the native one).
+const NATIVE_TXT = read('../../tcg-bot/supabase/hunt_v2_native_units.sql').replace(/notify pgrst[^\n]*\n/g, '');
+const NATIVE_UNDO_TXT = read('../../tcg-bot/supabase/hunt_v2_native_units_undo.sql');
+const V1_ORIGIN = ['hunt_attack', 'hunt_support'].map((n) => {
+  const i = NATIVE_UNDO_TXT.indexOf('create or replace function public.' + n + '(');
+  const j = NATIVE_UNDO_TXT.indexOf('$fn$;', NATIVE_UNDO_TXT.indexOf('AS $fn$', i) + 7);
+  if (i < 0 || j < 0) throw new Error('the native undo file has no ' + n);
+  return NATIVE_UNDO_TXT.slice(i, j + 5);
+}).join('\n\n');
+const NATIVE_ATTACK = (NATIVE_TXT.match(/\('public\.hunt_attack\(text, bigint, bigint\)', '[0-9a-f]{32}', '([0-9a-f]{32})'\)/) || [])[1];
+if (!NATIVE_ATTACK) throw new Error('the guard of hunt_v2_native_units.sql must name hunt_attack with its md5');
+const NATIVE_ON = `md5(replace(pg_get_functiondef('public.hunt_attack(text, bigint, bigint)'::regprocedure), chr(13), '')) = '${NATIVE_ATTACK}'`;
 const SHAPE = `select coalesce((select string_agg(p.oid::regprocedure::text || '=' || md5(replace(pg_get_functiondef(p.oid), chr(13), '')), ' ' order by p.oid::regprocedure::text)
     from pg_proc p where p.pronamespace = 'public'::regnamespace and (p.proname like 'hunt\\_v2\\_%' or p.proname in ('hunt_attack', 'hunt_support'))), '') ||
   ' | ' || coalesce((select string_agg(column_name || ':' || data_type, ' ' order by column_name) from information_schema.columns
     where table_schema = 'public' and table_name = 'hunt_v2_days'), '') as shape,
   to_regprocedure('public.hunt_v2_shared(bigint, text, date, jsonb)') is not null as on_applied,
   to_regprocedure('public.hunt_v2_boon_plan(jsonb, jsonb, numeric, jsonb, numeric)') is not null as hbp_applied,
-  coalesce(obj_description(to_regprocedure('public.hunt_v2_out(bigint, text, date, jsonb)'), 'pg_proc'), '') like '%combat_v2_hunt_out_live.sql%' as out_applied;`;
+  coalesce(obj_description(to_regprocedure('public.hunt_v2_out(bigint, text, date, jsonb)'), 'pg_proc'), '') like '%combat_v2_hunt_out_live.sql%' as out_applied,
+  coalesce(md5(replace(pg_get_functiondef(to_regprocedure('public.hunt_v2_live_credit(bigint, text, date, jsonb)')), chr(13), '')) = '${NATIVE_LC}', false) as native_applied;`;
 // H3 COMMITS the file on the copy. Only these mutations (each changes only hunt_v2_ objects, which the finally step drops) go into the H3
 // file; every other mutation is caught in the rolled-back blocks, and H3 then commits the CLEAN file. (Run 1 committed flag_on, v1_touched and
 // tags_dropped, which changed the copy outside R3: REPORT-r1 section 'Test defects'.)
@@ -709,7 +730,8 @@ async function runH3() {
   const onApplied = sh0.rows[0].on_applied;
   const hbpApplied = sh0.rows[0].hbp_applied;
   const outApplied = sh0.rows[0].out_applied;
-  const restore = applied ? CLEAN + (onApplied ? '\n' + ON_FILE : '') + (onApplied && hbpApplied ? '\n' + HBP_FILE : '') + (onApplied && outApplied ? '\n' + OUT_FILE : '') : null;
+  const nativeApplied = sh0.rows[0].native_applied;
+  const restore = applied ? CLEAN + (onApplied && nativeApplied ? '\n' + V1_ORIGIN : '') + (onApplied ? '\n' + ON_FILE : '') + (onApplied && hbpApplied ? '\n' + HBP_FILE : '') + (onApplied && outApplied ? '\n' + OUT_FILE : '') + (onApplied && hbpApplied && nativeApplied ? '\n' + NATIVE_FILE : '') : null;
   const T3 = (i) => lit(H3P[i - 1]);
   let squad;
   try {
@@ -845,8 +867,8 @@ select 1 as locked from public.hunts where id = ${H} for update nowait;`);
       + (select count(*) from pg_proc where proname = 'r3a_h3_synstub') n,
       to_regclass('public.hunt_v2_days') is not null as applied_after;`);
     const sh1 = await q(SHAPE);
-    add3(`H3 the copy keeps its hunt_v2_ objects, hunt_attack and hunt_support (the md5 of every function, the hunt_v2_days columns) as before the run${onApplied ? ' (R3-ON was applied: applied again)' : ''}`,
-      !sh1.error && sh1.rows?.[0]?.shape === sh0.rows[0].shape, sh1.error || { on_before: onApplied, on_after: sh1.rows?.[0]?.on_applied, same: sh1.rows?.[0]?.shape === sh0.rows[0].shape });
+    add3(`H3 the copy keeps its hunt_v2_ objects, hunt_attack and hunt_support (the md5 of every function, the hunt_v2_days columns) as before the run${onApplied ? ' (R3-ON was applied: applied again)' : ''}${nativeApplied ? ' (hunt_v2_native_units.sql was applied: applied again)' : ''}`,
+      !sh1.error && sh1.rows?.[0]?.shape === sh0.rows[0].shape, sh1.error || { on_before: onApplied, on_after: sh1.rows?.[0]?.on_applied, same: sh1.rows?.[0]?.shape === sh0.rows[0].shape, native_before: nativeApplied, native_after: sh1.rows?.[0]?.native_applied });
     add3(`H3 the cleanup removed every sample row (players, cards, the Hunt row, balance_log, the tester entries) and left the file ${applied ? 'applied (the clean file again)' : 'not applied'} as before`,
       !c.error && Number(left.rows?.[0]?.n) === 0 && left.rows?.[0]?.applied_after === applied, c.error || left.rows?.[0]);
   }

@@ -155,7 +155,9 @@ ${kase('On a Roll = the best check-in run; Podium = top 3 of a settled raid; joi
     res := res || jsonb_build_object('case', 'On a Roll = the best check-in run; Podium = top 3 of a settled raid; joined = own committed cards (a credit row alone is not a raid joined)', 'ok',
       (ach_track_values('${P}_g')->>'raider')::int = 1 and (ach_track_values('${P}_c')->>'raider')::int = 0 and (ach_track_values('${P}_c')->>'slayer')::int = 0 and
       (ach_track_values('${P}_g')->>'streak')::int = 3 and (ach_track_values('${P}_c')->>'podium')::int = 1 and (ach_track_values('${P}_g')->>'podium')::int = 0
-      and (ach_track_values('${P}_g')->>'slayer')::int = 1 and (ach_track_values('${P}_g')->>'bighit')::int = 200 and (ach_track_values('${P}_g')->>'heavy')::int = 250,
+      and (ach_track_values('${P}_g')->>'slayer')::int = 1 -- HUNT-V2-NATIVE (hunt_ach_damage_v2.sql): a v1-unit Hunt counts x ach_damage_v2.v1_x (x 1 on a copy without the file)
+      and (ach_track_values('${P}_g')->>'bighit')::numeric = round(200 * coalesce((select (b.value->>'v1_x')::numeric from balance b where b.key = 'ach_damage_v2'), 1))
+      and (ach_track_values('${P}_g')->>'heavy')::numeric = round(250 * coalesce((select (b.value->>'v1_x')::numeric from balance b where b.key = 'ach_damage_v2'), 1)),
       'r', ach_track_values('${P}_g'));`)}
 ${kase('flag OFF: tier claims refused, the view is off, the old keys pay as before', `
     update settings set value = '{"enabled": false, "users": []}'::jsonb where key = 'achievement_tracks';
