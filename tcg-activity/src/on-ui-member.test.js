@@ -33,8 +33,10 @@ export const MUTATIONS = {
   dungeon_member_live_only: ['ui-v2-gauntlet2.js', '(v.member === true || v.live === true)', '(v.live === true)'],
   // ONE-START FIX: the Dungeon load sets the member mode from 'live' only (the defect of 2026-11-06)
   dungeon_load_live_only: ['ui-v2-dungeon.js', "scr !== 'v1-run' && g2.dungeonMember(v2);", "scr !== 'v1-run' && !!(v2?.ok && v2.live === true);"],
-  // ONE-START FIX: the member start button keeps the v1 label (Nathan: "Start Run")
-  start_label: ['ui-v2-dungeon.js', "label: dg.v2live ? 'Start Run' : 'Start run'", "label: 'Start run'"],
+  // ONE-START FIX: the Dungeon start button keeps the old label (Nathan 2026-11-06: "Start Run (both)")
+  start_label: ['ui-v2-dungeon.js', "btn3({ label: 'Start Run', icon: 'swords', variant: 'primary', disabled: !s.ok", "btn3({ label: 'Start run', icon: 'swords', variant: 'primary', disabled: !s.ok"],
+  // ONE-START FIX: the Gauntlet start button keeps the old label (Nathan 2026-11-06: "Start Run (both)")
+  gauntlet_label: ['ui-v2-dungeon.js', "btn3({ label: 'Start Run', icon: 'swords', variant: 'primary', disabled: dg.busy,", "btn3({ label: 'Start run', icon: 'swords', variant: 'primary', disabled: dg.busy,"],
 };
 
 const name = process.env.MUTATE;
@@ -175,10 +177,17 @@ test('ONE-START FIX: the flag ON, no run left today (v1 runs counted): Start Run
   assert.equal(G.dungeonScreen(V1, v, false), 'v2-lobby');
   assert.equal(dungeonLobby(v), '[Start Run|primary|start3|disabled]');
 });
-test('ONE-START FIX: the flag OFF is unchanged (a tester: v1 Start run and Play v2 (test); a member: v1 Start run only)', () => {
+test('ONE-START FIX: the flag OFF keeps the same buttons (a tester: v1 start and Play v2 (test); a member: v1 start only), label Start Run', () => {
   const tester = { ...DV_ON, member: false };
   assert.equal(G.dungeonMember(tester), false);
-  assert.equal(dungeonLobby(tester), '[Start run|primary|start3][Play v2 (test)|secondary|start2]');
-  assert.equal(dungeonLobby({ ok: false, error: 'not_tester' }), '[Start run|primary|start3]', 'not a tester (view 403): v1 only');
-  assert.equal(dungeonLobby(null), '[Start run|primary|start3]', 'no view answer: v1 only');
+  assert.equal(dungeonLobby(tester), '[Start Run|primary|start3][Play v2 (test)|secondary|start2]');
+  assert.equal(dungeonLobby({ ok: false, error: 'not_tester' }), '[Start Run|primary|start3]', 'not a tester (view 403): v1 only');
+  assert.equal(dungeonLobby(null), '[Start Run|primary|start3]', 'no view answer: v1 only');
+});
+// Nathan 2026-11-06 "Start Run (both)": the v3 Gauntlet lobby start (gaLobbyV3HTML) runs with a stub button; one gold Start Run.
+test('ONE-START FIX: the Gauntlet lobby has one gold Start Run (start3 -> /api/gauntlet/start, v2 while the flag is ON)', () => {
+  const m = D.match(/function gaLobbyV3HTML\(\) \{[\s\S]*?\n {2}const start = (btn3\([^\n]*\));\n/);
+  assert.ok(m, 'the Gauntlet start line is in gaLobbyV3HTML');
+  const b = (o) => `[${o.label}|${o.variant || 'secondary'}|${Object.keys(o.data || {}).join(',')}${o.disabled ? '|disabled' : ''}]`;
+  assert.equal(new Function('btn3', 'dg', `return ${m[1]};`)(b, { busy: false }), '[Start Run|primary|start3]');
 });
