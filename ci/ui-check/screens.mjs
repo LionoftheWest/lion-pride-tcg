@@ -246,8 +246,8 @@ export const SCREENS = {
   'dungeon-v2-floor': { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-floor', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   // ON-UI (combat v2 for every member, ON SPEC 3.5, G-UI): the member mode (live, not a tester): cookie ci_dungeon = m2-* (serve.mjs derivedM2).
   // (a) no test text, Start run starts v2, the loot chips; (b) m2-v1: an active v1 run of today keeps the v1 fight (mutation screen_reads_live_only).
-  'dungeon-m2-lobby': { id: 'UI-46', noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-lobby', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
-  'dungeon-m2-done': { id: 'UI-46', noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-done', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-m2-lobby': { id: 'UI-46', noText: ['Practice', 'no rewards', '(test)', 'Start run'], see: ['[data-start3]'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-lobby', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-m2-done': { id: 'UI-46', noText: ['Practice', 'no rewards', '(test)', 'Start run'], see: ['[data-start3]'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-done', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-m2-fight': { id: 'UI-47', squad: true, noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-fight', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
   // D-211: 5 attackers and no support (the control row in its own row where the side column is too narrow for the hint).
   'dungeon-m2-five': { id: 'UI-47', squad: true, noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-five', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },

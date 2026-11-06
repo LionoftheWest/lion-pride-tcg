@@ -152,7 +152,7 @@ async function load() {
   // ON-UI: the member mode (dungeon_v2_view.live, combat v2 for everyone): the v2 run is THE run of the day (no test button, Start run starts v2)
   // ON-UI screen rule (ON SPEC 3.5, review M-2): g2.dungeonScreen decides (tested in ui-v2-gauntlet2.test.js)
   const scr = GA() ? (d?.ok && g2.v2Owns(v2) ? 'v2' : 'v1') : g2.dungeonScreen(d, v2, active());
-  dg.v2live = !GA() && scr !== 'v1-run' && !!(v2?.ok && v2.live === true);
+  dg.v2live = !GA() && scr !== 'v1-run' && g2.dungeonMember(v2);
   if (scr === 'v2') v2Take(v2);
   // R2b: the tester-only "Play v2 (test)" in the Dungeon lobby (QD2: an extra run, so the lobby shows when the v1 run is not active)
   else if (scr === 'v2-start') { dg.v2can = true; dg.data = { ...dg.data, run: null }; }
@@ -497,7 +497,7 @@ function lobbyV3HTML() {
   const head = `<header class="u3-dg-head"><img class="u3-dg-thumb" src="/dungeon/room.webp" alt="">${icon3('castle', 'lg')}<h1 class="u3-dg-name">${esc(d.name)}</h1>${date}</header>`;
   const timer = `<section class="u3-dg-panel u3-dg-timer">${icon3('timer')}<span>New dungeon in</span><b class="dg-left">${left(d.next_at)}</b></section>`;
   const pick = s.picks.length ? btn3({ label: 'Edit', data: { pickopen: '1' } }) : btn3({ label: 'Select your squad', variant: 'primary', data: { pickopen: '1' } });
-  const start = btn3({ label: 'Start run', icon: 'swords', variant: 'primary', disabled: !s.ok || dg.busy || (dg.v2live && !dg.v2can), busy: dg.busy, busyLabel: 'Starting', data: { start3: '1' } })
+  const start = btn3({ label: dg.v2live ? 'Start Run' : 'Start run', icon: 'swords', variant: 'primary', disabled: !s.ok || dg.busy || (dg.v2live && !dg.v2can), busy: dg.busy, busyLabel: 'Starting', data: { start3: '1' } })
     // R2b (combat v2 testers, R2 SPEC 3.4): the same squad starts a v2 test run; only when the server says can_start (dungeon_v2_view)
     // ON-UI: in the member mode (live) Start run itself starts the v2 run, so the test button is not shown
     + (dg.v2can && !dg.v2live ? btn3({ label: 'Play v2 (test)', icon: 'swords', disabled: !s.ok || dg.busy, data: { start2: '1' } }) : '');

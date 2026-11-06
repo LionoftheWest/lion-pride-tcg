@@ -29,6 +29,12 @@ export const MUTATIONS = {
   lobby_reads_day: ['main.js', 'if (huntV2Member(huntV2) && !squad.ko', 'if (huntV2?.ok && huntLive(huntV2) && !squad.ko'],
   // UI-18 FIX: the Practice v2 icon shows in the member mode too
   practice_icon_live: ['main.js', '(huntV2CanStart(huntV2) && !huntV2Member(huntV2)) act +=', '(huntV2CanStart(huntV2)) act +='],
+  // ONE-START FIX: the Dungeon member mode reads the run row mark 'live' only (null before the first start), not the flag 'member'
+  dungeon_member_live_only: ['ui-v2-gauntlet2.js', '(v.member === true || v.live === true)', '(v.live === true)'],
+  // ONE-START FIX: the Dungeon load sets the member mode from 'live' only (the defect of 2026-11-06)
+  dungeon_load_live_only: ['ui-v2-dungeon.js', "scr !== 'v1-run' && g2.dungeonMember(v2);", "scr !== 'v1-run' && !!(v2?.ok && v2.live === true);"],
+  // ONE-START FIX: the member start button keeps the v1 label (Nathan: "Start Run")
+  start_label: ['ui-v2-dungeon.js', "label: dg.v2live ? 'Start Run' : 'Start run'", "label: 'Start run'"],
 };
 
 const name = process.env.MUTATE;
@@ -142,4 +148,37 @@ test('UI-18 FIX: a tester practice view (flag OFF) keeps the v1 Enter battle and
   assert.match(act, /\[Practice v2\|h2start\]/);
   assert.match(lobby({ ...VIEW_NO_DAY, tester: true, live: false }, { ko: false, locked: false }), /\[Practice v2\|h2start\]/, 'no squad locked: the icon too');
   assert.equal(lobby(null), '[Edit|hpick][Enter battle|henter]', 'flag OFF, not a tester (view 403): v1 unchanged');
+});
+
+// ONE-START FIX (2026-11-06, a member report; Nathan: "It should only be 'Start Run' that goes into the v2 dungeon"). The REAL
+// dungeon_v2_view answer of a member with the flag ON and no run today (combat_v2_on_dungeon.sql section 8, the same text as the live
+// function): 'member' = combat_v2_on('dungeon') (the flag), 'live' = r.live (null: no run row yet), 'tester' = combat_v2_on('dungeon', p)
+// (true for every member while the flag is ON). Keys copied from the SQL, not recorded. The real load and lobby lines run with stub buttons.
+const DV_ON = { ok: true, tester: true, member: true, live: null, v1_run: null, run: null, runs_left: 1, last_run: null, can_start: true };
+const dungeonLobby = (v2, sOk = true) => {
+  const pick = (re, what) => { const m = D.match(re); assert.ok(m, `${what} is in ui-v2-dungeon.js`); return m[0]; };
+  const load = pick(/ {2}dg\.v2live = [^\n]*\n/, 'the member mode line');
+  const start = pick(/ {2}const start = btn3\([\s\S]*?: ''\);\n/, 'the start buttons');
+  const b = (o) => `[${o.label}|${o.variant || 'secondary'}|${Object.keys(o.data || {}).join(',')}${o.disabled ? '|disabled' : ''}]`;
+  const scr = G.dungeonScreen(V1, v2, false);
+  const dg = { busy: false, v2can: scr === 'v2-start', v2live: false };
+  return new Function('GA', 'scr', 'v2', 'g2', 'dg', 'btn3', 's', `${load}${start}return start;`)(() => false, scr, v2, G, dg, b, { ok: sOk });
+};
+test('ONE-START FIX: a member with the flag ON and no run yet sees ONE gold Start Run, and it starts v2', () => {
+  assert.equal(G.dungeonScreen(V1, DV_ON, false), 'v2-start');
+  assert.equal(dungeonLobby(DV_ON), '[Start Run|primary|start3]', 'one button: the gold Start Run (start3 starts v2 in the member mode)');
+  assert.match(D, /if \(dg\.v2live\) \{ if \(dg\.v2can\) startV2\(M\); return; \}/, 'start3 in the member mode calls startV2, never /api/dungeon/start');
+  assert.doesNotMatch(dungeonLobby(DV_ON), /\(test\)|start2/);
+});
+test('ONE-START FIX: the flag ON, no run left today (v1 runs counted): Start Run disabled, never the v1 start', () => {
+  const v = { ...DV_ON, can_start: false, runs_left: 0 };
+  assert.equal(G.dungeonScreen(V1, v, false), 'v2-lobby');
+  assert.equal(dungeonLobby(v), '[Start Run|primary|start3|disabled]');
+});
+test('ONE-START FIX: the flag OFF is unchanged (a tester: v1 Start run and Play v2 (test); a member: v1 Start run only)', () => {
+  const tester = { ...DV_ON, member: false };
+  assert.equal(G.dungeonMember(tester), false);
+  assert.equal(dungeonLobby(tester), '[Start run|primary|start3][Play v2 (test)|secondary|start2]');
+  assert.equal(dungeonLobby({ ok: false, error: 'not_tester' }), '[Start run|primary|start3]', 'not a tester (view 403): v1 only');
+  assert.equal(dungeonLobby(null), '[Start run|primary|start3]', 'no view answer: v1 only');
 });
