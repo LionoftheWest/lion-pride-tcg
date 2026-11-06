@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# R2-MOVE: the test of the ops/deploy.sh health checks (activity, gallery) and of the STANDBY env refusal.
+# R2-MOVE: the test of the ops/deploy.sh health checks (activity, gallery) and of the bot env refusal (IMG_UPSTREAM).
 # The HEALTH strings are taken from deploy.sh by the same single-quoted assignment that deploy.sh runs, then sent through
 # the real quoting of deploy.sh:86 (HEALTH='$HEALTH' inside a double-quoted string, read by "bash -s") and run with the
 # eval of deploy.sh healthy(). The only change to the text: /home/ubuntu/ -> a temp folder (the host .env). curl is a stub.
-# The STANDBY block is the text between STANDBY_ENV_BEGIN and STANDBY_ENV_END (extracted from the REMOTE heredoc).
+# The bot env block is the text between BOT_ENV_BEGIN and BOT_ENV_END (extracted from the REMOTE heredoc).
+# NO-SERVER P0b removed the STANDBY path: a bot deploy runs the normal path on its home host, so deploy.sh has no STANDBY text.
 # Run: bash ops/deploy-health.test.sh   (RESULT PASS / RESULT FAIL, exit 0 / 1)
 set -u
 cd "$(dirname "$0")" || exit 2
@@ -98,24 +99,27 @@ out=$(STUB_GALLERY='{"subjects":[],"backUrl":"https://img.lionpridetcg.com/card-
 out=$(STUB_GALLERY='{"error":"x"}' remote "$HG" gallery 2>&1)
 [ "$out" = UNHEALTHY ] && ok "gallery: no backUrl -> UNHEALTHY" || no "gallery no backUrl (got $out)"
 
-# STANDBY: the bot on the backup VM is created stopped (no health check): the .env must have a valid IMG_UPSTREAM.
-BLOCK=$(sed -n '/^# STANDBY_ENV_BEGIN/,/^# STANDBY_ENV_END/p' deploy.sh)
-[ -n "$BLOCK" ] && ok "the STANDBY block is in deploy.sh" || no "STANDBY block not found"
-standby() { # name, STANDBY, .env content, expected exit, expected text
+# The bot env refusal: a bot .env without a valid IMG_UPSTREAM is refused before any change (the bot exits at its start).
+grep -q STANDBY deploy.sh && no "deploy.sh still has STANDBY text (NO-SERVER P0b removed that path)" || ok "deploy.sh has no STANDBY text"
+BLOCK=$(sed -n '/^# BOT_ENV_BEGIN/,/^# BOT_ENV_END/p' deploy.sh)
+[ -n "$BLOCK" ] && ok "the BOT_ENV block is in deploy.sh" || no "BOT_ENV block not found"
+botenv() { # name, SVC, .env content, expected exit, expected text
   rm -rf "$T/sb"; mkdir -p "$T/sb/tcg-bot.new"; printf '%s\n' "$3" > "$T/sb/tcg-bot.new/.env"
-  out=$(cd "$T/sb" && DIR=tcg-bot STANDBY="$2" bash -c "set -euo pipefail; $BLOCK
+  out=$(cd "$T/sb" && DIR=tcg-bot SVC="$2" bash -c "set -euo pipefail; $BLOCK
 echo CONTINUED" 2>&1); rc=$?
-  if [ "$rc" = "$4" ] && printf '%s' "$out" | grep -q "$5"; then ok "standby: $1"; else no "standby: $1 (rc=$rc out=$out)"; fi
-  if [ "$4" = 1 ] && [ -d "$T/sb/tcg-bot.new" ]; then no "standby: $1 left tcg-bot.new (must be: nothing changed)"; fi
+  if [ "$rc" = "$4" ] && printf '%s' "$out" | grep -q "$5"; then ok "bot env: $1"; else no "bot env: $1 (rc=$rc out=$out)"; fi
+  if [ "$4" = 1 ] && [ -d "$T/sb/tcg-bot.new" ]; then no "bot env: $1 left tcg-bot.new (must be: nothing changed)"; fi
 }
-standby "IMG_UPSTREAM removed -> STANDBY ENV: IMG_UPSTREAM missing, exit 1" 1 "DISCORD_TOKEN=x" 1 "STANDBY ENV: IMG_UPSTREAM missing"
-standby "IMG_UPSTREAM=r3 (unknown) -> refused" 1 "IMG_UPSTREAM=r3" 1 "STANDBY ENV: IMG_UPSTREAM missing"
-standby "IMG_UPSTREAM=r2x (the end anchor, review r1 L4) -> refused" 1 "IMG_UPSTREAM=r2x" 1 "STANDBY ENV: IMG_UPSTREAM missing"
-standby "IMG_UPSTREAM=supabase -> continues" 1 "IMG_UPSTREAM=supabase" 0 "CONTINUED"
-standby "IMG_UPSTREAM=r2 -> continues" 1 "IMG_UPSTREAM=r2" 0 "CONTINUED"
-standby "not a standby deploy -> no check here (the health check covers it)" "" "DISCORD_TOKEN=x" 0 "CONTINUED"
-grep -q '^cp -p "$DIR/.env" "$DIR.new/.env"$' deploy.sh && [ "$(grep -n '^cp -p "$DIR/.env" "$DIR.new/.env"$' deploy.sh | cut -d: -f1)" -lt "$(grep -n '^# STANDBY_ENV_BEGIN' deploy.sh | cut -d: -f1)" ] \
-  && ok "deploy.sh: the STANDBY check runs on the copied .env, after the copy" || no "deploy.sh STANDBY wiring"
+botenv "IMG_UPSTREAM removed -> BOT ENV: IMG_UPSTREAM missing, exit 1" bot "DISCORD_TOKEN=x" 1 "BOT ENV: IMG_UPSTREAM missing"
+botenv "IMG_UPSTREAM=r3 (unknown) -> refused" bot "IMG_UPSTREAM=r3" 1 "BOT ENV: IMG_UPSTREAM missing"
+botenv "IMG_UPSTREAM=r2x (the end anchor, R2-MOVE review r1 L4) -> refused" bot "IMG_UPSTREAM=r2x" 1 "BOT ENV: IMG_UPSTREAM missing"
+botenv "IMG_UPSTREAM=supabase -> continues" bot "IMG_UPSTREAM=supabase" 0 "CONTINUED"
+botenv "IMG_UPSTREAM=r2 -> continues" bot "IMG_UPSTREAM=r2" 0 "CONTINUED"
+botenv "not a bot deploy -> no check here (the activity health check covers it)" activity "DISCORD_TOKEN=x" 0 "CONTINUED"
+L_CP=$(grep -n '^cp -p "$DIR/.env" "$DIR.new/.env"$' deploy.sh | cut -d: -f1); L_ENV=$(grep -n '^# BOT_ENV_BEGIN' deploy.sh | cut -d: -f1)
+L_BUILD=$(grep -n 'docker build --no-cache' deploy.sh | head -1 | cut -d: -f1); L_SD=$(grep -n '^  SD=/home/ubuntu/tcg-bot-state' deploy.sh | cut -d: -f1)
+{ [ -n "$L_CP" ] && [ -n "$L_ENV" ] && [ -n "$L_BUILD" ] && [ -n "$L_SD" ] && [ "$L_CP" -lt "$L_ENV" ] && [ "$L_ENV" -lt "$L_SD" ] && [ "$L_ENV" -lt "$L_BUILD" ]; } \
+  && ok "deploy.sh: the bot env check runs on the copied .env, after the copy, before the state folder and the build" || no "deploy.sh BOT_ENV wiring (cp=$L_CP env=$L_ENV state=$L_SD build=$L_BUILD)"
 
 rm -rf "$T"
 [ $fail = 0 ] && echo "RESULT PASS" || echo "RESULT FAIL"

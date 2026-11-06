@@ -194,7 +194,7 @@ A file runs as one transaction, so an error rolls the whole file back.
 - `fix_search_path.sql`: a re-run stops at an error today: function public.combat_support_value(text, numeric, numeric, integer) does not exist
 - `stat_points_r_stars_s1.sql`: a re-run stops at an error today: stat_points_r_stars_s1: balance.stars is not curve S1: {"gold": [1, 1.15, 1.27, 1.38, 1.49, 1.6], "event": [1, 1.4, 1.7, 2, 2.25, 2.5], "promo": [1, 1.4, 1.7, 2, 2.25, 2.5], "normal": [1, 2.86, 4.25, 
 
-## No structure change, but a re-run writes rows (49)
+## No structure change, but a re-run writes rows (50)
 
 Not refused (a data statement can be safe to run again, for example "on conflict do nothing"). Read the file first:
 a one-time grant or a settings value would run again.
@@ -203,6 +203,7 @@ a one-time grant or a settings value would run again.
 - `achievement_titles_d79.sql`: achievement_tracks
 - `adventure_gate.sql`: balance
 - `auction_confirm_24h.sql`: auctions
+- `bot_home.sql`: set_config(), settings
 - `card_effects_enable_a1.sql`: effect_primitives
 - `combat_v2_autopick_active.sql`: balance, set_config()
 - `combat_v2_e7_followup.sql`: balance, set_config()

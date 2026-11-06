@@ -102,30 +102,32 @@ that host has no file. Every reader maps the name (`art-url.js`: `artKey`, `r2Ur
   `docker restart`.** Docker reads `--env-file` only when it creates a container. deploy.sh removes the container and runs
   it again (`run()`), so the new `.env` takes effect.
 
-## The bot on the backup VM (STANDBY)
+## The bot on the backup VM (its home under option B)
 
 Observed 2026-11-06 on the backup VM (137.131.48.8, private 10.0.0.94):
 - The failover bot runs image `tcg-bot:399a67f`. That commit is older than PR 527. Its start line has no `img=`, and its
   code does not read `IMG_UPSTREAM`. The `.env` and the container env have `IMG_UPSTREAM=supabase`. The old code ignores them.
-- `TARGET=backup ops/deploy.sh bot` stops while that bot runs (the STANDBY rule). This is correct. Do not change it.
-  So the bot image on the backup stays old until a failback (`ops/failover/failback.sh`), then `TARGET=backup ops/deploy.sh bot`.
+- NO-SERVER P0b removed the STANDBY rule. The backup VM is the bot's home (option B), and `ops/failover/failback.sh` refuses.
+  `TARGET=backup ops/deploy.sh bot` runs the normal path (build, swap, health check, slash commands) when the settings row
+  `bot_home` names `backup`. It stops before any docker call when the row names another host, is missing, or cannot be read.
 
 Docker reads `--env-file` only when it creates the container. `docker restart` and `docker start` keep the old values
 (test 2026-11-06: `X=one` in the file, the file changed to `X=two`, `docker restart`, the container still had `X=one`).
 The bot reads `IMG_UPSTREAM` from its process env (`tcg-bot/src/index.ts:21` at start, `playing-posts.ts` on each call).
 So `docker restart tcg-bot` is NOT enough for an S5 or S6 env change:
 - The old backup image (`399a67f`): an env change has no effect. Nothing to do for S5 and S6.
-- A bot image of PR 527 or newer: create the container again with the same image and the new `.env` (no build):
+- A bot image of PR 527 or newer: run `TARGET=backup ops/deploy.sh bot` (it creates the container again with the new `.env`).
+  By hand only if the deploy cannot run: create the container again with the same image, the new `.env` and the same flags
+  as `run()` in deploy.sh (after P0b: `-e BOT_HOST=backup -v /home/ubuntu/tcg-bot-state:/state`):
 
 ```
 sudo docker stop -t 10 tcg-bot && sudo docker rm tcg-bot
-sudo docker run -d --init --name tcg-bot --network host --restart unless-stopped --log-opt max-size=20m --log-opt max-file=3 --env-file /home/ubuntu/tcg-bot/.env tcg-bot:latest
+sudo docker run -d --init --name tcg-bot --network host --restart unless-stopped --log-opt max-size=20m --log-opt max-file=3 -e BOT_HOST=backup -v /home/ubuntu/tcg-bot-state:/state --env-file /home/ubuntu/tcg-bot/.env tcg-bot:latest
 sudo docker logs tcg-bot 2>&1 | grep 'Ready. Logged in'     # must end with img=<the new mode>
 ```
 
-  For a STOPPED standby container, use `docker create` with the same flags in place of `docker run -d`.
 - Before S7 (the Supabase delete) the backup bot must run an image of PR 527 or newer. The old image reads Supabase
-  directly for an image fallback. Do a failback, then `TARGET=backup ops/deploy.sh bot`.
+  directly for an image fallback. Run `TARGET=backup ops/deploy.sh bot` (NO-SERVER P0b).
 
 ## Rollback
 

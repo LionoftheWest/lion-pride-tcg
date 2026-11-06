@@ -85,11 +85,12 @@ check "no webhook: tunnel start once" "$(n_calls 'docker start cf-named')" 1
 check "no webhook: nothing posted" "$([ -f "$T/hook.log" ] && echo posted || echo none)" none
 check "no webhook: logged" "$(grep -c 'notice not posted' "$T/f/watch.log")" 1
 
-echo "-- case 7: failback.sh stops the bot and the tunnel and prints steps"
-out=$(FAILOVER_DIR="$T/f" DOCKER_CMD="$T/docker" bash "$HERE/failback.sh")
-check "failback: docker stop called" "$(n_calls 'docker stop -t 10 tcg-bot')" 1
-check "failback: tunnel stop called" "$(n_calls 'docker stop -t 10 cf-named')" 1
-check "failback: prints the steps" "$(echo "$out" | grep -c 'Re-arm')" 1
+echo "-- case 7: failback.sh refuses (NO-SERVER P0b, option B: the bot never moves automatically)"
+: > "$T/calls"
+out=$(FAILOVER_DIR="$T/f" DOCKER_CMD="$T/docker" bash "$HERE/failback.sh" 2>&1); rc=$?
+check "failback: exit 2" "$rc" 2
+check "failback: 0 docker calls" "$(n_calls docker)" 0
+check "failback: prints the refusal" "$(echo "$out" | grep -c 'REFUSED: option B')" 1
 echo "-- case 8: duck-guarded.sh (main VM cron)"
 G() { HEALTH_URL="$B/local" HOLD_FILE="$T/hold" LOG_FILE="$T/g.log" DUCK_CMD="$T/duck" bash "$HERE/duck-guarded.sh"; }
 : > "$T/calls"; rm -f "$T/hold"
