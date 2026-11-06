@@ -34,7 +34,7 @@ export function statsPayload(cards, v1, v2) {
 }
 
 /**
- * The body of a v2 spend: { cardId, add: { <v2 key>: n } }, each n a whole number from 1 to cap (balance v2_stats.max_per_stat).
+ * The body of a v2 spend: { cardId, add: { <v2 key>: n } }, each n a whole number from 1 to cap (the stat cap of the balance key v2_stats, passed in by the route).
  * Returns { cardId, add } or { error } with one of: 'bad card', 'bad request', 'bad stat', 'bad amount'. SQL checks again (stat_v2_spend).
  */
 export function parseSpendV2(body, cap) {
