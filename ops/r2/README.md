@@ -29,7 +29,7 @@ Before every push of an R2 branch run `node card-studio/scripts/r2-secret-check.
 | `IMG_UPSTREAM` | Activity and bot `.env`, every serving host | `supabase` / `r2-first` / `r2` | the process does not start |
 | `R2_PUBLIC_BASE` | Activity, bot, gallery, Studio | `https://img.lionpridetcg.com` | refused when a mode needs it |
 | `GALLERY_ART` | gallery `.env` (and the Studio gallery) | `supabase` / `r2` | the gallery does not start |
-| `ART_STORE` | Nathan's PC, `card-studio/.env` | `supabase` / `r2` (picks the writer backend only) | `supabase` |
+| `ART_STORE` | Nathan's PC, `card-studio/.env` | `supabase` / `r2` (picks the writer backend only; `r2` is refused until `CUTOVER` exists) | `supabase` |
 | `ART_WRITE_LOG` | Nathan's PC | path | `C:\Users\vaugh\.lptcg\r2\art-writes.jsonl` |
 
 - `r2-first`: R2, and on ANY non-200 or error, Supabase. Each fallback prints `img-fallback <key> <status|error> mode=r2-first`
@@ -45,7 +45,7 @@ Folder `C:\Users\vaugh\.lptcg\r2\`. Every art writer reads it on EVERY call (`ca
 | File | Meaning |
 |---|---|
 | `FROZEN` | No NEW logical write starts (`refused: art-store frozen (R2-MOVE S4) <label>`). A started write finishes. |
-| `CUTOVER` | The writers use R2 only. `ART_STORE=supabase` is refused (`refused: cut to R2 (R2-MOVE)`). |
+| `CUTOVER` | The writers use R2 only. `ART_STORE=supabase` is refused (`refused: cut to R2 (R2-MOVE)`). Without `CUTOVER`, `ART_STORE=r2` is refused (`refused: ART_STORE=r2 before the cut (R2-MOVE)`): before the cut an R2-only write is lost. |
 | `inflight\<pid>-<n>` | One logical write runs: one tier of a push (main + grid + reveal + row), one pack art, the card back, one delete, one thumbnail pair, one boss or shimmer file. |
 | `art-writes.jsonl` | The write log: one line per R2 write or delete `{t, op, key, md5, bytes, type}`, written BEFORE the request. |
 
@@ -78,7 +78,7 @@ that host has no file. Every reader maps the name (`art-url.js`: `artKey`, `r2Ur
 
 | Tool | Step |
 |---|---|
-| `r2-copy.mjs` (`--live`, `--delta`, `--reverse`) | S2 full copy, S4 delta, the rollback copy R2 -> Supabase |
+| `r2-copy.mjs` (`--live`, `--delta`, `--reverse`, `--max-deletes <n>`) | S2 full copy, S4 delta, the rollback copy R2 -> Supabase. `--delta` refuses more than 200 DELTA-DEL before any write (a short DB list). Check the list, then add `--max-deletes <n>`. `--reverse --live` refuses without `FROZEN`. |
 | `r2-verify.mjs` (`--exact`, `--before`, `--manifest`, `--source`) | G1 |
 | `r2-preflight.mjs` | G10, before S5, from each serving host |
 | `r2-live-check.mjs` (`--expect supabase` for G7/G8) | G6 after S5 |
@@ -87,6 +87,47 @@ that host has no file. Every reader maps the name (`art-url.js`: `artKey`, `r2Ur
 | `r2-sign-check.mjs` | the real signing check on `lptcg-media-test` |
 | `r2-secret-check.mjs` | G11, before every push |
 | `r2-mutations.mjs` | the mutation runner of THE GATE (`mutations/*.mjs`) |
+
+## The deploy health check and the rollback (ops/deploy.sh)
+
+- A NEW Activity build is healthy when `/api/config` has `"hunt":true` and `"img"` = the `IMG_UPSTREAM` of the host `.env`,
+  and one image loads as `image/webp` through `/api/img` (`HEALTH`).
+- The rollback checks the OLD image with `HEALTH_PREV`: `"hunt":true`. When the `"img"` field exists, it must equal the
+  `.env` value, and one image must load as `image/webp`. An Activity built before R2-MOVE has no `"img"` field and passes.
+  So `ROLLBACK ALSO UNHEALTHY` means a real defect.
+- An env-only deploy (S5, S6) rolls back to the same code with the same `.env`. If that mode does not serve images, the
+  rollback is also broken, and deploy.sh prints `ROLLBACK ALSO UNHEALTHY`. Set the `.env` back to the last mode, then deploy again.
+- Bot and gallery: the rollback uses the same check as the new build. Test: `bash ops/deploy-health.test.sh`.
+- **Main hosts: to change an env value (S5, S6), edit the `.env`, then run `ops/deploy.sh <activity|bot|gallery>`. Never use
+  `docker restart`.** Docker reads `--env-file` only when it creates a container. deploy.sh removes the container and runs
+  it again (`run()`), so the new `.env` takes effect.
+
+## The bot on the backup VM (its home under option B)
+
+Observed 2026-11-06 on the backup VM (137.131.48.8, private 10.0.0.94):
+- The failover bot runs image `tcg-bot:399a67f`. That commit is older than PR 527. Its start line has no `img=`, and its
+  code does not read `IMG_UPSTREAM`. The `.env` and the container env have `IMG_UPSTREAM=supabase`. The old code ignores them.
+- NO-SERVER P0b removed the STANDBY rule. The backup VM is the bot's home (option B), and `ops/failover/failback.sh` refuses.
+  `TARGET=backup ops/deploy.sh bot` runs the normal path (build, swap, health check, slash commands) when the settings row
+  `bot_home` names `backup`. It stops before any docker call when the row names another host, is missing, or cannot be read.
+
+Docker reads `--env-file` only when it creates the container. `docker restart` and `docker start` keep the old values
+(test 2026-11-06: `X=one` in the file, the file changed to `X=two`, `docker restart`, the container still had `X=one`).
+The bot reads `IMG_UPSTREAM` from its process env (`tcg-bot/src/index.ts:21` at start, `playing-posts.ts` on each call).
+So `docker restart tcg-bot` is NOT enough for an S5 or S6 env change:
+- The old backup image (`399a67f`): an env change has no effect. Nothing to do for S5 and S6.
+- A bot image of PR 527 or newer: run `TARGET=backup ops/deploy.sh bot` (it creates the container again with the new `.env`).
+  By hand only if the deploy cannot run: create the container again with the same image, the new `.env` and the same flags
+  as `run()` in deploy.sh (after P0b: `-e BOT_HOST=backup -v /home/ubuntu/tcg-bot-state:/state`):
+
+```
+sudo docker stop -t 10 tcg-bot && sudo docker rm tcg-bot
+sudo docker run -d --init --name tcg-bot --network host --restart unless-stopped --log-opt max-size=20m --log-opt max-file=3 -e BOT_HOST=backup -v /home/ubuntu/tcg-bot-state:/state --env-file /home/ubuntu/tcg-bot/.env tcg-bot:latest
+sudo docker logs tcg-bot 2>&1 | grep 'Ready. Logged in'     # must end with img=<the new mode>
+```
+
+- Before S7 (the Supabase delete) the backup bot must run an image of PR 527 or newer. The old image reads Supabase
+  directly for an image fallback. Run `TARGET=backup ops/deploy.sh bot` (NO-SERVER P0b).
 
 ## Rollback
 

@@ -199,9 +199,19 @@ try {
   const v6 = await node('r2-verify.mjs', ['--exact']);
   check('overwrite-seen-before-delta', v6.code === 1 && new RegExp(`DIFF card-art/${K} etag`).test(v6.out), v6.out);
   writeFileSync(join(STATE, 'FROZEN'), `${new Date().toISOString()} test\n`);
-  const d1 = await node('r2-copy.mjs', ['--live', '--delta']);
+  // L5 (review r1): the DELTA-DEL limit. 201 extra R2 keys (not in the DB) + D = 202 deletes > 200: refused before ANY write.
+  const junk = Buffer.from('junk');
+  for (let i = 0; i < 201; i += 1) s3.objs.set(`card-art/junk/j${i}.png`, { buf: junk, type: 'image/png', etag: md5(junk), at: new Date().toISOString() });
+  const puts0 = s3.puts; const kBefore = r2Etag(`card-art/${K}`);
+  const dl = await node('r2-copy.mjs', ['--live', '--delta']);
+  check('delta-del-limit', dl.code === 2 && /refused: DELTA-DEL 202 > 200/.test(dl.out) && s3.puts === puts0 && r2Etag(`card-art/${K}`) === kBefore
+    && s3.objs.has('card-art/grid/cards/a-normal.webp') && s3.objs.has('card-art/junk/j0.png'), dl.out);
+  const dlBad = await node('r2-copy.mjs', ['--live', '--delta', '--max-deletes', 'all']);
+  check('delta-max-deletes-not-a-number', dlBad.code === 2 && /refused: --max-deletes all/.test(dlBad.out) && s3.objs.has('card-art/junk/j0.png'), dlBad.out);
+  const d1 = await node('r2-copy.mjs', ['--live', '--delta', '--max-deletes', '202']);
   check('delta-copies-K', d1.code === 0 && new RegExp(`COPY card-art/${K} src=`).test(d1.out), d1.out);
-  check('delta-del-D', /DELTA-DEL card-art\/grid\/cards\/a-normal.webp/.test(d1.out) && !s3.objs.has('card-art/grid/cards/a-normal.webp'), d1.out);
+  check('delta-del-D', /DELTA-DEL card-art\/grid\/cards\/a-normal.webp/.test(d1.out) && !s3.objs.has('card-art/grid/cards/a-normal.webp')
+    && /deleted=202/.test(d1.out) && !s3.objs.has('card-art/junk/j200.png'), d1.out);
   const v7 = await node('r2-verify.mjs', ['--exact', '--write-manifest', join(STATE, 'manifest.json')]);
   check('delta-exact-pass', v7.code === 0 && /R2VERIFY PASS n=5 /.test(v7.out) && /MANIFEST/.test(v7.out), v7.out);
   const pub = await fetch(`${X.url}/pub/card-art/${K}`);
@@ -219,16 +229,34 @@ try {
   const pushed = Buffer.from(`PUSHED after the cut ${K} ${'z'.repeat(70)}`);
   await store.withWrite(`push b gold`, () => store.put(K, pushed, 'image/webp'));
   check('push-wrote-r2', r2Etag(`card-art/${K}`) === md5(pushed));
+  // A tier delete after the cut: D2 deleted in R2 through art-store (a del line in the write log).
+  const D2 = 'boss/behemoth/d.webm';
+  await store.withWrite('tier-delete d', () => store.remove([D2]));
+  check('delete-wrote-r2', !s3.objs.has(`card-art/${D2}`) && supa.objs.has(D2));
   const v8 = await node('r2-verify.mjs', ['--manifest', join(STATE, 'manifest.json')]);
-  check('post-cut-verify-newer', v8.code === 0 && /R2VERIFY PASS n=5 .*newer=1/.test(v8.out), v8.out);
+  check('post-cut-verify-newer', v8.code === 0 && /R2VERIFY PASS n=4 .*newer=1/.test(v8.out), v8.out);
   const c3 = await node('r2-copy.mjs', ['--live']);
   check('copy-after-cut-refused', c3.code !== 0 && /refused: cut to R2/.test(c3.out) && r2Etag(`card-art/${K}`) === md5(pushed), c3.out);
   const v8b = await node('r2-verify.mjs', ['--manifest', join(STATE, 'manifest.json')]);
   check('post-cut-verify-still-newer', v8b.code === 0 && /newer=1/.test(v8b.out), v8b.out);
+  // M3 (review r1): a write-log key whose R2 ETag matches NO logged put (a corrupt or old copy) = FAIL (G9 reads this PASS).
+  const savedK = s3.objs.get(`card-art/${K}`);
+  const unlogged = Buffer.from(`NOT a logged put ${K} ${'q'.repeat(40)}`);
+  s3.objs.set(`card-art/${K}`, { ...savedK, buf: unlogged, etag: md5(unlogged) });
+  const v10 = await node('r2-verify.mjs', ['--manifest', join(STATE, 'manifest.json')]);
+  check('post-cut-verify-unlogged-etag-fails', v10.code === 1 && /R2VERIFY FAIL/.test(v10.out) && new RegExp(`DIFF card-art/${K} etag ${md5(pushed)} ${md5(unlogged)}`).test(v10.out), v10.out);
+  s3.objs.set(`card-art/${K}`, savedK);
+  // L2 (review r1): --reverse --live refuses without FROZEN (I-5 step 1). Nothing is written to Supabase.
+  const up0 = supa.uploads;
+  const rv0 = await node('r2-copy.mjs', ['--live', '--reverse']);
+  check('reverse-needs-frozen', rv0.code === 2 && /refused: --reverse --live without FROZEN/.test(rv0.out) && supa.uploads === up0 && supa.objs.has(D2), rv0.out);
+  writeFileSync(join(STATE, 'FROZEN'), `${new Date().toISOString()} test\n`);
   const rv = await node('r2-copy.mjs', ['--live', '--reverse']);
   check('reverse-copies-K', rv.code === 0 && new RegExp(`COPY card-art/${K} src=r2`).test(rv.out) && supa.objs.get(K).etag === md5(pushed), rv.out);
+  // M3 (review r1): the del line of the write log removes D2 in Supabase too.
+  check('reverse-deletes-D', rv.code === 0 && new RegExp(`REVERSE-DEL card-art/${D2}`).test(rv.out) && !supa.objs.has(D2), rv.out);
   const v9 = await node('r2-verify.mjs', ['--exact']);
-  check('reverse-exact-pass', v9.code === 0 && /R2VERIFY PASS n=5 /.test(v9.out), v9.out);
+  check('reverse-exact-pass', v9.code === 0 && /R2VERIFY PASS n=4 /.test(v9.out), v9.out);
 } catch (e) {
   check('no-exception', false, e.stack);
 } finally {

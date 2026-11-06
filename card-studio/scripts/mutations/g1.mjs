@@ -21,6 +21,19 @@ export default {
       replace: "    if ((await db.storage.from(BUCKET).list(name.split('/').slice(0, -1).join('/'))).data?.some((f) => f.name === name.split('/').pop())) continue;\n    const g = await s3.get(key);" },
     { id: 'm28_delta_no_delete', file: 'card-studio/scripts/r2-copy.mjs', cmd, cwd, expect: 'TEST delta-del-D FAIL',
       find: '      if (dbKeys.has(k)) continue;', replace: '      if (dbKeys.has(k) || true) continue;' },
+    // Review r1 M3: the post-S4 `newer` rule (G9 reads this PASS) and the --reverse delete path.
+    { id: 'm29_postcut_any_log_newer', file: 'card-studio/scripts/r2-verify.mjs', cmd, cwd, expect: 'TEST post-cut-verify-unlogged-etag-fails FAIL',
+      find: '      if (e.puts.has(r.etag)) newer += 1;', replace: '      if (true) newer += 1;' },
+    { id: 'm30_reverse_skips_del', file: 'card-studio/scripts/r2-copy.mjs', cmd, cwd, expect: 'TEST reverse-deletes-D FAIL',
+      find: "    if (e.last === 'del') {", replace: '    if (false) {' },
+    // Review r1 L2: --reverse --live without FROZEN.
+    { id: 'm31_reverse_no_frozen', file: 'card-studio/scripts/r2-copy.mjs', cmd, cwd, expect: 'TEST reverse-needs-frozen FAIL',
+      find: "  if (live && !readState(env).frozen) { out('refused: --reverse", replace: "  if (false) { out('refused: --reverse" },
+    // Review r1 L5: the DELTA-DEL limit (the check, and the default value).
+    { id: 'm32_delta_del_no_limit', file: 'card-studio/scripts/r2-copy.mjs', cmd, cwd, expect: 'TEST delta-del-limit FAIL',
+      find: '  if (dels.length > maxDeletes) {', replace: '  if (false) {' },
+    { id: 'm33_delta_del_default_high', file: 'card-studio/scripts/r2-copy.mjs', cmd, cwd, expect: 'TEST delta-del-limit FAIL',
+      find: 'export const DELTA_DEL_MAX = 200;', replace: 'export const DELTA_DEL_MAX = 100000;' },
     { id: 'm18_no_content_md5', file: 'card-studio/src/r2-s3.js', cmd, cwd, expect: 'TEST corrupt-in-transit-refused FAIL',
       find: "'content-md5': sentMd5 || md5b64(buf), ", replace: '' },
   ],

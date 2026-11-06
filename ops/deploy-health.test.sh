@@ -57,6 +57,43 @@ printf 'IMG_UPSTREAM=supabase\n' > "$T/home/activity/.env"
 out=$(STUB_IMG_FAIL=1 STUB_CONFIG="${CFG}\"img\":\"supabase\"}" STUB_TYPE=image/webp remote "$HA_T" activity 2>&1)
 [ "$out" = UNHEALTHY ] && ok "activity: the image route fails -> UNHEALTHY" || no "activity: image route fails (got $out)"
 
+# M2 (review r1): the rollback check of the OLD image (HEALTH_PREV). An old Activity (before R2-MOVE) has no "img" field.
+P=$(sed -n "/^  activity)/,/;;/p" deploy.sh | grep -o "HEALTH_PREV='.*'")
+[ -n "$P" ] && ok "the activity HEALTH_PREV assignment is in deploy.sh" || no "HEALTH_PREV assignment not found"
+eval "$P"; HP=$HEALTH_PREV
+case "$HP" in *"'"*) no "HEALTH_PREV holds a single quote";; *) ok "no single quote in HEALTH_PREV";; esac
+HP_T=${HP//\/home\/ubuntu\//$T\/home\/}
+case_p() { # name, .env content, config json, expected [, image type (default image/webp) [, 1 = the image route fails]]
+  printf '%s\n' "$2" > "$T/home/activity/.env"
+  out=$(STUB_CONFIG="$3" STUB_TYPE="${5:-image/webp}" STUB_IMG_FAIL="${6:-}" remote "$HP_T" activity 2>&1)
+  [ "$out" = "$4" ] && ok "activity rollback: $1 -> $4" || no "activity rollback: $1 (want $4, got: $out)"
+}
+# Review r2 N1: an env-only deploy (same code) to a mode that does not serve images rolls back to the SAME mode. The
+# rollback must load one image too, else deploy.sh prints "ROLLED BACK ... (healthy)" while members get broken images.
+case_p "a new build, img = the .env, the image route fails" "IMG_UPSTREAM=r2" "${CFG}\"img\":\"r2\"}" UNHEALTHY image/webp 1
+case_p "a new build, img = the .env, the image is text/html" "IMG_UPSTREAM=r2" "${CFG}\"img\":\"r2\"}" UNHEALTHY text/html
+case_p "an old build (no img field)" "IMG_UPSTREAM=supabase" '{"features":{"hunt":true}}' HEALTHY
+case_p "a new build, img = the .env" "IMG_UPSTREAM=supabase" "${CFG}\"img\":\"supabase\"}" HEALTHY
+case_p "a new build, img differs from the .env" "IMG_UPSTREAM=r2" "${CFG}\"img\":\"supabase\"}" UNHEALTHY
+case_p "an old build, hunt false" "IMG_UPSTREAM=supabase" '{"features":{"hunt":false}}' UNHEALTHY
+case_p "no answer from /api/config" "IMG_UPSTREAM=supabase" "" UNHEALTHY
+# Review r2 N2: HEALTH_PREV is never taken from the caller's environment. The block from the clear line to the default
+# runs with an exported HEALTH_PREV; bot and gallery must get their own HEALTH, the activity its own HEALTH_PREV.
+CB=$(sed -n '/^HEALTH_PREV=""/,/^HEALTH_PREV="\${HEALTH_PREV/p' deploy.sh)
+prev_for() { HEALTH_PREV='echo from-env' SVC="$1" bash -c "$CB
+printf '%s' \"\$HEALTH_PREV\"" 2>&1; }
+{ [ -n "$CB" ] && [ "$(prev_for bot)" = 'sudo docker logs tcg-bot 2>&1 | grep -q "Ready. Logged in"' ] \
+  && case "$(prev_for gallery)" in *4331/api/gallery*) true;; *) false;; esac \
+  && case "$(prev_for activity)" in *'<<< "$C"'*) true;; *) false;; esac; } \
+  && ok "deploy.sh: an exported HEALTH_PREV is ignored (bot, gallery, activity)" || no "deploy.sh: an exported HEALTH_PREV is used (bot: $(prev_for bot))"
+# The wiring: deploy.sh sends HEALTH_PREV to the VM, and healthy() uses HEALTH for "new" and HEALTH_PREV for the rollback.
+grep -q "HEALTH='\$HEALTH' HEALTH_PREV='\$HEALTH_PREV' " deploy.sh && ok "deploy.sh passes HEALTH_PREV to the VM" || no "deploy.sh passes HEALTH_PREV to the VM"
+HB=$(sed -n '/^# HEALTHY_BEGIN/,/^# HEALTHY_END/p' deploy.sh)
+hy() { bash -c "set -euo pipefail; sleep() { :; }; FORCE=''; HEALTH='$1'; HEALTH_PREV='$2'; $HB
+if healthy $3; then echo HEALTHY; else echo UNHEALTHY; fi" 2>&1; }
+{ [ -n "$HB" ] && [ "$(hy false true new)" = UNHEALTHY ] && [ "$(hy false true '')" = HEALTHY ] && [ "$(hy true false new)" = HEALTHY ] && [ "$(hy true false '')" = UNHEALTHY ]; } \
+  && ok "deploy.sh healthy: the new build uses HEALTH, the rollback uses HEALTH_PREV" || no "deploy.sh healthy: the rollback uses HEALTH_PREV (HB=${HB:0:40})"
+
 out=$(STUB_GALLERY='{"subjects":[],"backUrl":"https://img.lionpridetcg.com/card-art/cards/card-back.png"}' remote "$HG" gallery 2>&1)
 [ "$out" = HEALTHY ] && ok "gallery: /api/gallery has a backUrl -> HEALTHY" || no "gallery backUrl (got $out)"
 out=$(STUB_GALLERY='{"error":"x"}' remote "$HG" gallery 2>&1)
@@ -75,6 +112,7 @@ echo CONTINUED" 2>&1); rc=$?
 }
 botenv "IMG_UPSTREAM removed -> BOT ENV: IMG_UPSTREAM missing, exit 1" bot "DISCORD_TOKEN=x" 1 "BOT ENV: IMG_UPSTREAM missing"
 botenv "IMG_UPSTREAM=r3 (unknown) -> refused" bot "IMG_UPSTREAM=r3" 1 "BOT ENV: IMG_UPSTREAM missing"
+botenv "IMG_UPSTREAM=r2x (the end anchor, R2-MOVE review r1 L4) -> refused" bot "IMG_UPSTREAM=r2x" 1 "BOT ENV: IMG_UPSTREAM missing"
 botenv "IMG_UPSTREAM=supabase -> continues" bot "IMG_UPSTREAM=supabase" 0 "CONTINUED"
 botenv "IMG_UPSTREAM=r2 -> continues" bot "IMG_UPSTREAM=r2" 0 "CONTINUED"
 botenv "not a bot deploy -> no check here (the activity health check covers it)" activity "DISCORD_TOKEN=x" 0 "CONTINUED"
