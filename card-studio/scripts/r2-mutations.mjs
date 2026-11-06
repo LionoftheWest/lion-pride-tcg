@@ -44,11 +44,14 @@ for (const f of files) {
     if (only && !only.has(m.id)) continue;
     const path = join(ROOT, m.file);
     const orig = readFileSync(path, 'utf8');
-    const n = orig.split(m.find).length - 1;
+    // A Windows checkout (core.autocrlf) has CRLF line ends: the find and replace texts use the file's own line end.
+    const eol = orig.includes('\r\n') ? '\r\n' : '\n';
+    const find = m.find.replace(/\r?\n/g, eol), repl = m.replace.replace(/\r?\n/g, eol);
+    const n = orig.split(find).length - 1;
     if (n !== 1) { failed += 1; console.log(`MUT ${m.id} BROKEN (find occurs ${n} times in ${m.file})`); continue; }
     let r;
     try {
-      writeFileSync(path, orig.replace(m.find, m.replace));
+      writeFileSync(path, orig.split(find).join(repl));
       r = run(m.cmd, m.cwd);
     } finally {
       writeFileSync(path, orig);
