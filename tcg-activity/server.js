@@ -358,6 +358,9 @@ const getBalance = createBalance(async () => {
 let BAL = null; // set before every API call (the middleware above)
 const bal = () => { if (!BAL) throw new Error('balance: not loaded'); return BAL; };
 const ascendCost = (rarity, asc) => costOf(bal(), rarity, asc);
+// HUNT-V2-NATIVE (hunt_ach_damage_v2.sql): the goals of the old achievements dmg1k / hit500 in v2 damage (balance ach_damage_v2.old).
+// The damage values come from ONE SQL calculation (ach_damage_rows): a v1-unit Hunt x ach_damage_v2.v1_x, a v2-unit Hunt as it is.
+const achNeed = () => BAL?.ach_damage_v2?.old || null;
 
 // Phase 2: The Pride Hunt (weekly co-op raid). Flag-gated.
 const FEATURE_HUNT = process.env.FEATURE_HUNT === '1';
@@ -774,7 +777,7 @@ app.get('/api/leaderboard/v2', async (req, res) => {
   if (!me) return res.status(401).json({ error: 'not authenticated' });
   const hunt = FEATURE_HUNT ? await activeHunt() : null;
   const rebuildBoard = () => singleFlight('boardV2', async () => {
-      const [players, owned, hits, fought, hunts, opened, gifted, plays, trades, catalog, collPow, relSets] = await Promise.all([
+      const [players, owned, hits, fought, hunts, opened, gifted, plays, trades, catalog, collPow, relSets, dmgAll] = await Promise.all([
         // Whole tables, every row (selectAll: a plain read stopped at 1,000 rows, 2026-10-02).
         selectAll(() => supabase.from('players').select('id, username, avatar, title, frame'), ['id']),
         selectAll(() => supabase.from('player_cards').select('player_id, card_id, quantity, ascension').gte('quantity', 1), ['player_id', 'card_id']),
@@ -789,8 +792,11 @@ app.get('/api/leaderboard/v2', async (req, res) => {
         getCatalogBase(),
         supabase.rpc('collection_power_all'), // each member's collection power (SQL: the same as my_collection_power)
         getReleasedSets(), // the set achievements (D-190)
+        supabase.rpc('ach_damage_rows'), // each member's Hunt damage in v2 numbers (SQL, hunt_ach_damage_v2.sql)
       ]);
       if (collPow.error) throw new Error(collPow.error.message);
+      if (dmgAll.error) throw new Error(dmgAll.error.message);
+      const dmgOf = new Map((dmgAll.data || []).map((r) => [String(r.player_id), r]));
       const powerOf = new Map((collPow.data || []).map((r) => [String(r.player_id), Number(r.power)]));
       const defeated = new Set((hunts.data || []).filter((h) => h.status === 'defeated').map((h) => h.id));
       const byPlayer = new Map();
@@ -815,8 +821,10 @@ app.get('/api/leaderboard/v2', async (req, res) => {
         const stats = {
           packsOpened: x.opened, packsGifted: x.gifted, huntsJoined: joined.size,
           bossesDefeated: [...joined].filter((h) => defeated.has(h)).length,
-          totalDamage: x.hits.reduce((t, h) => t + (h.damage || 0), 0),
-          bestHit: x.hits.reduce((m, h) => Math.max(m, h.damage || 0), 0),
+          // the damage in v2 numbers: the SQL values (ach_damage_rows), never a sum here
+          totalDamage: Number(dmgOf.get(String(id))?.heavy) || 0,
+          bestHit: Number(dmgOf.get(String(id))?.bighit) || 0,
+          need: achNeed(),
           boonsPlayed: x.boons, pranksPlayed: x.pranks, tradesDone: x.trades,
         };
         // The same number as my_collection_power (the profile): computed in SQL, never here.
@@ -1201,7 +1209,7 @@ async function loadProfile(id) {
     supabase.from('players').select('id, username, avatar, spotlight, title, frame').eq('id', id).maybeSingle(),
     supabase.from('pack_ledger').select('id', { count: 'exact', head: true }).eq('player_id', id).eq('reason', LEDGER.opened),
     supabase.from('pack_ledger').select('id', { count: 'exact', head: true }).eq('player_id', id).eq('reason', LEDGER.giftSent),
-    selectAll(() => supabase.from('hunt_hits').select('hunt_id, damage').eq('player_id', id), ['id']),
+    supabase.rpc('ach_damage_rows', { p_player: id }), // the Hunt damage in v2 numbers (SQL, hunt_ach_damage_v2.sql)
     // The hunts this member fought in: own committed cards (a Raid Crasher credit is raid damage only, 2026-10-03).
     selectAll(() => supabase.from('hunt_card_hp').select('hunt_id').eq('player_id', id), ['hunt_id', 'card_id', 'hit_date']),
     selectAll(() => supabase.from('card_plays').select('kind').eq('player_id', id).neq('outcome', 'refunded'), ['id']),
@@ -1213,7 +1221,8 @@ async function loadProfile(id) {
     supabase.from('achievement_claims').select('key, title, frame').eq('player_id', id),
   ]);
   if (!player.data) return null;
-  const hitRows = hits.data || [];
+  if (hits.error) throw new Error(hits.error.message);
+  const dmg = (hits.data || [])[0] || {};
   const joined = [...new Set((fought.data || []).map((h) => h.hunt_id))];
   let defeated = 0;
   if (joined.length) {
@@ -1237,8 +1246,7 @@ async function loadProfile(id) {
     stats: {
       packsOpened: opened.count || 0, packsGifted: gifted.count || 0,
       huntsJoined: joined.length, bossesDefeated: defeated,
-      totalDamage: hitRows.reduce((t, h) => t + (h.damage || 0), 0),
-      bestHit: hitRows.reduce((m, h) => Math.max(m, h.damage || 0), 0),
+      totalDamage: Number(dmg.heavy) || 0, bestHit: Number(dmg.bighit) || 0, need: achNeed(),
       boonsPlayed: kinds.boon || 0, pranksPlayed: kinds.prank || 0, neutralPlayed: kinds.neutral || 0,
       pranksReceived: pranked.count || 0, tradesDone: trades.count || 0,
     },

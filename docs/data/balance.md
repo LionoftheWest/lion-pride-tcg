@@ -11,6 +11,7 @@ The values below are the values of the database that made this page.
 
 The triggers on `balance` check each change:
 
+- `ach_damage_sync` (`ach_damage_sync()`): [achievements] Trigger of balance key ach_damage_v2: checks its fixed shape and that the tiers rise, then copies the heavy / bighit tiers into achievement_tracks and the dmg1k / hit500 goals into achievement_switch_map (the balance key is the one source). hunt_ach_damage_v2.sql.
 - `balance_check` (`balance_check()`): Trigger (before insert, update, delete on balance): refuses a delete, a negative number, an update that removes a leaf or changes its type (except the ids of combat_v2.testers, which may be removed: combat_v2_testers.sql), and a bad stars row. Sets updated_at and updated_by.
 - `balance_check_ability_v2` (`balance_check_ability_v2()`): Trigger (before insert, update on balance): the key ability_v2 must match its fixed shape and limits (ability_v2_spec, walked by balance_shape_errors) and words_min must not be above words_max. Every other key passes. combat_v2_abilities.sql.
 - `balance_check_auto_v2` (`balance_check_auto_v2()`): Trigger (before insert, update on balance): the key auto_v2 must match its fixed shape and limits (auto_v2_spec, walked by balance_shape_errors), and pick.supports must not be above pick.supports_max. Every other key passes. combat_v2_autopick_shape.sql.
@@ -26,12 +27,13 @@ The triggers on `balance` check each change:
 - `balance_check_stat_labels` (`balance_check_stat_labels()`): Trigger (before insert, update on balance): stat_labels must have the five stats, each with a label (1 to 12 characters), a short (1 to 4) and a text with {n} exactly once (f3_stat_labels.sql).
 - `balance_check_stat_labels_v2` (`balance_check_stat_labels_v2()`): Trigger (before insert, update on balance): stat_labels_v2 must have the 9 v2 stats (atk, def, hp, crd, crt, abl, ddg, acc, spd), each with only a label (1 to 14 characters) and a short (1 to 4) (stat_v2.sql).
 - `balance_log_write` (`balance_log_write()`): Trigger (after insert, update on balance): writes a balance_log row with the old value, the new value and balance_who. Writes nothing when the value and the note did not change.
+- `hunt_unit_flag_guard` (`hunt_unit_flag_guard()`): [hunt] Trigger of balance key combat_v2: refuses hunt ON -> OFF while an open Hunt is in v2 units (hunts.stats.unit = 'v2'), unless the setting balance.hunt_off_force names that Hunt in the same transaction (the emergency stop, docs/foundations.md). hunt_v2_native_units.sql (review r1 M3).
 
 - The shape of a value stays the same: an update cannot remove a leaf or change its type (see `balance_check`).
 
 ## Keys
 
-[ability_v2](#key-ability-v2), [achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [auto_v2](#key-auto-v2), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [card_level](#key-card-level), [combat](#key-combat), [combat_v2](#key-combat-v2), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [enemy_v2](#key-enemy-v2), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_labels](#key-stat-labels), [stat_labels_v2](#key-stat-labels-v2), [stat_points](#key-stat-points), [support](#key-support), [v2_asc](#key-v2-asc), [v2_card_hp](#key-v2-card-hp), [v2_charge](#key-v2-charge), [v2_control](#key-v2-control), [v2_convert](#key-v2-convert), [v2_dungeon](#key-v2-dungeon), [v2_enemy](#key-v2-enemy), [v2_hit](#key-v2-hit), [v2_hunt](#key-v2-hunt), [v2_level](#key-v2-level), [v2_power](#key-v2-power), [v2_pp](#key-v2-pp), [v2_roles](#key-v2-roles), [v2_speed](#key-v2-speed), [v2_stats](#key-v2-stats), [v2_status](#key-v2-status), [v2_support](#key-v2-support), [v2_synergy](#key-v2-synergy), [welcome_packs](#key-welcome-packs)
+[ability_v2](#key-ability-v2), [ach_damage_v2](#key-ach-damage-v2), [achievement_rewards](#key-achievement-rewards), [adventure_gate](#key-adventure-gate), [ascend_cost](#key-ascend-cost), [auto_v2](#key-auto-v2), [autopick](#key-autopick), [boss_atk](#key-boss-atk), [boss_counters](#key-boss-counters), [boss_hp](#key-boss-hp), [boss_hp_estimate](#key-boss-hp-estimate), [boss_moves](#key-boss-moves), [boss_passives](#key-boss-passives), [boss_stats](#key-boss-stats), [boss_tags](#key-boss-tags), [boss_tiers](#key-boss-tiers), [card_effect_caps](#key-card-effect-caps), [card_hp](#key-card-hp), [card_level](#key-card-level), [combat](#key-combat), [combat_v2](#key-combat-v2), [daily](#key-daily), [daily_card_cap](#key-daily-card-cap), [dungeon](#key-dungeon), [dungeon_prizes](#key-dungeon-prizes), [dungeon_rewards](#key-dungeon-rewards), [dungeon_runs_per_day](#key-dungeon-runs-per-day), [effect_ascension](#key-effect-ascension), [effect_cooldown_scale](#key-effect-cooldown-scale), [effect_tiers](#key-effect-tiers), [enemy_v2](#key-enemy-v2), [gauntlet](#key-gauntlet), [gauntlet_runs_per_day](#key-gauntlet-runs-per-day), [hunt_prizes](#key-hunt-prizes), [pack_earn_multiplier](#key-pack-earn-multiplier), [pool_moves](#key-pool-moves), [pulls](#key-pulls), [rarity_cp](#key-rarity-cp), [report_shots](#key-report-shots), [round_cap](#key-round-cap), [set_bonus](#key-set-bonus), [shards](#key-shards), [stars](#key-stars), [stat_labels](#key-stat-labels), [stat_labels_v2](#key-stat-labels-v2), [stat_points](#key-stat-points), [support](#key-support), [v2_asc](#key-v2-asc), [v2_card_hp](#key-v2-card-hp), [v2_charge](#key-v2-charge), [v2_control](#key-v2-control), [v2_convert](#key-v2-convert), [v2_dungeon](#key-v2-dungeon), [v2_enemy](#key-v2-enemy), [v2_hit](#key-v2-hit), [v2_hunt](#key-v2-hunt), [v2_level](#key-v2-level), [v2_power](#key-v2-power), [v2_pp](#key-v2-pp), [v2_roles](#key-v2-roles), [v2_speed](#key-v2-speed), [v2_stats](#key-v2-stats), [v2_status](#key-v2-status), [v2_support](#key-v2-support), [v2_synergy](#key-v2-synergy), [welcome_packs](#key-welcome-packs)
 
 <a id="key-ability-v2"></a>
 
@@ -98,6 +100,43 @@ Shape: `object { k1_shield: number, limits: object { blocks: number, min_share: 
     "stars": 3
   },
   "k1_shield": 0.12
+}
+```
+
+<a id="key-ach-damage-v2"></a>
+
+### ach_damage_v2
+
+The damage achievements in v2 numbers (Nathan 2026-11-06, hunt_ach_damage_v2.sql). v1_x: a Hunt in v1 units (up to 148564) counts its damage x v1_x (the Warlord v2 max / v1 max). v1_x is the one-time conversion: do not change it after the switch (the tiers do not follow it). heavy (lifetime damage) and bighit (the largest hit row): the 5 tiers (and the heavy step after tier 5), the v1 numbers x v1_x rounded down. old: the proof of the old achievements dmg1k / hit500 (achievement_switch_map) and their goal in the Activity. A change is copied to achievement_tracks and achievement_switch_map (trigger ach_damage_sync); the tiers must rise.
+
+Shape: `object { bighit: object { tiers: array(5) of number }, heavy: object { step: number, tiers: array(5) of number }, old: object { dmg1k: number, hit500: number }, v1_x: number }`
+
+```json
+{
+  "old": {
+    "dmg1k": 453,
+    "hit500": 226
+  },
+  "v1_x": 0.45305,
+  "heavy": {
+    "step": 45305,
+    "tiers": [
+      1132,
+      4530,
+      18122,
+      45305,
+      113262
+    ]
+  },
+  "bighit": {
+    "tiers": [
+      181,
+      407,
+      724,
+      1177,
+      1812
+    ]
+  }
 }
 ```
 

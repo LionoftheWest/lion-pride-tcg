@@ -25,6 +25,22 @@ let r3a = R3A;
 const CLEAN = mig;
 const HBP_FILE = read('../../tcg-bot/supabase/combat_v2_hunt_boons.sql');   // applied again by the mutated-H finally step when it was on the copy
 let hbpBefore = false;
+let nativeBefore = false;   // HUNT-V2-NATIVE: the native file was on the copy before H
+// HUNT-V2-NATIVE (review r1 M2/M3): hunt_v2_native_units.sql changes hunt_attack and hunt_support, which the R3-ON guard lists. Before R3-ON
+// is applied again, V1_ORIGIN (the origin/main text of the two functions, from the native undo file) is applied when the native file is on
+// (NATIVE_ON: the md5 of hunt_attack is the native one).
+const NATIVE_TXT = read('../../tcg-bot/supabase/hunt_v2_native_units.sql').replace(/notify pgrst[^\n]*\n/g, '');
+const NATIVE_UNDO_TXT = read('../../tcg-bot/supabase/hunt_v2_native_units_undo.sql');
+const V1_ORIGIN = ['hunt_attack', 'hunt_support'].map((n) => {
+  const i = NATIVE_UNDO_TXT.indexOf('create or replace function public.' + n + '(');
+  const j = NATIVE_UNDO_TXT.indexOf('$fn$;', NATIVE_UNDO_TXT.indexOf('AS $fn$', i) + 7);
+  if (i < 0 || j < 0) throw new Error('the native undo file has no ' + n);
+  return NATIVE_UNDO_TXT.slice(i, j + 5);
+}).join('\n\n');
+const NATIVE_ATTACK = (NATIVE_TXT.match(/\('public\.hunt_attack\(text, bigint, bigint\)', '[0-9a-f]{32}', '([0-9a-f]{32})'\)/) || [])[1];
+if (!NATIVE_ATTACK) throw new Error('the guard of hunt_v2_native_units.sql must name hunt_attack with its md5');
+const NATIVE_ON = `md5(replace(pg_get_functiondef('public.hunt_attack(text, bigint, bigint)'::regprocedure), chr(13), '')) = '${NATIVE_ATTACK}'`;
+
 // R3-ON-FIX (combat_v2_hunt_out_live.sql) replaces hunt_v2_out (an R3a function): each block applies it after this file; the mutated-H finally
 // step applies it again when it was on the copy before the run
 const OUT_CLEAN = read('../../tcg-bot/supabase/combat_v2_hunt_out_live.sql');
@@ -212,6 +228,7 @@ const block = (body, extra = '') => String.raw`do $t$
 declare ${DECL}; ${extra}
 begin
   ${PRE}
+  if ${NATIVE_ON} then execute $m$${V1_ORIGIN}$m$; end if;
   execute $m$${mig}$m$;
   execute $m$${outFix}$m$;
   ${WORLD}
@@ -609,6 +626,8 @@ async function runH() {
     if (!st.rows?.[0]?.applied) throw new Error('R3-ON (combat_v2_on_hunt.sql) is not applied on this copy');
     hbpBefore = st.rows[0].hbp === true;
     outBefore = st.rows[0].out_fix === true;
+    nativeBefore = (await hq(`select ${NATIVE_ON} as on;`)).rows?.[0]?.on === true;
+    if (mutated && nativeBefore) { const u = await hq(`do $h$ begin execute ${Q}${V1_ORIGIN}${Q}; end $h$;`); if (u.error) throw new Error('put back the v1 functions: ' + u.error); }
     if (mutated) { const m = await hq(`do $h$ begin execute ${Q}${r3a}${Q}; execute ${Q}${mig}${Q}; end $h$;`); if (m.error) throw new Error('apply the mutated file: ' + m.error); }
     const setup = await hq(String.raw`do $x$ declare sq bigint[]; begin
       perform set_config('tcg.skip_welcome', 'on', true);
@@ -778,7 +797,7 @@ async function runH() {
     const c = await hq(hCleanup);
     let r = { error: null };
     // HBP (combat_v2_hunt_boons.sql) replaces 3 R3-ON functions: when it was on the copy before the run, apply it again after the clean R3-ON file
-    if (mutated) r = await hq(`do $h$ begin execute ${Q}${R3A}${Q}; execute ${Q}${CLEAN}${Q};${hbpBefore ? ` execute ${Q}${HBP_FILE}${Q};` : ''}${outBefore ? ` execute ${Q}${OUT_CLEAN}${Q};` : ''} end $h$;`);
+    if (mutated) r = await hq(`do $h$ begin execute ${Q}${R3A}${Q}; execute ${Q}${CLEAN}${Q};${hbpBefore ? ` execute ${Q}${HBP_FILE}${Q};` : ''}${outBefore ? ` execute ${Q}${OUT_CLEAN}${Q};` : ''}${nativeBefore ? ` execute ${Q}${NATIVE_TXT}${Q};` : ''} end $h$;`);
     const left = await hq(`select (select count(*) from public.players where id = any(array[${HP.map(HL).join(', ')}])) + (select count(*) from public.hunts where weak_points = '${HMARK}'::jsonb)
       + (select count(*) from public.balance_log where changed_by = '${HBY}') + (select count(*) from pg_proc where proname in ('r3on_h_real_step', 'r3on_h_synstub')) n,
       (select value->>'hunt' from public.balance where key = 'combat_v2') flag;`);

@@ -28,6 +28,7 @@ grant delete, insert, maintain, references, select, trigger, truncate, update on
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.balance to service_role;
 
 -- @triggers
+CREATE TRIGGER ach_damage_sync AFTER INSERT OR UPDATE ON public.balance FOR EACH ROW WHEN ((new.key = 'ach_damage_v2'::text)) EXECUTE FUNCTION ach_damage_sync();
 CREATE TRIGGER balance_check BEFORE INSERT OR DELETE OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check();
 CREATE TRIGGER balance_check_ability_v2 BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_ability_v2();
 CREATE TRIGGER balance_check_auto_v2 BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_auto_v2();
@@ -43,3 +44,4 @@ CREATE TRIGGER balance_check_settings BEFORE INSERT OR UPDATE ON public.balance 
 CREATE TRIGGER balance_check_stat_labels BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_stat_labels();
 CREATE TRIGGER balance_check_stat_labels_v2 BEFORE INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_check_stat_labels_v2();
 CREATE TRIGGER balance_log_write AFTER INSERT OR UPDATE ON public.balance FOR EACH ROW EXECUTE FUNCTION balance_log_write();
+CREATE TRIGGER hunt_unit_flag_guard BEFORE UPDATE ON public.balance FOR EACH ROW WHEN ((new.key = 'combat_v2'::text)) EXECUTE FUNCTION hunt_unit_flag_guard();
