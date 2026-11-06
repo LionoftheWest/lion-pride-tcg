@@ -5,9 +5,16 @@
 // CSS: public/ui3/90-ui-08.css. A tap on the art opens the 3D viewer (UI-09).
 import { esc, inlineMessage } from './components.js';
 import { icon } from './icons.js';
+import { fmtCompact } from './number.js';
 
 /** An IconButton with an id (the v2 handlers find it by id). */
 const ibtn = (id, ic, label, cls = '') => `<button type="button" id="${id}" class="u3-ibtn u3-ibtn--md u3-ibtn--panel${cls ? ' ' + cls : ''}" aria-label="${esc(label)}">${icon(ic, { size: 'lg' })}</button>`;
+
+/**
+ * The number of a Power or HP tile. Members see whole numbers, rounded UP (Nathan, live test 2026-11-04; the fight HP of PR 503).
+ * Display only: the stored values do not change. The tiles are narrow on every size: 10,000 or more uses the compact form (10.5: "12.3k").
+ */
+export const tileNum = (n) => { const v = Math.ceil(Number(n) || 0); return Math.abs(v) >= 10000 ? fmtCompact(v) : String(v); };
 
 const pct = (v, max) => Math.max(0, Math.min(100, Math.round((100 * v) / (max || 1))));
 
@@ -34,6 +41,7 @@ export const ascensionHTML = (m) => (!m ? '' : m.text
 /**
  * The stat points block. p = { keys: [[key, label, icon?]], pts, add, free, picked, canReset, open, cap? }.
  * STAT-V2 (UI-10 review-3): a row with an icon shows it before the name (UI-67 03); a stat at the cap shows "MAX" and its + is disabled.
+ * A disabled + (0 free or the cap) uses the secondary variant, so it does not look like the active gold + (the 40% opacity stays).
  * Closed (summary): the label, the points spent per stat, "n free" and Assign (free points) or Edit (a reset is left).
  * Open (the editor): the rows with + buttons, Save and Undo (picked points), Reset, and the close button.
  */
@@ -48,8 +56,9 @@ export function pointsHTML(p) {
   const cap = Number.isInteger(p.cap) && p.cap > 0 ? p.cap : Infinity;
   const rows = p.keys.map(([k, label, ic]) => {
     const n = Number(p.pts[k]) || 0, a = p.add[k] || 0;
+    const on = left > 0 && n + a < cap;   // a disabled + (0 free or the cap) is the secondary variant, not the active gold (live test 2026-11-06)
     return `<div class="u3-det__row"><span>${ic ? icon(ic, { size: 'sm' }) : ''}<span class="u3-det__rowname">${esc(label)}</span></span><b>${n >= cap ? 'MAX' : n}${a ? `<i>+${a}</i>` : ''}</b>`
-      + `<button type="button" class="u3-btn u3-btn--primary u3-det__plus" data-add="${k}" aria-label="Add a point to ${esc(label)}"${left > 0 && n + a < cap ? '' : ' disabled'}>${icon('plus', { size: 'lg' })}</button></div>`;
+      + `<button type="button" class="u3-btn ${on ? 'u3-btn--primary' : 'u3-btn--secondary'} u3-det__plus" data-add="${k}" aria-label="Add a point to ${esc(label)}"${on ? '' : ' disabled'}>${icon('plus', { size: 'lg' })}</button></div>`;
   }).join('');
   const acts = (p.picked || p.canReset) ? `<div class="u3-det__acts2">${p.picked ? '<button type="button" class="u3-btn u3-btn--primary u3-btn--md" id="ptsSave"><span class="u3-btn__label">Save</span></button>'
     + '<button type="button" class="u3-btn u3-btn--secondary u3-btn--md" id="ptsUndo"><span class="u3-btn__label">Undo</span></button>' : ''}`

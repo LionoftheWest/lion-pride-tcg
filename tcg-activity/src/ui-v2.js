@@ -20,9 +20,8 @@ import { BOSS_LIST, seedForBoss, thumbFor } from './boss-meta.js';
 import { paintCollectionV3 } from './ui3/collection.js';
 import * as pf3 from './ui3/profile.js';
 import { ascendFailText, SAVE_FAIL_TEXT } from './ui3/viewer.js';
-import { detailHTML, pointsHTML as pointsV3, statHTML, styleEffect } from './ui3/card-detail.js';
+import { detailHTML, pointsHTML as pointsV3, statHTML, styleEffect, tileNum } from './ui3/card-detail.js';
 import { fitDetail, watchDetailFit } from './ui3/card-detail-fit.js';
-import { fmtCompact } from './ui3/number.js';
 import { inlineMessage } from './ui3/components.js';
 import { paintAchievementsV3, paintBossesV3 } from './ui3/collection-tabs.js';
 import { paintTracksV3, closeWindow as closeTrackWindow, switchHTML as trackSwitchHTML } from './ui3/tracks-view.js';
@@ -780,8 +779,6 @@ function v3Refresh() {
   const c = mergedCards().find((x) => String(x.id) === String(col.sel));
   if (c) paintPanel(c);
 }
-// The three stat boxes are narrow on every size: 10,000 or more uses the compact form (10.5: "12.3k").
-const num3 = (n) => (Math.abs(Number(n) || 0) >= 10000 ? fmtCompact(n) : String(n));
 function paintDetail(c, v) {
   const wrap = detHost();
   const win = wrap.querySelector('#u3DetWin');
@@ -813,7 +810,7 @@ function paintDetail(c, v) {
   win.innerHTML = detailHTML({
     c, num: numLabel(c.num), season: c.season || 'Season 1', name: c.name, rarity: c.rarity, rarityLabel: ctx.RARITY_LABEL[c.rarity] || c.rarity,
     locked: !!c.locked, art: c.image_url ? `<img src="${c.image_url}" alt="">${flairHTML(a)}` : '', a, own: v.owned,
-    stats: [statHTML('Power', num3(v.power), pc(v.power, v.maxPow), '--gold'), statHTML('HP', num3(v.hp), pc(v.hp, cardHp(v.maxPow)), '--danger'), statHTML('Crit', `${v.crit}%`, pc(v.crit, 60), '--gold-hi')],
+    stats: [statHTML('Power', tileNum(v.power), pc(v.power, v.maxPow), '--gold'), statHTML('HP', tileNum(v.hp), pc(v.hp, cardHp(v.maxPow)), '--danger'), statHTML('Crit', `${v.crit}%`, pc(v.crit, 60), '--gold-hi')],
     lore: c.lore, tags, ability: c.ability, asc, points, canAsc: v.canAsc, ascLabel: `Ascend to ★${a + 1} · uses ${c.next_cost}`, inSpot: v.inSpot,
   });
   win.classList.toggle('is-editing', pend.open && !!points);

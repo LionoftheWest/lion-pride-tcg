@@ -1,7 +1,7 @@
 // UI-08: the Card Detail markup and the fit steps. node --test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { detailHTML, pointsHTML, statHTML, abilityHTML, ascensionHTML } from './card-detail.js';
+import { detailHTML, pointsHTML, statHTML, abilityHTML, ascensionHTML, tileNum } from './card-detail.js';
 import { widthSteps } from './card-detail-fit.js';
 import { icon } from './icons.js';
 
@@ -99,4 +99,31 @@ test('STAT-V2: a v1 row (no icon, no cap) renders as before: no svg in the name,
   assert.doesNotMatch(r.slice(0, r.indexOf('<b>')), /<svg/);
   assert.match(r, /<b>15<\/b>/);
   assert.doesNotMatch(plusOf(r)[0], / disabled/);
+});
+
+// UI-10 FIX (Nathan live test 2026-11-04/06): whole numbers rounded UP on the Power and HP tiles; a disabled + is not the active gold.
+test('UI-10 FIX: the Power and HP tiles show whole numbers, rounded up', () => {
+  assert.equal(tileNum(65.372), '66');
+  assert.equal(tileNum(158.558), '159');
+  assert.equal(tileNum(27), '27');
+  assert.equal(tileNum(0), '0');
+  assert.equal(tileNum(12345.2), '12.3k');
+  assert.equal(tileNum(null), '0');
+});
+
+test('UI-10 FIX: 0 free (nothing picked) disables every + and none is the active gold primary', () => {
+  const rows = rowsOf(pointsHTML({ keys: V2, cap: 10, pts: { atk: 3, hp: 3 }, add: {}, free: 0, picked: 0, canReset: true, open: true }));
+  assert.equal(rows.length, V2.length);
+  for (const r of rows) {
+    const b = plusOf(r)[0];
+    assert.match(b, / disabled/);
+    assert.match(b, /u3-btn--secondary/);
+    assert.doesNotMatch(b, /u3-btn--primary/);
+  }
+});
+
+test('UI-10 FIX: an open + is the primary gold; a + at the cap is secondary', () => {
+  const rows = rowsOf(pointsHTML({ keys: V2, cap: 10, pts: { atk: 10 }, add: {}, free: 2, picked: 0, canReset: false, open: true }));
+  assert.match(plusOf(rows[0])[0], /u3-btn--secondary/);
+  for (const r of rows.slice(1)) { assert.match(plusOf(r)[0], /u3-btn--primary/); assert.doesNotMatch(plusOf(r)[0], / disabled/); }
 });
