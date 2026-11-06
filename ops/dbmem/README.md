@@ -5,7 +5,7 @@ Combat v2 load (`lptcg-pipeline/items/DB-MEM/SPEC.md`). This watcher reads the S
 to the Discord channel `tcg-admin-alerts` through the bot, only when the state changes.
 
 Files (all in this folder):
-- `watch-db-mem.sh`: the watcher. Cron runs it every minute on the game server host (the host that runs `tcg-bot`).
+- `watch-db-mem.sh`: the watcher. Cron runs it every minute on the host that runs `tcg-bot` (the backup VM).
 - `test-watch-db-mem.sh` + `stub-server.mjs`: the local test (no VM, no Supabase): `bash ops/dbmem/test-watch-db-mem.sh`.
 
 ## What it does
@@ -33,10 +33,17 @@ Files (all in this folder):
 Files on the host (`/home/ubuntu/dbmem/`): `watch.log` (one line per change or error) and `state/` (`state`, `notified`,
 `hist`, `since`, `mfail`, `mfail-notified`, `lock`).
 
-## Install (once, on the game server host)
+## Where it runs: with the bot
 
-Today the game server host is the backup VM (137.131.48.8). On another host, use the same steps: the watcher needs only
-the bot `.env` and the bot on `127.0.0.1:4451`. Run it on ONE host only (the host whose bot is live), or each host posts.
+The watcher lives with the BOT, not with the Activity. It posts through the bot on `127.0.0.1:4451` and reads the bot
+`.env`, so it must run on the host whose `tcg-bot` container runs.
+
+- That host is the backup VM (137.131.48.8). Since the NO-SERVER decision (option B, 2026-11-06) the bot stays there:
+  there is no failback to the main VM any more, and `ops/failover/failback.sh` refuses to run.
+- Run it on ONE host only. A second copy on a host with no bot only writes "ALERT NOT DELIVERED" to its log.
+- If the bot ever moves to another host, move the watcher with it (section "Move it to another host").
+
+## Install (once, on the backup VM)
 
 ```
 ssh -i $KEY ubuntu@<host>
@@ -71,12 +78,22 @@ printf 'x-internal-token: %s\n' "$TOK" | curl -sS -H @- -H 'Content-Type: applic
   --data-binary '{"to":"channel","message":"DB memory watch installed (test post)"}' http://127.0.0.1:4451/admin-alert; echo
 ```
 
-The answer must be `{"channel":true,"sent":0}`. `{"channel":false,...}` means the bot cannot see the channel: give the
-bot role "View Channel" and "Send Messages" in `tcg-admin-alerts`, or set `ADMIN_ALERT_CHANNEL_ID` in the bot `.env`.
+The answer must be `{"channel":true,"sent":0}`. `{"channel":false,...}` means that the bot cannot post in the channel:
+check the bot role permissions "View Channel" and "Send Messages" in `tcg-admin-alerts`, and `ADMIN_ALERT_CHANNEL_ID`.
+`{"sent":N}` with no `channel` key means that the bot is the OLD code (no `to` support): the alert went by DM, if N > 0.
+The watcher counts a post as delivered only when the answer has `"channel":true` or `"sent"` of 1 or more. Any other
+answer (also an HTTP 200 with `"sent":0`) is retried on the next run.
 
-## Move it to another host
+## The channel setting (bot `.env`)
 
-Remove the cron line on the old host (`crontab -e`) and install on the new host. The state starts at OK on the new host.
+Set `ADMIN_ALERT_CHANNEL_ID=<the id of tcg-admin-alerts>` in the bot `.env` before the bot deploy. Read the id from Discord
+(the channel menu "Copy Channel ID" with developer mode, or a read-only GET of the guild channels with the bot token).
+Never guess it. Without the id, the bot searches a text channel named `tcg-admin-alerts` (or `ADMIN_ALERT_CHANNEL_NAME`)
+ONLY in `DISCORD_GUILD_ID`. With no `DISCORD_GUILD_ID` there is no name search, and the alert goes by DM.
+
+## Move it to another host (only if the bot moves)
+
+Remove the cron line on the old host (`crontab -e`) and install on the new host of the bot. The state starts at OK there.
 
 ## Remove
 

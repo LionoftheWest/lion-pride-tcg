@@ -32,8 +32,9 @@ setm() {  # $1 = MemAvailable MiB, $2 = swap used MiB, $3 = load5
 FAIL=0; RUNS_BAD=0
 run() { DBMEM_DIR="$T/w" BOT_ENV="$T/bot.env" ALERT_URL="$B/admin-alert" CURL_TIMEOUT=3 PATH="$T/bin:$PATH" bash "$WATCH" || RUNS_BAD=$((RUNS_BAD + 1)); }
 reading() { setm "$1" "$2" "$3"; run; }
-fresh() { rm -rf "$T/w" "$T/alerts.log" "$T/metrics.code" "$T/alert.code"; mkdir -p "$T/w"; }
+fresh() { rm -rf "$T/w" "$T/alerts.log" "$T/attempts.log" "$T/metrics.code" "$T/alert.code" "$T/alert.body"; mkdir -p "$T/w"; }
 alerts() { [ -f "$T/alerts.log" ] || { echo 0; return; }; grep -c -- "${1:-.}" "$T/alerts.log" || true; }
+attempts() { [ -f "$T/attempts.log" ] || { echo 0; return; }; grep -c -- "${1:-.}" "$T/attempts.log" || true; }
 check() { if [ "$2" = "$3" ]; then echo "PASS  $1"; else echo "FAIL  $1 (got '$2', want '$3')"; FAIL=1; fi; }
 
 echo "-- 1. healthy readings (the values after the restart: 151 MiB, 272 MiB swap, load 0.58)"
@@ -99,6 +100,24 @@ rm -f "$T/alert.code"; reading 105 300 0.5
 check "bot back: the WARN post arrives once" "$(alerts 'memory WARN')" 1
 reading 105 300 0.5; reading 105 300 0.5
 check "bot back: no repeat" "$(alerts)" 1
+
+echo "-- 6b. HTTP 200 with nothing delivered (the OLD bot answers {\"sent\":0} when no DM went out): retry (review M-1)"
+fresh; echo '{"sent":0}' > "$T/alert.body"
+for _ in 1 2 3; do reading 105 300 0.5; done
+check "old bot, 0 DMs: the post was tried" "$(attempts 'memory WARN')" 1
+check "old bot, 0 DMs: nothing delivered" "$(alerts)" 0
+reading 105 300 0.5
+check "old bot, 0 DMs: the next run tries again" "$(attempts 'memory WARN')" 2
+echo '{"channel":false,"sent":0}' > "$T/alert.body"; reading 105 300 0.5
+check "new bot, channel false and 0 DMs (200): tries again" "$(attempts 'memory WARN')" 3
+echo '{"sent":1}' > "$T/alert.body"; reading 105 300 0.5
+check "old bot, 1 DM: delivered once" "$(alerts 'memory WARN')" 1
+reading 105 300 0.5; reading 105 300 0.5
+check "old bot, 1 DM: no repeat after the delivery" "$(attempts 'memory WARN')" 4
+fresh; echo '{"channel":false,"sent":2}' > "$T/alert.body"; for _ in 1 2 3; do reading 105 300 0.5; done
+check "new bot, channel failed but 2 DMs: delivered, no retry" "$(alerts 'memory WARN')$(attempts 'memory WARN')" 11
+reading 105 300 0.5
+check "new bot, 2 DMs: no second attempt" "$(attempts)" 1
 
 echo "-- 7. the metrics endpoint is down: no crash, the state stays, one notice"
 fresh; for _ in 1 2 3; do reading 105 300 0.5; done

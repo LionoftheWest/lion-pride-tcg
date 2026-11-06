@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # DB-MEM M1: watches the memory of the Supabase database host (free plan, Nano, 452 MB RAM).
-# Runs on the GAME SERVER host (the one that runs tcg-bot) from cron, every minute. Read-only.
+# Runs on the host of the BOT (tcg-bot, today the backup VM) from cron, every minute. Read-only. It lives with the bot,
+# not with the Activity: it posts through the bot on 127.0.0.1 (ops/dbmem/README.md "Where it runs").
 # Why (2026-11-06): the database ran out of memory under Combat v2 load, and members felt it before anyone saw it.
 #
 # Each run: one GET of <SUPABASE_URL>/customer/v1/privileged/metrics (Basic service_role:<service key>), then:
@@ -38,16 +39,20 @@ envval() { grep -E "^$1=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- | tr 
 readf() { cat "$STATE_DIR/$1" 2>/dev/null || printf '%s' "$2"; }
 writef() { printf '%s\n' "$2" > "$STATE_DIR/$1"; }
 
-post() {  # $1 = message. Returns 0 only when the bot took it.
-  local tok msg
+post() {  # $1 = message. Returns 0 only when the bot DELIVERED it: the answer has "channel":true or "sent":<1 or more>.
+  # An HTTP 200 alone is not enough: the old bot route ignores "to" and answers 200 {"sent":0} when no DM went out
+  # (review r1 M-1). Anything else = not delivered, and the next run tries the same post again.
+  local tok msg ans
   tok=$(envval INTERNAL_TOKEN)
   if [ -z "$tok" ]; then log "ALERT NOT SENT (no INTERNAL_TOKEN in $ENV_FILE): $1"; return 1; fi
   msg=$(printf '%s' "$1" | tr -d '\\"' | tr '\n\r\t' '   ')
-  if printf 'x-internal-token: %s\n' "$tok" | curl -fsS --max-time "$CURL_TIMEOUT" -H @- -H 'Content-Type: application/json' \
-       --data-binary "{\"to\":\"channel\",\"message\":\"$msg\"}" -o /dev/null "$ALERT_URL" >/dev/null 2>&1; then
-    log "alert sent: $1"; return 0
+  ans=$(printf 'x-internal-token: %s\n' "$tok" | curl -fsS --max-time "$CURL_TIMEOUT" -H @- -H 'Content-Type: application/json' \
+       --data-binary "{\"to\":\"channel\",\"message\":\"$msg\"}" "$ALERT_URL" 2>/dev/null) || ans=""
+  ans=$(printf '%s' "$ans" | tr -d ' \r\n' | head -c 300)
+  if printf '%s' "$ans" | grep -Eq '"channel":true|"sent":[1-9]'; then
+    log "alert sent ($ans): $1"; return 0
   fi
-  log "ALERT FAILED (is the bot up?), next run tries again: $1"; return 1
+  log "ALERT NOT DELIVERED (answer: ${ans:-none}; is the bot up, does it see the channel?), next run tries again: $1"; return 1
 }
 
 # ---- 1. read the metrics ----------------------------------------------------------------------

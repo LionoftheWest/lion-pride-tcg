@@ -34,7 +34,7 @@ export async function dmAdmins(client: Pick<Client, 'users'>, ids: string[], mes
 
 // DB-MEM M1 (Nathan, 2026-11-06: "alerts go to the Discord channel tcg-admin-alerts"): an ops alert posted to the
 // private admin channel instead of a DM. The channel: ADMIN_ALERT_CHANNEL_ID when set, else the text channel named
-// ADMIN_ALERT_CHANNEL_NAME (default tcg-admin-alerts) in DISCORD_GUILD_ID (else in any guild of the bot).
+// ADMIN_ALERT_CHANNEL_NAME (default tcg-admin-alerts) in DISCORD_GUILD_ID only (no guild id = no name search).
 export const ADMIN_ALERT_CHANNEL_DEFAULT = 'tcg-admin-alerts';
 type SendChannel = { id?: string; name?: string; isTextBased?: () => boolean; send: (body: unknown) => Promise<unknown> };
 type GuildLike = { id: string; channels: { fetch: () => Promise<Map<string, SendChannel | null> | { values: () => Iterable<SendChannel | null> }> } };
@@ -57,8 +57,11 @@ async function findAdminChannel(client: ChannelClient, env: NodeJS.ProcessEnv): 
     if (id) return null; // a configured id that does not work: no guess by name
     resolved = null;
   }
+  // The name search runs ONLY in DISCORD_GUILD_ID (review r1 L-5): with no guild id, a channel with the same name in
+  // another server of the bot must never get an ops alert.
+  if (!guildId) return null;
   for (const g of client.guilds.cache.values()) {
-    if (guildId && g.id !== guildId) continue;
+    if (g.id !== guildId) continue;
     const all = await g.channels.fetch().catch(() => null);
     if (!all) continue;
     for (const ch of all.values()) {
@@ -86,3 +89,17 @@ export async function postAdminChannel(client: ChannelClient, message: string, e
 
 /** Test only: forget the channel found by name. */
 export function resetAdminChannelCache(): void { resolved = null; }
+
+// The answer of POST /admin-alert with to: 'channel' (internal.ts). The caller (ops/dbmem/watch-db-mem.sh) retries
+// unless the answer shows a delivery, so "nothing delivered" must be a 502, never a 200 (review r1 L-4).
+//   channel post OK -> 200 { channel: true, sent: 0 }
+//   channel failed, DMs sent -> 200 { channel: false, sent: n }
+//   channel failed, no DM -> 502 { channel: false, sent: 0 }
+export async function channelAlert(
+  message: string,
+  deps: { postChannel: (m: string) => Promise<boolean>; dm: (m: string) => Promise<number> },
+): Promise<{ status: number; body: { channel: boolean; sent: number } }> {
+  if (await deps.postChannel(message)) return { status: 200, body: { channel: true, sent: 0 } };
+  const sent = await deps.dm(message);
+  return { status: sent > 0 ? 200 : 502, body: { channel: false, sent } };
+}

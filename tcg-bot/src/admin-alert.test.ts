@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { adminAlertText, adminIdsFromEnv, dmAdmins, postAdminChannel, resetAdminChannelCache, ADMIN_ALERT_CHANNEL_DEFAULT, type ChannelClient } from './admin-alert.js';
+import { adminAlertText, adminIdsFromEnv, dmAdmins, channelAlert, postAdminChannel, resetAdminChannelCache, ADMIN_ALERT_CHANNEL_DEFAULT, type ChannelClient } from './admin-alert.js';
 
 test('the admin ids come from ADMIN_USER_IDS; anything that is not a Discord id is ignored', () => {
   assert.deepEqual(adminIdsFromEnv({ ADMIN_USER_IDS: ' 123456789012345678 , ,abc,98765432109876543\r' }), ['123456789012345678', '98765432109876543']);
@@ -63,10 +63,36 @@ test('the channel post: ADMIN_ALERT_CHANNEL_ID wins; another guild is not search
   assert.equal(await postAdminChannel(g.client, 'x', { DISCORD_GUILD_ID: 'G' }), false);
   assert.equal(g.posts.length, 0);
   resetAdminChannelCache();
-  assert.equal(await postAdminChannel(g.client, 'x', { ADMIN_ALERT_CHANNEL_ID: '99' }), false, 'a wrong id does not fall back to a name');
+  assert.equal(await postAdminChannel(g.client, 'x', { ADMIN_ALERT_CHANNEL_ID: '99', DISCORD_GUILD_ID: 'OTHER' }), false, 'a wrong id does not fall back to a name (the name exists in that guild)');
+  assert.equal(g.posts.length, 0);
 });
 test('the channel post: a refused send returns false and does not throw', async () => {
   resetAdminChannelCache();
   const f = fakeClient([{ id: '11', name: 'tcg-admin-alerts', guild: 'G', fail: true }]);
+  assert.equal(await postAdminChannel(f.client, 'x', { DISCORD_GUILD_ID: 'G' }), false);
+});
+test('the channel post: with no DISCORD_GUILD_ID there is no name search (review L-5)', async () => {
+  resetAdminChannelCache();
+  const f = fakeClient([{ id: '21', name: 'tcg-admin-alerts', guild: 'OTHER' }]);
   assert.equal(await postAdminChannel(f.client, 'x', {}), false);
+  assert.equal(f.posts.length, 0);
+  assert.equal(f.counts().byList, 0, 'no guild channel list is read');
+});
+
+// review L-4: the answer of /admin-alert to=channel. A 200 with nothing delivered would make the watcher stop retrying.
+test('channelAlert: channel OK = 200 channel true; channel failed + DMs = 200 sent n; nothing delivered = 502', async () => {
+  const dmCalls: string[] = [];
+  const dm = (n: number) => async (m: string) => { dmCalls.push(m); return n; };
+  assert.deepEqual(await channelAlert('a', { postChannel: async () => true, dm: dm(3) }), { status: 200, body: { channel: true, sent: 0 } });
+  assert.deepEqual(dmCalls, [], 'no DM when the channel took it');
+  assert.deepEqual(await channelAlert('b', { postChannel: async () => false, dm: dm(2) }), { status: 200, body: { channel: false, sent: 2 } });
+  assert.deepEqual(await channelAlert('c', { postChannel: async () => false, dm: dm(0) }), { status: 502, body: { channel: false, sent: 0 } });
+  assert.deepEqual(dmCalls, ['b', 'c'], 'the DM fallback gets the same message');
+});
+test('internal.ts answers /admin-alert to=channel with the status of channelAlert (the 502 reaches the caller)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('./internal.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const block = src.slice(src.indexOf("if (route === '/admin-alert')"), src.indexOf("if (route === '/announce')"));
+  assert.match(block, /if \(body\.to === 'channel'\) \{\s*const r = await channelAlert\(/);
+  assert.match(block, /return json\(r\.status, r\.body\);/);
 });

@@ -214,7 +214,8 @@ app.use((req, res, next) => {
 // LOADTEST runs print it too (ROUTE_TIMING_MS shortens the window for a test).
 const routeTiming = createRouteTiming({
   windowMs: Number(process.env.ROUTE_TIMING_MS || 300_000),
-  extra: () => 'shared caches ' + Object.entries(sharedCaches).map(([k, c]) => `${k}=${c.stats.hit}/${c.stats.stale}/${c.stats.miss}`).join(' ') + ' (hit/stale/miss)',
+  extra: () => 'shared caches ' + Object.entries(sharedCaches).map(([k, c]) => `${k}=${c.stats.hit}/${c.stats.stale}/${c.stats.miss}`).join(' ') + ' (hit/stale/miss)'
+    + ` notif-count=${notifRoutes.stats.hit}/${notifRoutes.stats.miss} (hit/miss, DB-MEM A3: the real hit rate)`,
 });
 app.use(routeTiming.middleware);
 routeTiming.timer();

@@ -21,7 +21,12 @@ const srv = http.createServer((req, res) => {
       const code = Number(read('alert.code', '200'));
       if (code !== 200) { res.statusCode = code; return res.end('{"sent":0}'); }
       if (req.headers['x-internal-token'] !== read('token')) { res.statusCode = 401; return res.end('{}'); }
-      fs.appendFileSync(`${dir}/alerts.log`, b + '\n'); res.end('{"channel":true}');
+      // <dir>/alert.body: the 200 answer (default the new bot: {"channel":true,"sent":0}). The old bot answers {"sent":N}.
+      // Every attempt goes to attempts.log. alerts.log has only the posts whose answer says that someone got it.
+      const ans = read('alert.body', '{"channel":true,"sent":0}');
+      fs.appendFileSync(`${dir}/attempts.log`, b + '\n');
+      if (/"channel":true|"sent":[1-9]/.test(ans)) fs.appendFileSync(`${dir}/alerts.log`, b + '\n');
+      res.end(ans);
     });
     return;
   }

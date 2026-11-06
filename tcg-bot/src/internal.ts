@@ -9,7 +9,7 @@ import { launchActivityRow } from './ui/launch.js';
 import { postRarePulls } from './pull-posts.js';
 import { cleanTradeSpec, tradePicture } from './trade-pictures.js';
 import { AttachmentBuilder } from 'discord.js';
-import { adminIdsFromEnv, dmAdmins, postAdminChannel, type ChannelClient } from './admin-alert.js';
+import { adminIdsFromEnv, channelAlert, dmAdmins, postAdminChannel, type ChannelClient } from './admin-alert.js';
 
 // A tiny internal HTTP server, reachable ONLY from other processes on the same
 // VM (it binds to 127.0.0.1, and the container runs with --network host). It lets
@@ -110,9 +110,11 @@ export function startInternalServer(client: Client): void {
         if (route === '/admin-alert') {
           if (!body.message) return json(400, { error: 'missing message' });
           if (body.to === 'channel') {
-            if (await postAdminChannel(client as unknown as ChannelClient, String(body.message))) return json(200, { channel: true, sent: 0 });
-            const sent = await dmAdmins(client, adminIdsFromEnv(), String(body.message));
-            return json(sent ? 200 : 502, { channel: false, sent });
+            const r = await channelAlert(String(body.message), {
+              postChannel: (m) => postAdminChannel(client as unknown as ChannelClient, m),
+              dm: (m) => dmAdmins(client, adminIdsFromEnv(), m),
+            });
+            return json(r.status, r.body);
           }
           return json(200, { sent: await dmAdmins(client, adminIdsFromEnv(), String(body.message)) });
         }
