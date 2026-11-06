@@ -10,7 +10,7 @@ import http from 'node:http';
 
 export async function startStub({ upstream, meta }) {
   const log = [];
-  const stub = { log, mode: {}, deleted: new Set() };
+  const stub = { log, mode: {}, deleted: new Set(), cdnCache: new Map(), cdnHits: 0 };
   const server = http.createServer(async (req, res) => {
     const chunks = [];
     for await (const c of req) chunks.push(c);
@@ -21,9 +21,17 @@ export async function startStub({ upstream, meta }) {
     const m = stub.mode;
     const pub = path.match(/^\/storage\/v1\/object\/public\/card-art\/([^?]+)/);
     const name = pub ? decodeURIComponent(pub[1]) : null;
+    // the CDN (S1-FACE swap: Cloudflare kept a 200 of deleted objects, BOARD 2026-11-04 22:15): mode.cdn = true caches each 200 answer of a
+    // public GET/HEAD by the FULL path + query, and answers a repeat from the cache (a deleted object stays "200"); a new query = a MISS.
+    if (pub && m.cdn && stub.cdnCache.has(`${req.method} ${path}`)) {
+      const c = stub.cdnCache.get(`${req.method} ${path}`);
+      stub.cdnHits += 1;
+      res.writeHead(200, { ...c.h, 'cf-cache-status': 'HIT' }); res.end(req.method === 'HEAD' ? undefined : c.body); return;
+    }
     if (name && stub.deleted.has(name)) { res.writeHead(404, { 'content-type': 'application/json' }); res.end('{"error":"not found"}'); return; }
     if (name && m.fake?.has(name)) { const n = m.fake.get(name); res.writeHead(200, { 'content-type': 'image/png', 'content-length': n }); res.end(req.method === 'HEAD' ? undefined : Buffer.alloc(n, 7)); return; }
-    if (req.method === 'DELETE' && path === '/storage/v1/object/card-art') {
+    // mode.forwardDelete (the swap tests): a DELETE goes to the copy like every other request
+    if (req.method === 'DELETE' && path === '/storage/v1/object/card-art' && !m.forwardDelete) {
       const names = JSON.parse(body.toString('utf8')).prefixes || [];
       for (const n of names) stub.deleted.add(n);
       res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify(names.map((n) => ({ name: n })))); return;
@@ -40,9 +48,18 @@ export async function startStub({ upstream, meta }) {
         for (const x of m.extra || []) if ((q.offset || 0) === 0) list.push({ name: x.name.replace(/^cards\//, ''), id: 'stub', metadata: { size: x.size, eTag: '"stub"' } });
         out = Buffer.from(JSON.stringify(list));
       }
+      // a name that the stub "deleted" (fake mode) is not listed any more; mode.inflate = <bytes>: one more file in the root (the limit tests)
+      if (r.ok && (stub.deleted.size || (m.inflate && !q.prefix && !(q.offset > 0)))) {
+        let list = JSON.parse(out.toString('utf8'));
+        if (stub.deleted.size) list = list.filter((e) => !stub.deleted.has(q.prefix ? `${q.prefix}/${e.name}` : e.name));
+        if (m.inflate && !q.prefix && !(q.offset > 0)) list.push({ name: 'zz-stub-inflate.bin', id: 'stub-inflate', metadata: { size: m.inflate, eTag: '"stub"' } });
+        out = Buffer.from(JSON.stringify(list));
+      }
     }
     const h = {}; r.headers.forEach((v, k) => { if (!['content-encoding', 'content-length', 'transfer-encoding'].includes(k)) h[k] = v; });
-    res.writeHead(r.status, h); res.end(out);
+    if (pub && req.method === 'HEAD' && r.headers.get('content-length')) h['content-length'] = r.headers.get('content-length');
+    if (pub && m.cdn && r.status === 200) stub.cdnCache.set(`${req.method} ${path}`, { h: { ...h, 'content-length': req.method === 'HEAD' ? h['content-length'] : String(out.length) }, body: out });
+    res.writeHead(r.status, h); res.end(req.method === 'HEAD' ? undefined : out);
   });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const port = server.address().port;
