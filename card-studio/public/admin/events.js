@@ -11,7 +11,8 @@ const KINDS = [['drop', 'Drop'], ['trigger', 'Trigger'], ['rank', 'Rank'], ['mod
 export const KIND_LABEL = { drop: 'Drop', trigger: 'Trigger', rank: 'Rank', modifier: 'Modifier', hunt: 'Hunt', launch_cards: 'Launch cards' };
 // D-185: the theme color is one of the 8 name colors (shared/tokens.json game.name-color-1..8). No new color.
 export const THEME_COLORS = ['#F4B73C', '#FF5A5A', '#FF9A3C', '#5BE38A', '#4FD6F0', '#5B8CFF', '#B45AD8', '#FF7AC8'];
-const TRIGGERS = [['hunt_hit', 'Hunt hit'], ['tutorial_done', 'Tutorial done'], ['pack_opened', 'Pack opened'], ['dungeon_run', 'Dungeon run']];
+// EVT-2 (2026-11-05): app_visit = an Activity visit that starts in the window (event_recipients). The SQL list is event_shape_errors.
+const TRIGGERS = [['hunt_hit', 'Hunt fight (v1 or v2)'], ['tutorial_done', 'Tutorial done'], ['pack_opened', 'Pack opened'], ['dungeon_run', 'Dungeon run'], ['app_visit', 'Activity visit']];
 const METRICS = [['hunt_damage', 'Hunt damage'], ['packs_opened', 'Packs opened']];
 const STATUS = { live: ['pass', 'Live'], scheduled: ['info', 'Scheduled'], draft: ['idle', 'Draft'], ended: ['idle', 'Ended'], cancelled: ['warn', 'Cancelled'] };
 const ERRORS = {

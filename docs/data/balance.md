@@ -1780,15 +1780,23 @@ Shape: `number`
 
 ### effect_tiers
 
-Pranks and boons (play_card_effect): power multiplies the base amount and length (Rally %, Butterfingers %, Mend, ...), cd the cooldown, by the rarity of the played card. The base amounts are in subjects.effect, the ceilings in effect_primitives.max_amount / max_duration_s.
+Pranks and boons (play_card_effect): power multiplies the base amount and length (Rally %, Butterfingers %, Mend, ...), cd the cooldown, by the rarity of the played card. The base amounts are in subjects.effect, the ceilings in effect_primitives.max_amount / max_duration_s. event and promo = the full_art values (Nathan 2026-11-05 EVT-2 Q3b: event and promo cards are special and have full-art power). Limits: every rarity has power 0.5 to 3 and cd 0.1 to 2.
 
-Shape: `object { full_art: object { cd: number, power: number }, gold: object { cd: number, power: number }, illustrated_rare: object { cd: number, power: number }, normal: object { cd: number, power: number }, secret_rare: object { cd: number, power: number } }`
+Shape: `object { event: object { cd: number, power: number }, full_art: object { cd: number, power: number }, gold: object { cd: number, power: number }, illustrated_rare: object { cd: number, power: number }, normal: object { cd: number, power: number }, promo: object { cd: number, power: number }, secret_rare: object { cd: number, power: number } }`
 
 ```json
 {
   "gold": {
     "cd": 0.65,
     "power": 1.5
+  },
+  "event": {
+    "cd": 0.75,
+    "power": 1.3
+  },
+  "promo": {
+    "cd": 0.75,
+    "power": 1.3
   },
   "normal": {
     "cd": 1,
@@ -2349,7 +2357,7 @@ Shape: `object { pack_size: number, rates: object { full_art: number, gold: numb
 
 ### rarity_cp
 
-Card power at 0 stars, by rarity. An unknown rarity uses normal. Each subject also has its own subjects.cp_mod (0.92 to 1.06), multiplied in card_cp_exact.
+Card power at 0 stars, by rarity. An unknown rarity uses normal. Each subject also has its own subjects.cp_mod (0.92 to 1.06), multiplied in card_cp_exact. promo = full_art = 75 (Nathan 2026-11-05 EVT-2 Q3b); event = 75 since the launch.
 
 Shape: `object { event: number, full_art: number, gold: number, illustrated_rare: number, normal: number, promo: number, secret_rare: number }`
 
@@ -2357,7 +2365,7 @@ Shape: `object { event: number, full_art: number, gold: number, illustrated_rare
 {
   "gold": 140,
   "event": 75,
-  "promo": 10,
+  "promo": 75,
   "normal": 10,
   "full_art": 75,
   "secret_rare": 40,
@@ -2443,7 +2451,7 @@ Shape: `object { cooldown_days: number, dupe_values: object { full_art: number, 
 
 ### stars
 
-Star curve S1 (Nathan 2026-10-15; before: Option C 2026-10-03): the power multiplier for 0 to 5 stars, by rarity. A 5-star normal = 7.5x (75 CP, a 0-star Full Art), a 5-star illustrated rare = 7.0x (140 CP, a 0-star Gold). Used by the collection power, the leaderboard AND the raid. Event and promo cards cannot ascend (ascend_card), so only their 0-star value counts.
+Star curve S1 (Nathan 2026-10-15; before: Option C 2026-10-03): the power multiplier for 0 to 5 stars, by rarity. A 5-star normal = 7.5x (75 CP, a 0-star Full Art), a 5-star illustrated rare = 7.0x (140 CP, a 0-star Gold). Used by the collection power, the leaderboard AND the raid. Event and promo cards cannot ascend (ascend_card), so only their 0-star value counts. promo = the full_art curve (Nathan 2026-11-05 EVT-2 Q3b). Event and promo cannot ascend, so only index 0 counts.
 
 Shape: `object { event: array(6) of number, full_art: array(6) of number, gold: array(6) of number, illustrated_rare: array(6) of number, normal: array(6) of number, promo: array(6) of number, secret_rare: array(6) of number }`
 
@@ -2467,11 +2475,11 @@ Shape: `object { event: array(6) of number, full_art: array(6) of number, gold: 
   ],
   "promo": [
     1,
-    2.86,
-    4.25,
-    5.41,
-    6.57,
-    7.5
+    1.4,
+    1.7,
+    2,
+    2.25,
+    2.5
   ],
   "normal": [
     1,
@@ -2593,7 +2601,7 @@ Shape: `object { affinity_cap: number, affinity_step: number, expose_cap: number
 
 ### v2_asc
 
-Combat v2: ascension ASC-3 (plan 2.3, decided 2026-10-18). CP = base[r] x (1 + (top[r] / base[r] - 1) x curve[stars]) x cp_mod. curve = the share of the way from the 0-star base to the 5-star top for 0 to 5 stars (starts at 0, ends at 1, never falls). top = the 5-star value of today (no live card loses CP). alias: promo uses normal, event uses full_art. Stars give no stat points in v2. Rules: every card rarity has a base or an alias; base is never above top (balance_check_combat_v2). Nothing reads this key until combat_v2 progress is on.
+Combat v2: ascension ASC-3 (plan 2.3, decided 2026-10-18). CP = base[r] x (1 + (top[r] / base[r] - 1) x curve[stars]) x cp_mod. curve = the share of the way from the 0-star base to the 5-star top for 0 to 5 stars (starts at 0, ends at 1, never falls). top = the 5-star value of today (no live card loses CP). alias: promo uses normal, event uses full_art. Stars give no stat points in v2. Rules: every card rarity has a base or an alias; base is never above top (balance_check_combat_v2). Nothing reads this key until combat_v2 progress is on. alias promo = full_art (Nathan 2026-11-05 EVT-2 Q3b; before: promo = normal).
 
 Shape: `object { alias: object { event: string, promo: string }, base: object { full_art: number, gold: number, illustrated_rare: number, normal: number, secret_rare: number }, curve: array(6) of number, top: object { full_art: number, gold: number, illustrated_rare: number, normal: number, secret_rare: number } }`
 
@@ -2615,7 +2623,7 @@ Shape: `object { alias: object { event: string, promo: string }, base: object { 
   },
   "alias": {
     "event": "full_art",
-    "promo": "normal"
+    "promo": "full_art"
   },
   "curve": [
     0,
@@ -3426,9 +3434,9 @@ Shape: `object { blinded: object { dur: number, dur_card: number, miss: number }
 
 ### v2_support
 
-Combat v2: supports (plan 2.1). A support's basic attack hits for basic_x x CP (Artillery: v2_roles.artillery.basic_x). Support amounts scale by F = (CP_base / power_ref) ^ power_exp, so rarity and stars scale the numbers, not the blocks. An enabler of a rarity in enabler_extra_stack applies one more stack (a proposal). area_one_foe_x: a support area smite hits the target and its area value hits every other foe; with one foe (the Hunt) it adds area_one_foe_x of the area value to the smite (P3, Combat Lab 2026-10-19, approved; the same rule as v2_roles.cleaver.hunt_area_x). Nothing reads this key until combat_v2 is on.
+Combat v2: supports (plan 2.1). A support's basic attack hits for basic_x x CP (Artillery: v2_roles.artillery.basic_x). Support amounts scale by F = (CP_base / power_ref) ^ power_exp, so rarity and stars scale the numbers, not the blocks. An enabler of a rarity in enabler_extra_stack applies one more stack (a proposal). area_one_foe_x: a support area smite hits the target and its area value hits every other foe; with one foe (the Hunt) it adds area_one_foe_x of the area value to the smite (P3, Combat Lab 2026-10-19, approved; the same rule as v2_roles.cleaver.hunt_area_x). Nothing reads this key until combat_v2 is on. promo added (Nathan 2026-11-05 EVT-2 Q3b; card_combat_v2.sql:74 reads the raw rarity, not the alias).
 
-Shape: `object { area_one_foe_x: number, basic_x: number, enabler_extra_stack: array(3) of string, power_exp: number, power_ref: number }`
+Shape: `object { area_one_foe_x: number, basic_x: number, enabler_extra_stack: array(4) of string, power_exp: number, power_ref: number }`
 
 ```json
 {
@@ -3439,7 +3447,8 @@ Shape: `object { area_one_foe_x: number, basic_x: number, enabler_extra_stack: a
   "enabler_extra_stack": [
     "full_art",
     "event",
-    "gold"
+    "gold",
+    "promo"
   ]
 }
 ```
