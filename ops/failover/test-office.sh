@@ -32,7 +32,7 @@ if [ "${MUTATE:-}" = 1 ]; then
   mutant missing-row-is-backup "9" 'if ! r=$(bot_home_read); then home_stop "bot_home unreadable (row missing, read error, or another answer)."; fi' 'r=$(bot_home_read) || r="backup 999"'
   mutant other-shape-accepted "10b" '[ -n "$h" ] && [ -n "$a" ] || return 1' '[ -n "$h" ] || return 1; a=${a:-999}'
   mutant no-age-wait "6" '[ "$age" -ge 130 ] && break' 'break'
-  mutant no-wait-cap "15" 'if [ "$waited" -ge 180 ]; then' 'if false; then'
+  mutant no-wait-cap "hang" 'if [ "$waited" -ge 180 ]; then' 'if false; then'
   mutant backoff-cleared-without-read "12" '  waited=0
 ' '  waited=0; mkdir -p /home/ubuntu/tcg-bot-state; printf "{\"backoff_until\":null,\"cleared_by\":\"x\"}\n" > /home/ubuntu/tcg-bot-state/bot-home.json
 '
@@ -41,6 +41,8 @@ if [ "${MUTATE:-}" = 1 ]; then
   mutant no-env-guard "13" "if [ \"\$SVC\" = bot ] && ! grep -qE '^IMG_UPSTREAM=(supabase|r2-first|r2)\$' \"\$DIR.new/.env\"; then" 'if false; then'
   mutant empty-target-allowed "1" '  "") echo "STOP: TARGET is required' '  "") IP=127.0.0.1;; xx) echo "STOP: TARGET is required'
   mutant lock-name-with-slash "8" 'LOCKD="/home/ubuntu/.deploy-${DIR//\//-}.lock"' 'LOCKD="/home/ubuntu/.deploy-$DIR.lock"'
+  mutant backup-ip-any "19" 'if [ "$SVC" = bot ] && [ "$IP" != 137.131.48.8 ]; then' 'if false; then'
+  mutant no-host-identity "20" 'case "$IPS" in *" $HOST_IP "*) ;;' 'case "$IPS" in *) ;;'
   mutant office-allows-gallery "3" 'case "$SVC" in activity|bot) ;;' 'case "$SVC" in activity|bot|gallery|backup) ;;'
   rm -rf "$M"
   [ $rc = 0 ] && echo "NOS-C5 MUTATE PASS (every mutant failed)" || echo "NOS-C5 MUTATE FAIL"
@@ -81,6 +83,10 @@ case "$cmd" in
   *"bash -s") sed "s|/home/ubuntu|$V/home/ubuntu|g" | bash -c "$cmd" ;;
   *) bash -c "$cmd" ;;
 esac
+F
+cat > "$T/bin/hostname" <<'F'
+#!/usr/bin/env bash
+[ "${1:-}" = -I ] && echo "${FAKE_HOST_IPS:-10.0.0.94 172.17.0.1} "
 F
 cat > "$T/bin/sudo" <<'F'
 #!/usr/bin/env bash
@@ -126,6 +132,8 @@ deploy() { # VAR=value ... <svc> ; output in $OUT, exit code in $RC
   local svc="${*: -1}"; set -- "${@:1:$#-1}"
   # timeout: a deploy.sh that loops (a mutant with no wait cap; the fake sleep returns at once) fails its case, not the run.
   OUT=$(cd "$T/repo" && env PATH="$T/bin:$PATH" KEY=/dev/null "$@" timeout 120 bash ops/deploy.sh "$svc" 2>&1); RC=$?
+  # A hang is a FAIL of its own (review r1 R1-6), never a STOP: the checks that test only "exit != 0" must not pass on it.
+  [ "$RC" = 124 ] && no hang "deploy.sh hung 120 s ($* $svc)"
 }
 dcalls() { grep -c . "$T/log/docker"; }
 has() { printf '%s' "$OUT" | grep -qF -- "$1"; }
@@ -150,7 +158,7 @@ reset_vm; deploy TARGET=office gallery; r1=$RC; deploy TARGET=office backup; r2=
 chk 3 "office gallery / backup -> exit 2, 0 ssh (rc=$r1/$r2)" test "$r1" = 2 -a "$r2" = 2 -a "$(grep -c . "$T/log/ssh")" = 0
 
 # (4) office bot, home backup -> STOP bot home is backup, 0 docker calls
-reset_vm; deploy TARGET=office FAKE_HOME=backup bot
+reset_vm; deploy TARGET=office FAKE_HOST_IPS=192.168.50.10 FAKE_HOME=backup bot
 chk 4 "office bot, home backup -> STOP 'bot home is backup', 0 docker calls" bash -c "[ $RC != 0 ] && [ $(dcalls) = 0 ] && printf '%s' \"\$0\" | grep -q 'STOP: bot home is backup'" "$OUT"
 
 # (5) backup bot, home backup, age 300, tcg-bot RUNNING -> the normal path
@@ -197,6 +205,7 @@ reset_vm; deploy TARGET=backup FAKE_BODY='{"home":"backup"}' bot; r1=$RC; d1=$(d
 reset_vm; deploy TARGET=backup FAKE_BODY='{"home":"elsewhere","age_s":300}' bot; r2=$RC; d2=$(dcalls)
 reset_vm; deploy TARGET=backup FAKE_BODY='{"message":"permission denied for function bot_home_state"}' bot; r3=$RC; d3=$(dcalls)
 chk 10b "no age_s / unknown home / an error body -> STOP, 0 docker calls (rc=$r1/$r2/$r3)" test "$r1" != 0 -a "$r2" != 0 -a "$r3" != 0 -a "$d1$d2$d3" = 000
+chk 10b "the last one prints 'STOP: bot_home unreadable'" bash -c "printf '%s' \"\$0\" | grep -q 'STOP: bot_home unreadable'" "$OUT"
 reset_vm; sed -i '/SUPABASE_SERVICE_ROLE_KEY/d' "$T/vm/home/ubuntu/tcg-bot/.env"; deploy TARGET=backup bot
 chk 10c "no key in the bot .env -> STOP 'bot_home unreadable', 0 docker calls" bash -c "[ $RC != 0 ] && [ $(dcalls) = 0 ] && printf '%s' \"\$0\" | grep -q 'STOP: bot_home unreadable'" "$OUT"
 
@@ -243,6 +252,18 @@ chk 16 "backup activity -> ubuntu@137.131.48.8, no jump host" bash -c "grep -q '
 fo=$(DOCKER_CMD="$T/bin/docker" bash "$ROOT/ops/failover/failback.sh" 2>&1); frc=$?
 chk 17 "failback.sh -> exit 2, REFUSED with the NO-SERVER 4.5 pointer, 0 docker calls (rc=$frc)" \
   bash -c "[ $frc = 2 ] && [ $(dcalls) = 0 ] && printf '%s' \"\$0\" | grep -q 'REFUSED: option B' && printf '%s' \"\$0\" | grep -q 'NO-SERVER 4.5'" "$fo"
+
+# (19) R1-2: a bot deploy with TARGET=backup goes only to 137.131.48.8 (another BACKUP_IP would start a second live bot)
+reset_vm; deploy TARGET=backup BACKUP_IP=10.9.9.9 FAKE_HOME=backup bot
+chk 19 "BACKUP_IP=10.9.9.9 bot -> exit 2, 0 ssh calls (rc=$RC)" bash -c "[ $RC = 2 ] && [ $(grep -c . "$T/log/ssh") = 0 ] && printf '%s' \"\$0\" | grep -q 'goes only to 137.131.48.8'" "$OUT"
+reset_vm; deploy TARGET=backup BACKUP_IP=10.9.9.9 FAKE_SSH_FAIL=1 activity
+chk 19 "BACKUP_IP=10.9.9.9 activity -> still allowed (ssh to ubuntu@10.9.9.9)" grep -q 'ubuntu@10.9.9.9' "$T/log/ssh"
+
+# (20) R1-2: the VM must be the TARGET VM (its private IP) before the row read and any docker call
+reset_vm; deploy TARGET=backup FAKE_HOST_IPS='10.0.0.55 172.17.0.1' FAKE_HOME=backup bot
+chk 20 "a host without 10.0.0.94 -> STOP 'this host is not the backup VM', 0 docker calls, 0 row reads"   bash -c "[ $RC != 0 ] && [ $RC != 124 ] && [ $(dcalls) = 0 ] && [ $(grep -c . "$T/log/curl") = 0 ] && printf '%s' \"\$0\" | grep -q 'STOP: this host is not the backup VM'" "$OUT"
+reset_vm; deploy TARGET=office FAKE_HOME=office bot
+chk 20 "TARGET=office on a host without 192.168.50.10 -> STOP, 0 docker calls" bash -c "[ $RC != 0 ] && [ $(dcalls) = 0 ] && printf '%s' \"\$0\" | grep -q 'not the office VM'" "$OUT"
 
 # (18) no STANDBY path is left in deploy.sh
 chk 18 "deploy.sh has no STANDBY text" bash -c "! grep -q STANDBY '$T/repo/ops/deploy.sh'"

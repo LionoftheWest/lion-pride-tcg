@@ -17,7 +17,7 @@
 set -euo pipefail
 
 SVC="${1:?usage: ops/deploy.sh <activity|bot|gallery|backup>}"
-KEY="${KEY:-$HOME/Downloads/ssh-key-2026-09-08.key}"
+KEY="${KEY:-$HOME/.ssh/lptcg-vm}"
 
 # SRC = repo path, DIR = VM dir under /home/ubuntu, NAME = container + image, PATHS = what ships.
 HEALTH_PREV=""  # never taken from the caller's environment (review r2 N2): only the case below sets it
@@ -44,8 +44,10 @@ HEALTH_PREV="${HEALTH_PREV:-${HEALTH:-}}"
 
 JUMP=""
 case "${TARGET:-}" in
-  backup) IP="${BACKUP_IP:-137.131.48.8}" ;;
-  office) IP=192.168.50.10; JUMP="-J ${OFFICE_JUMP:-vaugh@10.0.0.220}"
+  backup) IP="${BACKUP_IP:-137.131.48.8}"; HOST_IP=10.0.0.94
+          # The bot only on the backup VM itself (review r1 R1-2): another BACKUP_IP would start a second live bot.
+          if [ "$SVC" = bot ] && [ "$IP" != 137.131.48.8 ]; then echo "STOP: a bot deploy with TARGET=backup goes only to 137.131.48.8 (BACKUP_IP=$IP)."; exit 2; fi ;;
+  office) IP=192.168.50.10; HOST_IP=192.168.50.10; JUMP="-J ${OFFICE_JUMP:-vaugh@10.0.0.220}"
           case "$SVC" in activity|bot) ;; *) echo "STOP: TARGET=office deploys only activity or bot (not $SVC)."; exit 2 ;; esac ;;
   "") echo "STOP: TARGET is required: TARGET=backup or TARGET=office (NO-SERVER P0b: the DNS name never chooses the target)."; exit 2 ;;
   *) echo "STOP: unknown TARGET '${TARGET}' (use: backup or office)"; exit 2 ;;
@@ -96,7 +98,7 @@ fi
 git archive --format=tar "$SHA:$SRC" $PATHS | $SSH "rm -rf ~/$DIR.new && mkdir ~/$DIR.new && tar -x -C ~/$DIR.new"
 
 # 3. On the VM: build, swap, health check, roll back on failure, lock the secrets.
-$SSH "SVC='$SVC' DIR='$DIR' NAME='$NAME' SHA='$SHA' SHORT='$SHORT' HEALTH='$HEALTH' HEALTH_PREV='$HEALTH_PREV' FORCE='${FORCE_UNHEALTHY:-}' TARGET='$TARGET' bash -s" <<'REMOTE'
+$SSH "SVC='$SVC' DIR='$DIR' NAME='$NAME' SHA='$SHA' SHORT='$SHORT' HEALTH='$HEALTH' HEALTH_PREV='$HEALTH_PREV' FORCE='${FORCE_UNHEALTHY:-}' TARGET='$TARGET' HOST_IP='$HOST_IP' bash -s" <<'REMOTE'
 set -euo pipefail
 cd /home/ubuntu
 # BOT_HOME_BEGIN (NO-SERVER P0b; test: ops/failover/test-office.sh C5)
@@ -117,6 +119,10 @@ bot_home_read() {
 }
 home_stop() { rm -rf "$DIR.new"; echo "STOP: $1 Nothing changed."; exit 1; }
 if [ "$SVC" = bot ]; then
+  # The host identity, before the row read and any docker call: the private IP of the TARGET VM (backup 10.0.0.94, observed
+  # 2026-11-06). A VM made from another disk, or a wrong address, stops here.
+  IPS=" $(hostname -I 2>/dev/null || true) "
+  case "$IPS" in *" $HOST_IP "*) ;; *) home_stop "this host is not the $TARGET VM (its private IP $HOST_IP is not in:$IPS)." ;; esac
   waited=0
   while :; do
     if ! r=$(bot_home_read); then home_stop "bot_home unreadable (row missing, read error, or another answer)."; fi
