@@ -30,11 +30,11 @@ export function statLabelsFrom(b) {
 
 const all = () => statLabelsFrom(bal);
 /** The name of a stat (Attack, Health, Crit, Support, Recharge). */
-export const statLabel = (k) => all()[k]?.label ?? (k ? k[0].toUpperCase() + k.slice(1) : '');
+export const statLabel = (k) => (V2_STAT_KEYS.includes(k) ? v2StatLabel(k) : all()[k]?.label ?? (k ? k[0].toUpperCase() + k.slice(1) : ''));
 /** The chip form (ATK, HP, CRT, SUP, RCH). */
 // The fallback is the chip of before the change (a 3-letter cut of the key was one letter wider: ATT, HAS clipped a caption in WebKit at 412x915).
 const OLD_SHORT = { attack: 'ATK', vitality: 'VIT', precision: 'PRE', potency: 'POT', haste: 'HST' };
-export const statShort = (k) => all()[k]?.short ?? OLD_SHORT[k] ?? String(k).slice(0, 3).toUpperCase();
+export const statShort = (k) => (V2_STAT_KEYS.includes(k) ? v2StatShort(k) : all()[k]?.short ?? OLD_SHORT[k] ?? String(k).slice(0, 3).toUpperCase());
 /** The one-line explainer, for example "supports are ready sooner (-4% cooldown for each point)". */
 export const statText = (k) => all()[k]?.text ?? '';
 /** [[key, label], ...] in the stored order: the rows of the stat screens. */
@@ -50,3 +50,15 @@ export function statSummary() {
   if (!S || !a.attack || !a.vitality || !a.precision) return 'Each star gives points to this card.';
   return `Each star gives ${S.per_star} points to this card. ${a.attack.label} adds ${pct(S.attack)}% power, ${a.vitality.label} ${pct(S.vitality)}% HP, ${a.precision.label} ${pct(S.precision)}% chance.`;
 }
+
+// STAT-V2 (UI-10 review-3, approved 2026-11-06): the 9 combat v2 stats. The keys and order are plan 2.2 (the card_progress_v2 columns).
+// The names come from the public balance key stat_labels_v2 (stat_v2.sql); with no key a stat shows its key in capitals. The icons are UI-67 03.
+export const V2_STAT_KEYS = ['atk', 'def', 'hp', 'crd', 'crt', 'abl', 'ddg', 'acc', 'spd'];
+export const V2_STAT_ICONS = { atk: 'dumbbell', def: 'shield-half', hp: 'heart', crd: 'bomb', crt: 'dices', abl: 'wand-sparkles', ddg: 'footprints', acc: 'crosshair', spd: 'gauge' };
+const v2Label = (k) => { const l = bal?.stat_labels_v2?.[k]; return l && typeof l.label === 'string' ? l : null; };
+/** The name of a v2 stat (Attack, Defense, ... from stat_labels_v2), or the key in capitals. */
+export const v2StatLabel = (k) => v2Label(k)?.label ?? String(k).toUpperCase();
+/** The chip form of a v2 stat (ATK, DEF, ...), or the key in capitals. */
+export const v2StatShort = (k) => (typeof v2Label(k)?.short === 'string' ? v2Label(k).short : String(k).toUpperCase());
+/** [[key, label, icon], ...] in the plan 2.2 order: the 9 rows of the v2 stat screen. */
+export const v2StatDefs = () => V2_STAT_KEYS.map((k) => [k, v2StatLabel(k), V2_STAT_ICONS[k]]);

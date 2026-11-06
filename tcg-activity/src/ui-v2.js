@@ -10,7 +10,7 @@ import { thumb } from './thumb.js';
 import { mtToday } from './mt-time.js';
 import { explainBtn, maybeExplain } from './ui-v2-explain.js';
 import { flairHTML } from './flair.js';
-import { statDefs } from './stat-labels.js';
+import { statDefs, v2StatDefs, V2_STAT_KEYS } from './stat-labels.js';
 import { fillViewerEffect, nameBadge, badgeOf } from './effects-ui.js';
 import { mountBoss } from './boss-lazy.js';
 import { measure, rewardOf, rewardLabel, FRAMES, frameBase, frameLook, frameName, frameRingHTML, setRewardsFrom } from './achievements.js';
@@ -792,7 +792,8 @@ function paintDetail(c, v) {
     if (pend.id !== c.id) { pend.id = c.id; pend.add = {}; pend.open = false; }
     const picked = Object.values(pend.add).reduce((t, n) => t + n, 0);
     const spent = Object.values(v.sp.points || {}).reduce((t, n) => t + (Number(n) || 0), 0);
-    points = pointsV3({ keys: statDefs().filter(([k]) => keys.includes(k)), pts: v.sp.points || {}, add: pend.add, free: v.sp.free || 0, picked,
+    const defs = v.sp.v2 ? v2StatDefs() : statDefs();   // STAT-V2 (UI-10 review-3): the 9 v2 rows with their icons and the cap of v2_stats
+    points = pointsV3({ keys: defs.filter(([k]) => keys.includes(k)), cap: v.sp.v2 ? v.sp.cap : undefined, pts: v.sp.points || {}, add: pend.add, free: v.sp.free || 0, picked,
       canReset: spent > 0 && !picked && !ctx.cache.collection?.stats?.resetUsed, open: pend.open });
   }
   const spare = Math.max(0, (c.quantity || 0) - 1);
@@ -975,7 +976,9 @@ function paintBossPanel() {
 // open: the phone stat editor is open (a phone shows one line until Assign, 2026-10-01).
 const pend = { id: null, add: {}, open: false }; // points picked but not saved yet (one card at a time)
 // Only the stats that do something for this card: attackers fight, effects and supports cast.
+// STAT-V2 (stat_v2 flag on): every card has the 9 v2 stats (plan 2.1); a card at v2 level 0 (no star) has no stat block, as a 0-star card in v1.
 function statKeys(c) {
+  if (c.stat?.v2) return Number(c.stat.level) > 0 ? [...V2_STAT_KEYS] : [];
   const keys = [];
   if (['Character', 'Creature'].includes(c.type)) keys.push('attack', 'vitality', 'precision');
   if (c.effect || c.ability?.kind === 'support') keys.push('potency');
@@ -983,6 +986,7 @@ function statKeys(c) {
   return keys;
 }
 function pointsHTML(c, sp) {
+  if (sp.v2) return '';   // STAT-V2: the old v2 side panel (no v3 session) has no v2 stat editor (SPEC 4.5)
   const keys = statKeys(c);
   if (!keys.length) return '';
   if (pend.id !== c.id) { pend.id = c.id; pend.add = {}; pend.open = false; }
@@ -1067,7 +1071,7 @@ async function ascend(c) {
   }
   const after = { ...c, ascension: r.ascension, quantity: r.quantity, power: r.power, next_cost: r.next_cost,
     can_ascend: r.next_cost != null && r.quantity >= 1 + r.next_cost };
-  ctx.celebrateAscend(c, after, !!ctx.cache.collection?.stats?.on && statKeys(c).length > 0);
+  ctx.celebrateAscend(c, after, !!ctx.cache.collection?.stats?.on && (statKeys(c).length > 0 || (!!c.stat?.v2 && v3)));   // STAT-V2: a level-0 v2 card gets points from this star
   await ctx.refreshOwned();
   v3Refresh();   // UI-10 C7: the window under the celebration shows the new stars and numbers
   renderCollectionV2();

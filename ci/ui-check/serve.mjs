@@ -31,6 +31,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, extname, normalize } from 'node:path';
 import { keyOf, longData } from './fixture-lib.mjs';
 import { ui3Css } from '../../tcg-activity/src/ui3/css-parts.js';
+import { statsPayload } from '../../tcg-activity/src/stats-v2.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PUB = join(here, '..', '..', 'tcg-activity', 'public');
@@ -124,6 +125,16 @@ function derivedCol(body, kind) {
   }) };
 }
 DERIVED.push({ when: (p, c, body) => p === '/api/collection' && ['ascend', 'ascend-ok', 'points'].includes(c.ci_col) && body?.cards, make: (body, c) => derivedCol(body, c.ci_col) });
+// STAT-V2 (UI-10 review-3, SPEC 4.6): cookie ci_col=points9 = the stat_v2 flag on. fixtures/stat-v2.json is a raw answer in the shape of SQL
+// card_stats_v2_for (only its keys) for the recorded owned cards: v2 level 12 (4 stars), Attack at the cap 10, 2 free. The payload is built by
+// statsPayload() of the SERVER module (tcg-activity/src/stats-v2.js), so a field that the module drops is missing here too.
+const STAT_V2 = JSON.parse(readFileSync(join(here, 'fixtures', 'stat-v2.json'), 'utf8'));
+function derivedStatV2(body) {
+  const cards = body.cards.map((c) => (c.quantity > 0 ? { ...c, ascension: 4 } : { ...c }));
+  const { stats } = statsPayload(cards, null, STAT_V2);
+  return { ...body, cards, stats };
+}
+DERIVED.push({ when: (p, c, body) => p === '/api/collection' && c.ci_col === 'points9' && body?.cards, make: (body) => derivedStatV2(body) });
 // UI-52: the Gauntlet after a run (cookie ci_dungeon = g-over): the run is over (the squad fell on floor 4), as in the approved frame:
 // 4F Room 1, week best 4F R1, rank #1, 62 turns, the next run in 10:27:13. The prizes come from the recorded lobby answer.
 function derivedGauntletOver(body) {
