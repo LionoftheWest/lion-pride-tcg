@@ -741,7 +741,7 @@ function renderMain(view) {
   if (view === 'trading') { renderTradingV2(); return; }
   if (view === 'shop') { renderShopV2(); return; }
   if (view === 'dungeon') { renderDungeonV2(); return; }
-  if (view === 'battling' && features.hunt) { renderHunt(); return; }
+  if (view === 'battling' && features.hunt) { v2Wait.reset(); renderHunt(); return; } // review r2 N1: a new open of the Hunt starts a fresh wait
   el('main').innerHTML = '<div class="main-body"><div class="soon">⚔️<b>Battling is coming soon.</b><span>Put your cards head to head with the server.</span></div></div>';
 }
 
