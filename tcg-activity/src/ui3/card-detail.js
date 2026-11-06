@@ -32,7 +32,8 @@ export const ascensionHTML = (m) => (!m ? '' : m.text
     + `<i class="u3-det__bar u3-det__bar--lg"><i style="width:${pct(m.have, m.need)}%;background:var(--gold)"></i></i></section>`);
 
 /**
- * The stat points block. p = { keys: [[key, label]], pts, add, free, picked, canReset, open }.
+ * The stat points block. p = { keys: [[key, label, icon?]], pts, add, free, picked, canReset, open, cap? }.
+ * STAT-V2 (UI-10 review-3): a row with an icon shows it before the name (UI-67 03); a stat at the cap shows "MAX" and its + is disabled.
  * Closed (summary): the label, the points spent per stat, "n free" and Assign (free points) or Edit (a reset is left).
  * Open (the editor): the rows with + buttons, Save and Undo (picked points), Reset, and the close button.
  */
@@ -44,8 +45,12 @@ export function pointsHTML(p) {
       : p.canReset ? '<button type="button" class="u3-btn u3-btn--secondary u3-btn--md" id="ptsOpen"><span class="u3-btn__label">Edit</span></button>' : '';
     return `<section class="u3-det__pts is-closed" id="pPts"><span class="u3-label">Stat points</span><span class="u3-det__sum">${sum}</span><span class="u3-det__free">${left} free</span>${btn}</section>`;
   }
-  const rows = p.keys.map(([k, label]) => `<div class="u3-det__row"><span>${esc(label)}</span><b>${Number(p.pts[k]) || 0}${p.add[k] ? `<i>+${p.add[k]}</i>` : ''}</b>`
-    + `<button type="button" class="u3-btn u3-btn--primary u3-det__plus" data-add="${k}" aria-label="Add a point to ${esc(label)}"${left > 0 ? '' : ' disabled'}>${icon('plus', { size: 'lg' })}</button></div>`).join('');
+  const cap = Number.isInteger(p.cap) && p.cap > 0 ? p.cap : Infinity;
+  const rows = p.keys.map(([k, label, ic]) => {
+    const n = Number(p.pts[k]) || 0, a = p.add[k] || 0;
+    return `<div class="u3-det__row"><span>${ic ? icon(ic, { size: 'sm' }) : ''}<span class="u3-det__rowname">${esc(label)}</span></span><b>${n >= cap ? 'MAX' : n}${a ? `<i>+${a}</i>` : ''}</b>`
+      + `<button type="button" class="u3-btn u3-btn--primary u3-det__plus" data-add="${k}" aria-label="Add a point to ${esc(label)}"${left > 0 && n + a < cap ? '' : ' disabled'}>${icon('plus', { size: 'lg' })}</button></div>`;
+  }).join('');
   const acts = (p.picked || p.canReset) ? `<div class="u3-det__acts2">${p.picked ? '<button type="button" class="u3-btn u3-btn--primary u3-btn--md" id="ptsSave"><span class="u3-btn__label">Save</span></button>'
     + '<button type="button" class="u3-btn u3-btn--secondary u3-btn--md" id="ptsUndo"><span class="u3-btn__label">Undo</span></button>' : ''}`
     + `${p.canReset ? '<button type="button" class="u3-btn u3-btn--ghost u3-btn--md" id="ptsReset"><span class="u3-btn__label">Reset</span></button>' : ''}</div>` : '';

@@ -1768,7 +1768,7 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 M1e live check (SPEC ON 6.7 rows 2a and 2b). Reads only. For each card whose player_cards row exists: input_missing (v1 points and no input row), progress_mismatch (the progress row is not combat_v2_convert_expect of the current input row, or its ledger rows do not sum to it), live_differs (the live v1 points are not the current input), log_after_switch (a stat_point_log spend or reset after the newest combat_v2_switch_log on row). Answer: the counts and the items (ok = no item). combat_v2_convert.sql.
+[combat] Combat v2 M1e live check (SPEC ON 6.7 rows 2a and 2b), with the STAT-V2 later rows (stat_v2.sql). Reads only. For each card whose player_cards row exists: input_missing (v1 points and no input row), progress_mismatch (the progress row is not combat_v2_convert_expect of the current input row PLUS the later ledger rows of the row: reason spend, reset or xp, or grant_level with a ref stars:<n> of card_progress_v2_sync; or its ledger rows do not sum to it), live_differs (the live v1 points are not the current input), log_after_switch (a stat_point_log spend or reset after the newest combat_v2_switch_log on row). Answer: the counts and the items (ok = no item). combat_v2_convert.sql, stat_v2.sql.
 
 <a id="fn-combat-v2-convert-expect-bigint-integer-jsonb"></a>
 
@@ -1788,7 +1788,7 @@ F-3: the value of each attacker of a squad = cp x weakness x synergy x armored (
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 M1e fix path (SPEC ON 3.7 rule 8b): for each card that combat_v2_convert_check finds with a difference: a progress row with a spend, reset or xp ledger row is reported; a card with an m1b input row is reported; else its progress row is deleted, a new input row m1b with the live values is written and converted into a NEW progress row. A card with only a log row is reported. A second call adds 0 rows. combat_v2_convert.sql.
+[combat] Combat v2 M1e fix path (SPEC ON 3.7 rule 8b): for each card that combat_v2_convert_check finds with a difference: a progress row with a spend, reset or xp ledger row, or a grant_level row with a ref stars:<n> (card_progress_v2_sync, stat_v2.sql), is reported; a card with an m1b input row is reported; else its progress row is deleted, a new input row m1b with the live values is written and converted into a NEW progress row. A card with only a log row is reported. A second call adds 0 rows. combat_v2_convert.sql, stat_v2.sql.
 
 <a id="fn-combat-v2-convert-undo-text-bigint"></a>
 
@@ -2908,7 +2908,7 @@ F-3: Team CP, the fight value and the synergy groups of a squad (GET /api/hunt/s
 - Returns: `jsonb`
 - Security definer: no
 
-[combat] Combat v2 Hunt practice (20.20 R3): the answer of a practice function: the day, the boss card (hunt_boss_v2_card), damage, steps, status, the fight, info, units, practice true, the given fields and the screen fields of dungeon_v2_screen. Reads only. combat_v2_hunt_practice.sql.
+[combat] Combat v2 Hunt (20.20 R3, R3-ON-FIX): the answer of hunt_v2_start, hunt_v2_act and hunt_v2_auto: live = the mark of the day row (hunt_v2_days.live, never the flag), practice = not live, hunt (id, name, tier, closes_at, live_frac = the shared boss HP fraction, read after the credit of the call), the day, the boss card (hunt_boss_v2_card), damage, steps, status, the fight, info, units, the given fields and the screen fields of dungeon_v2_screen. Reads only. combat_v2_hunt_out_live.sql.
 
 <a id="fn-hunt-v2-save-bigint-text-date-jsonb-text-jsonb"></a>
 

@@ -106,6 +106,14 @@ if (process.env.MUTATE) {
   }
 }
 for (const x of ['$t$', '$q$', '$s$', '$swf$', '$swo$']) if (mig.includes(x) || swOn.includes(x) || swOff.includes(x)) throw new Error(`the SQL must not contain ${x}`);
+// STAT-V2 (stat_v2.sql replaces buy_shop_item and shop_today after this file): the file runs WITHOUT its guard block (the GUARD_RE pattern of
+// test-combat-v2-progress-freeze.mjs), and the guard is checked on its own: the 2 functions of this file have the new md5 of the guard.
+const GUARD_RE = /\ndo \$g\$[\s\S]*?-- GUARD-END\n/;
+const guardText = (mig.match(GUARD_RE) || [])[0];
+if (!guardText) throw new Error('the file has no guard');
+const GUARD_NEW = [...guardText.matchAll(/\('(public\.[a-z0-9_]+\([^']*\))', '([0-9a-f]{32})', '([0-9a-f]{32})'\)/g)].map((m) => ({ fn: m[1], new: m[3] }));
+if (GUARD_NEW.length !== 2) throw new Error('the guard must name buy_shop_item and shop_today with an old and a new md5');
+mig = mig.replace(GUARD_RE, '\n');
 
 const fails = [];
 const results = [];
@@ -131,6 +139,8 @@ declare res jsonb := '[]'; r jsonb; r2 jsonb; e jsonb; ok boolean; n int; n2 int
   md5_pts_a text; md5_pts_b text; md5_cc_a text; md5_cc_b text; c_in int; c_pr int; c_led int; c_in2 int; c_pr2 int; c_led2 int; v1cp numeric; t int;
   snap_a jsonb; snap_b jsonb; v_week text := to_char(now() at time zone 'America/Denver', 'IYYY-IW'); v_price int; flag0 jsonb; at_on timestamptz;
 begin
+  res := res || jsonb_build_object('case', 'GUARD (checked on its own; the file runs without it): buy_shop_item and shop_today of this file have the new md5 of the guard', 'ok',
+    ${GUARD_NEW.map((g) => `md5(replace(pg_get_functiondef(${lit(g.fn)}::regprocedure), chr(13), '')) = ${lit(g.new)}`).join(' and ')});
   select value into flag0 from public.balance where key = 'combat_v2';
   insert into public.players (id, username) values ('${P}', 'm1e test p'), ('${Q}', 'm1e test q'), ('${N}', 'm1e test n'), ('${W}', 'm1e test w');
   insert into public.player_cards (player_id, card_id, quantity, ascension, stat_points) values

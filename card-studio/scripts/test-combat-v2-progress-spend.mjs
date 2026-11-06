@@ -173,7 +173,8 @@ begin
     callers_b = (select array_agg(x order by x) from (select unnest(callers_a) x union select unnest(readers)) q), 'now', (select array_agg(x) from unnest(callers_b) x where x <> all (callers_a)));
   select coalesce(array_agg(${sig} order by ${sig}), '{}') into bad from pg_proc p
    where p.pronamespace = 'public'::regnamespace and ${sig} <> all (mine) and p.prosrc ~ '(spend_card_points_v2|reset_card_points_v2|stat_reset_gift_use_v2|card_progress_v2_view|card_progress_v2_ref_seq)'
-     and p.proname <> 'card_progress_v2_reset';   -- M1d combat_v2_progress_freeze_v1.sql: the v2 reset, shared by reset_card_points_v2 and the Shop (its own test)
+     and p.proname <> 'card_progress_v2_reset'   -- M1d combat_v2_progress_freeze_v1.sql: the v2 reset, shared by reset_card_points_v2 and the Shop (its own test)
+     and p.proname <> all (array['stat_v2_spend', 'stat_v2_reset', 'card_progress_v2_sync']);   -- STAT-V2 stat_v2.sql: the stat screen calls the M1c spend and reset; the sync takes a ref of the sequence (its own test)
   res := res || jsonb_build_object('case', 'T1 no other function names a new function or the sequence', 'ok', cardinality(bad) = 0, 'names', bad);
 
   -- T2. server only

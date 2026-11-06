@@ -63,3 +63,36 @@ test('with no balance a stat shows its stored key with a capital (the old name) 
   assert.equal(statLabel('attack'), 'Attack');
   assert.equal(statLabel('haste'), 'Haste');   // one stat missing: only that one falls back
 });
+
+// STAT-V2 (SPEC G-C2): the 9 v2 names come from the public balance key stat_labels_v2 (stat_v2.sql); no key = the key in capitals.
+import { V2_STAT_KEYS, v2StatDefs, v2StatLabel, v2StatShort } from './stat-labels.js';
+const V2L = { atk: ['Attack', 'ATK'], def: ['Defense', 'DEF'], hp: ['HP', 'HP'], crd: ['Crit Damage', 'CRD'], crt: ['Crit %', 'CRT'],
+  abl: ['Ability', 'ABL'], ddg: ['Dodge', 'DDG'], acc: ['Accuracy', 'ACC'], spd: ['Speed', 'SPD'] };
+const BAL2 = { ...BAL, stat_labels_v2: Object.fromEntries(Object.entries(V2L).map(([k, [label, short]]) => [k, { label, short }])) };
+
+test('STAT-V2: the 9 rows in the plan 2.2 order with the names of stat_labels_v2 and the UI-67 icons', () => {
+  setStatBalance(BAL2);
+  assert.deepEqual(V2_STAT_KEYS, ['atk', 'def', 'hp', 'crd', 'crt', 'abl', 'ddg', 'acc', 'spd']);
+  assert.deepEqual(v2StatDefs(), [['atk', 'Attack', 'dumbbell'], ['def', 'Defense', 'shield-half'], ['hp', 'HP', 'heart'], ['crd', 'Crit Damage', 'bomb'],
+    ['crt', 'Crit %', 'dices'], ['abl', 'Ability', 'wand-sparkles'], ['ddg', 'Dodge', 'footprints'], ['acc', 'Accuracy', 'crosshair'], ['spd', 'Speed', 'gauge']]);
+  // the Shop reset table and picker captions (ui-v2-shop.js) read statLabel / statShort: they resolve the v2 keys too
+  assert.equal(statLabel('crd'), 'Crit Damage'); assert.equal(statShort('crd'), 'CRD'); assert.equal(statShort('hp'), 'HP');
+});
+
+test('STAT-V2: a changed balance name shows on the screen (no name typed in the code)', () => {
+  const b = JSON.parse(JSON.stringify(BAL2)); b.stat_labels_v2.ddg = { label: 'Evade', short: 'EVA' };
+  setStatBalance(b);
+  assert.equal(v2StatLabel('ddg'), 'Evade'); assert.equal(v2StatShort('ddg'), 'EVA'); assert.equal(statLabel('ddg'), 'Evade');
+  assert.equal(v2StatDefs()[6][1], 'Evade');
+});
+
+test('STAT-V2: no stat_labels_v2 = the key in capitals; the v1 keys keep their names', () => {
+  setStatBalance(BAL);
+  assert.deepEqual(v2StatDefs().map((d) => d[1]), ['ATK', 'DEF', 'HP', 'CRD', 'CRT', 'ABL', 'DDG', 'ACC', 'SPD']);
+  assert.equal(statShort('spd'), 'SPD');
+  setStatBalance(BAL2);
+  assert.deepEqual(statDefs(), [['attack', 'Attack'], ['vitality', 'Health'], ['precision', 'Crit'], ['potency', 'Support'], ['haste', 'Recharge']]);
+  assert.equal(statShort('vitality'), 'HP'); assert.equal(statLabel('haste'), 'Recharge');
+  setStatBalance(null);
+  assert.equal(statLabel('vitality'), 'Vitality');
+});

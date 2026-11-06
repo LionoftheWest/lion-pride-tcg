@@ -1,0 +1,12 @@
+/* UI-10 review-3 (STAT-V2, approved by Nathan 2026-11-06): the stat points editor with the 9 combat v2 stats.
+   The rows of pointsHTML (src/ui3/card-detail.js) show the UI-67 stat icon before the name (C2, neutral --text-secondary).
+   A long name wraps at its space ("Crit / Damage", C5, D-08: never "..."). With the icons the gap is --sp-1 and the row start
+   is --sp-2 (C6: without it "Accuracy" spilled 5 px into its number at 430x932). UI-00 tokens only. */
+body.ui-v2.ui-v3 .u3-det__row > span { display: flex; align-items: center; gap: var(--sp-1); white-space: normal; }
+body.ui-v2.ui-v3 .u3-det__row > span > svg { flex: none; color: var(--text-secondary); }
+body.ui-v2.ui-v3 .u3-det__rows:has(svg) .u3-det__row { padding-left: var(--sp-2); }
+/* the 9 rows take 2 columns on a phone (P0: the 2 columns of the phone sheet, UI-10 review-3 frames). The auto-fit rule of 90-ui-08.css
+   fell to 1 column at 412x915, and the 9 rows pushed Save below the view (G3, PR 522 first run). */
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-det__rows:has(svg) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* At 412x915 "Accuracy" spilled 6 px into its number (G3): on a phone the row gap is --sp-1 (C6 method, 8 px back per row). */
+body.ui-v2.ui-v3[data-size="compact-port"] .u3-det__rows:has(svg) .u3-det__row { gap: var(--sp-1); }

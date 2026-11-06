@@ -155,6 +155,7 @@ const NEW_FNS = ['balance_shape_errors', 'balance_v2_spec', 'balance_check_comba
   'combat_v2_card_tags', 'combat_v2_synergy',   // SYN combat_v2_synergy.sql: the rule tags and the squad factors (they read v2_synergy; combat_v2 is OFF)
   'combat_v2_convert_expect', 'combat_v2_convert_write', 'combat_v2_convert', 'combat_v2_convert_undo', 'combat_v2_convert_check', 'combat_v2_convert_fix',
   'card_progress_v2_fight',   // M1e combat_v2_convert.sql: the stat conversion at the switch (v2_convert, v2_stats, v2_level, card_level) and the fight level (N-7b); called by the switch file and dungeon_v2_unit (R2-ON)
+  'stat_v2_on', 'card_progress_v2_sync', 'card_stats_v2_entry', 'card_stats_v2_for', 'stat_v2_spend',   // STAT-V2 stat_v2.sql: the v2 stat screen (combat_v2 progress, v2_stats, v2_level, card_level_xp_at)
   'dungeon_v2_unit', 'dungeon_v2_needs_ally', 'dungeon_v2_info', 'dungeon_v2_hp', 'dungeon_v2_play', 'dungeon_v2_amounts', 'dungeon_v2_screen', 'dungeon_v2_fight',
   'dungeon_v2_after', 'dungeon_v2_room', 'dungeon_v2_pick', 'dungeon_v2_rooms', 'dungeon_v2_out', 'dungeon_v2_end', 'dungeon_v2_start', 'dungeon_v2_turns', 'dungeon_v2_act',
   'dungeon_v2_auto', 'dungeon_v2_choose', 'dungeon_v2_retreat', 'dungeon_v2_view',   // R2a combat_v2_dungeon_run.sql: the v2 Dungeon run of testers (combat_v2_on dungeon, the engine keys); no v1 function calls them

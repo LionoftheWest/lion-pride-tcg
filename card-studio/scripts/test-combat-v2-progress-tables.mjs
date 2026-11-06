@@ -194,7 +194,8 @@ begin
      and p.proname <> all (array['dungeon_v2_unit'])   -- R2-ON combat_v2_on_dungeon.sql: the v2 Dungeon unit reads the points and the bonus of card_progress_v2 when combat_v2_on progress (N-7b)
        -- + M1d combat_v2_progress_freeze_v1.sql (buy_shop_item routes the Shop reset to card_progress_v2_reset)
      and p.proname <> all (array['card_progress_v2_view', 'spend_card_points_v2', 'reset_card_points_v2', 'card_progress_v2_reset', 'buy_shop_item',
-       'combat_v2_convert_write', 'combat_v2_convert_undo', 'combat_v2_convert_check', 'combat_v2_convert_fix', 'card_progress_v2_fight']);   -- + M1e combat_v2_convert.sql (the conversion writer, its undo, check and fix, and the fight level)   -- + M1d combat_v2_progress_freeze_v1.sql (buy_shop_item routes the Shop reset to card_progress_v2_reset)
+       'combat_v2_convert_write', 'combat_v2_convert_undo', 'combat_v2_convert_check', 'combat_v2_convert_fix', 'card_progress_v2_fight'])   -- + M1e combat_v2_convert.sql (the conversion writer, its undo, check and fix, and the fight level)   -- + M1d combat_v2_progress_freeze_v1.sql (buy_shop_item routes the Shop reset to card_progress_v2_reset)
+     and p.proname <> all (array['stat_v2_on', 'card_progress_v2_sync', 'stat_v2_spend', 'card_stats_v2_entry']);   -- STAT-V2 stat_v2.sql: the stat screen sync (the writer), spend and read (its own test); stat_v2_on names card_progress_v2_fight in a comment
   res := res || jsonb_build_object('case', 'T2 no function except the two new triggers and the named M1 writers names card_progress_v2 (no other reader or caller)', 'ok', cardinality(bad) = 0, 'names', bad);
   select coalesce(array_agg(p.oid::regprocedure::text order by 1), '{}') into callers_b from pg_proc p
    where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'combat_v2_on\s*\(';
