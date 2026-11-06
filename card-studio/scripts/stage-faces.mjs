@@ -40,6 +40,10 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { hostname } from 'node:os';
 import { installFetchGuard, guardClient, isBlocked } from './stage-guard.mjs';
+import { checkArtState } from '../src/art-store.js';
+// R2-MOVE: stage-faces writes Supabase storage only. With --live it refuses (exit 6) at the start AND before each storage write
+// when the state file FROZEN or CUTOVER exists or ART_STORE is not supabase (src/art-store.js checkArtState).
+function artGate() { if (!LIVE) return; const r = checkArtState(); if (r) { const e = new Error(r); e.artRefused = true; throw e; } }
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const LIVE_REF = 'kgvdqqehefezbypozvrh';
@@ -236,6 +240,7 @@ const READ_CMDS = ['stage', 'order', 'before', 'verify', 'fresh', 'storage', 'ba
 const WRITE_CMDS = ['orphans', 'swap', 'unswap'];
 const FILE_CMDS = ['tools', 'keys', 'keys-check']; // no database, no target: local files only
 async function main() {
+  if (LIVE) { const a = checkArtState(); if (a) { console.log(a); return 6; } } // R2-MOVE, before any request
   if (![...READ_CMDS, ...WRITE_CMDS, ...FILE_CMDS].includes(CMD) || !SET || SET.startsWith('--')) {
     console.error(`usage: node scripts/stage-faces.mjs ${[...READ_CMDS, ...WRITE_CMDS, ...FILE_CMDS].join('|')} --set S1 [options] [--live]  (see the head of this file)`);
     return 1;
@@ -963,6 +968,7 @@ async function objectHead(db, name) {
 /** Delete names (one request each, in the given order) and prove each is gone: LIST absent AND a cache-busted GET = 400/404. */
 async function deleteObjects(db, names, point) {
   for (const n of names) {
+    artGate();
     const { error } = await db.storage.from(BUCKET).remove([n]);
     if (isBlocked()) return { ok: false, why: 'blocked' };
     if (error) return { ok: false, why: `delete ${n}: ${error.message}` };
@@ -1290,6 +1296,7 @@ async function swap(db, target) {
     let upOk = true;
     for (const [k, x] of [['main', n.main], ['grid', n.grid], ['reveal', n.reveal]]) {
       if (!x) continue;
+      artGate();
       const { error: ue } = await db.storage.from(BUCKET).upload(x, local[k], { upsert: false, contentType: typeOf(x) });
       if (isBlocked()) return 5;
       if (ue) { console.log(`ERROR upload ${id} ${x}: ${ue.message}`); upOk = false; break; }
@@ -1412,6 +1419,7 @@ async function unswap(db, target) {
     for (const x of plan) {
       console.log(`${x.act === 'keep' ? 'KEEP' : 'UPLOAD'} ${id} ${x.o.name}`);
       if (x.act !== 'upload') continue;
+      artGate();
       const { error: ue } = await db.storage.from(BUCKET).upload(x.o.name, x.buf, { upsert: false, contentType: x.o.contentType || typeOf(x.o.name) });
       if (isBlocked()) return 5;
       const got = ue ? null : await objectBytes(db, x.o.name);
@@ -1485,6 +1493,7 @@ async function orphans(db, target) {
   const u2 = await used();
   const again = list.filter((o) => u2.has(o.name));
   if (again.length) { console.log(`refused: now used: ${again.map((o) => o.name).join(',')}`); return 1; }
+  artGate();
   const { error } = await db.storage.from(BUCKET).remove(list.map((o) => o.name));
   if (error) { console.log(`ERROR delete: ${error.message}`); return 1; }
   let gone = 0;
@@ -1499,5 +1508,5 @@ async function orphans(db, target) {
 }
 
 // process.exitCode, not process.exit: an exit while fetch sockets close crashes node on Windows
-const rc = await main().catch((e) => { console.log(`ERROR ${(e.message || String(e)).split('\n')[0]}`); return 1; });
+const rc = await main().catch((e) => { if (e.artRefused) { console.log(e.message); return 6; } console.log(`ERROR ${(e.message || String(e)).split('\n')[0]}`); return 1; });
 process.exitCode = isBlocked() ? 5 : rc;

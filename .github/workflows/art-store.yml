@@ -1,0 +1,67 @@
+# R2-MOVE: the tests of the card-art move (spec 6.2 G1-G11). Card art moves from Supabase Storage to Cloudflare R2.
+# No secret and no network: every R2, Supabase and host check runs against a stub; the R2 vault is absent here (the
+# tests check the refusal). The real R2 signing check (lptcg-media-test) runs on Nathan's PC only (r2-sign-check.mjs).
+# One job, no matrix: one of the 20 job slots (ci/gates/slot-guard.test.mjs).
+name: Art store (R2-MOVE)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: art-store-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  art-store:
+    name: Art store tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # G3a compares the scan of the base 14f533ea
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install (card-studio, tcg-activity, tcg-bot)
+        run: |
+          (cd card-studio && npm ci --ignore-scripts --no-audit --no-fund && npm rebuild sharp --no-audit --no-fund)
+          (cd tcg-activity && npm ci --ignore-scripts --no-audit --no-fund)
+          (cd tcg-bot && npm ci --ignore-scripts --no-audit --no-fund)
+          (cd card-studio && npm ls aws4fetch)
+      - name: G3a storage API only where allowed, I-8; G11 no secret value
+        if: success() || failure()
+        run: node --test ci/gates/art-direct.test.mjs ci/gates/secret-values.test.mjs
+      - name: G2 the Activity image proxy (both cache branches), the art-url vectors
+        if: success() || failure()
+        working-directory: tcg-activity
+        run: node --test img-route-r2.test.js img-route.test.js img-cache.test.js art-url.test.js
+      - name: G3b the bot (no Supabase-host request), the art-url vectors, typecheck
+        if: success() || failure()
+        working-directory: tcg-bot
+        run: |
+          node --import tsx --test src/art-url.test.ts src/art-fallback.test.ts
+          npx tsc --noEmit
+      - name: G4 the writers, G3b the galleries, the existing delete and URL tests
+        if: success() || failure()
+        working-directory: card-studio
+        run: |
+          node scripts/test-art-store.mjs
+          node scripts/test-gallery-art.mjs
+          node scripts/test-studio-tier-delete.mjs
+          node scripts/test-studio-card-delete.mjs
+          node scripts/test-storage-url.mjs
+      - name: G1 copy and verify, G5-G10 the live checkers (stubs)
+        if: success() || failure()
+        working-directory: card-studio
+        run: |
+          node scripts/test-r2-copy.mjs
+          node scripts/test-r2-checks.mjs
+          node scripts/test-r2-retire.mjs
+      - name: deploy.sh health checks and the STANDBY env refusal
+        if: success() || failure()
+        run: bash ops/deploy-health.test.sh && bash ops/boss-files.test.sh

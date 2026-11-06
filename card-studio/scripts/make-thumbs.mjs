@@ -6,14 +6,18 @@
  *   node scripts/make-thumbs.mjs            # only the missing thumbnails
  *   node scripts/make-thumbs.mjs --all      # rebuild every thumbnail
  *   node scripts/make-thumbs.mjs --dry      # sizes only, no upload
+ * R2-MOVE (W5): the list, the source read and every write go through src/art-store.js (Supabase or R2 by ART_STORE;
+ * the freeze and cut FILES, read on every call). One object pair (grid + reveal) = one logical write.
  */
 import dotenv from 'dotenv'; dotenv.config({ override: true });
 import { makeThumbs, gridObject, revealObject } from '../src/thumbs.js';
 import { createClient } from '@supabase/supabase-js';
+import { createArtStore } from '../src/art-store.js';
 
 const ALL = process.argv.includes('--all'), DRY = process.argv.includes('--dry');
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY, URL = process.env.SUPABASE_URL;
 const sb = createClient(URL, KEY, { auth: { persistSession: false } });
+const store = createArtStore({ db: sb });
 
 const { data: cards, error } = await sb.from('cards').select('id, image_url').not('image_url', 'is', null);
 if (error) throw new Error(error.message);
@@ -23,11 +27,7 @@ paths.push('cards/card-back.png');
 // Which thumbnails exist already (one list call per folder).
 async function listTimes(folder) {
   const m = new Map();
-  for (let off = 0; ; off += 1000) {
-    const { data } = await sb.storage.from('card-art').list(folder, { limit: 1000, offset: off });
-    for (const f of data || []) m.set(`${folder}/${f.name}`, Date.parse(f.updated_at || f.created_at || 0));
-    if (!data || data.length < 1000) break;
-  }
+  for (const f of await store.list(folder)) m.set(f.name, f.updated);
   return m;
 }
 const have = ALL ? new Map() : await listTimes('grid/cards');
@@ -39,21 +39,19 @@ console.log(`${paths.length} card images, ${have.size} thumbnails exist, ${todo.
 let before = 0, after = 0, revealBytes = 0, done = 0, failed = 0, anim = 0;
 async function one(p) {
   try {
-    const r = await fetch(`${URL}/storage/v1/object/public/card-art/${p}`);
+    const r = await fetch(store.readUrl(p));
     if (!r.ok) throw new Error(`download ${r.status}`);
     const src = Buffer.from(await r.arrayBuffer());
     const { grid, reveal, animated } = await makeThumbs(src);
     if (animated) anim += 1;
     before += src.length; after += grid.length; revealBytes += reveal ? reveal.length : 0;
     if (!DRY) {
-      for (const [obj, out] of [[gridObject(p), grid], [revealObject(p), reveal]]) {
-        if (!out) continue;
-        const u = await fetch(`${URL}/storage/v1/object/card-art/${obj}`, {
-          method: 'POST', body: out,
-          headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, 'content-type': 'image/webp', 'x-upsert': 'true', 'cache-control': 'max-age=604800' },
-        });
-        if (!u.ok) throw new Error(`upload ${obj} ${u.status} ${(await u.text()).slice(0, 80)}`);
-      }
+      await store.withWrite(`make-thumbs ${p}`, async () => {
+        for (const [obj, out] of [[gridObject(p), grid], [revealObject(p), reveal]]) {
+          if (!out) continue;
+          try { await store.put(obj, out, 'image/webp', { cacheControl: '604800' }); } catch (e) { throw new Error(`upload ${obj} ${e.message}`.slice(0, 160)); }
+        }
+      });
     }
     done += 1;
   } catch (e) { failed += 1; console.log(`FAIL ${p}: ${e.message}`); }

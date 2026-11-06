@@ -4,6 +4,8 @@
 // the studio ignored that refusal and deleted the images anyway, so the live card kept its row and lost its art.
 // The order now: delete the rows, check the error, and remove the images only after the database said yes.
 // Test: scripts/test-studio-tier-delete.mjs (mocks the database and the storage).
+// R2-MOVE (W4): the images go through src/art-store.js (bucket card-art; Supabase or R2 by ART_STORE and the state files).
+import { createArtStore } from './art-store.js';
 
 // The tables whose foreign key blocks a card delete (on delete no action), in plain words.
 export const HISTORY = {
@@ -43,19 +45,27 @@ export function refusalMessage(error, tiers) {
  * @param {string[]} o.tiers  the removed tiers (rarities)
  * @returns {Promise<{ok: true, warning?: string} | {ok: false, error: string}>}
  */
-export async function removeTiers({ db, bucket, cardId, subjectId, tiers }) {
+export async function removeTiers({ db, bucket, cardId, subjectId, tiers, store = createArtStore({ db }) }) { // eslint-disable-line no-unused-vars
   if (!tiers.length) return { ok: true };
-  const { data: rows, error: readErr } = await db.from('cards').select('id').eq('subject_id', subjectId).in('rarity', tiers);
-  if (readErr) return { ok: false, error: `Could not read the live card rows (${readErr.message}). Nothing was deleted.` };
-  const rowIds = (rows || []).map((r) => r.id);
-  if (rowIds.length) {
-    // One statement: the foreign keys remove the members' copies (player_cards) and their card_ledger rows with
-    // the card, so the card ledger still reconciles. A card with history is refused as a whole.
-    const { error } = await db.from('cards').delete().in('id', rowIds);
-    if (error) return { ok: false, error: refusalMessage(error, tiers) };
-  }
-  // The database said yes (or had no rows for these tiers): now the images can go.
-  const { error: rmErr } = await db.storage.from(bucket).remove(tiers.flatMap((r) => [`cards/${cardId}-${r}.webp`, `cards/${cardId}-${r}.png`]));
-  if (rmErr) return { ok: true, warning: `the rows are deleted, but the images were not removed from storage (${rmErr.message})` };
-  return { ok: true };
+  // R2-MOVE: one logical write (the rows, then the images). Under FROZEN it does not start, so no row is deleted.
+  let h;
+  try { h = store.beginWrite(`tier-delete ${cardId} ${tiers.join(',')}`); } catch (e) { return { ok: false, error: `${e.message}. Nothing was deleted.` }; }
+  try {
+    const { data: rows, error: readErr } = await db.from('cards').select('id').eq('subject_id', subjectId).in('rarity', tiers);
+    if (readErr) return { ok: false, error: `Could not read the live card rows (${readErr.message}). Nothing was deleted.` };
+    const rowIds = (rows || []).map((r) => r.id);
+    if (rowIds.length) {
+      // One statement: the foreign keys remove the members' copies (player_cards) and their card_ledger rows with
+      // the card, so the card ledger still reconciles. A card with history is refused as a whole.
+      const { error } = await db.from('cards').delete().in('id', rowIds);
+      if (error) return { ok: false, error: refusalMessage(error, tiers) };
+    }
+    // The database said yes (or had no rows for these tiers): now the images can go (art-store: Supabase or R2).
+    try {
+      await store.remove(tiers.flatMap((r) => [`cards/${cardId}-${r}.webp`, `cards/${cardId}-${r}.png`]));
+    } catch (e) {
+      return { ok: true, warning: `the rows are deleted, but the images were not removed from storage (${e.message})` };
+    }
+    return { ok: true };
+  } finally { store.endWrite(h); }
 }
