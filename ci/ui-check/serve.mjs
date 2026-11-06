@@ -265,7 +265,7 @@ function derivedD2(kind) {
 }
 DERIVED.push({ when: (p, c) => p === '/api/dungeon/v2/view' && D2_KINDS.includes(c.ci_dungeon), make: (body, c) => derivedD2(c.ci_dungeon) });
 // ON-UI (combat v2 for every member, ON SPEC 3.5, G-UI fixtures): cookie ci_dungeon = m2-<state>: the same answers as d2-<state> with the
-// flag ON for a member who is not a tester (live true, tester false) and the live row mark (run.live true) with loot: 3 Shards and 1 card
+// flag ON for a member (member true, tester true, live = the row mark) and the live row mark (run.live true) with loot: 3 Shards and 1 card
 // at risk, 12 Shards banked. m2-lobby: no run, can_start (Start run starts v2). m2-done: no run left today. m2-v1 (fixture b): the flag ON
 // and an active v1 run of today (v1_run): the v1 fight screen (/api/dungeon answers the v1 fight below).
 const M2_KINDS = ['m2-fight', 'm2-five', 'm2-lobby', 'm2-over', 'm2-done', 'm2-choose', 'm2-v1'];
@@ -287,7 +287,9 @@ function fiveAttackers(v) {
 function derivedM2(kind) {
   const v = derivedD2({ 'm2-fight': 'd2-fight', 'm2-five': 'd2-fight', 'm2-over': 'd2-over', 'm2-choose': 'd2-choose' }[kind] || 'd2-lobby');
   if (kind === 'm2-five') fiveAttackers(v);
-  Object.assign(v, { tester: false, live: true, v1_run: null });
+  // ONE-START FIX: the real dungeon_v2_view shape with the flag ON: member = the flag, tester = true for every member
+  // (combat_v2_on('dungeon', p)), live = the run row mark (null with no run row; that null kept the v1 Start run on 2026-11-06)
+  Object.assign(v, { tester: true, member: true, live: v.run ? true : null, v1_run: null });
   if (v.run) {
     v.run.live = true;
     Object.assign(v.run.state, { pend: { shards: 3, cards: [v.run.state.squad?.[0] ?? 1] }, bank: { shards: 12, cards: [] } });

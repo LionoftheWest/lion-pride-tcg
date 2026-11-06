@@ -316,6 +316,10 @@ export const v2CanStart = (v) => !!(v?.ok && (v.tester === true || v.live === tr
 /** ON-UI screen rule (ON SPEC 3.5, review M-2): while the member has an active v1 run of today (dungeon_v2_view.v1_run), the Dungeon
  *  opens the v1 run screen; else v2 when live is true or the member is a tester. */
 export const v1RunFirst = (v) => !!(v?.ok && v.v1_run);
+/** ONE-START FIX (2026-11-06): the Dungeon member mode. dungeon_v2_view (combat_v2_on_dungeon.sql) gives the flag as 'member'
+ *  (combat_v2_on('dungeon')); its 'live' is the mark of today's run row (null before the first start). live alone kept a member on the
+ *  v1 Start run (refused v2_on) and showed "Play v2 (test)". live true (a live run row) stays the member mode, as before. */
+export const dungeonMember = (v) => !!(v?.ok && (v.member === true || v.live === true));
 /** The Dungeon screen (ON SPEC 3.5): d = the v1 /api/dungeon answer, v = dungeon_v2_view, v1Active = the v1 run of today is active.
  *  'v1-run': an active v1 run of today (v1_run) keeps the v1 screens, also with the flag ON (review M-2); 'v2': the v2 run takes the
  *  screen; 'v2-start': the lobby with the v2 start (a tester's Play v2 (test), or Start run in the member mode); 'v2-lobby': the member
@@ -325,7 +329,7 @@ export function dungeonScreen(d, v, v1Active) {
   if (v1RunFirst(v)) return 'v1-run';
   if (v2OwnsDungeon(v, d)) return 'v2';
   if (v2CanStart(v) && !v1Active) return 'v2-start';
-  if (v?.ok && v.live === true && !v1Active) return 'v2-lobby';
+  if (dungeonMember(v) && !v1Active) return 'v2-lobby';
   return 'v1';
 }
 
