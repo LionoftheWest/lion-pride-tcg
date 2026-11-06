@@ -40,7 +40,7 @@ if (process.argv.includes('--mutate')) {
   let bad = 0;
   for (const [name, want, from, to] of MUT) {
     if (!src.includes(from)) { console.log(`FAIL mutant "${name}": the text does not match bot_home.sql`); bad++; continue; }
-    const f = join(dir, `${want}.sql`); writeFileSync(f, src.replace(from, to));
+    const f = join(dir, `${want}.sql`); writeFileSync(f, src.replace(from, () => to));
     const r = run(f); const failed = [...r.stdout.matchAll(/^FAIL \[([^\]]+)\]/gm)].map((m) => m[1]);
     if (r.status !== 0 && failed.includes(want)) console.log(`PASS mutant "${name}" FAILED-AS-EXPECTED (failed: ${failed.join(', ')})`);
     else { console.log(`FAIL mutant "${name}" SURVIVED (want [${want}] to fail; failed: ${failed.join(', ') || 'none'})`); bad++; }
@@ -102,13 +102,13 @@ begin
   alter table settings enable trigger settings_bot_home_check;
   s := bot_home_state();
   res := res || jsonb_build_object('case', '[a] the row made old with the trigger off -> age_s >= 3500', 'ok', (s->>'age_s')::int >= 3500, 'r', s);
-  execute '${W_OFFICE}' into h;
+  execute $w$${W_OFFICE}$w$ into h;
   s := bot_home_state();
   res := res || jsonb_build_object('case', '[a] the bot-home.mjs statement (writer set in its WHERE) moves the row to office', 'ok', h = 'office' and s->>'home' = 'office', 'r', jsonb_build_object('h', h, 's', s));
   res := res || jsonb_build_object('case', '[a] then age_s < 5 (the trigger sets updated_at)', 'ok', (s->>'age_s')::int < 5, 'r', s);
   -- (b) a write 6 s after the transaction start: clock_timestamp(), not now()
   perform set_config('lptcg.bot_home_writer', '', true);
-  execute '${W_BACKUP}' into h;
+  execute $w$${W_BACKUP}$w$ into h;
   s := bot_home_state();
   res := res || jsonb_build_object('case', '[b] a write 6 s into the transaction -> age_s < 5', 'ok', h = 'backup' and (s->>'age_s')::int < 5, 'r', s);
 
@@ -139,10 +139,10 @@ begin
   raise exception 'RESULTS %', res;
 end $t$;`;
 
-const out = JSON.stringify(await q(body));
-const mm = out.match(/RESULTS (\[.*\])/);
-if (!mm) { console.log('FAIL [run] NO RESULTS:', out.slice(0, 1500)); process.exit(1); }
-const results = JSON.parse(mm[1].replace(/\\"/g, '"').replace(/\n.*$/, ''));
+const ans = await q(body);
+const mm = String(ans?.message || '').match(/RESULTS (\[.*\])/);
+if (!mm) { console.log('FAIL [run] NO RESULTS:', JSON.stringify(ans).slice(0, 1500)); process.exit(1); }
+const results = JSON.parse(mm[1]);
 let fail = 0;
 for (const x of results) { if (!x.ok) fail++; console.log(`${x.ok ? 'PASS' : 'FAIL'} ${x.case}${x.ok ? '' : ` ${JSON.stringify(x.r)}`}`); }
 console.log(fail ? `NOS-C9 FAILS ${fail} of ${results.length}` : `NOS-C9 PASS cases=${results.length}`);
