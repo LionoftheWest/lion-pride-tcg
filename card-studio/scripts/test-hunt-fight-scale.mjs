@@ -24,6 +24,7 @@ const MUT = {
   past_v1_converted: ["  if h.status <> 'active' and not exists (select 1 from public.hunt_v2_days d where d.hunt_id = p_hunt and d.live) then return null; end if;\n", ''],
   inverse_factor: ["  return (combat_v2_hunt_boss(h.tier, k)->>'max')::numeric / h.hp_max;", "  return h.hp_max / (combat_v2_hunt_boss(h.tier, k)->>'max')::numeric;"],
   second_calc: ["  return (combat_v2_hunt_boss(h.tier, k)->>'max')::numeric / h.hp_max;", "  return (combat_v2_enemy_numbers()->'v2_enemy'->'hunt'->h.tier->>'hp')::numeric / h.hp_max;"],
+  unit_ignored: ["  if h.stats->>'unit' = 'v2' then return 1; end if;   -- a v2-native row: already the fight scale\n", ''],
   batch_keeps_nulls: ['   where x.f is not null;\n', '   where true;\n'],
 };
 
@@ -58,7 +59,7 @@ const add = (name, okExpr, got = "'null'::jsonb") => `res := res || jsonb_build_
 
 const SQL = String.raw`do $t$
 #variable_conflict use_column
-declare res jsonb := '[]'; bk text; bn text; hid bigint; hpast bigint; hlive bigint; hnov2 bigint; sq bigint[]; mx numeric; f numeric; a jsonb; x jsonb;
+declare res jsonb := '[]'; bk text; bn text; hid bigint; hpast bigint; hlive bigint; hnov2 bigint; hnat bigint; hnatpast bigint; sq bigint[]; mx numeric; f numeric; a jsonb; x jsonb;
   s jsonb; drop0 numeric; hits numeric; cred numeric; dmg numeric;
 begin
   perform set_config('tcg.skip_welcome', 'on', true);
@@ -75,6 +76,9 @@ begin
     values ('The ' || bn, 'Normal', '[]'::jsonb, 50000, 1000, now() - interval '10 days', now() - interval '8 days', 'expired') returning id into hlive;
   insert into hunts (name, tier, weak_points, hp_max, hp_remaining, opens_at, closes_at, status)
     values ('Nobody Of This Name', 'Heroic', '[]'::jsonb, 80000, 1000, now() - interval '30 days', now() - interval '28 days', 'expired') returning id into hnov2;
+  -- v2-native rows (HUNT-V2-NATIVE PR #533): hp_max is the v2 max already; one active (a fractional-looking max), one past with no v2 day
+  insert into hunts (name, tier, weak_points, hp_max, hp_remaining, opens_at, closes_at, status, stats)
+    values ('The ' || bn, 'Heroic', '[]'::jsonb, 36244, 30000, now() - interval '40 days', now() - interval '38 days', 'expired', '{"unit": "v2", "atk": 73}'::jsonb) returning id into hnatpast;
   insert into players (id, username) values (${P}, 'tst hhv2s');
   insert into hunt_v2_days (hunt_id, player_id, day, boss, squad, state, start_hp, live)
     values (hlive, ${P}, current_date - 9, bk, '{1}'::bigint[], '{}'::jsonb, 1, true);
@@ -90,6 +94,12 @@ begin
   ${add('S3 a past Hunt with a live v2 day: its own tier factor', `hunt_fight_scale(hlive) = (combat_v2_hunt_boss('Normal', bk)->>'max')::numeric / 50000`, `to_jsonb(hunt_fight_scale(hlive))`)}
   ${add('S4 a Hunt with no v2 boss: NULL', `hunt_fight_scale(hnov2) is null`, `to_jsonb(hunt_fight_scale(hnov2))`)}
   s := hunt_fight_scales(array[hid, hpast, hlive, hnov2, null]);
+  update hunts set status = 'expired' where id = hid;
+  insert into hunts (name, tier, weak_points, hp_max, hp_remaining, opens_at, closes_at, status, stats)
+    values ('The ' || bn, 'Heroic', '[]'::jsonb, 36243, 20000, now() - interval '1 hour', now() + interval '2 days', 'active', '{"unit": "v2"}'::jsonb) returning id into hnat;
+  ${add('S8 a v2-native row (stats.unit v2): the factor is exactly 1 (not max / hp_max), active or past with no v2 day', `hunt_fight_scale(hnat) = 1 and hunt_fight_scale(hnatpast) = 1 and mx / 36243 <> 1`, `jsonb_build_object('active', hunt_fight_scale(hnat), 'past', hunt_fight_scale(hnatpast))`)}
+  delete from hunts where id = hnat;
+  update hunts set status = 'active' where id = hid;
   ${add('S5 hunt_fight_scales: exactly the non-null factors by id, each = hunt_fight_scale',
     `(select count(*) from jsonb_object_keys(s)) = 2 and (s->>hid::text)::numeric = f and (s->>hlive::text)::numeric = hunt_fight_scale(hlive) and not s ? hpast::text`, 's')}
   -- S6 a real live day: the shared numbers x factor agree, and the credit x factor is at least the private net damage (heals are not credited)
@@ -104,7 +114,7 @@ begin
     `(a->>'ok')::boolean and drop0 > 0 and drop0 = hits and hits = cred and cred * f >= dmg - 1 and dmg > 0`,
     `jsonb_build_object('drop', drop0, 'hits', hits, 'credited', cred, 'credited_v2', round(cred * f, 1), 'private_damage', round(dmg, 1), 'err', a->'error')`)}
   update balance set value = jsonb_set(value, '{hunt}', 'false') where key = 'combat_v2';
-  ${add('S7 flag OFF: NULL for every Hunt, and the batch is empty', `hunt_fight_scale(hid) is null and hunt_fight_scale(hlive) is null and hunt_fight_scales(array[hid, hlive]) = '{}'::jsonb`,
+  ${add('S7 flag OFF: NULL for every Hunt, and the batch is empty', `hunt_fight_scale(hid) is null and hunt_fight_scale(hlive) is null and hunt_fight_scale(hnatpast) is null and hunt_fight_scales(array[hid, hlive, hnatpast]) = '{}'::jsonb`,
     `jsonb_build_object('one', hunt_fight_scale(hid), 'batch', hunt_fight_scales(array[hid, hlive]))`)}
   raise exception 'RESULT:%', jsonb_build_object('rows', res)::text;
 end $t$;`;

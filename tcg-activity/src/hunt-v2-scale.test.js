@@ -90,6 +90,14 @@ test('M3: the shown HP loss and the shown damages agree (the sum of the rounded 
   const top3 = shown.slice(0, 3).reduce((t, d) => t + d, 0);
   assert.ok(top3 <= drop, `the Top 3 (${top3}) never shows more damage than the boss lost (${drop})`);
 });
+test('a v2-native Hunt row (stats.unit v2, PR #533): the SQL factor is exactly 1: the same numbers, still marked v2', () => {
+  const n = { ...H, hp_max: 36244, hp_remaining: 25401, stats: { unit: 'v2', atk: 73 } };
+  const h = S.scaleHunt(n, 1);
+  assert.deepEqual([h.hp_remaining, h.hp_max, h.scale], [25401, 36244, 'v2']);
+  assert.equal(S.scaleNum(3506, 1), 3506);
+  assert.doesNotMatch(header(h), /ATK|Weak to/);
+  assert.ok(header(h).includes('<span>25,401 / 36,244 HP</span>'));
+});
 test('L4: the shown HP stays in [0, max]', () => {
   assert.equal(S.scaleHunt({ ...H, hp_remaining: 90000 }, F).hp_remaining, 36244);
   assert.equal(S.scaleHunt({ ...H, hp_remaining: -5 }, F).hp_remaining, 0);

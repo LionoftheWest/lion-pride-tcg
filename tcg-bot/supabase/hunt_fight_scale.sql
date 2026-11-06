@@ -11,6 +11,8 @@
 --   - the flag combat_v2.hunt is OFF (flag OFF: every reader shows today's numbers), or
 --   - the Hunt is not active and had no live v2 day (a v1 Hunt of the past keeps its v1 numbers), or
 --   - the Hunt has no v2 boss (hunt_v2_boss_key null) or no hp_max.
+-- A Hunt row in v2 units (hunts.stats->>'unit' = 'v2', HUNT-V2-NATIVE PR #533: hp_max is already the v2 max, credit 1:1) has the factor
+--   exactly 1 (flag ON): its numbers are shown as they are (no 1 HP difference from a fractional boss max), still marked v2.
 -- hunt_fight_scales(p_hunts) = { "<hunt id>": factor } for the given Hunts with a factor (the batch form for the readers; it calls hunt_fight_scale).
 -- Readers: tcg-activity server.js (hunt-v2-scale.js) and the bot (hunt-notify.ts). Reads only. New functions: no guard needed (idempotent).
 -- Test: card-studio/scripts/test-hunt-fight-scale.mjs (MUTATE=all: the baseline, then each mutation must FAIL).
@@ -22,6 +24,7 @@ begin
   if not combat_v2_on('hunt') then return null; end if;
   select * into h from public.hunts where id = p_hunt;
   if not found or coalesce(h.hp_max, 0) <= 0 then return null; end if;
+  if h.stats->>'unit' = 'v2' then return 1; end if;   -- a v2-native row: already the fight scale
   if h.status <> 'active' and not exists (select 1 from public.hunt_v2_days d where d.hunt_id = p_hunt and d.live) then return null; end if;
   k := hunt_v2_boss_key(h.name);
   if k is null then return null; end if;

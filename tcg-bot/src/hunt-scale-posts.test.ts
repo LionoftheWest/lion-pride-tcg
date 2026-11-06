@@ -69,6 +69,11 @@ test('defeat, expired and the leaderboard: the Top 3 damage on the v2 scale', ()
   const lb = N.scalePayload('leaderboard', { name: 'B', top: [{ username: 'a', damage: 7738 }], hp_remaining: 56066, hp_max: 80000 }, F);
   assert.deepEqual([(lb.top as Array<{ damage: number }>)[0]!.damage, lb.hp_remaining, lb.hp_max], [3506, 25401, 36244]);
 });
+test('a v2-native Hunt row (factor exactly 1): the same numbers, marked v2, no Weak to', () => {
+  const p = N.scalePayload('nudge', { name: 'B', hp_remaining: 25401, hp_max: 36244 }, 1);
+  assert.deepEqual([p.hp_remaining, p.hp_max, p.scale], [25401, 36244, 'v2']);
+  assert.doesNotMatch(text('spawn', { name: 'B', tier: 'Heroic', hp: 36244, weak: [{ value: 'trait:monster' }] }, 1), /Weak to/);
+});
 test('no factor: the same payload object (flag OFF byte-identical); a payload already on the v2 scale is not converted again', () => {
   const p = { hp: 80000 };
   assert.equal(N.scalePayload('spawn', p, null), p);
