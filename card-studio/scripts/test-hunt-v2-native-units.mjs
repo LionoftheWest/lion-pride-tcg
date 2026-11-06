@@ -48,6 +48,8 @@ const MUT = {
   // review r1 M3
   flag_off_no_refusal: ["    if hid is not null and coalesce(current_setting('balance.hunt_off_force', true), '') is distinct from hid::text then", "    if false then"],
   flag_off_any_force: ["    if hid is not null and coalesce(current_setting('balance.hunt_off_force', true), '') is distinct from hid::text then", "    if hid is not null and coalesce(current_setting('balance.hunt_off_force', true), '') = '' then"],
+  // review r2 L-A: the guard refuses every combat_v2 edit, not only hunt ON -> OFF
+  flag_guard_any_edit: ["  if new.key = 'combat_v2' and tg_op = 'UPDATE' and coalesce((old.value->>'hunt')::boolean, false) and not coalesce((new.value->>'hunt')::boolean, false) then", "  if new.key = 'combat_v2' and tg_op = 'UPDATE' then"],
   flag_off_open_v1_refused: ["x.stats->>'unit' = 'v2' order by x.id desc limit 1;", "true order by x.id desc limit 1;"],
   attack_no_unit: ["  if (select x.stats->>'unit' from hunts x where x.id = p_hunt) = 'v2' then return jsonb_build_object('ok', false, 'error', 'v2_on'); end if;\n", '', 1],
   support_no_unit: ["  if (select x.stats->>'unit' from hunts x where x.id = p_hunt) = 'v2' then return jsonb_build_object('ok', false, 'error', 'v2_on'); end if;\n", '', 2],
@@ -315,6 +317,13 @@ const B3 = (mig, mutated) => block(mig, String.raw`
     begin perform pg_temp.flag(false); msg := null; exception when others then msg := sqlerrm; end;
     ${add('N7 an open v2-unit Hunt: combat_v2.hunt OFF is refused with the Hunt id and the force key in the message; the flag stays ON',
       `msg like 'balance combat_v2: hunt cannot go OFF while the Hunt ' || hid || ' is open in v2 units%' and msg like '%balance.hunt_off_force%' and (select value->>'hunt' from balance where key = 'combat_v2') = 'true'`, 'to_jsonb(msg)')}
+    -- review r2 L-A: an edit that leaves hunt ON (the Admin adds a tester) passes with no force key
+    begin
+      update balance set value = jsonb_set(value, '{testers}', (coalesce(value->'testers', '[]'::jsonb) || jsonb_build_array(${M(5)}::text))) where key = 'combat_v2';
+      msg := null;
+    exception when others then msg := sqlerrm; end;
+    ${add('N7 an open v2-unit Hunt: an edit of testers (hunt stays ON) with no force key is allowed and saved',
+      `msg is null and (select value->'testers' from balance where key = 'combat_v2') ? ${M(5)} and (select value->>'hunt' from balance where key = 'combat_v2') = 'true'`, 'to_jsonb(msg)')}
     perform set_config('balance.hunt_off_force', (hid + 1)::text, true);
     begin perform pg_temp.flag(false); msg := null; exception when others then msg := sqlerrm; end;
     ${add('N7 the force key with another Hunt id is refused', `msg like 'balance combat_v2: hunt cannot go OFF%'`, 'to_jsonb(msg)')}

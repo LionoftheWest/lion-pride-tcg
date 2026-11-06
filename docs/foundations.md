@@ -657,8 +657,8 @@ Nathan, 2026-11-06: "it should only be v2 going forward". From the first Hunt th
 `hunt_v2_native_units.sql`, the shared boss is in v2 units: `hunts.stats.unit = 'v2'`, `hp_max` = the v2 boss max, and the credit is 1:1.
 A Hunt with no `stats.unit` (every Hunt up to 148564) keeps the old conversion until it ends.
 
-- **The flag during a v2 Hunt.** `combat_v2.hunt` cannot go OFF while an open Hunt has `stats.unit = 'v2'`. The balance check refuses the
-  change and names the Hunt. Turn the flag OFF between Hunts. The next spawn is then in v1 units again.
+- **The flag during a v2 Hunt.** `combat_v2.hunt` cannot go OFF while an open Hunt has `stats.unit = 'v2'`. The trigger `hunt_unit_flag_guard` on
+  `balance` refuses the change and names the Hunt. An edit that leaves `hunt` ON (for example `testers`) is allowed. Turn the flag OFF between Hunts. The next spawn is then in v1 units again.
 - **The emergency stop.** Only when a v2 Hunt must stop now, run the change in one transaction with the force key. Use the id of the open Hunt:
   `begin; select set_config('balance.hunt_off_force', '<hunt id>', true);` then the flag update, then `commit;`.
   After the stop, nobody can fight that Hunt until it ends: `hunt_attack` and `hunt_support` answer `v2_on` for a v2-unit Hunt, and
@@ -666,6 +666,8 @@ A Hunt with no `stats.unit` (every Hunt up to 148564) keeps the old conversion u
 - **The damage achievements** (`heavy`, `bighit`, the old `dmg1k`, `hit500`) count in v2 numbers (`hunt_ach_damage_v2.sql`). The one
   source is the balance key `ach_damage_v2`. Its trigger copies the tiers into `achievement_tracks` and the old goals into
   `achievement_switch_map`. Change the numbers in the balance key, never in those tables.
+  `v1_x` is the one-time conversion of the v1 history: do not change it after the switch, because the tiers do not follow it.
+  After the first v2-unit Hunt, prefer a forward fix to `hunt_ach_damage_v2_undo.sql` (the undo counts v2 damage against the v1 tiers).
 - **Tests that apply an older Hunt file again** (`combat_v2_on_hunt.sql`, `combat_v2_hunt_boons.sql`) first take the native file off and put
   it back after (`test-combat-v2-on-hunt.mjs`, `test-combat-v2-hunt-practice.mjs` H3, `test-combat-v2-hunt-boons.mjs`). A new test that does
   the same must do this too, or the copy silently loses the change (review r1 M2).

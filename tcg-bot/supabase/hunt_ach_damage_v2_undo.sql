@@ -3,6 +3,8 @@
 -- into achievement_tracks (heavy, bighit) and achievement_switch_map (dmg1k, hit500). The balance row ach_damage_v2 stays (balance_check
 -- refuses a delete); nothing reads it after the undo. The Activity must go back to the code before this PR first (it calls ach_damage_rows).
 -- The undo leaves balance_v2_spec as it is (this file never changed it).
+-- After the first Hunt in v2 units, prefer a forward fix to this undo: the undo sums raw damage again, so the v2 damage then
+-- counts against the v1 tiers (progress about x 2.2 slower). Run the undo between Hunts (review r2 L-C).
 
 do $g$
 declare m text; f record;

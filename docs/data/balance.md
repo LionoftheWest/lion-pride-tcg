@@ -107,7 +107,7 @@ Shape: `object { k1_shield: number, limits: object { blocks: number, min_share: 
 
 ### ach_damage_v2
 
-The damage achievements in v2 numbers (Nathan 2026-11-06, hunt_ach_damage_v2.sql). v1_x: a Hunt in v1 units (up to 148564) counts its damage x v1_x (the Warlord v2 max / v1 max). heavy (lifetime damage) and bighit (the largest hit row): the 5 tiers (and the heavy step after tier 5), the v1 numbers x v1_x rounded down. old: the proof of the old achievements dmg1k / hit500 (achievement_switch_map) and their goal in the Activity. A change is copied to achievement_tracks and achievement_switch_map (trigger ach_damage_sync); the tiers must rise.
+The damage achievements in v2 numbers (Nathan 2026-11-06, hunt_ach_damage_v2.sql). v1_x: a Hunt in v1 units (up to 148564) counts its damage x v1_x (the Warlord v2 max / v1 max). v1_x is the one-time conversion: do not change it after the switch (the tiers do not follow it). heavy (lifetime damage) and bighit (the largest hit row): the 5 tiers (and the heavy step after tier 5), the v1 numbers x v1_x rounded down. old: the proof of the old achievements dmg1k / hit500 (achievement_switch_map) and their goal in the Activity. A change is copied to achievement_tracks and achievement_switch_map (trigger ach_damage_sync); the tiers must rise.
 
 Shape: `object { bighit: object { tiers: array(5) of number }, heavy: object { step: number, tiers: array(5) of number }, old: object { dmg1k: number, hit500: number }, v1_x: number }`
 
