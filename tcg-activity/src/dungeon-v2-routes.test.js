@@ -38,6 +38,10 @@ export const MUTATIONS = {
   keys_dropped: ['res.status(400).json({ ...data, ok: false,', 'res.status(400).json({ error: data?.error, ok: false,'],
   ref_uncached: ["data.ref = await refs.get('ref', loadRef);", 'data.ref = await loadRef();'],
   cards_missing: ['if (!Array.isArray(squad)) return data;', 'return data;'],
+  // a member report 2026-11-07: the chest and floor screens need the loot card faces
+  loot_cards_missing: ['[...squad, ...new Set(loot.map(Number))]', '[...squad]'],
+  chest_card_missing: ['...(st.lost?.cards || []), st.chest?.card]', '...(st.lost?.cards || [])]'],
+  pend_cards_missing: ['...(st.pend?.cards || []), ', ''],
   cache_forever: ['return !!t && Date.now() - t < 60000;', 'return !!t;'],
   no_rate_act: ["app.post('/api/dungeon/v2/act', async (req, res) => {", "app.post('/api/dungeon/v2/act', async (req, res) => { { const g = await gate(req, res); if (!g) return; await rpc(res, 'dungeon_v2_act', { p_player: g.player, p_choice: choiceOf(req.body) }, withCards); return; }"],
   no_rate_retreat: ["app.post('/api/dungeon/v2/retreat', async (req, res) => {", "app.post('/api/dungeon/v2/retreat', async (req, res) => { { const g = await gate(req, res); if (!g) return; await rpc(res, 'dungeon_v2_retreat', { p_player: g.player }); return; }"],
@@ -102,6 +106,8 @@ const CATALOG = [
   { id: 11, name: 'Kroc Bot', rarity: 'rare', image_url: 'u11', type: 'robot', tags: ['x'], ability: 'a' },
   { id: 12, name: 'Water Golem', rarity: 'common', image_url: 'u12', type: 'golem', tags: [], ability: 'b' },
   { id: 13, name: 'Ember', rarity: 'epic', image_url: 'u13', type: 'fire', tags: [], ability: 'c' },
+  { id: 14, name: 'Old Chest', rarity: 'rare', image_url: 'u14', type: 'item', tags: [], ability: 'd' },
+  { id: 15, name: 'Gold Idol', rarity: 'epic', image_url: 'u15', type: 'item', tags: [], ability: 'e' },
 ];
 const TABLES = {
   statuses: [
@@ -339,6 +345,29 @@ test('G6g cards: the catalog fields for each state.squad id (write answers and t
   assert.deepEqual(v.json.cards, want, 'the view: run.state.squad');
   const rt = await harness({ rpc: baseRpc({ tester: true }) }).post('/api/dungeon/v2/retreat', {});
   assert.equal(rt.json.cards, undefined);
+});
+
+test('G6g loot cards: the chest card and the at-risk cards get their catalog fields (view and write answers); a squad card stays one entry', async () => {
+  // a member report 2026-11-07: the v2 chest loot never showed. 14 = the chest card (also at risk), 15 = banked, 12 = a squad card that is also loot.
+  const loot = { pend: { shards: 3, cards: [14] }, bank: { shards: 0, cards: [15, 12] }, chest: { tier: 4, shards: 68, card: 14 }, phase: 'pass' };
+  const rpc = (name) => {
+    if (name === 'dungeon_v2_view') return { data: { ok: true, tester: false, live: true, run: { id: 5, status: 'active', state: { ...clone(STATE), ...loot } } }, error: null };
+    if (name === 'dungeon_v2_choose') return { data: { ok: true, run: 5, state: { ...clone(STATE), ...loot }, status: 'active', log: [] }, error: null };
+    return baseRpc({ tester: false, active: true })(name);
+  };
+  const want = { id: 14, name: 'Old Chest', rarity: 'rare', image_url: 'u14', type: 'item' };
+  const v = await harness({ rpc }).get('/api/dungeon/v2/view');
+  assert.deepEqual(v.json.cards['14'], want, 'the view: the chest card');
+  assert.deepEqual(v.json.cards['15'], { id: 15, name: 'Gold Idol', rarity: 'epic', image_url: 'u15', type: 'item' }, 'the view: a banked card');
+  assert.deepEqual(Object.keys(v.json.cards).map(Number).sort((a, b) => a - b), [11, 12, 13, 14, 15], 'the squad and each loot card once');
+  const c = await harness({ rpc }).post('/api/dungeon/v2/choose', { pick: 0 });
+  assert.deepEqual(c.json.cards['14'], want, 'the choose answer: the chest card');
+  // only the chest card (not at risk, not banked): still there
+  const only = (name) => (name === 'dungeon_v2_view' ? { data: { ok: true, tester: false, live: true, run: { id: 5, status: 'active', state: { ...clone(STATE), chest: { tier: 2, shards: 9, card: 14 } } } }, error: null } : baseRpc({ active: true })(name));
+  assert.deepEqual((await harness({ rpc: only }).get('/api/dungeon/v2/view')).json.cards['14'], want, 'the chest card alone');
+  // only an at-risk card
+  const risk = (name) => (name === 'dungeon_v2_view' ? { data: { ok: true, tester: false, live: true, run: { id: 5, status: 'active', state: { ...clone(STATE), pend: { shards: 0, cards: [15] } } } }, error: null } : baseRpc({ active: true })(name));
+  assert.deepEqual((await harness({ rpc: risk }).get('/api/dungeon/v2/view')).json.cards['15']?.name, 'Gold Idol', 'an at-risk card alone');
 });
 
 // ------------------------------------------------------------------ G6h (review L-4)

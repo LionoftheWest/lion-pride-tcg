@@ -268,7 +268,9 @@ DERIVED.push({ when: (p, c) => p === '/api/dungeon/v2/view' && D2_KINDS.includes
 // flag ON for a member who is not a tester (live true, tester false) and the live row mark (run.live true) with loot: 3 Shards and 1 card
 // at risk, 12 Shards banked. m2-lobby: no run, can_start (Start run starts v2). m2-done: no run left today. m2-v1 (fixture b): the flag ON
 // and an active v1 run of today (v1_run): the v1 fight screen (/api/dungeon answers the v1 fight below).
-const M2_KINDS = ['m2-fight', 'm2-five', 'm2-lobby', 'm2-over', 'm2-done', 'm2-choose', 'm2-v1'];
+// m2-chest (a member report 2026-11-07): the v2 treasure room of a live run: phase pass WITH the chest (dungeon_v2_room put its loot at risk);
+// the chest card (57, a roster card outside the squad) is in v.cards, as dungeon-v2-routes.js withCards adds the loot cards.
+const M2_KINDS = ['m2-fight', 'm2-five', 'm2-lobby', 'm2-over', 'm2-done', 'm2-choose', 'm2-v1', 'm2-chest'];
 // D-211 (Nathan 2026-11-04): 5 attackers and no support (m2-five): at 1280x720 the column beside the cards is too narrow for the hint,
 // so the control row stays in its own row. The 2 supports of the R1e answer become 2 real attackers of the recorded roster.
 function fiveAttackers(v) {
@@ -285,13 +287,19 @@ function fiveAttackers(v) {
   return v;
 }
 function derivedM2(kind) {
-  const v = derivedD2({ 'm2-fight': 'd2-fight', 'm2-five': 'd2-fight', 'm2-over': 'd2-over', 'm2-choose': 'd2-choose' }[kind] || 'd2-lobby');
+  const v = derivedD2({ 'm2-fight': 'd2-fight', 'm2-five': 'd2-fight', 'm2-over': 'd2-over', 'm2-choose': 'd2-choose', 'm2-chest': 'd2-pass' }[kind] || 'd2-lobby');
   if (kind === 'm2-five') fiveAttackers(v);
   Object.assign(v, { tester: false, live: true, v1_run: null });
   if (v.run) {
     v.run.live = true;
     Object.assign(v.run.state, { pend: { shards: 3, cards: [v.run.state.squad?.[0] ?? 1] }, bank: { shards: 12, cards: [] } });
     if (kind === 'm2-over') Object.assign(v.run, { shards: 15, cards: [] });
+    if (kind === 'm2-chest') {
+      const c = (FIX.routes['/api/hunt']?.body?.roster || []).find((x) => Number(x.id) === 57);
+      v.run.state.chest = { tier: 4, shards: 68, card: 57 };
+      v.run.state.pend.cards = [57];   // the chest card is the one card at risk (the same chip width as the other m2 fixtures)
+      if (c) v.cards = { ...(v.cards || {}), 57: { id: 57, name: c.name, rarity: c.rarity, image_url: c.image_url, type: c.type } };
+    }
   }
   if (kind === 'm2-done') Object.assign(v, { can_start: false, runs_left: 0 });
   if (kind === 'm2-v1') Object.assign(v, { can_start: false, runs_left: 0, v1_run: { id: 1879, floor: 2, room: 3 } });

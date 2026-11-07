@@ -65,11 +65,16 @@ export function registerDungeonV2Routes(app, { supabase, caller, rateLimit, getC
   };
 
   // The catalog name and art of each squad card (the withCards pattern of dungeon-routes.js). Display only.
+  // Also each loot card of the run state (banked, at risk, this floor, lost, the chest card), so the chest and the
+  // floor screens can show the card face (a member report 2026-11-07: the chest loot never showed).
   const withCards = async (data) => {
-    const squad = data?.state?.squad || data?.run?.state?.squad;
+    const st = data?.state?.squad ? data.state : data?.run?.state;
+    const squad = st?.squad;
     if (!Array.isArray(squad)) return data;
+    const loot = [...(st.bank?.cards || []), ...(st.pend?.cards || []), ...(st.floor_loot?.cards || []), ...(st.lost?.cards || []), st.chest?.card]
+      .filter((x) => x != null && !squad.some((s) => Number(s) === Number(x)));
     const cat = new Map((await getCatalogBase()).map((c) => [Number(c.id), c]));
-    data.cards = Object.fromEntries(squad.map((x) => {
+    data.cards = Object.fromEntries([...squad, ...new Set(loot.map(Number))].map((x) => {
       const c = cat.get(Number(x));
       return [x, c ? { id: c.id, name: c.name, rarity: c.rarity, image_url: c.image_url, type: c.type } : { id: x }];
     }));

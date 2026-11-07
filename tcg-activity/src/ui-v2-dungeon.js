@@ -166,7 +166,7 @@ const D2_API = '/api/dungeon/v2';   // R2b: the Dungeon test mode (dungeon-v2-ro
 const H2_API = '/api/hunt/v2';   // R3b: the Hunt v2 routes (hunt-v2-routes.js)
 const V2_BASE = () => (HU() ? H2_API : GA() ? G2_API : D2_API);
 const V2_GET = () => (GA() ? G2_API : `${D2_API}/view`);
-function v2Take(v) { dg.v2 = v; dg.data = { ...dg.data, run: g2.v1RunOf(v), rooms: v.rooms || dg.data.rooms }; }
+function v2Take(v) { dg.v2 = v; dg.data = { ...dg.data, run: g2.v1RunOf(v), rooms: v.rooms || dg.data.rooms, lootCards: v.cards || dg.data.lootCards }; }   // lootCards: the chest and floor card faces (the server adds the loot cards to v.cards)
 const g2Host = () => ({
   dg, oneBoss: HU(), base: V2_BASE(), stats: HU() ? huntStatsHTML : GA() ? null : statsHTML, esc, fmt, thumb, elIcon, plateName, cardTile, bolt: I.bolt, trophy: I.trophy, up: I.up, hand: I.hand, timer: I.timer,
   progressHTML: HU() ? huntProgHTML : progressHTML, musicBtnHTML, finishHTML: HU() ? () => '' : finishHTML, finishButton, autoDisabled, waitMs, AUTO_ROUNDS, fitFight: fitFightV3, placeArena, openInfo, toast,
@@ -1487,6 +1487,9 @@ function offerInfo(o) {
     }[o.to] || [I.door, 'A door', ''],
   }[o.kind] || [I.check, o.kind, ''];
 }
+// The chest screen: the v1 chest phase, or the v2 treasure room of a live run (phase pass with the chest: dungeon_v2_room already put
+// its loot in the at-risk loot, so Continue only moves on). A member report 2026-11-07: the v2 chest showed only "Room cleared".
+const isChest = (st) => st.phase === 'chest' || (!!dg.v2 && st.phase === 'pass' && !!st.chest);
 function chooseHTML() {
   const R = run(); const st = R.state;
   const ph = st.phase;
@@ -1500,8 +1503,8 @@ function chooseHTML() {
     rest: ['Rest room', 'Take a breath', 'The squad healed 40%, and each downed card came back with 25% HP.'],
     path: ['A choice', 'Pick a door', ''],
     chest: ['Treasure room', 'You found a chest', 'Tap the chest to open it.'],
-  }[ph] || ['', '', ''];
-  const body = ph === 'chest' ? chestHTML(st) : `<div class="dg-offers n${(st.offers || []).length}">${(st.offers || []).map(offer).join('')}</div>`;
+  }[isChest(st) ? 'chest' : ph] || ['', '', ''];
+  const body = isChest(st) ? chestHTML(st) : `<div class="dg-offers n${(st.offers || []).length}">${(st.offers || []).map(offer).join('')}</div>`;
   return `<div class="dg-choose">
     <div class="dg-ftop">${progressHTML()}${statsHTML()}</div>
     <section class="dg-panel dg-cbox ph-${ph}">${musicBtnHTML()}<span class="k">${head[0]}</span><h2>${head[1]}</h2>${head[2] ? `<p>${head[2]}</p>` : ''}${body}</section>
@@ -1555,14 +1558,14 @@ function chooseV3HTML(R, st) {
   dg.numCls = cls3();
   const offers = st.offers || [];
   const ph = st.phase;
-  const head = ROOM_HEAD_V3[ph] || ROOM_HEAD_V3.choose;
+  const head = ROOM_HEAD_V3[isChest(st) ? 'chest' : ph] || ROOM_HEAD_V3.choose;
   const offer = (o, i) => {
     const t = offerInfo(o);
     const ic = o.kind === 'shards' ? COIN : OFFER_ICON[o.kind] ? icon3(OFFER_ICON[o.kind], '2xl') : t[0];
     const tier = TIER[o.tier];
     return `<button type="button" class="u3-dgc-offer is-t${tier ? o.tier : 0} k-${esc(o.kind)}${o.to ? ` to-${esc(o.to)}` : ''}" data-choose="${i}">${tier ? `<span class="u3-dgc-tier">${tier[0]}</span>` : ''}<span class="u3-dgc-ic">${ic}</span><b>${t[1]}</b><small><span>${esc(offerExplain(o, t))}</span>${ph === 'choose' ? `<span class="u3-dgc-ghost" aria-hidden="true">${esc(EXPLAIN_LONGEST)}</span>` : ''}</small></button>`;
   };
-  const body = ph === 'chest' ? chestV3HTML(st) : `<div class="u3-dgc-offers n${offers.length}">${offers.map(offer).join('')}</div>`;
+  const body = isChest(st) ? chestV3HTML(st) : `<div class="u3-dgc-offers n${offers.length}">${offers.map(offer).join('')}</div>`;
   return `<div class="u3-dgc${ph === 'choose' ? '' : ' u3-dgs'} ph-${esc(ph)}"><div class="u3-dgc-hud">${progressV3HTML(R)}${chipsV3HTML(st)}</div>
     <section class="u3-dgc-panel">${ph === 'choose' ? '' : musicBtnHTML()}<span class="u3-label u3-dgc-k">${head[0]}</span><h2 class="u3-dgc-h">${head[1]}</h2>${head[2] ? `<p class="u3-dgs-line">${head[2]}</p>` : ''}${body}</section>
   </div>`;
@@ -1603,7 +1606,8 @@ function fitChooseV3(main) {
   // too high or too wide: the stage itself, or a part that clips its own content (the panel and the offers share the stage height; the guardian text sits in the pill; D-117 gives the stage more height but not more width)
   const dgs = box.classList.contains('u3-dgs');
   const stable = dgs || box.classList.contains('ph-choose');   // the counters never change the size of the panel (a long counter only shrinks the counters)
-  const chipsOver = () => [...box.querySelectorAll('.u3-dgc-chips, .u3-dgc-chip')].some((e) => e.scrollWidth > e.clientWidth + 1) || [...box.querySelectorAll('.u3-dgc-hud > *')].some((e) => e.getBoundingClientRect().right > box.getBoundingClientRect().right);
+  // a member report 2026-11-07: a chip past the counter row (into the stage padding) is too wide too (G3 3.3 pokeOut at 412x915)
+  const chipsOver = () => [...box.querySelectorAll('.u3-dgc-chips, .u3-dgc-chip')].some((e) => e.scrollWidth > e.clientWidth + 1) || [...box.querySelectorAll('.u3-dgc-hud > *')].some((e) => e.getBoundingClientRect().right > Math.min(box.getBoundingClientRect().right, e.parentElement.getBoundingClientRect().right));
   const parts = box.querySelectorAll(stable ? '.u3-dgc-prog, .u3-dgc-guard, .u3-dgc-panel, .u3-dgc-offers, .u3-dgc-offer, .u3-dgc-tier, .u3-dgc-offer b, .u3-dgc-offer small' : '.u3-dgc-prog, .u3-dgc-chip, .u3-dgc-guard, .u3-dgc-panel, .u3-dgc-offers, .u3-dgc-offer, .u3-dgc-tier, .u3-dgc-offer b, .u3-dgc-offer small');
   const over = () => (stable ? box.scrollHeight > box.clientHeight + 1 : box.scrollHeight > box.clientHeight + 1 || box.scrollWidth > box.clientWidth + 1) || [...parts].some((e) => e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1);
   const measure = () => {

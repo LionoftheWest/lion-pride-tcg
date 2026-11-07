@@ -304,7 +304,9 @@ function lootOf(v, R, st) {
   const z = () => ({ shards: 0, cards: [] });
   if (!isLive(v)) return { pend: z(), bank: z() };
   const one = (x) => ({ shards: Number(x?.shards) || 0, cards: Array.isArray(x?.cards) ? x.cards : [] });
-  return { pend: one(st.pend), bank: one(st.bank) };
+  // a member report 2026-11-07: the chest of a v2 treasure room and the loot of a cleared floor (dungeon_v2_room, the guardian) were
+  // dropped here, so the chest and Floor cleared screens showed no loot. A live run keeps them; a test run has none.
+  return { pend: one(st.pend), bank: one(st.bank), ...(st.chest ? { chest: st.chest } : {}), ...(st.floor_loot ? { floor_loot: one(st.floor_loot) } : {}) };
 }
 /** Does this v2 answer take the screen? A tester's v2 run of today (active or just over); else the v1 screens stay (INV-E1). */
 export const v2Owns = (v) => !!(v?.ok && v.run && (v.active_mode === 'gauntlet_v2' || v.run.status === 'over'));
