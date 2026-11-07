@@ -615,4 +615,11 @@ test('ON-UI screen rule: v1_run keeps the v1 screens; live or a tester may start
   assert.deepEqual([live.state.pend.shards, live.state.pend.cards, live.state.bank.shards], [3, [9], 12], 'a live run: its loot chips');
   const testRun = g.v1RunOf({ live: true, run: { id: 1, live: false, status: 'active', state: st } });
   assert.deepEqual([testRun.state.pend.shards, testRun.state.bank.shards], [0, 0], 'a test run (mark false): 0 loot');
+  // a member report 2026-11-07: the chest and the floor loot of a live run reach the reused screens; a test run gets neither
+  const st2 = { ...st, phase: 'pass', chest: { tier: 4, shards: 68, card: 9 }, floor_loot: { shards: 40, cards: [7] } };
+  const live2 = g.v1RunOf({ live: true, run: { id: 1, live: true, status: 'active', state: st2 } });
+  assert.deepEqual(live2.state.chest, { tier: 4, shards: 68, card: 9 }, 'a live run: the chest');
+  assert.deepEqual(live2.state.floor_loot, { shards: 40, cards: [7] }, 'a live run: the floor loot');
+  const test2 = g.v1RunOf({ live: true, run: { id: 1, live: false, status: 'active', state: st2 } });
+  assert.deepEqual([test2.state.chest, test2.state.floor_loot], [undefined, undefined], 'a test run: no chest, no floor loot');
 });

@@ -252,6 +252,9 @@ export const SCREENS = {
   // D-211: 5 attackers and no support (the control row in its own row where the side column is too narrow for the hint).
   'dungeon-m2-five': { id: 'UI-47', squad: true, noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-five', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
   'dungeon-m2-choose': { id: 'UI-48', noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-choose', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  // A member report 2026-11-07: the v2 treasure room of a live run shows the chest (phase pass with the chest), and its card face when open.
+  'dungeon-m2-chest': { id: 'UI-49', heavy: true, see: ['.u3-dgs-chestbox'], noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-chest', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-m2-chest-open': { id: 'UI-49', heavy: true, see: ['.u3-dgs-cf [data-flip]'], noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-chest', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '.u3-dgs-chestbox'], ['wait', 2.5]] },
   'dungeon-m2-over': { id: 'UI-50', noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-over', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-m2-v1': { id: 'UI-47', see: ['.dg-fight:not(.g2)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-v1', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
   // R3b + ON-UI: the Hunt v2 (UI-18 on the approved UI-52 view): cookie ci_hunt = h2-* (a tester: practice) or m2h-* (flag ON: every member;
