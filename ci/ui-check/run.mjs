@@ -171,10 +171,14 @@ async function runCell([s, screen, variant], ref = {}) {
           // least TOKENS card-mini, at most 2 lines, inside the squad row; stageMin = the boss stage (the arena under its plates) at least the approved
           // UI-47 floor sp-7 + sp-6 + sp-5 (a list of sizes: the Hunt at 430x932, the D-61 phone frame and review M-3; the approved Gauntlet and
           // Dungeon fights are lower at 1280x720 (99 px) and 430x822 (100 px), so the floor is not a rule there)
-          if (spec.noText || spec.squad || spec.stageMin) res.content = await pg.evaluate(({ noText, squad, stageMin, mini }) => {
+          // ONE-START (review r1 M-1): hasText = words that must be on the page (a label, case-sensitive); noSee = selectors that must be absent
+          // (a control that must not exist). Each is its own rule, so a label check never stands in for the absence of a control.
+          if (spec.noText || spec.hasText || spec.noSee || spec.squad || spec.stageMin) res.content = await pg.evaluate(({ noText, hasText, noSee, squad, stageMin, mini }) => {
             const out = [];
             const text = document.getElementById('main')?.innerText || '';
             for (const w of noText || []) if (text.includes(w)) out.push([`noText "${w}"`, 'on the page']);
+            for (const w of hasText || []) if (!text.includes(w)) out.push([`hasText "${w}"`, 'not on the page']);
+            for (const q of noSee || []) if (document.querySelector(q)) out.push([`noSee ${q}`, 'on the page']);
             const F = document.querySelector('.dg-fight.g2');
             if (squad) {
               const u = F?.querySelector('.dg-units');
@@ -195,7 +199,7 @@ async function runCell([s, screen, variant], ref = {}) {
               if (a) { const h = a.getBoundingClientRect().bottom - Math.max(a.getBoundingClientRect().top, pl ? pl.getBoundingClientRect().bottom : 0); if (h < stageMin - 0.5) out.push(['boss stage below its minimum', `${Math.round(h)} px < ${stageMin}`]); }
             }
             return out;
-          }, { noText: spec.noText, squad: !!spec.squad, stageMin: spec.stageMin === true || (Array.isArray(spec.stageMin) && spec.stageMin.includes(size)) ? TOKENS['sp-7'] + TOKENS['sp-6'] + TOKENS['sp-5'] : 0, mini: TOKENS['card-mini'] });
+          }, { noText: spec.noText, hasText: spec.hasText, noSee: spec.noSee, squad: !!spec.squad, stageMin: spec.stageMin === true || (Array.isArray(spec.stageMin) && spec.stageMin.includes(size)) ? TOKENS['sp-7'] + TOKENS['sp-6'] + TOKENS['sp-5'] : 0, mini: TOKENS['card-mini'] });
           if (spec.walk) res.walk = await call(pg, WALK, { touch });   // UI-37: the walkthrough card (the other checks skip #tutLayer)
           if (!res.checks || !res.fit || !res.cut || !res.extra) throw new Error('a check returned nothing');
           // A loaded runner (software WebGL, the 3D chest) timed out on page.screenshot (PR #290, three runs). On a TimeoutError wait 2 s

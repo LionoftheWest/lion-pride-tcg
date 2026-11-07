@@ -193,7 +193,7 @@ export const SCREENS = {
   'hunt-battle-mix':    { safe: true, long: true, id: 'UI-18', notOn: ['tiny'], battle: 'mix', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 9]] },
   'hunt-battle-target': { safe: true, long: true, id: 'UI-18', notOn: ['tiny'], battle: 'mix', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 9], ['js', '.u3-ft-grid .c[data-id="370"]'], ['wait', 1]] },
   // v3: tiny shows no shell, so the Adventure tabs are not there (D-06: the small live view, UI-59).
-  'dungeon':             { id: 'UI-46', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon':             { id: 'UI-46', hasText: ['Start Run'], long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   // The Card picker (UI-64) over the Dungeon lobby (D-40): a defect outside the window belongs to the lobby ('under').
   'dungeon-picker':      { id: 'UI-64', under: 'UI-46', notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '[data-pickopen]'], ['wait', 1.5]], input: '#u3Picker .u3-search__input' },
   'dungeon-picker-detail': { id: 'UI-64', safe: true, under: 'UI-46', notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5], ['js', '[data-pickopen]'], ['wait', 1.5], ['js', '.u3-pk-card__info'], ['wait', 1.5]] },
@@ -246,8 +246,8 @@ export const SCREENS = {
   'dungeon-v2-floor': { id: 'UI-49', long: true, safe: true, notOn: ['tiny'], dungeon: 'd2-floor', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   // ON-UI (combat v2 for every member, ON SPEC 3.5, G-UI): the member mode (live, not a tester): cookie ci_dungeon = m2-* (serve.mjs derivedM2).
   // (a) no test text, Start run starts v2, the loot chips; (b) m2-v1: an active v1 run of today keeps the v1 fight (mutation screen_reads_live_only).
-  'dungeon-m2-lobby': { id: 'UI-46', noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-lobby', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
-  'dungeon-m2-done': { id: 'UI-46', noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-done', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-m2-lobby': { id: 'UI-46', noText: ['Practice', 'no rewards', '(test)'], noSee: ['[data-start2]'], hasText: ['Start Run'], see: ['[data-start3]'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-lobby', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
+  'dungeon-m2-done': { id: 'UI-46', noText: ['Practice', 'no rewards', '(test)'], noSee: ['[data-start2]'], hasText: ['Start Run'], see: ['[data-start3]'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-done', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 2.5]] },
   'dungeon-m2-fight': { id: 'UI-47', squad: true, noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-fight', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
   // D-211: 5 attackers and no support (the control row in its own row where the side column is too narrow for the hint).
   'dungeon-m2-five': { id: 'UI-47', squad: true, noText: ['Practice', 'no rewards', '(test)'], long: true, safe: true, notOn: ['tiny'], dungeon: 'm2-five', finish: 'idle', steps: [['dock', 'battling', 4], ['js', '[data-adv="dungeon"]'], ['wait', 12]] },
@@ -287,7 +287,8 @@ export const SCREENS = {
   // The v3 lobby (UI-52) keeps the button in the Top 3 panel: on phones and tall tablets that panel is the segment pane:top (data-seg), so the fallback taps it first.
   'gauntlet-board':      { safe: true, long: true, id: 'UI-66', under: 'UI-52', notOn: ['tiny'], board: 'rows', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5], ['js', '#main [data-board]', [['js', '[data-seg="pane:top"]'], ['wait', 1.5], ['js', '#main [data-board]']]], ['wait', 2.5]] },
   // The Gauntlet (UI-52): the lobby, then its Prizes and Top 3 tabs (phones show them as tabs; the wide classes show them in the lobby).
-  'gauntlet':            { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
+  // ONE-START (Nathan 2026-11-06 "Start Run (both)"): the lobby start label
+  'gauntlet':            { id: 'UI-52', hasText: ['Start Run'], long: true, safe: true, notOn: ['tiny'], steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
   'gauntlet-over':       { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g-over', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 2.5]] },
   // The Gauntlet fight (UI-52, a delta on the UI-47 fight) and a support picking a target (D-70): the derived run of the check server (cookie ci_dungeon = g-fight).
   'gauntlet-fight':      { id: 'UI-52', long: true, safe: true, notOn: ['tiny'], dungeon: 'g-fight', steps: [['dock', 'battling', 4], ['js', '[data-adv="gauntlet"]'], ['wait', 12]] },

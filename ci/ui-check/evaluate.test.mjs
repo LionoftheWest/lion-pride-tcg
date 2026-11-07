@@ -13,7 +13,8 @@ const clean = (screen, size = '430x932', browser = 'chromium', variant = 'base')
   const s = SIZES.find((x) => sizeKey(x) === size);
   return { browser, size, class: s[2], touch: s[3], screen, id: SCREENS[screen].id, variant, miss: [], fit: [], cut: [],
     checks: { pageScroll: { x: 0, y: 0 }, tinyText: {}, tapSmall: [], tapTiny: [], coveredBtns: [], covered: [], corner: [], windowOutside: 0, keys: {}, emptyBandX: 0, emptyBandY: 0 },
-    extra: { iconNoName: [], contrast: [] }, ...(SCREENS[screen].walk ? { walk: [] } : {}), ...(SCREENS[screen].see ? { see: [] } : {}) };
+    extra: { iconNoName: [], contrast: [] }, ...(SCREENS[screen].walk ? { walk: [] } : {}), ...(SCREENS[screen].see ? { see: [] } : {}),
+    ...(SCREENS[screen].hasText || SCREENS[screen].noSee ? { content: [] } : {}) };
 };
 test('UI-37 walk specs: no walk result or a missing card is "not checked"; the card rows become defects of UI-37', () => {
   const r = clean('walk-5'); delete r.walk;
@@ -424,4 +425,22 @@ test('ON-UI D-155 exceptions: the 8 member and Hunt v2 fight specs x the 5 portr
   const want = ['dungeon-m2-fight', 'dungeon-m2-five', 'dungeon-m2-v1', 'hunt-m2-fight', 'hunt-m2-mix17', 'hunt-m2-mix44', 'hunt-m2-mix80', 'hunt-v2-fight'];
   assert.equal(list.length, want.length * 5);
   assert.ok(list.every((e) => e.decision === 'D-155' && e.rule === 'missing' && want.includes(e.screen) && ['430x932', '430x822', '412x915', '692x917', '820x1180'].includes(e.size)));
+});
+
+// ONE-START (review r1 M-1, Nathan 2026-11-06 "Start Run (both)"): the label rule (hasText) and the absence rule (noSee) are separate
+// content rules of the member Dungeon lobby; a missing content result is "not checked".
+test('ONE-START: the member lobby checks the label and the absence of the test button separately; no result = not checked', () => {
+  for (const k of ['dungeon-m2-lobby', 'dungeon-m2-done']) {
+    assert.deepEqual(SCREENS[k].hasText, ['Start Run']);
+    assert.deepEqual(SCREENS[k].noSee, ['[data-start2]']);
+    assert.ok(SCREENS[k].noText.includes('(test)'));
+    assert.ok(!SCREENS[k].noText.includes('Start run'), 'the label is not checked through noText');
+  }
+  assert.deepEqual(SCREENS.gauntlet.hasText, ['Start Run']);
+  assert.deepEqual(SCREENS.dungeon.hasText, ['Start Run']);
+  const r = clean('dungeon-m2-lobby'); delete r.content;
+  assert.ok(defectsOf(r).some((x) => x.rule === 'not-checked' && x.where === 'content'));
+  const r2 = clean('dungeon-m2-lobby'); r2.content = [['noSee [data-start2]', 'on the page'], ['hasText "Start Run"', 'not on the page']];
+  assert.deepEqual(defectsOf(r2).filter((x) => x.rule === 'content').map((x) => x.where), ['noSee [data-start2]', 'hasText "Start Run"']);
+  assert.equal(defectsOf(clean('dungeon-m2-lobby')).length, 0);
 });
