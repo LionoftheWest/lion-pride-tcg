@@ -207,6 +207,7 @@ a one-time grant or a settings value would run again.
 - `achievement_titles_d79.sql`: achievement_tracks
 - `adventure_gate.sql`: balance
 - `auction_confirm_24h.sql`: auctions
+- `bot_home.sql`: set_config(), settings
 - `card_effects_enable_a1.sql`: effect_primitives
 - `combat_v2_autopick_active.sql`: balance, set_config()
 - `combat_v2_e7_followup.sql`: balance, set_config()
