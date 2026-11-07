@@ -32,6 +32,7 @@ import { dirname, join, extname, normalize } from 'node:path';
 import { keyOf, longData } from './fixture-lib.mjs';
 import { ui3Css } from '../../tcg-activity/src/ui3/css-parts.js';
 import { statsPayload } from '../../tcg-activity/src/stats-v2.js';
+import { scaleHunt, scaleRows, scaleNum } from '../../tcg-activity/src/hunt-v2-scale.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PUB = join(here, '..', '..', 'tcg-activity', 'public');
@@ -369,6 +370,14 @@ function derivedH2(kind) {
     day: { status: v.run.status, ended_by: v.run.ended_by, squad: over ? roster : v.run.state.squad, ...(live ? { live: true, credited: 1840 } : {}) } };
 }
 DERIVED.push({ when: (p, c) => p === '/api/hunt/v2/view' && H2_KINDS.includes(c.ci_hunt), make: (body, c) => derivedH2(c.ci_hunt) });
+// HUNT-HEADER-V2 (review r1 M4): in the member mode (m2h-*, combat v2 ON) the server sends the Hunt on the v2 fight scale (server.js +
+// hunt-v2-scale.js, the factor of SQL hunt_fight_scale). The fixture uses the real conversion with the live factor of 2026-11-06
+// (private max 36,244 / hunts.hp_max 80,000): the UI-17 header and the UI-20 window show the v2 numbers and no v1 boss facts.
+const M2H_SCALE = 36244 / 80000;
+DERIVED.push({ when: (p, c, body) => p === '/api/hunt' && String(c.ci_hunt || '').startsWith('m2h') && body?.hunt,
+  make: (body) => ({ ...body, hunt: scaleHunt(body.hunt, M2H_SCALE), myDamage: scaleNum(body.myDamage, M2H_SCALE) }) });
+DERIVED.push({ when: (p, c, body) => p === '/api/hunt/leaderboard' && String(c.ci_hunt || '').startsWith('m2h') && Array.isArray(body?.leaders),
+  make: (body) => ({ ...body, leaders: scaleRows(body.leaders, M2H_SCALE) }) });
 // UI-50: the run over (a fall on floor 3, room 2) with 4 found cards: the names of the approved frames.
 function derivedOver(body) {
   const base = derivedDungeon(body);

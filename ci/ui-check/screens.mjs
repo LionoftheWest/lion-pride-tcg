@@ -185,6 +185,8 @@ export const SCREENS = {
   'hunt-down':           { id: 'UI-19', hunt: 'down', notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6]] },
   // v3: the boss detail window (UI-20) over the Hunt view (a tap on the boss stage).
   'boss-window':         { id: 'UI-20', under: 'UI-17', notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6], ['js', '[data-boss]'], ['wait', 2]] },
+  // HUNT-HEADER-V2 (Nathan 2026-11-06 "Yes"): the window in the member mode (combat v2 ON): the v2 HP, no v1 facts and no move pool.
+  'boss-window-m2':      { id: 'UI-20', under: 'UI-17', noText: ['Move pool', 'Weakness', 'Attack'], notOn: ['tiny'], hunt: 'm2h-lobby', steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6], ['js', '[data-boss]'], ['wait', 2]] },
   'hunt-picker':         { id: 'UI-64', under: 'UI-17', notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6], ['js', '[data-hpick]'], ['wait', 1.5]], input: '#u3Picker .u3-search__input' },
   // The card details (the v2 #viewer) opened from a Card picker tile (UI-64, Nathan 2026-10-08): the card and its info whole inside the safe frame.
   'hunt-picker-detail':  { id: 'UI-64', safe: true, under: 'UI-17', notOn: ['tiny'], steps: [['dock', 'battling', 3], ['js', '[data-adv="hunt"]'], ['wait', 6], ['js', '[data-hpick]'], ['wait', 1.5], ['js', '.u3-pk-card__info'], ['wait', 1.5]] },
