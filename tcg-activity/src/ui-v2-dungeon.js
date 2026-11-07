@@ -1606,7 +1606,8 @@ function fitChooseV3(main) {
   // too high or too wide: the stage itself, or a part that clips its own content (the panel and the offers share the stage height; the guardian text sits in the pill; D-117 gives the stage more height but not more width)
   const dgs = box.classList.contains('u3-dgs');
   const stable = dgs || box.classList.contains('ph-choose');   // the counters never change the size of the panel (a long counter only shrinks the counters)
-  const chipsOver = () => [...box.querySelectorAll('.u3-dgc-chips, .u3-dgc-chip')].some((e) => e.scrollWidth > e.clientWidth + 1) || [...box.querySelectorAll('.u3-dgc-hud > *')].some((e) => e.getBoundingClientRect().right > box.getBoundingClientRect().right);
+  // a member report 2026-11-07: a chip past the counter row (into the stage padding) is too wide too (G3 3.3 pokeOut at 412x915)
+  const chipsOver = () => [...box.querySelectorAll('.u3-dgc-chips, .u3-dgc-chip')].some((e) => e.scrollWidth > e.clientWidth + 1) || [...box.querySelectorAll('.u3-dgc-hud > *')].some((e) => e.getBoundingClientRect().right > Math.min(box.getBoundingClientRect().right, e.parentElement.getBoundingClientRect().right));
   const parts = box.querySelectorAll(stable ? '.u3-dgc-prog, .u3-dgc-guard, .u3-dgc-panel, .u3-dgc-offers, .u3-dgc-offer, .u3-dgc-tier, .u3-dgc-offer b, .u3-dgc-offer small' : '.u3-dgc-prog, .u3-dgc-chip, .u3-dgc-guard, .u3-dgc-panel, .u3-dgc-offers, .u3-dgc-offer, .u3-dgc-tier, .u3-dgc-offer b, .u3-dgc-offer small');
   const over = () => (stable ? box.scrollHeight > box.clientHeight + 1 : box.scrollHeight > box.clientHeight + 1 || box.scrollWidth > box.clientWidth + 1) || [...parts].some((e) => e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1);
   const measure = () => {
