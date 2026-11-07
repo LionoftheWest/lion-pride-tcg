@@ -297,7 +297,7 @@ function derivedM2(kind) {
     if (kind === 'm2-chest') {
       const c = (FIX.routes['/api/hunt']?.body?.roster || []).find((x) => Number(x.id) === 57);
       v.run.state.chest = { tier: 4, shards: 68, card: 57 };
-      v.run.state.pend.cards.push(57);
+      v.run.state.pend.cards = [57];   // the chest card is the one card at risk (the same chip width as the other m2 fixtures)
       if (c) v.cards = { ...(v.cards || {}), 57: { id: 57, name: c.name, rarity: c.rarity, image_url: c.image_url, type: c.type } };
     }
   }
