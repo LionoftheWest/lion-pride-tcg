@@ -707,7 +707,11 @@ async function play(r) {
 }
 async function settle(r) {
   S.busy = false;
-  if (r.status === 'over' || r.state?.phase !== 'fight') { disposeFight(); await H.reload(); return true; }
+  // The Hunt answer (hunt-v2-routes.js asRun) has its state in run.state, not state. Read both: else every Hunt step looked like the end of
+  // the fight (dispose + reload), the same-room repaint never restarted Auto, and Auto stopped after one step (a member report 2026-11-09).
+  const st = r.state || r.run?.state;
+  if (r.status === 'over' || st?.phase !== 'fight') { disposeFight(); await H.reload(); return true; }
+  if (!r.state) await H.reload();   // the Hunt: read the view again (the shared boss bar and the day: mergeAnswer has no Hunt fields)
   if (!alive()) return true;
   upd(); place();
   autoNext();
