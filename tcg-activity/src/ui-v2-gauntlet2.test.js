@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, cardStatusHTML, squadOf, foesOf, portraitKey, fmtPower, wireFight, infoIdOf, v2InfoOf, ROLE_PURPOSE, hpShown, maxShown, shownDrop, dmgText, supStateHTML, calloutOf, gainsOf, newStatusesOf, fightUpdate, squadShownOf, hitText, liteReplay, tickTexts, STRIP_N } from './ui-v2-gauntlet2.js';
+import { stripOf, actorOf, fightModel, tapLine, badgesOf, placesOf, logLines, mergeAnswer, v1RunOf, v2Owns, choiceOf, cardStatusHTML, squadOf, foesOf, portraitKey, fmtPower, wireFight, disposeFight, infoIdOf, v2InfoOf, ROLE_PURPOSE, hpShown, maxShown, shownDrop, dmgText, supStateHTML, calloutOf, gainsOf, newStatusesOf, fightUpdate, squadShownOf, hitText, liteReplay, tickTexts, STRIP_N } from './ui-v2-gauntlet2.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIX = JSON.parse(readFileSync(join(here, '..', '..', 'ci', 'ui-check', 'fixtures', 'g2-fight.json'), 'utf8')).body;
@@ -622,4 +622,50 @@ test('ON-UI screen rule: v1_run keeps the v1 screens; live or a tester may start
   assert.deepEqual(live2.state.floor_loot, { shards: 40, cards: [7] }, 'a live run: the floor loot');
   const test2 = g.v1RunOf({ live: true, run: { id: 1, live: false, status: 'active', state: st2 } });
   assert.deepEqual([test2.state.chest, test2.state.floor_loot], [undefined, undefined], 'a test run: no chest, no floor loot');
+});
+
+// ---- A member report (2026-11-09, Blade): "Auto seems a bit buggy when doing boss fights. It does a turn or two then stops until i
+// manually deactivate and reactivate." The Hunt answer (hunt-v2-routes.js asRun) has its state in run.state and no top-level state, so
+// settle() took every Hunt step for the end of the fight: dispose (the auto timer) + reload, and the same-room repaint never restarted Auto.
+async function huntAutoRun(answerOf, steps = 2, waitMs = 1500) {
+  const v = fresh(); const d = recDom();
+  const stage = { calls: [], cast() {}, play() {}, foeFx() {}, labels: () => [0, 1, 2, 3, 4].map((x) => ({ x, y: 1, foot: 2, w: 1 })), setTarget() {}, dispose() {} };
+  const posts = []; let reloads = 0;
+  const host = recHost({ dg: { auto: false, stage }, base: '/api/hunt/v2', AUTO_ROUNDS: 5, oneBoss: true,
+    apiPost: async (p) => { posts.push(p); return answerOf(posts.length); }, waitMs: () => 0, currentView: () => 'dungeon', sfx() {}, snd() {}, voice() {}, moveSnd: () => null,
+    elementOf: () => 'water', setView() {}, setAuto(on) { host.dg.auto = on; }, toast() {}, fitFight() {}, placeArena() {}, openInfo() {},
+    reload: async () => { reloads += 1; } });   // huntReload: the same room repaints in place (updateFight), no new wireFight
+  const saved = { document: globalThis.document, raf: globalThis.requestAnimationFrame, gcs: globalThis.getComputedStyle };
+  globalThis.document = { querySelector: (q) => (q === '.dg-fight.g2' ? d.F : d.sub('', q)), querySelectorAll: () => [], getElementById: () => null, body: { dataset: {} },
+    createElement: () => ({ className: '', textContent: '', style: {}, remove() {} }) };
+  globalThis.requestAnimationFrame = () => 0; globalThis.getComputedStyle = () => ({ gridTemplateAreas: '', gridTemplateRows: '' });
+  try {
+    const main = { querySelector: (q) => (q === '.dg-fight.g2' ? d.F : null), contains: () => true };
+    d.F.addEventListener = () => {};
+    let auto = null; d.mk('.dg-fight.g2 .dg-auto').addEventListener = (t, fn) => { auto = fn; };
+    await wireFight(main, v, host, { keep: true });
+    auto({ stopPropagation() {}, currentTarget: { classList: { toggle() {} }, setAttribute() {} } });
+    const t0 = Date.now();
+    while (posts.length < steps && Date.now() - t0 < waitMs) await new Promise((ok) => setTimeout(ok, 20));
+    await new Promise((ok) => setTimeout(ok, 50));
+  } finally { host.dg.auto = false; disposeFight(); globalThis.document = saved.document; globalThis.requestAnimationFrame = saved.raf; globalThis.getComputedStyle = saved.gcs; }
+  return { posts, reloads };
+}
+// The Hunt answer shape: asRun() of hunt_v2_out (status, run.state with phase, the screen fields), no top-level state.
+const huntAnswer = (status = 'active') => {
+  const w = fresh();
+  return { ok: true, status, mode: 'hunt_v2', live: true, day: { status }, hunt: { live_frac: 0.5 },
+    run: { status, ended_by: null, state: { ...w.run.state, phase: status === 'active' ? 'fight' : 'over' } },
+    order: w.order, targets: w.targets, allies: w.allies, status_lines: w.status_lines, need: w.need, squad_hp: w.squad_hp, log: [] };
+};
+test('Hunt Auto (member report 2026-11-09): Auto keeps playing after a Hunt step (the answer state is in run.state)', async () => {
+  const { posts, reloads } = await huntAutoRun(() => huntAnswer('active'), 3, 4000);
+  assert.ok(posts.length >= 3, `Auto posts again after each step: ${posts.length} posts`);
+  assert.ok(posts.every((p) => p === '/api/hunt/v2/auto'));
+  assert.ok(reloads >= 1, 'the Hunt view is read again (the shared boss bar and the day)');
+});
+test('Hunt Auto: a Hunt answer that ends the day (status over) stops Auto and reloads once', async () => {
+  const { posts, reloads } = await huntAutoRun(() => huntAnswer('over'), 2, 1500);
+  assert.equal(posts.length, 1, 'no step after the day is over');
+  assert.equal(reloads, 1);
 });
