@@ -21,6 +21,9 @@ export const MODEL_BOSSES = {
   kerrigan:       { file: 'kerrigan-z2.glb',       names: /zerg-?rush queen|kerrigan/i, credit: 'Model: Sarah Kerrigan Infested — Vasian-Digital3D (CC-BY 4.0); animations: Mixamo (Adobe)' },
 };
 
+/** The file of a fight model: "boss:<key>" = a Hunt boss file above (storage), else a Dungeon monster of public/dungeon/monsters. */
+export const glbUrl = (model) => (String(model).startsWith('boss:') ? `${MODEL_BASE}/${MODEL_BOSSES[String(model).slice(5)]?.file}` : `/dungeon/monsters/${model}.glb`);
+
 /** The model key for a boss name (or an `arch:<key>` seed), or null. */
 export function modelFor(seedStr) {
   const s = seedStr || '';

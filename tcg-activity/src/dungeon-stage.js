@@ -9,9 +9,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { createAttackFX } from './attack-fx.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
-import { MODEL_BASE, MODEL_BOSSES } from './boss-models.js';
+import { glbUrl } from './boss-models.js';
 
-const BASE = '/dungeon/monsters/';
 const CLIPS = {
   idle: ['Idle', 'Flying_Idle', 'idle'],
   attack: ['Attack', 'Punch', 'Bite_Front', 'Headbutt', 'Weapon', 'strike'],
@@ -25,7 +24,7 @@ const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);   // the Hunt
 const load = (model) => {
   if (!cache.has(model)) {
     // R3b / ON-UI: a Hunt boss is "boss:<key>" (boss-models.js, the same file as the Hunt view); a monster is a file name here
-    const url = String(model).startsWith('boss:') ? `${MODEL_BASE}/${MODEL_BOSSES[String(model).slice(5)]?.file}` : BASE + model + '.glb';
+    const url = glbUrl(model);
     const p = new Promise((ok, no) => loader.load(url, ok, undefined, no));
     cache.set(model, p);
     p.catch(() => { if (cache.get(model) === p) cache.delete(model); });   // a failed load is tried again on the next use (never kept as a permanent empty slot)

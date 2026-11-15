@@ -314,13 +314,13 @@ DERIVED.push({ when: (p, c) => p === '/api/dungeon/v2/view' && M2_KINDS.includes
 const MIX = { 'm2h-mix80': [8, 0], 'm2h-mix17': [1, 7], 'm2h-mix44': [4, 4], 'm2h-mix08': [0, 8] };
 const H2_KINDS = ['h2-lobby', 'h2-fight', 'h2-over', 'm2h-lobby', 'm2h-fight', 'm2h-over', ...Object.keys(MIX)];
 // A Hunt fight has ONE target: the live boss (R3 SPEC 3.5). The fixture keeps the recorded squad and turns the 5-monster horde into the
-// boss of the recorded /api/hunt (its name, its model key from boss-models.js: "boss:<key>", the Hunt view's own file).
-const H2_MODEL = { 'the ban-wave demon': 'demon' };
-function oneBoss(v, name) {
+// boss of the recorded /api/hunt. The live answer (hunt_v2_view) has NO show on its boss, only the boss key (e.boss): the view makes the name
+// and the model from hunt.name (ui-v2-gauntlet2.js showOf). The fixture had a made-up show, so G3 passed while the live boss never showed (2026-11-15).
+function oneBoss(v) {
   const F = v.run.state.fight;
   const e = F.enemies[0];
-  Object.assign(e, { hp: 1284, max: 2070, down: false, status: { exposed: { value: 0.15, until: 8, stacks: 2 } }, mechanics: [], monster: 'boss',
-    show: { name, model: `boss:${H2_MODEL[name.toLowerCase()] || 'demon'}`, element: null, level: 3, kind: 'boss' } });
+  delete e.show; delete e.monster;
+  Object.assign(e, { hp: 1284, max: 2070, down: false, status: { exposed: { value: 0.15, until: 8, stacks: 2 } }, mechanics: [], boss: 'demon' });
   F.enemies = [e];
   v.targets = [0];
   v.order = v.order.filter((o) => o.side === 'card' || o.id === 0);
@@ -359,7 +359,7 @@ function derivedH2(kind) {
   if (st === 'lobby') return { ...base, can_start: true, day: null };
   const v = derivedG2(st === 'over' ? 'g2-over' : 'g2-fight');
   delete v.active_mode; delete v.run.mode;
-  if (v.run?.state?.fight?.enemies?.length) { oneBoss(v, name); const mx = MIX[kind] || [5, 3]; mixCards(v, mx[0], mx[1]); }
+  if (v.run?.state?.fight?.enemies?.length) { oneBoss(v); const mx = MIX[kind] || [5, 3]; mixCards(v, mx[0], mx[1]); }
   const over = st === 'over';
   Object.assign(v.run, { status: over ? 'over' : 'active', ended_by: over ? 'fell' : null });
   v.run.state = { ...v.run.state, engine: 2, phase: over ? 'over' : 'fight' };

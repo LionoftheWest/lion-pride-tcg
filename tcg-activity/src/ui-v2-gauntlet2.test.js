@@ -669,3 +669,26 @@ test('Hunt Auto: a Hunt answer that ends the day (status over) stops Auto and re
   assert.equal(posts.length, 1, 'no step after the day is over');
   assert.equal(reloads, 1);
 });
+
+// A report 2026-11-15 (the Hunt boss did not show): the live Hunt answer (hunt_v2_view) has no show on its boss, only the boss key. The G3
+// fixture had a show, so CI passed. The boss model and name come from the Hunt name (boss-models.js modelFor), in the strip and on the stage.
+test('the Hunt boss has its model from the Hunt name (the live answer has no show)', async () => {
+  const { glbUrl, MODEL_BASE } = await import('./boss-models.js');
+  const v = fresh();
+  const one = { ...v.run.state.fight.enemies[0] };
+  delete one.show; one.boss = 'zerg';
+  const hunt = { ...v, mode: 'hunt_v2', hunt: { name: 'The Zerg-Rush Queen' }, order: [{ side: 'enemy', id: 0 }],
+    run: { ...v.run, state: { ...v.run.state, fight: { ...v.run.state.fight, enemies: [one] } } } };
+  const [f] = foesOf(hunt);
+  assert.equal(f.model, 'boss:kerrigan');
+  assert.equal(f.name, 'The Zerg-Rush Queen');
+  assert.equal(f.boss, true);
+  assert.equal(stripOf(hunt)[0].model, 'boss:kerrigan');
+  assert.equal(glbUrl(f.model), `${MODEL_BASE}/kerrigan-z2.glb`);
+  assert.equal(glbUrl('yeti'), '/dungeon/monsters/yeti.glb');
+  // not the Hunt (a Dungeon or Gauntlet foe with no show): no made-up boss
+  assert.equal(foesOf({ ...hunt, mode: undefined })[0].model, '');
+  // the view after a step (mergeAnswer keeps hunt): the model stays
+  const after = mergeAnswer(hunt, { ok: true, state: hunt.run.state });
+  assert.equal(foesOf(after)[0].model, 'boss:kerrigan');
+});

@@ -9,7 +9,8 @@
 import { icon as ui3Icon } from './ui3/icons.js';
 import { TOKENS } from './tokens.js';
 import { fmtFull, fmtCompact } from './ui3/number.js';
-import { breakName } from './ui3/suggest.js';   // a name never breaks mid-word (D-08): break points at camelCase, _ . -
+import { breakName } from './ui3/suggest.js';
+import { modelFor, glbUrl } from './boss-models.js';   // a name never breaks mid-word (D-08): break points at camelCase, _ . -
 
 // ---- The static tables (UI-67): status key -> Lucide icon, the family colors, role key -> Lucide icon ----
 export const STATUS_ICON = {
@@ -112,12 +113,22 @@ export function placesOf(list, n) {
   return { shown: list.slice(0, n - 1), more: list.length - (n - 1) };
 }
 
+// The Hunt answer (hunt_v2_view) has no show on its boss: only the boss key (e.boss). The name and the model come from the Hunt name, with the
+// same rule as the v1 Hunt view (boss-models.js modelFor). Before this the stage and the strip had no boss (a report 2026-11-15).
+/** The show of an enemy (name, model, element, level, kind): the server's, or for the Hunt boss the one made from the Hunt name. */
+export function showOf(v, e) {
+  if (e?.show) return e.show;
+  if (v?.mode !== 'hunt_v2' || !e?.boss) return null;
+  const name = v.hunt?.name || v.boss?.name || '';
+  const k = modelFor(name);
+  return { name, model: k ? `boss:${k}` : '', kind: 'boss' };
+}
 /** The turn-order strip: the first 10 entries of `order`, as the server gives them (D6: the clock picks the card). */
 export function stripOf(v) {
   const cards = v?.cards || {};
   return (v?.order || []).slice(0, STRIP_N).map((o, i) => {
     const isCard = o.side === 'card';
-    const f = isCard ? null : fightOf(v)?.enemies?.[o.id];
+    const f = isCard ? null : { show: showOf(v, fightOf(v)?.enemies?.[o.id]) };
     return { side: isCard ? 'card' : 'enemy', id: o.id, next: i === 0, ready: isCard && o.ready === true, skip: !!o.skip, mayFail: !!o.may_fail,
       cls: isCard ? stateOf(v)?.info?.[o.id]?.class || 'attacker' : null,
       name: isCard ? cards[o.id]?.name || '' : f?.show?.name || '', image: isCard ? cards[o.id]?.image_url || '' : '', model: f?.show?.model || '' };
@@ -154,7 +165,7 @@ export function squadOf(v) {
 export function foesOf(v) {
   const F = fightOf(v) || {};
   const rt = stateOf(v)?.room_type;
-  return (F.enemies || []).map((e, i) => ({ i, name: e.show?.name || '', model: e.show?.model || '', key: e.monster || e.show?.model || '', element: e.show?.element || '', level: e.show?.level ?? null,
+  return (F.enemies || []).map((e0) => ({ ...e0, show: showOf(v, e0) })).map((e, i) => ({ i, name: e.show?.name || '', model: e.show?.model || '', key: e.monster || e.show?.model || '', element: e.show?.element || '', level: e.show?.level ?? null,
     kind: e.show?.kind || '', boss: e.show?.kind === 'boss' || rt === 'guardian', elite: e.show?.kind === 'elite' || rt === 'elite',
     hp: e.down ? 0 : num(e.hp), max: num(e.max), down: !!e.down, charging: !!e.charging, guard: num(e.status?.guarded?.value), badges: badgesOf(v, 'enemy', i), passives: [] }));
 }
@@ -188,7 +199,7 @@ const moveLabel = (k) => String(k || '').replace(/_/g, ' ').replace(/^\w/, (x) =
 /** The room log lines of a write answer's log (R1b 3.2 item 10): newest last. who / to / txt / kind. */
 export function logLines(v, log) {
   const F = fightOf(v) || {}; const cards = v?.cards || {};
-  const nm = (side, id) => (side === 'enemy' ? F.enemies?.[id]?.show?.name || 'Foe' : cards[id]?.name || 'Card');
+  const nm = (side, id) => (side === 'enemy' ? showOf(v, F.enemies?.[id])?.name || 'Foe' : cards[id]?.name || 'Card');
   const out = [];
   for (const e of log || []) {
     if (e.k === 'act' && e.actor?.side === 'card') {
@@ -916,7 +927,6 @@ const PORT_Q = new Map();  // model -> Promise (loading)
 export const portraitNow = (key) => PORT.get(key) || '';
 /** The cache key of a portrait: the model and the element (the stage tints a model by the element). */
 export const portraitKey = (model, element) => `${model}|${element || ''}`;
-const MODELS = '/dungeon/monsters/';
 /** Render the portrait of each model once (a 96 px square, the head and body framed), then fill the strip images of that model. */
 export async function portraits(foes) {
   const want = [...new Set(foes.filter((f) => f.model).map((f) => portraitKey(f.model, f.element)))].filter((k) => !PORT.has(k) && !PORT_Q.has(k));
@@ -930,9 +940,10 @@ export async function portraits(foes) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setSize(size, size, false);
   const loader = new GLTFLoader();
+  try { loader.setMeshoptDecoder((await import('three/examples/jsm/libs/meshopt_decoder.module.js')).MeshoptDecoder); } catch { /* the monster files load without it */ }   // the Hunt boss files are meshopt
   for (const m of want) {
     const [model0, el] = m.split('|');
-    const job = new Promise((ok) => loader.load(MODELS + model0 + '.glb', ok, undefined, () => ok(null)));
+    const job = new Promise((ok) => loader.load(glbUrl(model0), ok, undefined, () => ok(null)));
     PORT_Q.set(m, job);
     const g = await job;
     PORT_Q.delete(m);
