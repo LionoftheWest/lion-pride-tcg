@@ -48,6 +48,7 @@ import { registerEventsRoutes } from './src/events-routes.js';
 import { registerDungeonRoutes } from './src/dungeon-routes.js';
 import { registerGauntletV2Routes } from './src/gauntlet-v2-routes.js';
 import { registerHuntV2Routes } from './src/hunt-v2-routes.js';
+import { createHuntScales, scaleHunt, scaleRows, scaleNum, scaledSum } from './src/hunt-v2-scale.js';
 import { registerDungeonV2Routes } from './src/dungeon-v2-routes.js';
 import { sendV2Refusal } from './src/v2-refusals.js';
 import { makePingLimiter } from './src/trade-ping-limit.js';
@@ -759,6 +760,8 @@ function makeGate(limit) {
 // hunt_attack / hunt_support lock the boss row: at most this many wait on it at once.
 const huntRpcGate = makeGate(Number(process.env.HUNT_RPC_CONCURRENCY || 4));
 // The fight standings (top 100), shared by the Hunt standings and the v2 board. 2 s.
+// HUNT-HEADER-V2: the one factor shared Hunt scale -> v2 fight scale (SQL hunt_fight_scales, 30 s); null = the shared numbers as they are.
+const huntScales = createHuntScales({ rpc: (fn, args) => supabase.rpc(fn, args) });
 const huntLeadersCache = new Map();
 async function huntLeaders(huntId) {
   const c = huntLeadersCache.get(huntId);
@@ -799,6 +802,7 @@ app.get('/api/leaderboard/v2', async (req, res) => {
       const dmgOf = new Map((dmgAll.data || []).map((r) => [String(r.player_id), r]));
       const powerOf = new Map((collPow.data || []).map((r) => [String(r.player_id), Number(r.power)]));
       const defeated = new Set((hunts.data || []).filter((h) => h.status === 'defeated').map((h) => h.id));
+      const scales = await huntScales.get([...new Set((hits.data || []).map((h) => h.hunt_id))]);   // HUNT-HEADER-V2
       const byPlayer = new Map();
       const row = (id) => {
         if (!byPlayer.has(id)) byPlayer.set(id, { cards: [], hits: [], fought: new Set(), opened: 0, gifted: 0, boons: 0, pranks: 0, trades: 0 });
@@ -832,7 +836,7 @@ app.get('/api/leaderboard/v2', async (req, res) => {
         rows.push({
           id, name: names.get(String(id))?.username || 'Someone', hasAvatar: !!names.get(String(id))?.avatar,
           title: names.get(String(id))?.title || null, frame: names.get(String(id))?.frame || null,
-          power, huntDamage: stats.totalDamage, bosses: stats.bossesDefeated, cards: x.cards.length,
+          power, huntDamage: scaledSum(x.hits, scales), bosses: stats.bossesDefeated, cards: x.cards.length,
           achievements: measureAchievements(merged, stats, relSets).filter((a) => a.done).length,
         });
       }
@@ -845,7 +849,7 @@ app.get('/api/leaderboard/v2', async (req, res) => {
   }
   let live = null;
   if (hunt) {
-    const leaders = await huntLeaders(hunt.id).catch(() => []);
+    const leaders = scaleRows(await huntLeaders(hunt.id).catch(() => []), await huntScales.one(hunt.id));
     live = { name: hunt.name, tier: hunt.tier, share: hunt.hp_max ? Math.round((100 * (hunt.hp_max - hunt.hp_remaining)) / hunt.hp_max) : 0, leaders };
   }
   res.json({ me: String(me.id), rows: boardV2Cache.rows, totalCards: boardV2Cache.totalCards, achievementCount: achievementList(await getReleasedSets()).length, live });
@@ -931,7 +935,7 @@ app.get('/api/hunt', async (req, res) => {
   const hunt = await activeHunt();
   // ?light=1: the boss only (Home, the small window, the bell, the Hunt dot). No roster, so no card_powers, hunt_view,
   // hunt_squads or adventure_gate: those four cost ~250 ms of database time for an answer that these screens never read.
-  if (hunt && req.query.light) return res.json({ hunt });
+  if (hunt && req.query.light) return res.json({ hunt: scaleHunt(hunt, await huntScales.one(hunt.id)) });
   // ?fight=1: what a fight needs after an attack or a support: the boss, the HP rows of the cards that fought today and the round. The client merges them
   // into the roster it already holds (hp, downed, shield, cooldown, used). No collection, no card_powers, no hunt_view, no gate, no boss moves: those
   // are the Hunt screen's opening, and the fight refreshed all of them after every boss turn (~250 ms of database time each time).
@@ -942,7 +946,7 @@ app.get('/api/hunt', async (req, res) => {
       supabase.from('hunt_combat_state').select('round').eq('hunt_id', hunt.id).eq('player_id', me.id).eq('hit_date', day).maybeSingle(),
     ]);
     if (hp.error || st.error) return res.status(500).json({ error: (hp.error || st.error).message });
-    return res.json({ hunt, fight: true, hp: hp.data || [], round: st.data?.round || 0, usedToday: (hp.data || []).length });
+    return res.json({ hunt: scaleHunt(hunt, await huntScales.one(hunt.id)), fight: true, hp: hp.data || [], round: st.data?.round || 0, usedToday: (hp.data || []).length });
   }
   if (!hunt) {
     // Cooldown: no active boss. Return the next spawn time + the last boss outcome.
@@ -952,7 +956,8 @@ app.get('/api/hunt', async (req, res) => {
       const mine = await supabase.from('hunt_hits').select('damage').eq('hunt_id', last.id).eq('player_id', me.id);
       myLast = (mine.data || []).reduce((t, h) => t + (h.damage || 0), 0);
     }
-    return res.json({ hunt: null, nextSpawnAt, lastResult: last, lastBoard, myLast, lastFeed });
+    const lf = last ? await huntScales.one(last.id) : null;   // HUNT-HEADER-V2: the last boss on its own scale
+    return res.json({ hunt: null, nextSpawnAt, lastResult: scaleHunt(last, lf), lastBoard: scaleRows(lastBoard, lf), myLast: scaleNum(myLast, lf), lastFeed: scaleRows(lastFeed, lf) });
   }
   const today = mtToday(); // the MT game day (mt_clock.sql)
   // One call (hunt_view.sql) instead of 4: 100 players opening the Hunt at once waited ~6 s.
@@ -1009,7 +1014,8 @@ app.get('/api/hunt', async (req, res) => {
   }).sort((a, b) => (a.downed - b.downed) || (b.matches - a.matches) || (b.power - a.power));
   // The daily card cap (balance daily_card_cap, the same value hunt_attack reads).
   const dailyCap = dailyCardCap(bal());
-  res.json({ hunt, roster, myDamage, usedToday: (hpRows || []).length, dailyCap, round, squad: sqRow?.card_ids || null, gate: gate || null, bossMoves, v2day: v2DayFlag(v2q) });
+  const hf = await huntScales.one(hunt.id);   // HUNT-HEADER-V2: the boss and the member's damage on the v2 fight scale
+  res.json({ hunt: scaleHunt(hunt, hf), roster, myDamage: scaleNum(myDamage, hf), usedToday: (hpRows || []).length, dailyCap, round, squad: sqRow?.card_ids || null, gate: gate || null, bossMoves, v2day: v2DayFlag(v2q) });
 });
 
 // Send a card at the boss (once per card per day). Atomic + row-locked in the RPC.
@@ -1157,7 +1163,8 @@ app.get('/api/hunt/feed', async (req, res) => {
   const fd = await queryHuntFeed(hunt.id);
   // The boss health is fetched fresh (activeHunt), so every viewer sees the shared
   // health drop live as others attack, and sees the defeat the moment it lands.
-  res.json({ feed: fd.feed, fighters: fd.fighters, hp_remaining: hunt.hp_remaining, hp_max: hunt.hp_max, status: hunt.status });
+  const ff = await huntScales.one(hunt.id);   // HUNT-HEADER-V2
+  res.json({ feed: scaleRows(fd.feed, ff), fighters: fd.fighters, hp_remaining: scaleNum(hunt.hp_remaining, ff), hp_max: scaleNum(hunt.hp_max, ff), status: hunt.status });
 });
 
 // The five newest finished bosses (D-178 "Last boss" tab): the same for everyone, 15 s.
@@ -1176,12 +1183,12 @@ app.get('/api/hunt/leaderboard', async (req, res) => {
       });
       const last = pickLastHunt(data, hunt?.id ?? null);
       if (!last) return res.json({ leaders: [], me: me.id, boss: null });
-      return res.json({ leaders: (await huntLeaders(last.id)).slice(0, 20), me: me.id, boss: { name: last.name, tier: last.tier, status: last.status } });
+      return res.json({ leaders: scaleRows((await huntLeaders(last.id)).slice(0, 20), await huntScales.one(last.id)), me: me.id, boss: { name: last.name, tier: last.tier, status: last.status } });
     } catch (e) { return res.status(500).json({ error: e.message }); }
   }
   if (!hunt) return res.json({ leaders: [], me: me.id });
   try {
-    res.json({ leaders: (await huntLeaders(hunt.id)).slice(0, 20), me: me.id });
+    res.json({ leaders: scaleRows((await huntLeaders(hunt.id)).slice(0, 20), await huntScales.one(hunt.id)), me: me.id });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -1262,11 +1269,12 @@ async function loadProfile(id) {
     for (const r of rows) { byDay[r.hit_date] = (byDay[r.hit_date] || 0) + (r.damage || 0); byCard[r.card_id] = (byCard[r.card_id] || 0) + (r.damage || 0); }
     const top = Object.entries(byCard).sort((a, b) => b[1] - a[1])[0];
     const damage = rows.reduce((t, r) => t + (r.damage || 0), 0);
+    const pf = await huntScales.one(hunt.id);   // HUNT-HEADER-V2: the live Hunt box on the v2 fight scale (the share is a fraction: unchanged)
     payload.hunt = {
-      name: hunt.name, tier: hunt.tier, damage, attacks: rows.length,
+      name: hunt.name, tier: hunt.tier, damage: scaleNum(damage, pf), attacks: rows.length,
       share: hunt.hp_max ? Math.round((1000 * damage) / hunt.hp_max) / 10 : 0,
-      byDay: Object.entries(byDay).sort((a, b) => a[0].localeCompare(b[0])).map(([date, dmg]) => ({ date, damage: dmg })),
-      topCard: top ? { id: Number(top[0]), damage: top[1] } : null,
+      byDay: Object.entries(byDay).sort((a, b) => a[0].localeCompare(b[0])).map(([date, dmg]) => ({ date, damage: scaleNum(dmg, pf) })),
+      topCard: top ? { id: Number(top[0]), damage: scaleNum(top[1], pf) } : null,
     };
   }
   return payload;
@@ -1955,7 +1963,7 @@ registerEventsRoutes(app, { supabase, caller, eventsOn, sharedCache, artUrl: (u)
 const dungeonCaches = registerDungeonRoutes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, onRun: dungeonPing, userCache, sharedCache });
 // R1c: /api/gauntlet/v2/* (Combat v2). R1-ON: a v2 write drops the member's cached Gauntlet view and, at a run end, the board.
 registerGauntletV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, sharedCache, onRunChange: dungeonCaches.gauntletRunChanged });
-registerHuntV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, huntOn: () => FEATURE_HUNT, sharedCache });   // R3b: /api/hunt/v2/* the Hunt v2 practice of Combat v2 testers
+registerHuntV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, huntOn: () => FEATURE_HUNT, sharedCache, huntScales });   // R3b: /api/hunt/v2/* the Hunt v2 practice of Combat v2 testers
 registerDungeonV2Routes(app, { supabase, caller, rateLimit, getCatalogBase, dungeonOn, sharedCache });   // R2b: /api/dungeon/v2/* for Combat v2 testers
 const cardShape = (c) => c && { id: c.id, name: c.name, rarity: c.rarity, image_url: toProxyImg(c.image_url) };
 

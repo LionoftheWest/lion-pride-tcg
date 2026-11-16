@@ -68,6 +68,33 @@ function prizeLine(s: { participants?: number; total_packs?: number }, prizes?: 
   return `${s.participants ?? 0} hunters earned **${s.total_packs ?? 0}** packs: ${prizeText(prizes)}.`;
 }
 
+// HUNT-HEADER-V2 (Nathan, 2026-11-06: "everything needs to be accurate to the damage people ACTUALLY do now in combat v2"). The SQL events
+// carry shared-scale numbers (hunts.hp_max scale). With the v2 Hunt, each member fights a private copy: the ONE factor
+// hunt_fight_scale(hunt) (SQL, hunt_fight_scale.sql) = the fight's boss max / hunts.hp_max puts them on the fight scale, the same factor as the
+// Activity server. A payload that already says scale 'v2' (for example a v2 player_done) is not converted again. Without a factor
+// (flag OFF, a past v1 Hunt) the payload is the same object: the posts are as before.
+const SHARED_KEYS: Record<string, string[]> = {
+  spawn: ['hp'], nudge: ['hp_remaining', 'hp_max'], leaderboard: ['hp_remaining', 'hp_max'],
+  player_done: ['total', 'top_damage', 'boss_hp', 'boss_hp_max'],
+};
+const TOP_KINDS = new Set(['defeat', 'expired', 'leaderboard']);
+export const scaleN = (n: unknown, f: number): number => Math.round(Number(n ?? 0) * f);
+export function scalePayload(kind: string, payload: Record<string, unknown>, f: number | null): Record<string, unknown> {
+  if (!f || !payload || payload.scale === 'v2') return payload;
+  const o: Record<string, unknown> = { ...payload, scale: 'v2' };
+  for (const k of SHARED_KEYS[kind] ?? []) if (o[k] !== undefined && o[k] !== null) o[k] = scaleN(o[k], f);
+  if (TOP_KINDS.has(kind) && Array.isArray(o.top)) o.top = (o.top as Array<Record<string, unknown>>).map((x) => ({ ...x, damage: scaleN(x.damage, f) }));
+  return o;
+}
+/** The factor of one Hunt (SQL hunt_fight_scales); a failed read gives null: the post shows the shared numbers. */
+export async function huntScaleOf(huntId: number | undefined | null): Promise<number | null> {
+  if (!huntId) return null;
+  const { data, error } = await getSupabase().rpc('hunt_fight_scales', { p_hunts: [huntId] });
+  if (error) { console.error('hunt_fight_scales:', error.message); return null; }
+  const f = Number((data as Record<string, unknown> | null)?.[String(huntId)]);
+  return f > 0 ? f : null;
+}
+
 // The top 3 players by total damage dealt to the boss, as ranked lines.
 function topDamage(top: unknown): string {
   if (!Array.isArray(top) || !top.length) return '';
@@ -83,7 +110,7 @@ function format(ev: { kind: string; payload: Record<string, unknown> }, prizes?:
     case 'spawn': {
       const when = p.closes_at ? ` Beat it by <t:${epoch(String(p.closes_at))}:F> (<t:${epoch(String(p.closes_at))}:R>).` : '';
       return `🦁 **${p.name} has appeared!**  [${p.tier}] — ${Number(p.hp).toLocaleString()} HP.\n`
-        + `Weak to **${weakText(p.weak)}**.${when} Press **Open Lion Pride TCG** to join the hunt!`;
+        + `${p.scale === 'v2' ? when.trimStart() : `Weak to **${weakText(p.weak)}**.${when}`} Press **Open Lion Pride TCG** to join the hunt!`;   // the v2 fight shows no Weak to
     }
     case 'nudge': {
       const when = p.closes_at ? `<t:${epoch(String(p.closes_at))}:R>` : 'soon';
@@ -138,7 +165,7 @@ const epochLeft = (iso: string): string => {
 const avatarUrl = (id: string, hash: string | null | undefined): string | null => (hash ? `https://cdn.discordapp.com/avatars/${id}/${hash}.png?size=128` : null);
 
 /** The picture for a raid post (Nathan, 2026-10-02): the daily leaderboard and the squad summary. */
-export async function huntPicture(ev: { kind: string; hunt_id?: number; created_at?: string; payload: Record<string, unknown> }): Promise<Buffer | null> {
+export async function huntPicture(ev: { kind: string; hunt_id?: number; created_at?: string; payload: Record<string, unknown> }, f: number | null = null): Promise<Buffer | null> {
   const p = ev.payload ?? {};
   const sb = getSupabase();
   if (ev.kind === 'leaderboard') {
@@ -158,7 +185,7 @@ export async function huntPicture(ev: { kind: string; hunt_id?: number; created_
     // hunt_hits has no link to cards: the card in a second lookup.
     const hit = (hits?.[0] as { damage?: number; card_id?: number } | undefined) ?? null;
     const { data: card } = hit?.card_id ? await sb.from('cards').select('name, rarity, image_url').eq('id', hit.card_id).maybeSingle() : { data: null };
-    const top = hit ? { damage: hit.damage, card: (card ?? undefined) as { name?: string; rarity?: string; image_url?: string } | undefined } : null;
+    const top = hit ? { damage: f ? scaleN(hit.damage, f) : hit.damage, card: (card ?? undefined) as { name?: string; rarity?: string; image_url?: string } | undefined } : null;
     const [avatar, topArt] = await Promise.all([buf(avatarUrl(id, (pl as { avatar?: string } | null)?.avatar)), art(top?.card?.image_url ?? null)]);
     return renderSquadSummary({ name: String((pl as { username?: string } | null)?.username ?? 'A hunter'), avatar, total: Number(p.total ?? 0), cards: Number(p.cards_used ?? 0),
       topCard: top?.card?.name ?? (p.top_card ? String(p.top_card) : null), topDamage: Number(top?.damage ?? p.top_damage ?? 0), topArt, topRarity: top?.card?.rarity ?? null,
@@ -189,14 +216,17 @@ async function drain(client: Client): Promise<void> {
       .is('posted_at', null)
       .order('id', { ascending: true })
       .limit(BATCH);
-    for (const ev of events ?? []) {
+    for (const raw of events ?? []) {
+      // HUNT-HEADER-V2: the shared numbers on the v2 fight scale (one factor per Hunt; null = as before)
+      const f = raw.kind in SHARED_KEYS || TOP_KINDS.has(raw.kind) ? await huntScaleOf(raw.hunt_id) : null;
+      const ev = { ...raw, payload: scalePayload(raw.kind, raw.payload ?? {}, f) };
       // The result posts list the prizes (game_hunt_prizes); a read error stops here and the event waits.
       const prizes = ev.kind === 'defeat' || ev.kind === 'expired' ? huntPrizes((await getGameVars()).huntPrizes) : undefined;
       const post = huntPost(ev as never, prizes);
       let sent = true; // an event with no post has nothing to send: mark it done
       if (post) {
         // The leaderboard and the squad summary carry a picture (a failed picture still posts the text).
-        const png = await huntPicture(ev as never).catch((e) => { console.error('hunt picture:', e); return null; });
+        const png = await huntPicture(ev as never, f).catch((e) => { console.error('hunt picture:', e); return null; });
         if (png) post.files = [new AttachmentBuilder(png, { name: ev.kind === 'leaderboard' ? 'raid-leaderboard.png' : 'squad-summary.png' })];
         sent = await announce(client, post, ev.kind === 'leaderboard' ? undefined : 'raid', pingsRole(ev.kind));
       }

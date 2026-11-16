@@ -1,0 +1,4 @@
+/* ==== UI-17 Hunt header, the v2 Hunt state (HUNT-HEADER-V2; Nathan 2026-11-06 "Yes": no v1 boss facts while the v2 Hunt is on) ====
+   main.js huntSelectV3HTML: the facts row has no ATK or Weak to chip. The row keeps the height of one chip (the same box as .u3-hs-weak:
+   the same padding and text size), so the header and the squad slots do not move when the scale changes (design.md: screens never move). */
+.u3-hs-facts.is-v2::before { content: "\200b"; display: inline-flex; align-items: center; padding: var(--sp-1) 0; font-size: var(--fs-small); font-weight: var(--fw-small-strong); }
