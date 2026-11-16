@@ -62,6 +62,9 @@ body.ui-v2.ui-v3 .v2-dungeon .g2-chip .g2-rp { display: block; position: absolut
   border-radius: var(--rad-round); background: var(--gold); border: var(--bw-2) solid var(--bg-base); }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2-side .g2-chip { width: var(--chip-md); height: var(--chip-md); }
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2-side .g2-chip.is-next { width: var(--ctl-sm); height: var(--ctl-sm); }
+/* Desktop (Nathan 2026-11-15: "make those turn pictures larger"): the top strip chips at 44, the next one at 56 (UI-00 size tokens). */
+body[data-size="expanded"].ui-v2.ui-v3 .v2-dungeon .dg-fight:not(.g2-side) .g2-chip { width: var(--ctl-md); height: var(--ctl-md); }
+body[data-size="expanded"].ui-v2.ui-v3 .v2-dungeon .dg-fight:not(.g2-side) .g2-chip.is-next { width: var(--avatar-lg); height: var(--avatar-lg); }
 
 /* ---- foe plates: the status row under the plate (3 places, then +N); N1: no weakness line in v2 ---- */
 body.ui-v2.ui-v3 .v2-dungeon .dg-fight.g2 .dg-plate { overflow: visible; }
