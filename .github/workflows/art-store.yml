@@ -62,6 +62,6 @@ jobs:
           node scripts/test-r2-copy.mjs
           node scripts/test-r2-checks.mjs
           node scripts/test-r2-retire.mjs
-      - name: deploy.sh health checks and the STANDBY env refusal
+      - name: deploy.sh health checks, the bot env refusal, the bot_home deploy rule (NO-SERVER C5), the failover scripts (C10)
         if: success() || failure()
-        run: bash ops/deploy-health.test.sh && bash ops/boss-files.test.sh
+        run: bash ops/deploy-health.test.sh && bash ops/boss-files.test.sh && bash ops/failover/test-office.sh && bash ops/failover/test-watch-main.sh

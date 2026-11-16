@@ -9,7 +9,7 @@ Tables and functions that the domain map in gen-data-docs.mjs does not place yet
 
 Tables (8): [element_counters](#table-element-counters), [elements](#table-elements), [elements_cache](#table-elements-cache), [enemy_mechanics](#table-enemy-mechanics), [passives](#table-passives), [set_draw_pool](#table-set-draw-pool), [set_includes](#table-set-includes), [set_pool](#table-set-pool)
 
-Functions (21): [alias_list_ok(text[])](#fn-alias-list-ok-text), [auto_v2_spec()](#fn-auto-v2-spec), [element_beats(text,text)](#fn-element-beats-text-text), [element_counter_gaps()](#fn-element-counter-gaps), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [enemy_mechanics_check()](#fn-enemy-mechanics-check), [enemy_v2_spec()](#fn-enemy-v2-spec), [owned_card_power(text)](#fn-owned-card-power-text), [pack_color_ok(text)](#fn-pack-color-ok-text), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [reset_card_points_v2(text,bigint)](#fn-reset-card-points-v2-text-bigint), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules), [spend_card_points_v2(text,bigint,jsonb)](#fn-spend-card-points-v2-text-bigint-jsonb), [subjects_ability_v2_check()](#fn-subjects-ability-v2-check)
+Functions (23): [alias_list_ok(text[])](#fn-alias-list-ok-text), [auto_v2_spec()](#fn-auto-v2-spec), [bot_home_state()](#fn-bot-home-state), [element_beats(text,text)](#fn-element-beats-text-text), [element_counter_gaps()](#fn-element-counter-gaps), [element_weak_to(text)](#fn-element-weak-to-text), [elements_cache_rebuild()](#fn-elements-cache-rebuild), [elements_cache_refresh()](#fn-elements-cache-refresh), [elements_check()](#fn-elements-check), [elements_list()](#fn-elements-list), [enemy_mechanics_check()](#fn-enemy-mechanics-check), [enemy_v2_spec()](#fn-enemy-v2-spec), [owned_card_power(text)](#fn-owned-card-power-text), [pack_color_ok(text)](#fn-pack-color-ok-text), [passive_label(text)](#fn-passive-label-text), [passives_check()](#fn-passives-check), [passives_for(text)](#fn-passives-for-text), [reset_card_points_v2(text,bigint)](#fn-reset-card-points-v2-text-bigint), [set_includes_rules()](#fn-set-includes-rules), [set_pool_rules()](#fn-set-pool-rules), [settings_bot_home_check()](#fn-settings-bot-home-check), [spend_card_points_v2(text,bigint,jsonb)](#fn-spend-card-points-v2-text-bigint-jsonb), [subjects_ability_v2_check()](#fn-subjects-ability-v2-check)
 
 ## Tables
 
@@ -241,6 +241,16 @@ F-3: true when a list of element words is not empty and has only lower case, tri
 
 [combat] The fixed shape with the limits of the balance key auto_v2 (fight: the numbers of the Auto v2 fight decision; pick: the numbers of the Hunt auto-pick with supports, supports_max and active_x, and answers.<mechanic>.<role>). combat_v2_autopick_active.sql.
 
+<a id="fn-bot-home-state"></a>
+
+### bot_home_state()
+
+- Function: `bot_home_state()`
+- Returns: `jsonb`
+- Security definer: yes
+
+NO-SERVER: {home, age_s} of settings.bot_home in DB time (null when the row is missing). ops/deploy.sh reads it before a bot deploy and deploys only to the host that it names. service_role only.
+
 <a id="fn-element-beats-text-text"></a>
 
 ### element_beats(text,text)
@@ -410,6 +420,16 @@ Trigger on set_includes: refuses a cycle (the included set reaches the set), und
 - Security definer: no
 
 Trigger on set_pool: refuses a card whose home set is the pool set.
+
+<a id="fn-settings-bot-home-check"></a>
+
+### settings_bot_home_check()
+
+- Function: `settings_bot_home_check()`
+- Returns: `trigger`
+- Security definer: no
+
+NO-SERVER: the guard of settings.bot_home. Refuses a write unless lptcg.bot_home_writer = bot-home.mjs (only card-studio/scripts/bot-home.mjs sets it), refuses a value other than "backup"/"office", and sets updated_at = clock_timestamp().
 
 <a id="fn-spend-card-points-v2-text-bigint-jsonb"></a>
 

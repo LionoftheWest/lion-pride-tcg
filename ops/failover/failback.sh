@@ -3,6 +3,13 @@
 # It stops the backup bot (so only one bot runs) and the backup tunnel, and prints the steps to point DuckDNS back.
 # It does NOT change DNS and does not start anything on the main VM.
 set -uo pipefail
+
+# NO-SERVER P0b (option B, Nathan 2026-11-06): REFUSED. The main VM is gone, and the bot never moves automatically or
+# by this script: it runs only on the host that settings.bot_home names (ops/deploy.sh reads it). The old steps below
+# stopped the backup bot and started a bot on the main VM, which would give two bots or none.
+# To move the bot: the manual move M-BOT in NO-SERVER SPEC 4.5 (card-studio/scripts/bot-home.mjs, with Nathan's GO).
+echo "REFUSED: option B. The bot stays on the host that bot_home names. Move it only by hand (NO-SERVER 4.5, bot-home.mjs)." >&2
+exit 2
 DIR="${FAILOVER_DIR:-/home/ubuntu/failover}"
 STATE_DIR="${STATE_DIR:-$DIR/state}"
 DOCKER_CMD="${DOCKER_CMD:-sudo docker}"

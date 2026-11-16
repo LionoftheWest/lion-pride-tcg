@@ -69,7 +69,8 @@ migrate for him, and the code must be in GitHub. So when Nathan says "deploy" or
    has no native runtime). Run SQL tests locally: `node scripts/test-all-local.mjs [filter]`.
    After the rehearsal, run `gen-schema-snapshot.mjs` and `find-superseded.mjs` on the local copy and
    commit `db/schema/` and `tcg-bot/supabase/SUPERSEDED.md` in the same PR (`db/schema/README.md`).
-4. Deploy from a worktree at `origin/main` with `ops/deploy.sh <activity|bot|gallery>`.
+4. Deploy from a worktree at `origin/main` with `TARGET=backup ops/deploy.sh <activity|bot|gallery|backup>` (`TARGET` is
+   required). A bot deploy runs only on the host that the settings row `bot_home` names (NO-SERVER P0b, option B).
 5. Run `node scripts/check-schema-drift.mjs --live` (read-only, also weekly). It must show 0 differences.
    Report the commit, the result, and the live check to Nathan.
 

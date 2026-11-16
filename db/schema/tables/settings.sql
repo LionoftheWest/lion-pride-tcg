@@ -26,4 +26,5 @@ grant delete, insert, maintain, references, select, trigger, truncate, update on
 grant delete, insert, maintain, references, select, trigger, truncate, update on table public.settings to service_role;
 
 -- @triggers
+CREATE TRIGGER settings_bot_home_check BEFORE INSERT OR DELETE OR UPDATE ON public.settings FOR EACH ROW EXECUTE FUNCTION settings_bot_home_check();
 CREATE TRIGGER settings_log_write AFTER INSERT OR DELETE OR UPDATE ON public.settings FOR EACH ROW EXECUTE FUNCTION settings_log_write();
