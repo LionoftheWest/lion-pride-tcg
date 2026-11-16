@@ -40,6 +40,8 @@ export function defectsOf(r, expanded) {
   // array was not checked (a silent skip would pass every mutation).
   const spec = SCREENS[r.screen] || {};
   if (spec.see && !Array.isArray(r.see)) add('not-checked', 'see', 'the see check returned nothing');
+  // ONE-START (review r1 M-1): a hasText / noSee rule with no content result was not checked (no silent pass)
+  if ((spec.hasText || spec.noSee) && !Array.isArray(r.content)) add('not-checked', 'content', 'the content check returned nothing');
   if (spec.seeOnly) {
     // D-217: a legacy v2 screen (seeOnly, for example ui-v2-shop.js) is not held to the v3 standard. Only its see list is
     // enforced. A runner error, a missing step or fixture, and a missing see result above still fail as "not checked".
